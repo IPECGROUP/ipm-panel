@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
+import { SupplyExpertsPanel, SupplyTimingPanel } from "./SupplyManagementDashboardPage.jsx";
+import { KnowledgeDashboardWidgets } from "./KnowledgeManagementDashboardPage.jsx";
 
 const activityViewers = new Set(["marandi", "nouri"]);
 const formatDateTime = (value) => value ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "—";
@@ -79,6 +81,15 @@ const dailyLogUnits = (entry) => {
   const labels = [...new Set(units.map((unit) => String(unit || "").trim()).filter(Boolean))];
   return labels.length ? labels.join("، ") : String(entry?.user_department ?? entry?.userDepartment ?? "بدون واحد");
 };
+const supplyStatusOf = (item) => {
+  if (String(item?.status || "").toLowerCase() === "rejected") return "rejected";
+  if (item?.workflowStatus === "done" || String(item?.status || "").toLowerCase() === "approved") return "done";
+  return item?.workflowStatus === "in_progress" ? "in_progress" : "pending";
+};
+const supplyTimeOf = (value) => {
+  const time = Date.parse(String(value || ""));
+  return Number.isFinite(time) ? time : null;
+};
 
 function HomeTopDailyLogUsers({ rows, loading }) {
   return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">کاربران پرثبت روزنگار</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">۵ کاربر با بیشترین تعداد ثبت</span></div><div className="space-y-2">{rows.length ? rows.map((person, index) => <div key={person.key} className="flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block truncate text-[10px] text-neutral-500 dark:text-neutral-400">{person.unit}</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.value)}</span></div>) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div></Card>;
@@ -101,6 +112,9 @@ export default function DashboardPage() {
   const [dailyLogEntries, setDailyLogEntries] = useState([]);
   const [normalRequests, setNormalRequests] = useState([]);
   const [tenkhahRequests, setTenkhahRequests] = useState([]);
+  const [supplyRequests, setSupplyRequests] = useState([]);
+  const [supplyUsers, setSupplyUsers] = useState([]);
+  const [knowledgeData, setKnowledgeData] = useState(null);
   const [dashboardWidgetsLoading, setDashboardWidgetsLoading] = useState(true);
   const storageKey = `ipm-dashboard-shortcuts:${user?.id || user?.username || "guest"}`;
   const canViewActivity = activityViewers.has(String(user?.username || "").toLowerCase());
@@ -139,17 +153,25 @@ export default function DashboardPage() {
       fetch("/api/roznegar?activeProjects=true", options).then((response) => response.ok ? response.json() : { items: [] }),
       fetch("/api/requests?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
       fetch("/api/tenkhah?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
-    ]).then(([dailyLogsData, requestsData, tenkhahData]) => {
+      fetch("/api/supply-requests?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [], supplyUsers: [] }),
+      fetch("/api/knowledge-dashboard", options).then((response) => response.ok ? response.json() : null),
+    ]).then(([dailyLogsData, requestsData, tenkhahData, supplyData, knowledgeDashboardData]) => {
       if (cancelled) return;
       const requests = Array.isArray(requestsData?.items) ? requestsData.items : [];
       setDailyLogEntries(Array.isArray(dailyLogsData?.items) ? dailyLogsData.items : []);
       setNormalRequests(requests.filter((item) => String(item?.requestType || item?.docId || "").toLowerCase() !== "tenkhah_request" && String(item?.scope || "").toLowerCase() !== "tenkhah"));
       setTenkhahRequests(Array.isArray(tenkhahData?.items) ? tenkhahData.items : []);
+      setSupplyRequests(Array.isArray(supplyData?.items) ? supplyData.items : []);
+      setSupplyUsers(Array.isArray(supplyData?.supplyUsers) ? supplyData.supplyUsers : []);
+      setKnowledgeData(knowledgeDashboardData);
     }).catch(() => {
       if (cancelled) return;
       setDailyLogEntries([]);
       setNormalRequests([]);
       setTenkhahRequests([]);
+      setSupplyRequests([]);
+      setSupplyUsers([]);
+      setKnowledgeData(null);
     }).finally(() => { if (!cancelled) setDashboardWidgetsLoading(false); });
     return () => { cancelled = true; };
   }, [user?.id]);
@@ -181,6 +203,30 @@ export default function DashboardPage() {
     });
     return [...people.values()].filter((person) => person.unsettled > 0).sort((a, b) => b.unsettled - a.unsettled || a.label.localeCompare(b.label, "fa")).slice(0, 5);
   }, [tenkhahRequests]);
+  const supplyExperts = useMemo(() => supplyUsers.map((person) => {
+    const id = Number(person.id);
+    const owned = supplyRequests.filter((item) => Number(item.currentAssigneeUserId) === id);
+    return {
+      id,
+      name: person.name || person.username || person.email || `کاربر #${id}`,
+      active: owned.filter((item) => ["pending", "in_progress"].includes(supplyStatusOf(item))).length,
+      pending: owned.filter((item) => supplyStatusOf(item) === "pending").length,
+      done: supplyRequests.filter((item) => (item.supplyActions || []).some((action) => Number(action.byUserId) === id && String(action.status) === "done") || (item.historyJson || []).some((event) => event?.type === "approved" && event?.roleKey === "commercial" && Number(event?.byUserId) === id)).length,
+    };
+  }).sort((a, b) => b.active - a.active || b.pending - a.pending || a.name.localeCompare(b.name, "fa")), [supplyRequests, supplyUsers]);
+  const supplyTimings = useMemo(() => {
+    const registeredToApproval = [];
+    const approvalToAction = [];
+    supplyRequests.forEach((item) => {
+      const history = Array.isArray(item.historyJson) ? item.historyJson : [];
+      const created = supplyTimeOf(history.find((event) => event?.type === "created")?.at || item.createdAt);
+      const approved = supplyTimeOf(history.find((event) => event?.type === "approved" && event?.roleKey === "project_manager")?.at);
+      const firstAction = supplyTimeOf((item.supplyActions || [])[0]?.createdAt);
+      if (created != null && approved != null && approved >= created) registeredToApproval.push(approved - created);
+      if (approved != null && firstAction != null && firstAction >= approved) approvalToAction.push(firstAction - approved);
+    });
+    return { registeredToApproval, approvalToAction };
+  }, [supplyRequests]);
 
   const selectedShortcuts = selectedPaths.map((path) => availableOptions.find((item) => item.to === path)).filter(Boolean);
   const updateSelection = (path) => setSelectedPaths((current) => {
@@ -211,6 +257,16 @@ export default function DashboardPage() {
         <HomeReviewTiming timings={reviewTimings} />
         <HomeUnsettledTenkhah rows={unsettledTenkhah} loading={dashboardWidgetsLoading} />
       </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <SupplyExpertsPanel rows={supplyExperts} />
+        <SupplyTimingPanel {...supplyTimings} />
+      </div>
+
+      <Card className="mt-3 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+        <div className="mb-4"><span className="block text-sm font-bold">مدیریت دانش</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">نمای کلی درس‌آموخته‌ها، کتابخانه‌ها و منابع آموزشی</span></div>
+        <KnowledgeDashboardWidgets data={knowledgeData} />
+      </Card>
 
       {canViewActivity && <section className="mt-3 rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
         <div className="mb-4"><h2 className="text-sm font-bold">لاگ حضور کاربران</h2><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">زمان ورود، مدت حضور و زمان خروج از سامانه</p></div>

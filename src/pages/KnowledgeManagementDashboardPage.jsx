@@ -13,6 +13,24 @@ function Rows({ rows, empty = "داده‌ای ثبت نشده است.", transfo
 }
 function TopUsers({ rows }) { return <Rows rows={rows} empty="مراجعه‌ای ثبت نشده است." transform={(row) => row.name} />; }
 
+export function KnowledgeDashboardWidgets({ data }) {
+  const lessons = data?.lessons || {};
+  const resources = data?.resources || {};
+  const resourceVisits = data?.visits?.training || [];
+  const lessonVisits = data?.visits?.lessons || [];
+  const maxTrainingVisits = resourceVisits.reduce((sum, row) => sum + Number(row.count || 0), 0);
+  return <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+    <Panel title="خلاصه درس‌آموخته‌ها" subtitle="دانش ثبت‌شده و دانش‌آفرینان" className="xl:col-span-1"><div className="grid grid-cols-2 gap-3"><div className="rounded-2xl bg-sky-50 p-4 text-center dark:bg-sky-500/10"><b className="block text-2xl">{fa(lessons.total)}</b><span className="mt-1 block text-xs text-neutral-500">کل درس‌آموخته‌ها</span></div><div className="rounded-2xl bg-emerald-50 p-4 text-center dark:bg-emerald-500/10"><b className="block text-2xl">{fa(lessons.authors)}</b><span className="mt-1 block text-xs text-neutral-500">کل دانش‌آفرینان</span></div></div><h3 className="mt-4 text-xs font-bold">۳ نفر برتر تولید دانش</h3><div className="mt-2"><TopUsers rows={lessons.topAuthors} /></div></Panel>
+    <Panel title="درس‌آموخته‌ها به تفکیک پروژه"><Rows rows={lessons.byProject} /></Panel>
+    <Panel title="درس‌آموخته‌ها بر اساس دسته‌بندی"><Rows rows={lessons.byCategory} /></Panel>
+    <Panel title="درس‌آموخته‌ها بر اساس اهمیت"><Rows rows={lessons.byImportance} transform={(row) => importanceLabels[row.label] || row.label} /></Panel>
+    <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها" subtitle="با اولین باز کردن هر درس‌آموخته ثبت می‌شود"><TopUsers rows={lessonVisits} /></Panel>
+    <Panel title="مستندات به تفکیک کتابخانه"><Rows rows={data?.libraries} /></Panel>
+    <Panel title="منابع آموزشی بر اساس دسته‌بندی" subtitle={`مجموع مراجعه به منابع آموزشی: ${fa(maxTrainingVisits)}`}><Rows rows={resources.byCategory} /></Panel>
+    <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی" subtitle="پس از ورود، فقط اولین باز کردن یا کپی لینک و باز کردن فایل ثبت می‌شود"><TopUsers rows={resourceVisits} /></Panel>
+  </div>;
+}
+
 export default function KnowledgeManagementDashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState(null);
