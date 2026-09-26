@@ -124,10 +124,19 @@ function RightNav() {
   // expanded sidebar is 280px wide and sits 16px from the edge, so reserving
   // 312px also leaves a small visual gap beside it.
   useEffect(() => {
-    document.documentElement.style.setProperty(
-      "--right-nav-space",
-      expanded ? "312px" : "96px",
-    );
+    if (expanded) {
+      document.documentElement.style.setProperty("--right-nav-space", "312px");
+      return undefined;
+    }
+
+    // The sidebar itself takes 300ms to collapse.  Keep the header in its
+    // expanded position during that motion, then let it glide back after the
+    // sidebar has cleared the logo.
+    const timer = window.setTimeout(() => {
+      document.documentElement.style.setProperty("--right-nav-space", "96px");
+    }, 300);
+
+    return () => window.clearTimeout(timer);
   }, [expanded]);
 
   useEffect(() => {
