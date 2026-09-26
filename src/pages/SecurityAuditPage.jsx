@@ -35,6 +35,9 @@ export default function SecurityAuditPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ action: "", actor: "", status: "" });
+  const [sessions, setSessions] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [sessionsError, setSessionsError] = useState("");
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ limit: "200" });
@@ -53,7 +56,29 @@ export default function SecurityAuditPage() {
     } finally { setLoading(false); }
   };
 
+  const loadSessions = async () => {
+    setSessionsLoading(true);
+    setSessionsError("");
+    try {
+      const data = await api("/admin/sessions");
+      setSessions(Array.isArray(data?.items) ? data.items : []);
+    } catch (e) {
+      setSessionsError(e?.message || "Unable to load active sessions");
+    } finally { setSessionsLoading(false); }
+  };
+
+  const revokeSession = async (ref, allForUser = false) => {
+    if (!window.confirm(allForUser ? "Log out all other devices for this user?" : "Log out this device?")) return;
+    try {
+      await api("/admin/sessions", { method: "DELETE", body: JSON.stringify({ ref, allForUser }) });
+      await Promise.all([loadSessions(), load()]);
+    } catch (e) {
+      setSessionsError(e?.message || "Unable to revoke session");
+    }
+  };
+
   useEffect(() => { if (isAli) load(); }, [query, isAli]);
+  useEffect(() => { if (isAli) loadSessions(); }, [isAli]);
   if (!isAli) return <Navigate to="/dashboard" replace />;
 
   return (
@@ -88,6 +113,34 @@ export default function SecurityAuditPage() {
                   <td className="p-3"><span className={`rounded-full px-2 py-1 text-xs ${row.status === "success" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>{row.status}</span></td>
                   <td className="p-3" dir="ltr">{row.ip_address || "—"}</td>
                   <td className="max-w-[360px] p-3 text-xs text-neutral-600 dark:text-neutral-300"><pre className="whitespace-pre-wrap break-words font-sans">{JSON.stringify(row.details || {}, null, 2)}</pre></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      <Card className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold">Active sessions</h2>
+            <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Sessions active in the last five minutes are shown as online.</p>
+          </div>
+          <button type="button" onClick={loadSessions} className="rounded-xl border border-black/15 px-3 py-2 text-sm dark:border-neutral-700">Refresh</button>
+        </div>
+        {sessionsError && <div className="rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{sessionsError}</div>}
+        <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-neutral-800">
+          <table className="w-full min-w-[1050px] text-sm">
+            <thead className="bg-neutral-100 dark:bg-neutral-800"><tr><th className="p-3 text-right">User</th><th className="p-3 text-right">Device</th><th className="p-3 text-right">IP</th><th className="p-3 text-right">Login</th><th className="p-3 text-right">Last activity</th><th className="p-3 text-right">Status</th><th className="p-3 text-right">Actions</th></tr></thead>
+            <tbody>
+              {sessionsLoading ? <tr><td colSpan="7" className="p-6 text-center">Loading...</td></tr> : sessions.length === 0 ? <tr><td colSpan="7" className="p-6 text-center text-neutral-500">No active sessions.</td></tr> : sessions.map((session) => (
+                <tr key={session.ref} className="border-t border-black/10 align-top dark:border-neutral-800">
+                  <td className="p-3 font-medium">{session.user?.name || session.user?.username || "—"}<div className="mt-1 text-xs font-normal text-neutral-500">{session.user?.username}</div></td>
+                  <td className="p-3">{session.browser} — {session.os}<div className="mt-1 text-xs text-neutral-500">{session.deviceType}</div></td>
+                  <td className="p-3" dir="ltr">{session.ipAddress || "—"}</td>
+                  <td className="whitespace-nowrap p-3">{formatDate(session.createdAt)}</td>
+                  <td className="whitespace-nowrap p-3">{formatDate(session.lastActivityAt)}</td>
+                  <td className="p-3"><span className={`rounded-full px-2 py-1 text-xs ${session.online ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 text-neutral-700"}`}>{session.online ? "Online" : "Active"}</span></td>
+                  <td className="p-3"><div className="flex gap-2"><button type="button" onClick={() => revokeSession(session.ref)} className="rounded-lg border border-red-200 px-2 py-1 text-xs text-red-700">Log out device</button><button type="button" onClick={() => revokeSession(session.ref, true)} className="rounded-lg border border-black/15 px-2 py-1 text-xs dark:border-neutral-700">Log out all</button></div></td>
                 </tr>
               ))}
             </tbody>

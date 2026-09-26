@@ -62,12 +62,14 @@ export function AuthProvider({ children }) {
   });
 
   const [loading, setLoading] = useState(true);
+  const [sessionExpiresAt, setSessionExpiresAt] = useState(null);
 
   const reloadMe = async () => {
     try {
       const r = await api("/auth/me", { method: "GET" });
       const u = normalizeUser(r?.user || null);
       setUser(u);
+      setSessionExpiresAt(r?.expiresAt || null);
       try {
         if (u) localStorage.setItem("user", JSON.stringify(u));
         else localStorage.removeItem("user");
@@ -75,6 +77,7 @@ export function AuthProvider({ children }) {
       return u;
     } catch {
       setUser(null);
+      setSessionExpiresAt(null);
       try {
         localStorage.removeItem("user");
       } catch {}
@@ -88,6 +91,23 @@ export function AuthProvider({ children }) {
     reloadMe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let lastRefreshAt = Date.now();
+    const refreshOnActivity = () => {
+      if (document.visibilityState === "hidden" || Date.now() - lastRefreshAt < 5 * 60 * 1000) return;
+      lastRefreshAt = Date.now();
+      reloadMe();
+    };
+    const events = ["pointerdown", "keydown", "touchstart"];
+    events.forEach((event) => window.addEventListener(event, refreshOnActivity, { passive: true }));
+    window.addEventListener("focus", refreshOnActivity);
+    return () => {
+      events.forEach((event) => window.removeEventListener(event, refreshOnActivity));
+      window.removeEventListener("focus", refreshOnActivity);
+    };
+  }, [user]);
 
   const login = async (username, password) => {
     try {
@@ -103,6 +123,7 @@ export function AuthProvider({ children }) {
       if (!u) throw new Error("خطا در ورود");
 
       setUser(u);
+      setSessionExpiresAt(r?.expiresAt || null);
       try {
         localStorage.setItem("user", JSON.stringify(u));
       } catch {}
@@ -118,10 +139,30 @@ export function AuthProvider({ children }) {
       await api("/auth/logout", { method: "POST" });
     } catch {}
     setUser(null);
+    setSessionExpiresAt(null);
     try {
       localStorage.removeItem("user");
     } catch {}
   };
+
+  useEffect(() => {
+    const expiresAt = new Date(sessionExpiresAt || "").getTime();
+    if (!Number.isFinite(expiresAt)) return undefined;
+
+    const expireSession = () => {
+      setUser(null);
+      setSessionExpiresAt(null);
+      try {
+        localStorage.removeItem("user");
+      } catch {}
+      // The server independently enforces this expiry; this also records a
+      // normal logout if the cookie is still present at the exact deadline.
+      api("/auth/logout", { method: "POST" }).catch(() => {});
+    };
+
+    const timer = window.setTimeout(expireSession, Math.max(0, expiresAt - Date.now()));
+    return () => window.clearTimeout(timer);
+  }, [sessionExpiresAt]);
 
   const value = useMemo(
     () => ({
