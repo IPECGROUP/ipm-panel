@@ -115,8 +115,9 @@ function printSettlementReport() {
 
 export default function PettyCashPage() {
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(0);
   const focusedRequestId = searchParams.get("notificationTarget") === "tenkhah" ? searchParams.get("request") || "" : "";
+  const focusedExpenseId = searchParams.get("notificationTarget") === "petty_cash_expense" ? searchParams.get("request") || "" : "";
+  const [activeTab, setActiveTab] = useState(() => focusedExpenseId ? 1 : 0);
   if (focusedRequestId) return <TenkhahPage focusRequestId={focusedRequestId} />;
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -152,7 +153,7 @@ export default function PettyCashPage() {
           </nav>
           {activeTab === 0 && <MyPettyCashTable />}
           {activeTab === 1 && (
-            <ExpenseRegistrationTab onReportCreated={() => setActiveTab(2)} />
+            <ExpenseRegistrationTab focusExpenseId={focusedExpenseId} onReportCreated={() => setActiveTab(2)} />
           )}
           {activeTab === 2 && <PettyCashSettlementReportsTable />}
         </div>
@@ -472,7 +473,7 @@ function PettyCashSettlementReportsTable() {
   );
 }
 
-function ExpenseRegistrationTab({ onReportCreated }) {
+function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]),
     [budgetItems, setBudgetItems] = useState([]),
@@ -636,6 +637,20 @@ function ExpenseRegistrationTab({ onReportCreated }) {
       setError(reason.message);
     }
   };
+  useEffect(() => {
+    if (!focusExpenseId) return;
+    api(`/petty-cash-expenses?inbox=1&expenseId=${encodeURIComponent(focusExpenseId)}`)
+      .then((data) => {
+        const item = Array.isArray(data?.items) ? data.items[0] : null;
+        if (!item) return;
+        setProjectId(String(item.projectId));
+        setItems(data.items);
+        setViewer(data.viewer || {});
+        if (item.stage === "planning") return openPlanningApproval(item);
+        setApproval(item);
+      })
+      .catch((reason) => setError(reason.message));
+  }, [api, focusExpenseId]);
   const decide = async (id, decision, projectManagerId) => {
     setSaving(true);
     setError("");

@@ -53,17 +53,19 @@ export default function Shell() {
     try {
       const requestOptions = { credentials: "include", headers: { "x-user-id": String(user.id) } };
       const canReadSupplyCartable = canOpenPage(user, "/supply/request");
-      const [cartableResponse, actionsResponse, paymentResponse, tenkhahResponse] = await Promise.all([
+      const [cartableResponse, actionsResponse, paymentResponse, tenkhahResponse, pettyCashResponse] = await Promise.all([
         canReadSupplyCartable ? fetch("/api/supply-requests?cartable=1", requestOptions) : Promise.resolve(null),
         fetch("/api/supply-actions", requestOptions),
         fetch("/api/requests?view=inbox", requestOptions),
         fetch("/api/tenkhah?inbox=1", requestOptions),
+        fetch("/api/petty-cash-expenses?inbox=1", requestOptions),
       ]);
-      const [cartableData, actionsData, paymentData, tenkhahData] = await Promise.all([
+      const [cartableData, actionsData, paymentData, tenkhahData, pettyCashData] = await Promise.all([
         cartableResponse ? cartableResponse.json().catch(() => ({})) : Promise.resolve({}),
         actionsResponse.json().catch(() => ({})),
         paymentResponse.json().catch(() => ({})),
         tenkhahResponse.json().catch(() => ({})),
+        pettyCashResponse.json().catch(() => ({})),
       ]);
       const dashboardItems = cartableResponse?.ok && Array.isArray(cartableData?.items)
         ? cartableData.items.map((item) => ({ ...item, notificationTarget: "supply_request" }))
@@ -86,11 +88,13 @@ export default function Shell() {
         ? tenkhahData.items
             .filter((item) => item.canAct === true)
             .map((item) => ({ ...item, notificationTarget: "tenkhah" })) : [];
+      const pettyCashItems = pettyCashResponse.ok && Array.isArray(pettyCashData?.items)
+        ? pettyCashData.items.map((item) => ({ ...item, notificationTarget: "petty_cash_expense" })) : [];
       const readNotifications = new Set(
         JSON.parse(localStorage.getItem(notificationStorageKey(user.id)) || "[]")
       );
       setNotifications(
-        [...dashboardItems, ...actionItems, ...paymentItems, ...tenkhahItems].filter((item) => !readNotifications.has(notificationKey(item)))
+        [...dashboardItems, ...actionItems, ...paymentItems, ...tenkhahItems, ...pettyCashItems].filter((item) => !readNotifications.has(notificationKey(item)))
       );
     } catch {
       setNotifications([]);
@@ -148,7 +152,7 @@ export default function Shell() {
 
   const openNotification = (item) => {
     setNotificationsOpen(false);
-    const target = item.notificationTarget === "tenkhah"
+    const target = item.notificationTarget === "tenkhah" || item.notificationTarget === "petty_cash_expense"
       ? "/finance/tenkhah"
       : item.notificationTarget === "payment_request"
         ? "/finance/payment-request"
@@ -334,10 +338,10 @@ export default function Shell() {
                       notifications.map((item) => (
                         <button key={notificationBaseKey(item)} type="button" onClick={() => openNotification(item)} className="group flex w-full gap-3 rounded-xl p-3 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/[0.07]">
                           <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
-                            <img src={item.notificationTarget === "payment_request" ? "/images/icons/darkhast-pardakht.svg" : item.notificationTarget === "tenkhah" ? "/images/icons/tenkhah.svg" : "/images/icons/darkhast-tamin.svg"} alt="" className="h-5 w-5 dark:invert" />
+                            <img src={item.notificationTarget === "payment_request" ? "/images/icons/darkhast-pardakht.svg" : item.notificationTarget === "tenkhah" || item.notificationTarget === "petty_cash_expense" ? "/images/icons/tenkhah.svg" : "/images/icons/darkhast-tamin.svg"} alt="" className="h-5 w-5 dark:invert" />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : item.notificationTarget === "payment_request" ? "درخواست پرداخت جدید در انتظار بررسی" : item.notificationTarget === "tenkhah" ? "درخواست تنخواه جدید در انتظار بررسی" : "درخواست تأمین جدید در انتظار بررسی"}</span>
+                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : item.notificationTarget === "payment_request" ? "درخواست پرداخت جدید در انتظار بررسی" : item.notificationTarget === "tenkhah" ? "درخواست تنخواه جدید در انتظار بررسی" : item.notificationTarget === "petty_cash_expense" ? "هزینه تنخواه جدید در انتظار بررسی" : "درخواست تأمین جدید در انتظار بررسی"}</span>
                             <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{notificationTitle(item) || "بدون موضوع"}</span>
                             <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-neutral-400">
                               <span dir="ltr" className="font-sans tabular-nums">{notificationSerial(item) || "—"}</span>
