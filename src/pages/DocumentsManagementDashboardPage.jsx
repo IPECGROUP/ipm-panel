@@ -52,6 +52,7 @@ function previousJalaliMonth(date = new Date()) {
   return current.month === 1 ? { year: current.year - 1, month: 12 } : { year: current.year, month: current.month - 1 };
 }
 
+
 function summarize(items) {
   const summary = { total: items.length, incoming: 0, outgoing: 0, internal: 0, confidential: 0 };
   items.forEach((item) => {
