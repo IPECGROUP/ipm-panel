@@ -4,6 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
 
+const activityViewers = new Set(["marandi", "nouri"]);
+const formatDateTime = (value) => value ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "—";
+const formatDuration = (from, to) => {
+  if (!from) return "—";
+  const milliseconds = (to ? new Date(to) : new Date()).getTime() - new Date(from).getTime();
+  if (!Number.isFinite(milliseconds) || milliseconds < 0) return "—";
+  const minutes = Math.floor(milliseconds / 60000);
+  const hours = Math.floor(minutes / 60);
+  return `${hours ? `${hours.toLocaleString("fa-IR")} ساعت و ` : ""}${(minutes % 60).toLocaleString("fa-IR")} دقیقه`;
+};
+
 const MAX_SHORTCUTS = 4;
 const shortcutOptions = [
   ["/letters", "مدیریت اسناد", "nameha.svg"],
@@ -39,7 +50,9 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [activityLogs, setActivityLogs] = useState([]);
   const storageKey = `ipm-dashboard-shortcuts:${user?.id || user?.username || "guest"}`;
+  const canViewActivity = activityViewers.has(String(user?.username || "").toLowerCase());
   const availableOptions = useMemo(
     () => shortcutOptions.filter((item) => hasLimitedPageAccess(user) ? limitedShortcuts.has(item.to) : canOpenPage(user, item.to)),
     [user]
@@ -56,6 +69,16 @@ export default function DashboardPage() {
     }
   }, [storageKey, availableOptions]);
 
+  useEffect(() => {
+    if (!canViewActivity || !user?.id) { setActivityLogs([]); return; }
+    let cancelled = false;
+    fetch("/api/home/user-activity", { credentials: "include", headers: { "x-user-id": String(user.id) } })
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then((data) => { if (!cancelled) setActivityLogs(Array.isArray(data?.items) ? data.items : []); })
+      .catch(() => { if (!cancelled) setActivityLogs([]); });
+    return () => { cancelled = true; };
+  }, [canViewActivity, user?.id]);
+
   const selectedShortcuts = selectedPaths.map((path) => availableOptions.find((item) => item.to === path)).filter(Boolean);
   const updateSelection = (path) => setSelectedPaths((current) => {
     const next = current.includes(path) ? current.filter((item) => item !== path) : current.length < MAX_SHORTCUTS ? [...current, path] : current;
@@ -68,7 +91,7 @@ export default function DashboardPage() {
       <section className="rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-base font-bold md:text-lg">داشبورد</h1>
+            <h1 className="text-base font-bold md:text-lg">خانه</h1>
             <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">دسترسی سریع به صفحه‌های پرکاربرد</p>
           </div>
           {selectedShortcuts.length > 0 && <button type="button" onClick={() => setPickerOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl border border-neutral-200 text-neutral-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="ویرایش میانبرها" title="ویرایش میانبرها"><Settings2 className="h-4 w-4" /></button>}
@@ -79,6 +102,11 @@ export default function DashboardPage() {
           {selectedShortcuts.length < MAX_SHORTCUTS && <button type="button" onClick={() => setPickerOpen(true)} className="flex min-h-[102px] w-[104px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 px-2 text-neutral-500 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/20 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="افزودن میانبر"><span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">افزودن میانبر</span></button>}
         </div>
       </section>
+
+      {canViewActivity && <section className="mt-3 rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
+        <div className="mb-4"><h2 className="text-sm font-bold">لاگ حضور کاربران</h2><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">زمان ورود، مدت حضور و زمان خروج از سامانه</p></div>
+        <div className="max-h-[350px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08]"><table className="w-full min-w-[700px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">کاربر</th><th className="px-3 py-2.5 font-medium">ورود</th><th className="px-3 py-2.5 font-medium">مدت حضور</th><th className="px-3 py-2.5 font-medium">خروج</th></tr></thead><tbody>{activityLogs.length ? activityLogs.map((item) => <tr key={item.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="px-3 py-3 font-medium">{item.name || item.username}</td><td className="whitespace-nowrap px-3 py-3 tabular-nums">{formatDateTime(item.loggedInAt)}</td><td className="whitespace-nowrap px-3 py-3 font-bold tabular-nums">{formatDuration(item.loggedInAt, item.loggedOutAt)}</td><td className="whitespace-nowrap px-3 py-3 tabular-nums">{item.loggedOutAt ? formatDateTime(item.loggedOutAt) : <span className="text-emerald-600 dark:text-emerald-400">در حال حضور</span>}</td></tr>) : <tr><td colSpan="4" className="px-3 py-16 text-center text-neutral-400">لاگ حضوری برای نمایش وجود ندارد.</td></tr>}</tbody></table></div>
+      </section>}
 
       {pickerOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/35 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-labelledby="shortcut-picker-title">
         <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900">
