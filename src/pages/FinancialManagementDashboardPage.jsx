@@ -825,8 +825,6 @@ export default function FinancialManagementDashboardPage() {
   const [normalRequests, setNormalRequests] = useState([]);
   const [tenkhahRequests, setTenkhahRequests] = useState([]);
   const [liquidityProjects, setLiquidityProjects] = useState([]);
-  const [reportNormalRequests, setReportNormalRequests] = useState([]);
-  const [reportTenkhahRequests, setReportTenkhahRequests] = useState([]);
   const [projects, setProjects] = useState([]);
 
   useEffect(() => {
@@ -837,12 +835,6 @@ export default function FinancialManagementDashboardPage() {
       headers: { "x-user-id": String(user.id) },
     };
     Promise.all([
-      fetch("/api/requests", options).then((response) =>
-        response.ok ? response.json() : { items: [] },
-      ),
-      fetch("/api/tenkhah", options).then((response) =>
-        response.ok ? response.json() : { items: [] },
-      ),
       fetch("/api/liquidity-allocations?dashboard=1", options).then(
         (response) => (response.ok ? response.json() : { projects: [] }),
       ),
@@ -858,16 +850,14 @@ export default function FinancialManagementDashboardPage() {
     ])
       .then(
         ([
-          normalData,
-          tenkhahData,
           liquidityData,
           reportNormalData,
           reportTenkhahData,
           projectsData,
         ]) => {
           if (cancelled) return;
-          const normalItems = Array.isArray(normalData?.items)
-            ? normalData.items
+          const normalItems = Array.isArray(reportNormalData?.items)
+            ? reportNormalData.items
             : [];
           setNormalRequests(
             normalItems.filter(
@@ -878,21 +868,13 @@ export default function FinancialManagementDashboardPage() {
             ),
           );
           setTenkhahRequests(
-            Array.isArray(tenkhahData?.items) ? tenkhahData.items : [],
+            Array.isArray(reportTenkhahData?.items)
+              ? reportTenkhahData.items
+              : [],
           );
           setLiquidityProjects(
             Array.isArray(liquidityData?.projects)
               ? liquidityData.projects
-              : [],
-          );
-          setReportNormalRequests(
-            Array.isArray(reportNormalData?.items)
-              ? reportNormalData.items
-              : [],
-          );
-          setReportTenkhahRequests(
-            Array.isArray(reportTenkhahData?.items)
-              ? reportTenkhahData.items
               : [],
           );
           setProjects(
@@ -905,8 +887,6 @@ export default function FinancialManagementDashboardPage() {
           setNormalRequests([]);
           setTenkhahRequests([]);
           setLiquidityProjects([]);
-          setReportNormalRequests([]);
-          setReportTenkhahRequests([]);
           setProjects([]);
         }
       });
@@ -1046,8 +1026,8 @@ export default function FinancialManagementDashboardPage() {
         </div>
         <div className="mt-3">
           <FinancialReportPanel
-            normalRequests={reportNormalRequests}
-            tenkhahRequests={reportTenkhahRequests}
+            normalRequests={normalRequests}
+            tenkhahRequests={tenkhahRequests}
             projects={projects}
             userId={user?.id}
           />
