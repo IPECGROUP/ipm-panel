@@ -638,6 +638,8 @@ export default function RoznegarPgae() {
     }
   });
   const [selectedDate, setSelectedDate] = useState(() => dashboardTarget.dateYmd || todayJalaliYmd());
+  const [groupSelectionMode, setGroupSelectionMode] = useState(false);
+  const [groupSelectedDates, setGroupSelectedDates] = useState([]);
   const [cursor, setCursor] = useState(() => {
     const targetDate = parseJalaliYmd(dashboardTarget.dateYmd);
     if (targetDate) return { jy: targetDate.jy, jm: targetDate.jm };
@@ -836,6 +838,8 @@ export default function RoznegarPgae() {
 
     const today = todayJalaliYmd();
     setSelectedDate(today);
+    setGroupSelectionMode(false);
+    setGroupSelectedDates([]);
     setCursor(dayjs(today, { jalali: true }).calendar("jalali").startOf("month"));
   }, [projectId]);
 
@@ -934,6 +938,27 @@ export default function RoznegarPgae() {
     if (!parts) return;
     setSelectedDate(next);
     setCursor({ jy: parts.jy, jm: parts.jm });
+  };
+
+  const toggleGroupSelectionMode = () => {
+    setGroupSelectionMode((enabled) => {
+      if (enabled) {
+        setGroupSelectedDates([]);
+        return false;
+      }
+      setGroupSelectedDates([selectedDate]);
+      return true;
+    });
+  };
+
+  const toggleGroupDate = (dateYmd) => {
+    setGroupSelectedDates((previous) => {
+      const selected = new Set(previous);
+      if (selected.has(dateYmd)) selected.delete(dateYmd);
+      else selected.add(dateYmd);
+      return Array.from(selected).sort();
+    });
+    setSelectedDate(dateYmd);
   };
 
   const ownActiveEntry = entriesByDate[selectedDate] || makeEntry(selectedDate);
@@ -1359,6 +1384,10 @@ export default function RoznegarPgae() {
 
   const handlePreviewConfirm = async () => {
     if (editorDisabled || !projectId || confirmSaving || filesUploading) return;
+    if (groupSelectionMode && !groupSelectedDates.length) {
+      setSyncState({ type: "error", text: "حداقل یک تاریخ را برای انتخاب گروهی انتخاب کنید." });
+      return;
+    }
     const projectIdNum = Number(projectId);
     if (!Number.isFinite(projectIdNum) || projectIdNum <= 0) return;
     setConfirmSaving(true);
@@ -1377,42 +1406,49 @@ export default function RoznegarPgae() {
         .filter((f) => f.name);
 
       const uid = authUser?.id != null ? String(authUser.id) : "";
-      const payload = {
-        ...(curr.id != null ? { id: curr.id } : {}),
-        projectId: projectIdNum,
-        dateYmd: String(selectedDate || "").trim(),
-        dayName: String(curr.dayName || "").trim(),
-        activity: String(curr.activity || "").trim(),
-        tagIds: (Array.isArray(curr.tagIds) ? curr.tagIds : []).map(String),
-        relatedDocIds: (Array.isArray(curr.relatedDocIds) ? curr.relatedDocIds : []).map(String),
-        files: filesPayload,
-        confirmed: true,
-      };
-
-      const res = await fetch("/api/roznegar", {
-        method: curr.id != null ? "PATCH" : "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...(uid ? { "x-user-id": uid } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        let reason = "roznegar_save_failed";
-        try {
-          const err = await res.json();
-          reason = String(err?.error || err?.message || reason);
-        } catch {}
-        throw new Error(reason);
+      const datesToSave = groupSelectionMode && groupSelectedDates.length
+        ? groupSelectedDates
+        : [selectedDate];
+      for (const dateYmd of datesToSave) {
+        const payload = {
+          projectId: projectIdNum,
+          dateYmd: String(dateYmd || "").trim(),
+          dayName: dayNameFromJalali(dateYmd),
+          activity: String(curr.activity || "").trim(),
+          tagIds: (Array.isArray(curr.tagIds) ? curr.tagIds : []).map(String),
+          relatedDocIds: (Array.isArray(curr.relatedDocIds) ? curr.relatedDocIds : []).map(String),
+          files: filesPayload,
+          confirmed: true,
+        };
+        const res = await fetch("/api/roznegar", {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            ...(uid ? { "x-user-id": uid } : {}),
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          let reason = "roznegar_save_failed";
+          try {
+            const err = await res.json();
+            reason = String(err?.error || err?.message || reason);
+          } catch {}
+          throw new Error(reason);
+        }
+        const data = await res.json();
+        const saved = normalizeRoznegarEntryFromApi(data?.item || null);
+        if (!saved?.dateYmd) throw new Error("roznegar_save_invalid");
       }
-      const data = await res.json();
-      const saved = normalizeRoznegarEntryFromApi(data?.item || null);
-      if (!saved?.dateYmd) throw new Error("roznegar_save_invalid");
 
       const synced = await fetchRoznegarEntries(String(projectIdNum));
       if (!synced) throw new Error("roznegar_sync_after_save_failed");
-      setSyncState({ type: "success", text: "با موفقیت ذخیره شد." });
+      if (groupSelectionMode) {
+        setGroupSelectionMode(false);
+        setGroupSelectedDates([]);
+      }
+      setSyncState({ type: "success", text: groupSelectionMode ? "تغییرات برای تاریخ‌های انتخاب‌شده ذخیره شد." : "با موفقیت ذخیره شد." });
     } catch (e) {
       console.error("roznegar_confirm_error", e);
       setSyncState({ type: "error", text: mapRoznegarErrorText(e, "ذخیره روزنگار روی سرور ناموفق بود.") });
@@ -1491,7 +1527,8 @@ export default function RoznegarPgae() {
                   cardReveal
                 }
               >
-                <div className="mb-4">
+                <div className="mb-4 flex items-end gap-2">
+                  <div className="min-w-0 flex-1">
                   <div className="mb-1 text-xs text-neutral-600 dark:text-neutral-300">پروژه</div>
                   <select
                     value={projectId}
@@ -1506,6 +1543,21 @@ export default function RoznegarPgae() {
                       </option>
                     ))}
                   </select>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleGroupSelectionMode}
+                    disabled={!activeProject}
+                    aria-pressed={groupSelectionMode}
+                    className={
+                      "h-11 shrink-0 rounded-xl border px-3 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 " +
+                      (groupSelectionMode
+                        ? "border-[#0f766e] bg-[#0f766e] text-white hover:bg-[#115e59] dark:border-[#14b8a6]"
+                        : "border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800")
+                    }
+                  >
+                    {groupSelectionMode ? "لغو انتخاب گروهی" : "انتخاب گروهی"}
+                  </button>
                 </div>
                 <div className="mb-4 flex items-center justify-between">
                   <button
@@ -1545,6 +1597,7 @@ export default function RoznegarPgae() {
 
                     const dateYmd = jalaliYmd({ ...cursor, jd: dayNo });
                     const isSelected = dateYmd === selectedDate;
+                    const isGroupSelected = groupSelectedDates.includes(dateYmd);
                     const isToday = dateYmd === todayJalaliYmd();
                     // A confirmed record may be edited back to an empty entry. In that
                     // case it should look like every other empty day in the calendar.
@@ -1557,12 +1610,15 @@ export default function RoznegarPgae() {
                         type="button"
                         title={hasSavedData ? "دارای اطلاعات ذخیره‌شده" : undefined}
                         onClick={() => {
-                          jumpToDate(dateYmd);
+                          if (groupSelectionMode) toggleGroupDate(dateYmd);
+                          else jumpToDate(dateYmd);
                         }}
                         className={
                           "relative aspect-square min-h-11 rounded-xl border transition-all duration-200 flex flex-col items-center justify-center leading-tight sm:h-14 sm:aspect-auto " +
                           (isToday
                             ? "border-[#0f766e] bg-[#0f766e] text-white shadow-[0_1px_2px_rgba(15,118,110,0.22)] hover:bg-[#115e59] dark:border-[#14b8a6] dark:bg-[#0f766e] dark:text-white"
+                            : isGroupSelected
+                            ? "border-[#7c3aed] bg-[#f5f3ff] text-[#5b21b6] ring-1 ring-[#a78bfa]/70 dark:border-[#a78bfa] dark:bg-[#7c3aed]/20 dark:text-[#ddd6fe]"
                             : isSelected
                             ? "border-[#fb923c] bg-[#fff7ed] text-[#9a3412] ring-1 ring-[#fdba74]/70 dark:border-[#fb923c] dark:bg-[#f97316]/15 dark:text-[#fed7aa]"
                             : hasSavedData
@@ -1576,6 +1632,8 @@ export default function RoznegarPgae() {
                             "mt-1 text-[11px] leading-none font-sans tabular-nums " +
                             (isToday
                               ? "text-white/80"
+                              : isGroupSelected
+                              ? "text-[#7c3aed]/80 dark:text-[#c4b5fd]"
                               : isSelected
                               ? "text-[#ce6b1a]/80 dark:text-[#ffb77f]/80"
                               : theme === "dark"
@@ -1594,6 +1652,11 @@ export default function RoznegarPgae() {
                 <span className="font-semibold text-neutral-700 dark:text-neutral-200 md:text-base">
                   مجموع روزنگارها: {toFaDigits(savedEntryCount)}
                 </span>
+                {groupSelectionMode ? (
+                  <span className="text-violet-700 dark:text-violet-300">
+                    {toFaDigits(groupSelectedDates.length)} تاریخ انتخاب شده؛ تاریخ‌ها را از تقویم انتخاب کنید.
+                  </span>
+                ) : null}
                 {syncState?.text ? (
                   <span className={syncState.type === "error" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"}>
                     {syncState.text}
@@ -1616,6 +1679,7 @@ export default function RoznegarPgae() {
                     {selectedDateHeader.gregorian ? <span className="mx-1.5 text-neutral-400">•</span> : null}
                     {selectedDateHeader.gregorian ? <span dir="ltr" className="font-sans text-xs font-semibold tabular-nums text-neutral-500 dark:text-neutral-400 md:text-sm">{selectedDateHeader.gregorian}</span> : null}
                   </h2>
+                  {groupSelectionMode ? <span className="rounded-lg bg-violet-50 px-2.5 py-1 text-xs text-violet-700 dark:bg-violet-500/15 dark:text-violet-200">محتوا برای همه تاریخ‌های انتخاب‌شده ذخیره می‌شود.</span> : null}
                   {!activeProject ? (
                     <span className="rounded-lg bg-amber-50 px-2.5 py-1 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
                       ابتدا پروژه فعال را انتخاب کنید.
@@ -1809,11 +1873,11 @@ export default function RoznegarPgae() {
           <div className="mt-5 border-t border-black/[0.08] pt-4 dark:border-white/10">
             <button
               type="button"
-              disabled={editorDisabled || confirmSaving || filesUploading}
+              disabled={editorDisabled || confirmSaving || filesUploading || (groupSelectionMode && !groupSelectedDates.length)}
               onClick={handlePreviewConfirm}
               className="mr-auto flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
-              title="ذخیره تغییرات"
-              aria-label="ذخیره تغییرات"
+              title={groupSelectionMode ? "ذخیره برای تاریخ‌های انتخاب‌شده" : "ذخیره تغییرات"}
+              aria-label={groupSelectionMode ? "ذخیره برای تاریخ‌های انتخاب‌شده" : "ذخیره تغییرات"}
             >
               <img
                 src="/images/icons/check.svg"
