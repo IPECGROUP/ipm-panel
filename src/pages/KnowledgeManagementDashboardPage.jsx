@@ -41,7 +41,7 @@ export default function KnowledgeManagementDashboardPage() {
       <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها" subtitle="با اولین باز کردن هر درس‌آموخته ثبت می‌شود"><TopUsers rows={lessonVisits} /></Panel>
       <Panel title="مستندات به تفکیک کتابخانه"><Rows rows={data?.libraries} /></Panel>
       <Panel title="منابع آموزشی بر اساس دسته‌بندی" subtitle={`مجموع مراجعه به منابع آموزشی: ${fa(maxTrainingVisits)}`}><Rows rows={resources.byCategory} /></Panel>
-      <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی" subtitle="فقط باز کردن یا کپی لینک و باز کردن فایل ثبت می‌شود"><TopUsers rows={resourceVisits} /></Panel>
+      <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی" subtitle="پس از ورود، فقط اولین باز کردن یا کپی لینک و باز کردن فایل ثبت می‌شود"><TopUsers rows={resourceVisits} /></Panel>
     </div>
   </Card></div>;
 }

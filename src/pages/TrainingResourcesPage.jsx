@@ -67,6 +67,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const isLibrary = variant === "library";
   const { user, loading: authLoading } = useAuth();
   const fileRef = useRef(null);
+  const trainingVisitRecordedRef = useRef(false);
   const tableMenuRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
@@ -116,12 +117,15 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   useEffect(() => { loadItems(); }, [loadItems]);
 
   const recordTrainingInteraction = useCallback(() => {
-    if (!user?.id || isLibrary) return;
+    if (!user?.id || isLibrary || trainingVisitRecordedRef.current) return;
+    trainingVisitRecordedRef.current = true;
     api("/knowledge-dashboard", {
       method: "POST",
       headers: requestHeaders,
       body: JSON.stringify({ page: "training_interaction" }),
-    }).catch(() => {});
+    }).catch(() => {
+      trainingVisitRecordedRef.current = false;
+    });
   }, [isLibrary, requestHeaders, user?.id]);
 
   useEffect(() => {

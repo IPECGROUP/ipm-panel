@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Check, Plus, Settings2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
+import Card from "../components/ui/Card.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
 
 const activityViewers = new Set(["marandi", "nouri"]);
@@ -45,12 +46,62 @@ const shortcutOptions = [
 ].map(([to, label, icon]) => ({ to, label, icon: `/images/icons/${icon}` }));
 
 const limitedShortcuts = new Set(["/finance/payment-request", "/finance/tenkhah", "/supply/request"]);
+const faNumber = (value) => Number(value || 0).toLocaleString("fa-IR");
+const amountOf = (value) => {
+  const parsed = Number(String(value ?? "").replace(/[،,\s]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+const historyOf = (item) => Array.isArray(item?.historyJson ?? item?.history ?? item?.workflowHistory) ? (item.historyJson ?? item.history ?? item.workflowHistory) : [];
+const timestampOf = (entry) => {
+  const value = Date.parse(String(entry?.at || entry?.createdAt || ""));
+  return Number.isFinite(value) ? value : null;
+};
+const durationOf = (from, to) => Number.isFinite(from) && Number.isFinite(to) && to >= from ? to - from : null;
+const approvalAt = (history, roleKey, predicate = () => true) => timestampOf(history.find((entry) => entry?.type === "approved" && entry?.roleKey === roleKey && predicate(entry)));
+const stageDurations = (item) => {
+  const history = historyOf(item);
+  const createdAt = timestampOf(history.find((entry) => entry?.type === "created")) ?? timestampOf({ createdAt: item?.createdAt });
+  const projectControlAt = approvalAt(history, "project_control");
+  const projectManagerAt = approvalAt(history, "project_manager");
+  const managementAt = approvalAt(history, "management");
+  const accountingAt = approvalAt(history, "accounting", (entry) => Number(entry?.index) >= 5);
+  return [durationOf(createdAt, projectControlAt), durationOf(projectControlAt, projectManagerAt), durationOf(projectManagerAt, managementAt), durationOf(managementAt, accountingAt)];
+};
+const formatReviewDuration = (milliseconds) => {
+  if (!Number.isFinite(milliseconds)) return "—";
+  const hours = Math.round(milliseconds / 3600000);
+  const days = Math.floor(hours / 24);
+  return days ? `${faNumber(days)} روز${hours % 24 ? ` و ${faNumber(hours % 24)} ساعت` : ""}` : `${faNumber(hours)} ساعت`;
+};
+const dailyLogUnits = (entry) => {
+  const values = entry?.user_units ?? entry?.userUnits;
+  const units = Array.isArray(values) ? values : [];
+  const labels = [...new Set(units.map((unit) => String(unit || "").trim()).filter(Boolean))];
+  return labels.length ? labels.join("، ") : String(entry?.user_department ?? entry?.userDepartment ?? "بدون واحد");
+};
+
+function HomeTopDailyLogUsers({ rows, loading }) {
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">کاربران پرثبت روزنگار</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">۵ کاربر با بیشترین تعداد ثبت</span></div><div className="space-y-2">{rows.length ? rows.map((person, index) => <div key={person.key} className="flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block truncate text-[10px] text-neutral-500 dark:text-neutral-400">{person.unit}</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.value)}</span></div>) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div></Card>;
+}
+
+function HomeReviewTiming({ timings }) {
+  const stages = ["برنامه‌ریزی و کنترل پروژه", "مدیر پروژه", "مدیریت / دستور پرداخت", "مالی و تأیید نهایی"];
+  return <Card className="min-h-[410px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مدت زمان بررسی درخواست‌ها</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌های عادی</span></div><div className="grid gap-2 sm:grid-cols-2">{stages.map((label, index) => { const values = timings[index] || []; const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null; const maximum = values.length ? Math.max(...values) : null; return <div key={label} className="rounded-xl bg-neutral-50 p-3 dark:bg-white/[0.045]"><span className="flex items-center gap-2 text-xs font-semibold"><span className={`h-2.5 w-2.5 rounded-full ${["bg-sky-500", "bg-amber-500", "bg-violet-500", "bg-emerald-500"][index]}`} />{label}</span><div className="mt-3 flex items-end justify-between gap-2"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">میانگین</span><span className="text-sm font-bold tabular-nums">{formatReviewDuration(average)}</span></div><div className="mt-2 flex items-end justify-between gap-2 border-t border-black/[0.06] pt-2 dark:border-white/[0.08]"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">بیشترین</span><span className="text-sm font-bold tabular-nums">{formatReviewDuration(maximum)}</span></div></div>; })}</div></Card>;
+}
+
+function HomeUnsettledTenkhah({ rows, loading }) {
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">۵ نفر اول بر اساس بیشترین ماندهٔ تسویه‌نشده</span></div><div className="space-y-2">{rows.length ? rows.map((person, index) => <div key={person.key} className="flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">مانده تسویه‌نشده: {faNumber(person.unsettled)} ریال</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.unsettled)} <span className="text-[10px] font-medium text-neutral-400">ریال</span></span></div>) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div></Card>;
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activityLogs, setActivityLogs] = useState([]);
+  const [dailyLogEntries, setDailyLogEntries] = useState([]);
+  const [normalRequests, setNormalRequests] = useState([]);
+  const [tenkhahRequests, setTenkhahRequests] = useState([]);
+  const [dashboardWidgetsLoading, setDashboardWidgetsLoading] = useState(true);
   const storageKey = `ipm-dashboard-shortcuts:${user?.id || user?.username || "guest"}`;
   const canViewActivity = activityViewers.has(String(user?.username || "").toLowerCase());
   const availableOptions = useMemo(
@@ -79,6 +130,58 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [canViewActivity, user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    let cancelled = false;
+    const options = { credentials: "include", headers: { "x-user-id": String(user.id) } };
+    setDashboardWidgetsLoading(true);
+    Promise.all([
+      fetch("/api/roznegar?activeProjects=true", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/requests?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/tenkhah?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
+    ]).then(([dailyLogsData, requestsData, tenkhahData]) => {
+      if (cancelled) return;
+      const requests = Array.isArray(requestsData?.items) ? requestsData.items : [];
+      setDailyLogEntries(Array.isArray(dailyLogsData?.items) ? dailyLogsData.items : []);
+      setNormalRequests(requests.filter((item) => String(item?.requestType || item?.docId || "").toLowerCase() !== "tenkhah_request" && String(item?.scope || "").toLowerCase() !== "tenkhah"));
+      setTenkhahRequests(Array.isArray(tenkhahData?.items) ? tenkhahData.items : []);
+    }).catch(() => {
+      if (cancelled) return;
+      setDailyLogEntries([]);
+      setNormalRequests([]);
+      setTenkhahRequests([]);
+    }).finally(() => { if (!cancelled) setDashboardWidgetsLoading(false); });
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  const topDailyLogUsers = useMemo(() => {
+    const people = new Map();
+    dailyLogEntries.forEach((entry) => {
+      const key = String(entry?.user_id ?? entry?.userId ?? entry?.user_name ?? entry?.userName ?? "");
+      if (!key) return;
+      const current = people.get(key) || { key, label: String(entry?.user_name ?? entry?.userName ?? `کاربر #${key}`).trim(), unit: dailyLogUnits(entry), value: 0 };
+      current.value += 1;
+      people.set(key, current);
+    });
+    return [...people.values()].sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fa")).slice(0, 5);
+  }, [dailyLogEntries]);
+  const reviewTimings = useMemo(() => {
+    const groups = [[], [], [], []];
+    normalRequests.forEach((request) => stageDurations(request).forEach((duration, index) => { if (duration != null) groups[index].push(duration); }));
+    return groups;
+  }, [normalRequests]);
+  const unsettledTenkhah = useMemo(() => {
+    const people = new Map();
+    tenkhahRequests.forEach((item) => {
+      const key = String(item?.beneficiaryUserId ?? item?.createdById ?? item?.beneficiaryName ?? item?.requesterName ?? "");
+      if (!key) return;
+      const current = people.get(key) || { key, label: String(item?.beneficiaryName ?? item?.requesterName ?? item?.beneficiaryUsername ?? `کاربر #${key}`).trim(), unsettled: 0 };
+      current.unsettled += amountOf(item?.unsettledBalance);
+      people.set(key, current);
+    });
+    return [...people.values()].filter((person) => person.unsettled > 0).sort((a, b) => b.unsettled - a.unsettled || a.label.localeCompare(b.label, "fa")).slice(0, 5);
+  }, [tenkhahRequests]);
+
   const selectedShortcuts = selectedPaths.map((path) => availableOptions.find((item) => item.to === path)).filter(Boolean);
   const updateSelection = (path) => setSelectedPaths((current) => {
     const next = current.includes(path) ? current.filter((item) => item !== path) : current.length < MAX_SHORTCUTS ? [...current, path] : current;
@@ -102,6 +205,12 @@ export default function DashboardPage() {
           {selectedShortcuts.length < MAX_SHORTCUTS && <button type="button" onClick={() => setPickerOpen(true)} className="flex min-h-[102px] w-[104px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 px-2 text-neutral-500 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/20 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="افزودن میانبر"><span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">افزودن میانبر</span></button>}
         </div>
       </section>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
+        <HomeTopDailyLogUsers rows={topDailyLogUsers} loading={dashboardWidgetsLoading} />
+        <HomeReviewTiming timings={reviewTimings} />
+        <HomeUnsettledTenkhah rows={unsettledTenkhah} loading={dashboardWidgetsLoading} />
+      </div>
 
       {canViewActivity && <section className="mt-3 rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
         <div className="mb-4"><h2 className="text-sm font-bold">لاگ حضور کاربران</h2><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">زمان ورود، مدت حضور و زمان خروج از سامانه</p></div>
