@@ -547,12 +547,12 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
     },
     [api, projectId],
   );
-  const loadProjectBalance = useCallback(async (nextProjectId = projectId) => {
-    if (!nextProjectId || !user?.id) {
+  const loadProjectBalance = useCallback(async () => {
+    if (!user?.id) {
       setProjectBalance({ unsettledBalance: "0" });
       return;
     }
-    const data = await api(`/tenkhah?projectBalances=${encodeURIComponent(nextProjectId)}&beneficiaryId=${encodeURIComponent(user.id)}`);
+    const data = await api(`/tenkhah?beneficiaryId=${encodeURIComponent(user.id)}`);
     setProjectBalance(data || { unsettledBalance: "0" });
   }, [api, projectId, user?.id]);
   useEffect(() => {

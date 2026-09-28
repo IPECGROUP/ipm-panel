@@ -110,7 +110,7 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     [financeRecipients, setFinanceRecipients] = useState([]),
     [workflowRecipients, setWorkflowRecipients] = useState({ project_manager: [], management: [] }),
     [userIsFinance, setUserIsFinance] = useState(false),
-    [projectBalances, setProjectBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }),
+    [beneficiaryBalances, setBeneficiaryBalances] = useState({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }),
     [projectLiquidity, setProjectLiquidity] = useState("0"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -217,7 +217,7 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     setOpen(true);
     setForm(empty());
     setCurrencyTouched(false);
-    setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" });
+    setBeneficiaryBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" });
     setError("");
     try {
       const loadedCurrencies = await loadOptions();
@@ -266,27 +266,27 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
       ...x,
       [k]: format3(toEnglishDigits(v).replace(/[^\d]/g, "")),
     }));
-  const loadBeneficiaryBalances = async (projectId, beneficiaryUserId) => {
-    if (!projectId || !beneficiaryUserId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); return; }
+  const loadBeneficiaryBalances = async (beneficiaryUserId) => {
+    if (!beneficiaryUserId) { setBeneficiaryBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); return; }
     try {
-      const balances = await api(`/tenkhah?projectBalances=${encodeURIComponent(projectId)}&beneficiaryId=${encodeURIComponent(beneficiaryUserId)}`);
-      setProjectBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0", receivedAmount: balances.receivedAmount || "0" });
+      const balances = await api(`/tenkhah?beneficiaryId=${encodeURIComponent(beneficiaryUserId)}`);
+      setBeneficiaryBalances({ unregisteredBalance: balances.unregisteredBalance || "0", unsettledBalance: balances.unsettledBalance || "0", receivedAmount: balances.receivedAmount || "0" });
     } catch (e) { setError(e.message); }
   };
   const selectProject = async (projectId) => {
     setForm((x) => ({ ...x, projectId }));
-    if (!projectId) { setProjectBalances({ unregisteredBalance: "0", unsettledBalance: "0", receivedAmount: "0" }); setProjectLiquidity("0"); return; }
+    if (!projectId) { setProjectLiquidity("0"); return; }
     try {
       const liquidity = await api(`/liquidity-allocations?projectId=${encodeURIComponent(projectId)}`);
       const allocated = BigInt(liquidity.allocations?.[String(projectId)] || "0");
       const committed = BigInt(liquidity.committed?.[String(projectId)] || "0");
       setProjectLiquidity((allocated > committed ? allocated - committed : 0n).toString());
     } catch (e) { setError(e.message); }
-    await loadBeneficiaryBalances(projectId, form.beneficiaryUserId);
+    // The selected project must never reset or narrow the beneficiary's debt.
   };
   const selectBeneficiary = async (beneficiaryUserId) => {
     setForm((x) => ({ ...x, beneficiaryUserId }));
-    await loadBeneficiaryBalances(form.projectId, beneficiaryUserId);
+    await loadBeneficiaryBalances(beneficiaryUserId);
   };
   const create = async () => {
     const requiredErrors = { requestNumber: false, requestDate: !form.requestDate, projectId: !form.projectId, beneficiaryUserId: !form.beneficiaryUserId, amount: !form.amount, purpose: !form.purpose.trim(), projectManagerId: !form.projectManagerId };
@@ -420,8 +420,8 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
                   {beneficiaries.map((person) => <option value={person.id} key={person.id}>{name(person)}</option>)}
                 </select>
               </Field>
-              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مجموع تنخواه دریافت‌شده: <span className="mr-1 font-medium tabular-nums">{fa(format3(projectBalances.receivedAmount))} ریال</span></div>
-              <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشده: <span className="mr-1 tabular-nums">{fa(format3(projectBalances.unsettledBalance))} ریال</span></div>
+              <div className="flex min-h-11 items-end pb-2 text-sm text-neutral-700 dark:text-neutral-200">مجموع تنخواه دریافت‌شدهٔ ذی‌نفع: <span className="mr-1 font-medium tabular-nums">{fa(format3(beneficiaryBalances.receivedAmount))} ریال</span></div>
+              <div className="flex min-h-11 items-end pb-2 text-sm font-medium text-red-600 dark:text-red-400">مانده تنخواه تسویه‌نشدهٔ ذی‌نفع: <span className="mr-1 tabular-nums">{fa(format3(beneficiaryBalances.unsettledBalance))} ریال</span></div>
               <div className="hidden xl:block" aria-hidden="true" />
               <Field label="مبلغ تنخواه درخواستی" required>
                 <div className="flex overflow-hidden rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
