@@ -502,13 +502,7 @@ export default function ProjectLessonsLearnedPage() {
               selected={filterTagIds}
               onToggleCategory={(title) => setFilterTagIds((current) => current.map(String).includes(String(title)) ? current.map(String).filter((value) => value !== String(title)) : [...current.map(String), String(title)])}
               selectedImportances={filterImportances}
-              onToggleImportance={(id) =>
-                setFilterImportances((current) =>
-                  current.includes(id)
-                    ? current.filter((value) => value !== id)
-                    : [...current, id],
-                )
-              }
+              onToggleImportance={(id) => setFilterImportances((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id])}
               openTags={() => openTags("filter")}
               onExport={exportExcel}
               canExport={filtered.length > 0}
@@ -1247,19 +1241,9 @@ function FilterBar({
             ["high", "زیاد", "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20"],
           ].map(([id, title, tone]) => {
             const active = selectedImportances.includes(id);
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => onToggleImportance(id)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${tone} ${active ? "ring-2 ring-black/70 dark:ring-white/70" : "opacity-75 hover:opacity-100"}`}
-                aria-pressed={active}
-              >
-                {title}
-              </button>
-            );
+            return <button key={id} type="button" onClick={() => onToggleImportance(id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${tone} ${active ? "ring-2 ring-black/70 dark:ring-white/70" : "opacity-75 hover:opacity-100"}`} aria-pressed={active}>{title}</button>;
           })}
-          {categories.slice(0, 5).map((category) => {
+          {categories.slice(0, 2).map((category) => {
             const categoryTitle = String(category.title || "").trim();
             const active = selected.map(String).includes(categoryTitle);
             return categoryTitle ? <button key={category.id} type="button" onClick={() => onToggleCategory(categoryTitle)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{categoryTitle}</button> : null;
