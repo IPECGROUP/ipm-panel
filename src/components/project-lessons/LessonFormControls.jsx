@@ -21,7 +21,7 @@ export function TagButton({ count, onClick }) {
       className="relative grid h-11 w-14 place-items-center rounded-xl border border-black/10 bg-white dark:border-white/15 dark:bg-white/5"
       title="انتخاب برچسب"
     >
-      <span className="text-lg">•••</span>
+      <img src="/images/icons/tags.svg" alt="" className="h-5 w-5 dark:invert" />
       {count > 0 && <FormBadge value={count} />}
     </button>
   );

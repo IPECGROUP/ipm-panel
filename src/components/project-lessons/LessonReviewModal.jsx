@@ -16,12 +16,6 @@ const IMPACT_OPTIONS = [
   ["satisfaction", "رضایت کارفرما"],
 ];
 
-const IMPORTANCE_OPTIONS = [
-  ["low", "کم"],
-  ["medium", "متوسط"],
-  ["high", "زیاد"],
-];
-
 function createDraft(item) {
   return {
     projectId: String(item.projectId),
@@ -41,7 +35,6 @@ function isDraftComplete(draft) {
     draft.category.trim() &&
     draft.challenge.trim() &&
     draft.solution.trim() &&
-    draft.importance &&
     draft.impacts.length &&
     draft.tagIds.length,
   );
@@ -291,22 +284,6 @@ function LessonFields({
             </option>
           ))}
         </select>
-      </Field>
-
-      <Field label="اهمیت" required>
-        <div className="flex h-11 items-center justify-around rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
-          {IMPORTANCE_OPTIONS.map(([id, name]) => (
-            <label key={id} className="flex items-center gap-1.5 text-xs">
-              <input
-                type="radio"
-                name="review-importance"
-                checked={draft.importance === id}
-                onChange={() => updateDraft({ importance: id })}
-              />
-              {name}
-            </label>
-          ))}
-        </div>
       </Field>
 
       <div className="grid gap-4 md:col-span-3 md:grid-cols-2">
