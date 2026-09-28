@@ -263,10 +263,10 @@ export default function DashboardPage() {
         <SupplyTimingPanel {...supplyTimings} />
       </div>
 
-      <Card className="mt-3 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+      {canOpenPage(user, "/knowledge-management/dashboard") && <Card className="mt-3 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
         <div className="mb-4"><span className="block text-sm font-bold">مدیریت دانش</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">نمای کلی درس‌آموخته‌ها، کتابخانه‌ها و منابع آموزشی</span></div>
         <KnowledgeDashboardWidgets data={knowledgeData} />
-      </Card>
+      </Card>}
 
       {canViewActivity && <section className="mt-3 rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
         <div className="mb-4"><h2 className="text-sm font-bold">لاگ حضور کاربران</h2><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">زمان ورود، مدت حضور و زمان خروج از سامانه</p></div>

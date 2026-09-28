@@ -1622,19 +1622,6 @@ export default function ContractInformation() {
         return documentTypeLabel(a.documentType).localeCompare(documentTypeLabel(b.documentType), "fa");
       });
   }, [form.id, form.projectId, rowById, rows]);
-  const existingMainContractForProject = React.useMemo(() => {
-    const projectId = String(form.projectId || "");
-    const currentId = String(form.id || "");
-    if (!projectId) return null;
-    return (
-      rows.find(
-        (row) =>
-          row?.documentType === "main" &&
-          String(row.projectId || "") === projectId &&
-          String(row.id || "") !== currentId
-      ) || null
-    );
-  }, [form.id, form.projectId, rows]);
   const existingMainContractForNumber = React.useMemo(() => {
     const contractNo = String(form.contractNo || "").trim();
     const currentId = String(form.id || "");
@@ -1648,9 +1635,6 @@ export default function ContractInformation() {
       ) || null
     );
   }, [form.contractNo, form.id, rows]);
-  const projectAlreadyHasMainContract = Boolean(existingMainContractForProject);
-  const mainContractBlockedForProject = form.documentType === "main" && projectAlreadyHasMainContract;
-
   const insuranceForm = React.useMemo(() => normalizeInsurance(form.insurance || {}), [form.insurance]);
   const selectedRelatedLetterIds = React.useMemo(
     () => normalizeIdList(form.relatedLetterIds?.length ? form.relatedLetterIds : form.relatedLetterId ? [form.relatedLetterId] : []),
@@ -2714,11 +2698,6 @@ export default function ContractInformation() {
       return;
     }
 
-    if (documentType === "main" && existingMainContractForProject) {
-      alert("برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید.");
-      return;
-    }
-
     if (documentType === "main" && existingMainContractForNumber) {
       alert(`شماره قرارداد «${toFaDigits(contractNo)}» قبلاً در سامانه ثبت شده است. برای ویرایش، همان قرارداد را از فهرست باز کنید یا شماره جدیدی وارد کنید.`);
       return;
@@ -2916,9 +2895,7 @@ export default function ContractInformation() {
     } catch (error) {
       if (sectionId !== "financial") markDraftSaveStatus(sectionId, "error");
       alert(
-        error?.message === "main_contract_exists_for_project"
-          ? "برای این پروژه قبلا قرارداد اصلی ثبت شده است. برای این پروژه فقط می‌توانید قرارداد فرعی یا الحاقیه ثبت کنید."
-          : ["duplicate_contract_no", "duplicate_contact_no"].includes(error?.message)
+        ["duplicate_contract_no", "duplicate_contact_no"].includes(error?.message)
             ? "این شماره قرارداد قبلاً در سامانه ثبت شده است. برای ویرایش، همان قرارداد را از فهرست باز کنید یا شماره جدیدی وارد کنید."
           : String(error?.message || "").startsWith("contract_save_not_persisted")
             ? `ثبت قرارداد در سرور تایید نشد. جزئیات: ${String(error?.message || "").replace("contract_save_not_persisted:", "")}`
@@ -3759,7 +3736,7 @@ export default function ContractInformation() {
                   <div className={labelCls}>سند قراردادی *</div>
                   <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
                     {CONTRACT_DOCUMENT_TYPES.map((item) => (
-                      <option key={item.id} value={item.id} disabled={item.id === "main" && projectAlreadyHasMainContract}>
+                      <option key={item.id} value={item.id}>
                         {item.label}
                       </option>
                     ))}
@@ -3774,7 +3751,6 @@ export default function ContractInformation() {
                       onChange={(e) => setField("contractNo", e.target.value)}
                       className={inputCls}
                       type="text"
-                      disabled={mainContractBlockedForProject}
                     />
                   ) : (
                     <select
@@ -3799,11 +3775,6 @@ export default function ContractInformation() {
                       })}
                     </select>
                   )}
-                  {mainContractBlockedForProject ? (
-                    <div className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">
-                      برای این پروژه قبلا قرارداد اصلی ثبت شده است؛ فقط قرارداد فرعی یا الحاقیه قابل ثبت است.
-                    </div>
-                  ) : null}
                 </div>
 
                 {form.documentType === "sub" ? (
@@ -3948,7 +3919,7 @@ export default function ContractInformation() {
                           <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
                             <option value="">انتخاب کنید</option>
                             {CONTRACT_DOCUMENT_TYPES.filter((item) => item.id === "main" || item.id === "sub").map((item) => (
-                              <option key={item.id} value={item.id} disabled={item.id === "main" && projectAlreadyHasMainContract}>
+                              <option key={item.id} value={item.id}>
                                 {item.label}
                               </option>
                             ))}
@@ -4033,7 +4004,6 @@ export default function ContractInformation() {
                               onChange={(e) => setField("contractNo", e.target.value)}
                               className={inputCls}
                               type="text"
-                              disabled={mainContractBlockedForProject}
                             />
                           ) : (
                             <select
@@ -4055,11 +4025,6 @@ export default function ContractInformation() {
                               ))}
                             </select>
                           )}
-                          {mainContractBlockedForProject ? (
-                            <div className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">
-                              برای این پروژه قبلا قرارداد اصلی ثبت شده است؛ فقط قرارداد فرعی قابل ثبت است.
-                            </div>
-                          ) : null}
                         </div>
 
                         <div className="min-w-0">
@@ -4082,9 +4047,8 @@ export default function ContractInformation() {
                               {projectContractOptions.map((contract) => <option key={contract.id} value={contract.id}>{contractNoForRow(contract, rowById)} - {documentTypeLabel(contract.documentType)}</option>)}
                             </select>
                           ) : (
-                            <input value={form.contractNo} onChange={(e) => setField("contractNo", e.target.value)} className={inputCls} type="text" disabled={!form.documentType || mainContractBlockedForProject} />
+                            <input value={form.contractNo} onChange={(e) => setField("contractNo", e.target.value)} className={inputCls} type="text" disabled={!form.documentType} />
                           )}
-                          {mainContractBlockedForProject ? <div className="mt-1 text-xs font-semibold text-red-600 dark:text-red-400">برای این پروژه قبلا قرارداد اصلی ثبت شده است؛ فقط قرارداد فرعی قابل ثبت است.</div> : null}
                         </div>
                         <div className="min-w-0">
                           <div className={labelCls}>موضوع *</div>

@@ -40,7 +40,7 @@ export default function ProjectManagementDashboardPage() {
     // loads while returning the same data.
     Promise.all([
       fetch("/api/projects?isActive=true", options).then((response) => response.ok ? response.json() : { items: [] }),
-      fetch("/api/roznegar?activeProjects=true", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/roznegar?activeProjects=true&dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
     ])
       .then(([projectsData, entriesData]) => {
         const visibleProjects = listOf(projectsData, "projects").filter((project) => Number(project?.id) > 0);
