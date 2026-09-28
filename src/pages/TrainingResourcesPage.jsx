@@ -9,6 +9,16 @@ import { dayjs } from "../utils/date.js";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
+const filterTagColorClasses = [
+  "border border-sky-200/90 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300",
+  "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300",
+  "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300",
+  "border border-violet-200/90 bg-violet-100 text-violet-700 shadow-sm dark:border-violet-400/20 dark:bg-violet-500/15 dark:text-violet-300",
+  "border border-rose-200/90 bg-rose-100 text-rose-700 shadow-sm dark:border-rose-400/20 dark:bg-rose-500/15 dark:text-rose-300",
+  "border border-teal-200/90 bg-teal-100 text-teal-700 shadow-sm dark:border-teal-400/20 dark:bg-teal-500/15 dark:text-teal-300",
+  "border border-orange-200/90 bg-orange-100 text-orange-700 shadow-sm dark:border-orange-400/20 dark:bg-orange-500/15 dark:text-orange-300",
+  "border border-indigo-200/90 bg-indigo-100 text-indigo-700 shadow-sm dark:border-indigo-400/20 dark:bg-indigo-500/15 dark:text-indigo-300",
+];
 
 const toFaDigits = (value = "") => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 const letterIdOf = (letter) => String(letter?.id ?? letter?.letterId ?? letter?.letter_id ?? "");
@@ -313,7 +323,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       if (toDate && (!date || date > toDate)) return false;
       if (filterTagIds.length) {
         const matchesFilter = isLibrary
-          ? filterTagIds.some((id) => (Array.isArray(item.tagIds) ? item.tagIds : []).map(String).includes(String(id)))
+          ? filterTagIds.map(String).includes(String(item.libraryId || ""))
           : filterTagIds.map(String).includes(String(item.category || ""));
         if (!matchesFilter) return false;
       }
@@ -322,13 +332,15 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   }, [filterTagIds, isLibrary, items, filterFromDate, filterQuery, filterToDate]);
 
   const filterTags = useMemo(() => {
-    if (isLibrary) return tags;
+    if (isLibrary) return categories
+      .filter((item) => String(item?.id ?? "").trim() && String(item?.title ?? "").trim())
+      .map((item) => ({ id: String(item.id), label: String(item.title).trim() }));
     const categoryNames = categories
       .map((item) => item.title)
       .map((value) => String(value || "").trim())
       .filter(Boolean);
     return [...new Set(categoryNames)].map((label) => ({ id: label, label }));
-  }, [categories, isLibrary, tags]);
+  }, [categories, isLibrary]);
 
   const toggleFilterTag = (id) => setFilterTagIds((previous) => {
     const value = String(id);
@@ -465,9 +477,9 @@ function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, set
       {showTags && <div className="mt-2">
         <div className={labelClass}>برچسب‌ها</div>
         <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-          {tags.map((tag) => {
+          {tags.map((tag, index) => {
             const selected = selectedTagIds.map(String).includes(String(tag.id));
-            return <button key={tag.id} type="button" onClick={() => onToggleTag(tag.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${selected ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{tag.label}</button>;
+            return <button key={tag.id} type="button" onClick={() => onToggleTag(tag.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${filterTagColorClasses[index % filterTagColorClasses.length]} ${selected ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{tag.label}</button>;
           })}
           <button type="button" onClick={onOpenTags} className="relative grid h-9 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب برای فیلتر" aria-label="انتخاب برچسب برای فیلتر"><img src="/images/icons/tags.svg" alt="" className="h-5 w-5 dark:invert" />{selectedTagIds.length > 0 && <CountBadge value={selectedTagIds.length} />}</button>
         </div>
