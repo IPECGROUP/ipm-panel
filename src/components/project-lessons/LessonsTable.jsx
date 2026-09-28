@@ -52,7 +52,7 @@ export default function LessonsTable({
       <div className="overflow-auto" dir="ltr">
         <table
           dir="rtl"
-          className="w-full min-w-[700px] table-fixed text-sm [&_td]:text-center [&_th]:text-center"
+          className="w-full min-w-[700px] table-fixed text-sm [&_td]:text-center [&_th]:text-center [&_th]:!py-2 [&_td]:!py-0"
         >
           <colgroup>
             <col style={{ width: 52 }} />
@@ -92,7 +92,7 @@ export default function LessonsTable({
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">
             {loading ? (
               <EmptyRow>در حال دریافت...</EmptyRow>
             ) : !items.length ? (
@@ -137,7 +137,7 @@ function LessonRow({
   return (
     <tr
       onClick={() => onOpen(item)}
-      className={`h-12 cursor-pointer border-t border-neutral-200 transition hover:bg-black/[.04] dark:border-neutral-700 dark:hover:bg-white/[.08] ${rowTone}`}
+      className={`h-9 cursor-pointer border-t border-neutral-200 transition hover:bg-black/[.04] dark:border-neutral-700 dark:hover:bg-white/[.08] ${rowTone}`}
     >
       <td
         className="relative px-3"

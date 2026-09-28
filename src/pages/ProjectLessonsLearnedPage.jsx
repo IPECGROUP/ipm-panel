@@ -1259,7 +1259,7 @@ function FilterBar({
               </button>
             );
           })}
-          {categories.map((category) => {
+          {categories.slice(0, 5).map((category) => {
             const categoryTitle = String(category.title || "").trim();
             const active = selected.map(String).includes(categoryTitle);
             return categoryTitle ? <button key={category.id} type="button" onClick={() => onToggleCategory(categoryTitle)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{categoryTitle}</button> : null;
