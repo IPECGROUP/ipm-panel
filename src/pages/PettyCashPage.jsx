@@ -494,7 +494,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
     [budgetPickerQuery, setBudgetPickerQuery] = useState(""),
     [editingExpense, setEditingExpense] = useState(null),
     [tableMenuOpen, setTableMenuOpen] = useState(false),
-    [beneficiaryBalance, setBeneficiaryBalance] = useState({ unsettledBalance: "0" });
+    [beneficiaryBalance, setBeneficiaryBalance] = useState({ unregisteredBalance: "0", unsettledBalance: "0" });
   const tableMenuRef = useRef(null);
   const tableMenuPopoverRef = useRef(null);
   const api = useCallback(
@@ -551,11 +551,11 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
   // projects.  The selected project below is only used to categorize expenses.
   const loadBeneficiaryBalance = useCallback(async () => {
     if (!user?.id) {
-      setBeneficiaryBalance({ unsettledBalance: "0" });
+      setBeneficiaryBalance({ unregisteredBalance: "0", unsettledBalance: "0" });
       return;
     }
     const data = await api(`/tenkhah?beneficiaryId=${encodeURIComponent(user.id)}`);
-    setBeneficiaryBalance(data || { unsettledBalance: "0" });
+    setBeneficiaryBalance(data || { unregisteredBalance: "0", unsettledBalance: "0" });
   }, [api, user?.id]);
   useEffect(() => {
     api("/projects?isActive=true")
@@ -588,7 +588,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
     setBudgetItems([]);
     setError("");
     if (!value) {
-      setBeneficiaryBalance({ unsettledBalance: "0" });
+      setBeneficiaryBalance({ unregisteredBalance: "0", unsettledBalance: "0" });
       return loadExpenses("");
     }
     try {
@@ -732,7 +732,10 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
   // existing pending expense is edited, only its amount difference is applied.
   const draftPendingDelta = formOpen ? draftExpenseAmount - editingPendingAmount : 0n;
   const pendingExpenseWithDraft = pendingExpenseTotal + draftPendingDelta;
-  const unsettledBalanceAfterPending = BigInt(beneficiaryBalance.unsettledBalance || "0") - pendingExpenseWithDraft;
+  // `unregisteredBalance` is already the user's total balance after every
+  // saved expense across all projects.  Only the unsaved edit is local to the
+  // selected project, so it is the only value applied here.
+  const beneficiaryBalanceAfterDraft = BigInt(beneficiaryBalance.unregisteredBalance || "0") - draftPendingDelta;
   const displayMoney = (value) => {
     const amount = BigInt(value || "0");
     const absolute = amount < 0n ? -amount : amount;
@@ -769,7 +772,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
   const deleteSelectedExpenses = async () => {
     if (!selectedItems.length || !window.confirm(`آیا ${toFa(selectedItems.length)} ردیف انتخاب‌شده حذف شود؟`)) return;
     setSaving(true); setError("");
-    try { await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ ids: [...selectedIds] }) }); setSelectedIds(new Set()); await loadExpenses(projectId); }
+    try { await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ ids: [...selectedIds] }) }); setSelectedIds(new Set()); await Promise.all([loadExpenses(projectId), loadBeneficiaryBalance()]); }
     catch (reason) { setError(reason.message); }
     finally { setSaving(false); setTableMenuOpen(false); }
   };
@@ -816,7 +819,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
           <div className="inline-flex items-center gap-1 whitespace-nowrap">
             <span className="font-medium text-neutral-600 dark:text-neutral-300">مانده تنخواه تسویه‌نشدهٔ ذی‌نفع:</span>
             <span dir="ltr" className="font-sans font-semibold tabular-nums text-neutral-900 dark:text-white">
-              {displayMoney(unsettledBalanceAfterPending)}
+              {displayMoney(beneficiaryBalanceAfterDraft)}
             </span>
           </div>
           <div className="inline-flex items-center gap-1 whitespace-nowrap">
