@@ -30,7 +30,7 @@ const pageColumns = {
   "درس‌آموخته‌ها": ["همه", "نمایش منو", "افزودن"],
   "کتابخانه‌ها": ["همه", "نمایش منو", "افزودن"],
   "منابع آموزشی": ["همه", "نمایش منو", "افزودن"],
-  "داشبورد مدیریت دانش": ["همه", "نمایش منو"],
+  "داشبورد مدیریت دانش": ["نمایش منو"],
 };
 
 const pageOrder = Object.keys(pageColumns);
@@ -73,7 +73,7 @@ export default function AccessManagementPage() {
       if (!enabled && column === "نمایش منو") columns.forEach((name) => set(name, false));
       if (page === "مدیریت اسناد" && column === "بارگذاری سند پیوست" && enabled) set("نمایش سند پیوست", true);
       if (page === "مدیریت اسناد" && column === "نمایش سند پیوست" && !enabled) set("بارگذاری سند پیوست", false);
-      set("همه", columns.filter((name) => name !== "همه").every((name) => next.has(keyOf(page, item.id, name))));
+      if (columns.includes("همه")) set("همه", columns.filter((name) => name !== "همه").every((name) => next.has(keyOf(page, item.id, name))));
     }
     setSelected(next);
     const preserved = (item.access || []).filter((token) => !String(token).startsWith("page-access:"));
