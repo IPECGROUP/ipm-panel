@@ -91,7 +91,7 @@ export default function DocumentsManagementDashboardPage() {
     // by the signed-in user.
     const options = { credentials: "include", headers: { "x-user-id": String(user.id) } };
     Promise.all([
-      fetch("/api/letters", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/letters?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
       fetch("/api/projects?isActive=true", options).then((response) => response.ok ? response.json() : { items: [] }),
       fetch("/api/tags?scope=letters", options).then((response) => response.ok ? response.json() : { tags: [] }),
     ])

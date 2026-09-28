@@ -77,7 +77,7 @@ export default function ContractsManagementDashboardPage() {
   useEffect(() => {
     if (!user?.id) return undefined;
     let cancelled = false;
-    fetch("/api/contracts", { credentials: "include", headers: { "x-user-id": String(user.id) } })
+    fetch("/api/contracts?dashboard=1", { credentials: "include", headers: { "x-user-id": String(user.id) } })
       .then((response) => response.ok ? response.json() : { items: [] })
       .then((data) => { if (!cancelled) setContracts(Array.isArray(data?.items) ? data.items : []); })
       .catch(() => { if (!cancelled) setContracts([]); });
