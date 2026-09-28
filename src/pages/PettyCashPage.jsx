@@ -494,7 +494,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
     [budgetPickerQuery, setBudgetPickerQuery] = useState(""),
     [editingExpense, setEditingExpense] = useState(null),
     [tableMenuOpen, setTableMenuOpen] = useState(false),
-    [projectBalance, setProjectBalance] = useState({ unsettledBalance: "0" });
+    [beneficiaryBalance, setBeneficiaryBalance] = useState({ unsettledBalance: "0" });
   const tableMenuRef = useRef(null);
   const tableMenuPopoverRef = useRef(null);
   const api = useCallback(
@@ -547,14 +547,16 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
     },
     [api, projectId],
   );
-  const loadProjectBalance = useCallback(async () => {
+  // The available petty-cash balance follows the beneficiary across all
+  // projects.  The selected project below is only used to categorize expenses.
+  const loadBeneficiaryBalance = useCallback(async () => {
     if (!user?.id) {
-      setProjectBalance({ unsettledBalance: "0" });
+      setBeneficiaryBalance({ unsettledBalance: "0" });
       return;
     }
     const data = await api(`/tenkhah?beneficiaryId=${encodeURIComponent(user.id)}`);
-    setProjectBalance(data || { unsettledBalance: "0" });
-  }, [api, projectId, user?.id]);
+    setBeneficiaryBalance(data || { unsettledBalance: "0" });
+  }, [api, user?.id]);
   useEffect(() => {
     api("/projects?isActive=true")
       .then((data) =>
@@ -586,14 +588,14 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
     setBudgetItems([]);
     setError("");
     if (!value) {
-      setProjectBalance({ unsettledBalance: "0" });
+      setBeneficiaryBalance({ unsettledBalance: "0" });
       return loadExpenses("");
     }
     try {
       const [budgets] = await Promise.all([
         api(`/cost-breakdown?project_id=${encodeURIComponent(value)}`),
         loadExpenses(value),
-        loadProjectBalance(value),
+        loadBeneficiaryBalance(),
       ]);
       setBudgetItems(budgets.items || []);
     } catch (reason) {
@@ -619,7 +621,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
       setForm(emptyExpense());
       setEditingExpense(null);
       setFormOpen(false);
-      await Promise.all([loadExpenses(projectId), loadProjectBalance(projectId)]);
+      await Promise.all([loadExpenses(projectId), loadBeneficiaryBalance()]);
     } catch (reason) {
       setError(reason.message);
     } finally {
@@ -664,7 +666,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
         }),
       });
       setApproval(null);
-      await loadExpenses(projectId);
+      await Promise.all([loadExpenses(projectId), loadBeneficiaryBalance()]);
     } catch (reason) {
       setError(reason.message);
     } finally {
@@ -730,7 +732,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
   // existing pending expense is edited, only its amount difference is applied.
   const draftPendingDelta = formOpen ? draftExpenseAmount - editingPendingAmount : 0n;
   const pendingExpenseWithDraft = pendingExpenseTotal + draftPendingDelta;
-  const unsettledBalanceAfterPending = BigInt(projectBalance.unsettledBalance || "0") - pendingExpenseWithDraft;
+  const unsettledBalanceAfterPending = BigInt(beneficiaryBalance.unsettledBalance || "0") - pendingExpenseWithDraft;
   const displayMoney = (value) => {
     const amount = BigInt(value || "0");
     const absolute = amount < 0n ? -amount : amount;
@@ -786,7 +788,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
       setForm(emptyExpense());
       setFormOpen(false);
       setTableMenuOpen(false);
-      await loadProjectBalance(projectId);
+      await loadBeneficiaryBalance();
     } catch (reason) {
       setError(reason.message);
     } finally {
@@ -812,7 +814,7 @@ function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" }) {
         </Field>
         <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-6 gap-y-2 self-end pb-3 text-sm">
           <div className="inline-flex items-center gap-1 whitespace-nowrap">
-            <span className="font-medium text-neutral-600 dark:text-neutral-300">مانده تنخواه تسویه‌نشده:</span>
+            <span className="font-medium text-neutral-600 dark:text-neutral-300">مانده تنخواه تسویه‌نشدهٔ ذی‌نفع:</span>
             <span dir="ltr" className="font-sans font-semibold tabular-nums text-neutral-900 dark:text-white">
               {displayMoney(unsettledBalanceAfterPending)}
             </span>
