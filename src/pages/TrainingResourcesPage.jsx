@@ -464,12 +464,12 @@ function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, set
       </div>
       {showTags && <div className="mt-2">
         <div className={labelClass}>برچسب‌ها</div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={onOpenTags} className="relative grid h-9 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب برای فیلتر" aria-label="انتخاب برچسب برای فیلتر"><img src="/images/icons/tags.svg" alt="" className="h-5 w-5 dark:invert" />{selectedTagIds.length > 0 && <CountBadge value={selectedTagIds.length} />}</button>
+        <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {tags.map((tag) => {
             const selected = selectedTagIds.map(String).includes(String(tag.id));
-            return <button key={tag.id} type="button" onClick={() => onToggleTag(tag.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${selected ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tag.label}</button>;
+            return <button key={tag.id} type="button" onClick={() => onToggleTag(tag.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${selected ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{tag.label}</button>;
           })}
+          <button type="button" onClick={onOpenTags} className="relative grid h-9 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب برای فیلتر" aria-label="انتخاب برچسب برای فیلتر"><img src="/images/icons/tags.svg" alt="" className="h-5 w-5 dark:invert" />{selectedTagIds.length > 0 && <CountBadge value={selectedTagIds.length} />}</button>
         </div>
       </div>}
     </div>
