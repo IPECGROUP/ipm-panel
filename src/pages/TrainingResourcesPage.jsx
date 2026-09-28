@@ -323,11 +323,19 @@ export default function TrainingResourcesPage({ variant = "training" }) {
 
   const filterTags = useMemo(() => {
     if (isLibrary) return tags;
-    const categoryNames = [...categories.map((item) => item.title), ...items.map((item) => item.category)]
+    const categoryNames = categories
+      .map((item) => item.title)
       .map((value) => String(value || "").trim())
       .filter(Boolean);
     return [...new Set(categoryNames)].map((label) => ({ id: label, label }));
-  }, [categories, isLibrary, items, tags]);
+  }, [categories, isLibrary, tags]);
+
+  const toggleFilterTag = (id) => setFilterTagIds((previous) => {
+    const value = String(id);
+    return previous.map(String).includes(value)
+      ? previous.map(String).filter((current) => current !== value)
+      : [...previous.map(String), value];
+  });
 
   const exportFilteredItems = async () => {
     if (!filteredItems.length) return;
@@ -379,7 +387,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
             </button>
           </div>
 
-          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags tags={filterTags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} />}
+          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags tags={filterTags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} onToggleTag={toggleFilterTag} />}
 
           {formOpen && (
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
@@ -434,7 +442,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   );
 }
 
-function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, setToDate, onExport, canExport, showTags, tags, selectedTagIds, onOpenTags }) {
+function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, setToDate, onExport, canExport, showTags, tags, selectedTagIds, onOpenTags, onToggleTag }) {
   return (
     <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
       <div className="flex flex-wrap items-end gap-2">
@@ -458,9 +466,9 @@ function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, set
         <div className={labelClass}>برچسب‌ها</div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={onOpenTags} className="relative grid h-9 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب برای فیلتر" aria-label="انتخاب برچسب برای فیلتر"><img src="/images/icons/tags.svg" alt="" className="h-5 w-5 dark:invert" />{selectedTagIds.length > 0 && <CountBadge value={selectedTagIds.length} />}</button>
-          {selectedTagIds.map((id) => {
-            const tag = tags.find((item) => String(item.id) === String(id));
-            return tag ? <span key={id} className="rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs dark:border-white/15 dark:bg-white/5">{tag.label}</span> : null;
+          {tags.map((tag) => {
+            const selected = selectedTagIds.map(String).includes(String(tag.id));
+            return <button key={tag.id} type="button" onClick={() => onToggleTag(tag.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${selected ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tag.label}</button>;
           })}
         </div>
       </div>}
