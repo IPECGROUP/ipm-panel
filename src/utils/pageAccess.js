@@ -18,7 +18,7 @@ const ROUTE_PERMISSION_PAGES = [
   ["/supply/request", "درخواست تأمین"],
   ["/supply/actions", "درخواست تأمین"],
   ["/supply/dashboard", "درخواست تأمین", "داشبورد مدیریت تأمین"],
-  ["/knowledge-management/dashboard", "درس‌آموخته‌ها", "داشبورد مدیریت دانش"],
+  ["/knowledge-management/dashboard", "داشبورد مدیریت دانش"],
   ["/knowledge-management/project-lessons-learned", "درس‌آموخته‌ها"],
   ["/knowledge-management/equipment-library", "کتابخانه‌ها"],
   ["/knowledge-management/training-resources", "منابع آموزشی"],
@@ -39,6 +39,7 @@ const PAGE_INDEX = {
   "درس‌آموخته‌ها": 14,
   "کتابخانه‌ها": 15,
   "منابع آموزشی": 16,
+  "داشبورد مدیریت دانش": 17,
 };
 
 export function hasLimitedPageAccess(user) {
