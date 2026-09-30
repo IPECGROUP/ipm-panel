@@ -138,6 +138,7 @@ export default function ProjectLessonsLearnedPage() {
   const [tags, setTags] = useState([]);
   const [tagCatalog, setTagCatalog] = useState({ projects: { categories: [], tags: [] }, letters: { categories: [], tags: [] }, execution: { categories: [], tags: [] } });
   const [lessonCategories, setLessonCategories] = useState([]);
+  const [lessonDescriptions, setLessonDescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [canReview, setCanReview] = useState(false);
 
@@ -202,8 +203,9 @@ export default function ProjectLessonsLearnedPage() {
       api("/tags?scope=letters", { headers }),
       api("/tags?scope=execution", { headers }),
       api("/base/project-lesson-categories", { headers }),
+      api("/base/project-lesson-descriptions", { headers }),
     ])
-      .then(([projectData, projectTags, letterTags, executionTags, categoryData]) => {
+      .then(([projectData, projectTags, letterTags, executionTags, categoryData, descriptionData]) => {
         const allProjects = Array.isArray(projectData.items)
           ? projectData.items
           : [];
@@ -218,9 +220,23 @@ export default function ProjectLessonsLearnedPage() {
         setLessonCategories(
           Array.isArray(categoryData.items) ? categoryData.items : [],
         );
+        setLessonDescriptions(
+          Array.isArray(descriptionData.items) ? descriptionData.items : [],
+        );
       })
       .catch(() => {});
   }, [authLoading, headers]);
+
+  const selectedCategoryDescription = useMemo(() => {
+    if (!form.category) return "";
+    const category = lessonCategories.find((item) => item.title === form.category);
+    if (!category) return "";
+    return lessonDescriptions
+      .filter((item) => String(item.categoryId) === String(category.id))
+      .map((item) => String(item.title || "").trim())
+      .filter(Boolean)
+      .join("، ");
+  }, [form.category, lessonCategories, lessonDescriptions]);
 
   const filtered = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -554,6 +570,10 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </select>
                 </Field>
+                <div className="flex min-h-11 items-center self-end rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-700 md:col-span-2 dark:border-white/15 dark:bg-white/5 dark:text-neutral-200">
+                  <span className="ml-1 shrink-0 font-bold text-neutral-900 dark:text-white">شامل:</span>
+                  <span className="truncate">{selectedCategoryDescription || "—"}</span>
+                </div>
                 <Field text="چالش" required className="md:col-span-2">
                   <textarea
                     value={form.challenge}
