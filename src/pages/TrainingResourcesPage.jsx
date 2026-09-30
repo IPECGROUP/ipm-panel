@@ -118,6 +118,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const [filterToDate, setFilterToDate] = useState("");
   const [tags, setTags] = useState([]);
   const [filterTagIds, setFilterTagIds] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [tagPickerFor, setTagPickerFor] = useState("form");
   const [tagPickerDraftIds, setTagPickerDraftIds] = useState([]);
@@ -345,6 +347,16 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     });
   }, [filterTagIds, isLibrary, items, filterFromDate, filterQuery, filterToDate]);
 
+  useEffect(() => {
+    setPage(0);
+  }, [filterQuery, filterFromDate, filterToDate, filterTagIds, rowsPerPage, variant]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredItems.length / rowsPerPage));
+  const safePage = Math.min(page, pageCount - 1);
+  const startIndex = safePage * rowsPerPage;
+  const endIndex = Math.min(filteredItems.length, startIndex + rowsPerPage);
+  const pageItems = filteredItems.slice(startIndex, endIndex);
+
   const filterTags = useMemo(() => {
     if (isLibrary) return categories
       .filter((item) => String(item?.id ?? "").trim() && String(item?.title ?? "").trim())
@@ -394,14 +406,14 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     XLSX.writeFile(workbook, `${isLibrary ? "libraries" : "training-resources"}.xlsx`);
   };
 
-  const allSelected = filteredItems.length > 0 && filteredItems.every((item) => selectedIds.has(String(item.id)));
+  const allSelected = pageItems.length > 0 && pageItems.every((item) => selectedIds.has(String(item.id)));
   const toggleSelected = (id) => setSelectedIds((previous) => {
     const next = new Set(previous);
     const key = String(id);
     if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
-  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(filteredItems.map((item) => String(item.id))));
+  const toggleAll = () => setSelectedIds(allSelected ? new Set() : new Set(pageItems.map((item) => String(item.id))));
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -449,10 +461,10 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                   <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>فایل</span><ResourceTableMenu entityLabel={isLibrary ? "مورد کتابخانه" : "منبع آموزشی"} menuRef={tableMenuRef} open={tableMenuOpen} setOpen={setTableMenuOpen} selectedCount={selectedIds.size} onEdit={editSelected} onDelete={deleteSelected} deleting={deleting} /></th>
                 </tr></thead>
                 <tbody className="text-[13px]">
-                  {loading ? <EmptyRow colSpan={isLibrary ? 6 : 7} text="در حال دریافت..." /> : filteredItems.length === 0 ? <EmptyRow colSpan={isLibrary ? 6 : 7} text={items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."} /> : filteredItems.map((item, index) => (
+                  {loading ? <EmptyRow colSpan={isLibrary ? 6 : 7} text="در حال دریافت..." /> : pageItems.length === 0 ? <EmptyRow colSpan={isLibrary ? 6 : 7} text={items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."} /> : pageItems.map((item, index) => (
                     <tr key={item.id} className="h-9 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ${item.title}`} /></td>
-                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
+                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(startIndex + index + 1)}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
                       <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
@@ -468,8 +480,9 @@ export default function TrainingResourcesPage({ variant = "training" }) {
               </table>
             </div>
             <div className="grid gap-3 p-3 md:hidden">
-              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : filteredItems.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : filteredItems.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? (item.libraryTitle ? <span className={`min-w-0 truncate rounded-full px-3 py-1 text-xs font-medium ${libraryTagColorById.get(String(item.libraryId)) || "border border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"}`}>{item.libraryTitle}</span> : <span className="text-xs text-neutral-500">—</span>) : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} onOpen={isLibrary ? undefined : recordTrainingInteraction} /></div></div>)}
+              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : pageItems.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : pageItems.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(startIndex + index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? (item.libraryTitle ? <span className={`min-w-0 truncate rounded-full px-3 py-1 text-xs font-medium ${libraryTagColorById.get(String(item.libraryId)) || "border border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"}`}>{item.libraryTitle}</span> : <span className="text-xs text-neutral-500">—</span>) : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} onOpen={isLibrary ? undefined : recordTrainingInteraction} /></div></div>)}
             </div>
+            <TablePagination total={filteredItems.length} startIndex={startIndex} endIndex={endIndex} safePage={safePage} pageCount={pageCount} rowsPerPage={rowsPerPage} onPrevious={() => setPage((current) => Math.max(0, current - 1))} onNext={() => setPage((current) => Math.min(pageCount - 1, current + 1))} onRowsPerPage={(count) => { setRowsPerPage(count); setPage(0); }} />
           </div>
         </div>
       </Card>
@@ -519,6 +532,7 @@ function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, set
 function Field({ label, className = "", children }) { return <div className={className}><div className={labelClass}>{label}</div>{children}</div>; }
 function CountBadge({ value }) { return <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-neutral-900 px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(value)}</span>; }
 function EmptyRow({ text, colSpan = 7 }) { return <tr><td colSpan={colSpan} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
+function TablePagination({ total, startIndex, endIndex, safePage, pageCount, rowsPerPage, onPrevious, onNext, onRowsPerPage }) { return <div className="border-t border-neutral-300 px-2.5 py-2.5 dark:border-neutral-800"><div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"><div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={onPrevious} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={onNext} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFaDigits(startIndex + 1)}–${toFaDigits(endIndex)} از ${toFaDigits(total)}`}</div></div><div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => onRowsPerPage(count)} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFaDigits(count)}</button>)}</div></div></div></div>; }
 function FileLinks({ files, onOpen }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download onClick={onOpen} className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
 
 function TagPicker({ tags, query, setQuery, selectedIds, setSelectedIds, onClose, onConfirm }) {
