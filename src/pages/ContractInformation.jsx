@@ -205,6 +205,8 @@ const EMPTY_FORM = {
     contractRow: "",
     branchStatus: "",
     finalGrossPerformance: "",
+    calculationMethod: "",
+    clearanceNo: "",
     clearanceAmount: "",
     clearanceFiles: [],
     relatedLetterId: "",
@@ -417,6 +419,8 @@ function normalizeInsurance(insurance = {}) {
     contractRow: String(insurance?.contractRow ?? insurance?.contract_row ?? ""),
     branchStatus: branchLooksLikeOldStatus ? "" : rawBranchStatus,
     finalGrossPerformance: String(insurance?.finalGrossPerformance ?? insurance?.final_gross_performance ?? ""),
+    calculationMethod: String(insurance?.calculationMethod ?? insurance?.calculation_method ?? ""),
+    clearanceNo: String(insurance?.clearanceNo ?? insurance?.clearance_no ?? ""),
     clearanceAmount: String(insurance?.clearanceAmount ?? insurance?.clearance_amount ?? ""),
     clearanceFiles: Array.isArray(insurance?.clearanceFiles) ? insurance.clearanceFiles : [],
     relatedLetterId: String(insurance?.relatedLetterId ?? insurance?.related_letter_id ?? ""),
@@ -4723,7 +4727,7 @@ export default function ContractInformation() {
                                     lastStatus: value,
                                     ...(isSocialInsuranceClearanceStatus(value)
                                       ? {}
-                                      : { finalGrossPerformance: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
+                                      : { finalGrossPerformance: "", calculationMethod: "", clearanceNo: "", clearanceAmount: "", clearanceFiles: [], relatedLetterId: "" }),
                                   },
                                 };
                               });
@@ -4738,38 +4742,43 @@ export default function ContractInformation() {
                             ))}
                           </select>
                           </div>
-                          <div className="min-w-0">
-                            <div className={labelCls}>توضیحات</div>
-                            <input
-                              value={insuranceForm.description || ""}
-                              onChange={(e) => setInsuranceField("description", e.target.value)}
-                              className={inputCls}
-                              type="text"
-                            />
-                          </div>
+                          {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
+                            <div className="min-w-0">
+                              <div className={labelCls}>رقم کارکرد نهایی</div>
+                              <div className="relative">
+                                <input
+                                  value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
+                                  onChange={(e) => setInsuranceField("finalGrossPerformance", cleanFinancialAmountInput(e.target.value))}
+                                  className={`${inputCls} !pl-14`}
+                                  type="text"
+                                  inputMode="decimal"
+                                  dir="ltr"
+                                  placeholder="0"
+                                />
+                                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">ریال</span>
+                              </div>
+                            </div>
+                          ) : null}
                         </div>
 
                         {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
-                          <div className="mt-4 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-end">
+                          <div className="mt-3 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
+                            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)_minmax(220px,1fr)]">
                               <div className="min-w-0">
-                                <div className={labelCls}>کارکرد ناخالص نهایی قرارداد{isPropertyAndBuildingLease ? "" : " *"}</div>
-                                <div className="relative">
-                                  <input
-                                    value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
-                                    onChange={(e) => setInsuranceField("finalGrossPerformance", cleanFinancialAmountInput(e.target.value))}
-                                    className={`${inputCls} !pl-14`}
-                                    type="text"
-                                    inputMode="decimal"
-                                    dir="ltr"
-                                    placeholder="0"
-                                  />
-                                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-black/55 dark:text-neutral-300">
-                                    ریال
-                                  </span>
-                                </div>
+                                <div className={labelCls}>نحوه محاسبه و ضرایب</div>
+                                <input value={insuranceForm.calculationMethod || ""} onChange={(e) => setInsuranceField("calculationMethod", e.target.value)} className={inputCls} type="text" />
                               </div>
+                              <div className="min-w-0">
+                                <div className={labelCls}>شماره مفاصا حساب</div>
+                                <input value={insuranceForm.clearanceNo || ""} onChange={(e) => setInsuranceField("clearanceNo", e.target.value)} className={inputCls} type="text" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className={labelCls}>توضیحات</div>
+                                <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
+                              </div>
+                            </div>
 
+                            <div className="mt-3">
                               <div className="min-w-0">
                                 <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی{isPropertyAndBuildingLease ? "" : " *"}</div>
                                 <div className="flex flex-wrap items-center gap-2">
