@@ -2703,7 +2703,7 @@ export default function ContractInformation() {
       return;
     }
 
-    if (documentType !== "main" && !parentContractId) {
+    if (documentType === "appendix" && !parentContractId) {
       alert("شماره قرارداد اصلی را انتخاب کنید.");
       return;
     }
@@ -2802,7 +2802,7 @@ export default function ContractInformation() {
       documentType,
       contractNo: documentType === "main" ? contractNo : "",
       subContractNo: documentType === "sub" ? subContractNo : "",
-      parentContractId: documentType === "main" ? "" : parentContractId,
+      parentContractId: documentType === "appendix" ? parentContractId : "",
       relatedLetterId,
       relatedLetterIds,
       general: {
@@ -4041,14 +4041,13 @@ export default function ContractInformation() {
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(190px,0.85fr)_minmax(0,3fr)_auto] md:items-end">
                         <div className="min-w-0">
                           <div className={labelCls}>شماره قرارداد *</div>
-                          {form.documentType === "sub" ? (
-                            <select value={form.parentContractId} onChange={(e) => setField("parentContractId", e.target.value)} className={inputCls} disabled={!form.documentType}>
-                              <option value="">{form.projectId ? projectContractOptions.length ? "انتخاب شماره قرارداد" : "موردی برای این پروژه ثبت نشده است" : "ابتدا پروژه را انتخاب کنید"}</option>
-                              {projectContractOptions.map((contract) => <option key={contract.id} value={contract.id}>{contractNoForRow(contract, rowById)} - {documentTypeLabel(contract.documentType)}</option>)}
-                            </select>
-                          ) : (
-                            <input value={form.contractNo} onChange={(e) => setField("contractNo", e.target.value)} className={inputCls} type="text" disabled={!form.documentType} />
-                          )}
+                          <input
+                            value={form.documentType === "sub" ? form.subContractNo || "" : form.contractNo}
+                            onChange={(e) => setField(form.documentType === "sub" ? "subContractNo" : "contractNo", e.target.value)}
+                            className={inputCls}
+                            type="text"
+                            disabled={!form.documentType}
+                          />
                         </div>
                         <div className="min-w-0">
                           <div className={labelCls}>موضوع *</div>
@@ -4107,12 +4106,6 @@ export default function ContractInformation() {
                       </div>
 
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(115px,0.75fr)_minmax(135px,0.9fr)_repeat(3,minmax(150px,1fr))]">
-                        {form.documentType === "sub" ? (
-                          <div className="min-w-0">
-                            <div className={labelCls}>شماره قرارداد فرعی *</div>
-                            <input value={form.subContractNo || ""} onChange={(e) => setField("subContractNo", e.target.value)} className={inputCls} type="text" />
-                          </div>
-                        ) : null}
                         {form.documentType !== "sub" ? (
                           <div className="min-w-0">
                             <div className={labelCls}>کارفرمای اصلی</div>
