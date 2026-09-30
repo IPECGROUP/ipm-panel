@@ -79,12 +79,12 @@ export default function ProjectLessonCategoryDescriptionsTable() {
   return (
     <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900" dir="rtl">
       <h2 className="mb-4 text-sm font-bold">دسته‌بندی درس‌آموخته</h2>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
         <form onSubmit={addCategory} className="grid grid-cols-[1fr_auto] items-center gap-3">
           <input className={inputClass} value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} placeholder="دسته‌بندی درس‌آموخته..." />
           <button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100" aria-label="افزودن دسته‌بندی"><img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5" /></button>
         </form>
-        <form onSubmit={addDescription} className="grid grid-cols-[minmax(130px,0.6fr)_minmax(0,1.4fr)_auto] items-center gap-3">
+        <form onSubmit={addDescription} className="grid grid-cols-[minmax(170px,0.85fr)_minmax(0,1.15fr)_auto] items-center gap-3">
           <select className={inputClass} value={categoryId} onChange={(event) => setCategoryId(event.target.value)} required>
             <option value="">دسته‌بندی درس‌آموخته را انتخاب کنید</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.title}</option>)}
