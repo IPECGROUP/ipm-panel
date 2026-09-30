@@ -10,24 +10,24 @@ import { dayjs } from "../utils/date.js";
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
 const filterTagColorClasses = [
-  "border border-sky-200/90 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300",
-  "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300",
-  "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300",
-  "border border-violet-200/90 bg-violet-100 text-violet-700 shadow-sm dark:border-violet-400/20 dark:bg-violet-500/15 dark:text-violet-300",
-  "border border-rose-200/90 bg-rose-100 text-rose-700 shadow-sm dark:border-rose-400/20 dark:bg-rose-500/15 dark:text-rose-300",
-  "border border-teal-200/90 bg-teal-100 text-teal-700 shadow-sm dark:border-teal-400/20 dark:bg-teal-500/15 dark:text-teal-300",
-  "border border-orange-200/90 bg-orange-100 text-orange-700 shadow-sm dark:border-orange-400/20 dark:bg-orange-500/15 dark:text-orange-300",
-  "border border-indigo-200/90 bg-indigo-100 text-indigo-700 shadow-sm dark:border-indigo-400/20 dark:bg-indigo-500/15 dark:text-indigo-300",
+  "border border-[#D5E6F1] bg-[#D5E6F1] text-[#036499] shadow-sm",
+  "border border-[#D1FAE5] bg-[#D1FAE5] text-[#047857] shadow-sm",
+  "border border-[#FEF3C7] bg-[#FEF3C7] text-[#B45309] shadow-sm",
+  "border border-[#EDE9FE] bg-[#EDE9FE] text-[#6D28D9] shadow-sm",
+  "border border-[#FFE4E6] bg-[#FFE4E6] text-[#BE123C] shadow-sm",
+  "border border-[#CCFBF1] bg-[#CCFBF1] text-[#0F766E] shadow-sm",
+  "border border-[#FFEDD5] bg-[#FFEDD5] text-[#C2410C] shadow-sm",
+  "border border-[#E0E7FF] bg-[#E0E7FF] text-[#4338CA] shadow-sm",
 ];
 const filterTagSelectedColorClasses = [
   "border border-[#036499] bg-[#036499] text-[#D5E6F1] shadow-sm",
-  "border border-emerald-700 bg-emerald-700 text-emerald-100 shadow-sm",
-  "border border-amber-700 bg-amber-700 text-amber-100 shadow-sm",
-  "border border-violet-700 bg-violet-700 text-violet-100 shadow-sm",
-  "border border-rose-700 bg-rose-700 text-rose-100 shadow-sm",
-  "border border-teal-700 bg-teal-700 text-teal-100 shadow-sm",
-  "border border-orange-700 bg-orange-700 text-orange-100 shadow-sm",
-  "border border-indigo-700 bg-indigo-700 text-indigo-100 shadow-sm",
+  "border border-[#047857] bg-[#047857] text-[#D1FAE5] shadow-sm",
+  "border border-[#B45309] bg-[#B45309] text-[#FEF3C7] shadow-sm",
+  "border border-[#6D28D9] bg-[#6D28D9] text-[#EDE9FE] shadow-sm",
+  "border border-[#BE123C] bg-[#BE123C] text-[#FFE4E6] shadow-sm",
+  "border border-[#0F766E] bg-[#0F766E] text-[#CCFBF1] shadow-sm",
+  "border border-[#C2410C] bg-[#C2410C] text-[#FFEDD5] shadow-sm",
+  "border border-[#4338CA] bg-[#4338CA] text-[#E0E7FF] shadow-sm",
 ];
 
 const toFaDigits = (value = "") => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
