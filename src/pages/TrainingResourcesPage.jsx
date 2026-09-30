@@ -341,6 +341,10 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       .filter(Boolean);
     return [...new Set(categoryNames)].map((label) => ({ id: label, label }));
   }, [categories, isLibrary]);
+  const libraryTagColorById = useMemo(
+    () => new Map(filterTags.map((tag, index) => [String(tag.id), filterTagColorClasses[index % filterTagColorClasses.length]])),
+    [filterTags]
+  );
 
   const toggleFilterTag = (id) => setFilterTagIds((previous) => {
     const value = String(id);
@@ -432,7 +436,11 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
                       <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
-                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{isLibrary ? item.libraryTitle || "—" : item.category || "—"}</td>
+                      <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
+                        {isLibrary ? (
+                          item.libraryTitle ? <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${libraryTagColorById.get(String(item.libraryId)) || "border border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"}`}>{item.libraryTitle}</span> : "—"
+                        ) : item.category || "—"}
+                      </td>
                       {!isLibrary && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button></div></td>}
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><FileLinks files={item.files} onOpen={isLibrary ? undefined : recordTrainingInteraction} /></td>
                     </tr>
@@ -441,7 +449,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
               </table>
             </div>
             <div className="grid gap-3 p-3 md:hidden">
-              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : filteredItems.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : filteredItems.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? <span className="min-w-0 truncate text-xs text-neutral-500">{item.libraryTitle || "—"}</span> : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} onOpen={isLibrary ? undefined : recordTrainingInteraction} /></div></div>)}
+              {loading ? <div className="py-6 text-center text-sm text-neutral-500">در حال دریافت...</div> : filteredItems.length === 0 ? <div className="py-6 text-center text-sm text-neutral-500">{items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."}</div> : filteredItems.map((item, index) => <div key={item.id} className="rounded-xl border border-black/10 p-3 dark:border-white/10"><div className="flex items-center justify-between gap-2"><b className="truncate">{toFaDigits(index + 1)}. {item.title}</b><span className="shrink-0 text-xs text-neutral-500">{jalaliDate(item.createdAt)}</span></div><div className="mt-3 flex items-center justify-between gap-3">{isLibrary ? (item.libraryTitle ? <span className={`min-w-0 truncate rounded-full px-3 py-1 text-xs font-medium ${libraryTagColorById.get(String(item.libraryId)) || "border border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"}`}>{item.libraryTitle}</span> : <span className="text-xs text-neutral-500">—</span>) : <a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-xs text-sky-700 dark:text-sky-400">{shortenedLink(item.link)}</a>}<FileLinks files={item.files} onOpen={isLibrary ? undefined : recordTrainingInteraction} /></div></div>)}
             </div>
           </div>
         </div>
