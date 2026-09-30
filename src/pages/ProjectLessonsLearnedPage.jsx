@@ -153,6 +153,8 @@ export default function ProjectLessonsLearnedPage() {
   const [to, setTo] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [filterImportances, setFilterImportances] = useState([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [tagOpen, setTagOpen] = useState(false);
   const [tagFor, setTagFor] = useState("form");
   const [tagDraft, setTagDraft] = useState([]);
@@ -233,9 +235,19 @@ export default function ProjectLessonsLearnedPage() {
     );
   }, [items, canReview, query, from, to, filterTagIds, filterImportances]);
 
+  useEffect(() => {
+    setPage(0);
+  }, [query, from, to, filterTagIds, filterImportances, rowsPerPage]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+  const safePage = Math.min(page, pageCount - 1);
+  const startIndex = safePage * rowsPerPage;
+  const endIndex = Math.min(filtered.length, startIndex + rowsPerPage);
+  const pageItems = filtered.slice(startIndex, endIndex);
+
   const allSelected =
-    filtered.length > 0 &&
-    filtered.every((item) => selectedIds.has(String(item.id)));
+    pageItems.length > 0 &&
+    pageItems.every((item) => selectedIds.has(String(item.id)));
 
   const openTags = (target) => {
     const selectedTags = target === "form" ? form.tagIds : filterTagIds;
@@ -542,16 +554,6 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </select>
                 </Field>
-                <Field text="چالش" required className="md:col-span-2">
-                  <textarea
-                    value={form.challenge}
-                    onChange={(e) =>
-                      setForm((x) => ({ ...x, challenge: e.target.value }))
-                    }
-                    className={`${input} min-h-24 py-3`}
-                    placeholder="چه اتفاقی افتاد"
-                  />
-                </Field>
                 <Field text="راهکار" required className="md:col-span-2">
                   <textarea
                     value={form.solution}
@@ -561,10 +563,20 @@ export default function ProjectLessonsLearnedPage() {
                     className={`${input} min-h-24 py-3`}
                   />
                 </Field>
+                <Field text="چالش" required className="md:col-span-4">
+                  <textarea
+                    value={form.challenge}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, challenge: e.target.value }))
+                    }
+                    className={`${input} min-h-24 py-3`}
+                    placeholder="چه اتفاقی افتاد"
+                  />
+                </Field>
               </div>
               <div className="mt-3 flex flex-wrap items-end gap-3">
                 <Field text="اثر" required>
-                  <div className="flex min-h-11 flex-wrap items-center justify-around gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
+                  <div className="flex min-h-11 flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
                     {impacts.map(([id, name]) => (
                       <label key={id} className="flex items-center gap-1 text-xs">
                         <input type="checkbox" checked={form.impacts.includes(id)} onChange={() => setForm((x) => ({ ...x, impacts: x.impacts.includes(id) ? x.impacts.filter((v) => v !== id) : [...x.impacts, id] }))} />
@@ -615,7 +627,7 @@ export default function ProjectLessonsLearnedPage() {
             </div>
           )}
           <LessonsTable
-            items={filtered}
+            items={pageItems}
             hasUnfilteredItems={items.some((item) =>
               canDisplayLesson(item, canReview),
             )}
@@ -625,11 +637,11 @@ export default function ProjectLessonsLearnedPage() {
             allSelected={allSelected}
             deleting={deleting}
             onToggleAll={() =>
-              setSelectedIds(
-                allSelected
-                  ? new Set()
-                  : new Set(filtered.map((item) => String(item.id))),
-              )
+              setSelectedIds((current) => {
+                const next = new Set(current);
+                pageItems.forEach((item) => allSelected ? next.delete(String(item.id)) : next.add(String(item.id)));
+                return next;
+              })
             }
             onToggleSelected={toggleSelected}
             onOpenItem={openView}
@@ -645,6 +657,17 @@ export default function ProjectLessonsLearnedPage() {
                 ),
               })
             }
+            pagination={{
+              total: filtered.length,
+              startIndex,
+              endIndex,
+              safePage,
+              pageCount,
+              rowsPerPage,
+              onPrevious: () => setPage((old) => Math.max(0, old - 1)),
+              onNext: () => setPage((old) => Math.min(pageCount - 1, old + 1)),
+              onRowsPerPage: (count) => { setRowsPerPage(count); setPage(0); },
+            }}
           />
         </div>
       </Card>
