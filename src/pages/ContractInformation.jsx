@@ -4760,15 +4760,11 @@ export default function ContractInformation() {
                               </div>
                             </div>
                           ) : null}
-                          <div className="min-w-0">
-                            <div className={labelCls}>توضیحات</div>
-                            <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
-                          </div>
                         </div>
 
-                        {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
-                          <div className="mt-3 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
-                            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)]">
+                        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)_minmax(220px,1fr)]">
+                          {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
+                            <>
                               <div className="min-w-0">
                                 <div className={labelCls}>نحوه محاسبه و ضرایب</div>
                                 <input value={insuranceForm.calculationMethod || ""} onChange={(e) => setInsuranceField("calculationMethod", e.target.value)} className={inputCls} type="text" />
@@ -4777,70 +4773,13 @@ export default function ContractInformation() {
                                 <div className={labelCls}>شماره مفاصا حساب</div>
                                 <input value={insuranceForm.clearanceNo || ""} onChange={(e) => setInsuranceField("clearanceNo", e.target.value)} className={inputCls} type="text" />
                               </div>
-                            </div>
-
-                            <div className="mt-3">
-                              <div className="min-w-0">
-                                <div className={labelCls}>مفاصا حساب بیمه تامین اجتماعی{isPropertyAndBuildingLease ? "" : " *"}</div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => insuranceUploadInputRef.current?.click()}
-                                    className="h-11 rounded-xl border border-black/15 bg-white px-3 text-xs font-semibold transition inline-flex items-center gap-2 hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                  >
-                                    <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                                    بارگذاری اسناد
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => openRelatedPicker("insurance")}
-                                    className="h-11 w-11 rounded-xl border border-black/15 bg-white transition inline-flex items-center justify-center hover:bg-black/[0.04] dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800"
-                                    aria-label="انتخاب سند مرتبط"
-                                    title="انتخاب سند مرتبط"
-                                  >
-                                    <img src="/images/icons/asnad-mortabet.svg" alt="" className="w-5 h-5 dark:invert" />
-                                  </button>
-                                  <input
-                                    ref={insuranceUploadInputRef}
-                                    type="file"
-                                    multiple
-                                    accept=".pdf,image/*,.xls,.xlsx,.doc,.docx"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      addInsuranceClearanceFiles(e.target.files);
-                                      e.target.value = "";
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {insuranceForm.clearanceFiles.length ? (
-                              <div className="mt-3 grid grid-cols-1 gap-2">
-                                {insuranceForm.clearanceFiles.map((file, index) => (
-                                  <div
-                                    key={file.id || `${file.name}_${index}`}
-                                    className="flex items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-                                  >
-                                    <div className="min-w-0">
-                                      <div className="truncate text-sm font-semibold">{file.name || `فایل ${toFaDigits(index + 1)}`}</div>
-                                      <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{toFaDigits(formatBytes(file.size || 0))}</div>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeInsuranceClearanceFile(file.id)}
-                                      className={`${iconBtnCls} !h-10 !w-10`}
-                                      aria-label="حذف فایل"
-                                      title="حذف فایل"
-                                    >
-                                      <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5 dark:invert" />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null}
+                            </>
+                          ) : null}
+                          <div className="min-w-0">
+                            <div className={labelCls}>توضیحات</div>
+                            <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
                           </div>
-                        ) : null}
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
