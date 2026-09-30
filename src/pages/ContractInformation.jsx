@@ -4693,7 +4693,7 @@ export default function ContractInformation() {
                   ) : activeContractTab === "insurance" ? (
                     <div className="space-y-4 p-3 sm:p-4">
                       <div>
-                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(140px,0.5fr)_minmax(170px,0.5fr)_minmax(220px,0.8fr)_minmax(280px,1.2fr)]">
+                        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(140px,0.5fr)_minmax(170px,0.5fr)_minmax(220px,0.8fr)_minmax(180px,0.65fr)]">
                           <div className="min-w-0">
                             <div className={labelCls}>ردیف پیمان{isPropertyAndBuildingLease ? "" : " *"}</div>
                             <input
@@ -4760,26 +4760,30 @@ export default function ContractInformation() {
                               </div>
                             </div>
                           ) : null}
+                          {!isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
+                            <div className="min-w-0">
+                              <div className={labelCls}>توضیحات</div>
+                              <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
+                            </div>
+                          ) : null}
                         </div>
 
-                        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)_minmax(220px,1fr)]">
-                          {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
-                            <>
-                              <div className="min-w-0">
-                                <div className={labelCls}>نحوه محاسبه و ضرایب</div>
-                                <input value={insuranceForm.calculationMethod || ""} onChange={(e) => setInsuranceField("calculationMethod", e.target.value)} className={inputCls} type="text" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className={labelCls}>شماره مفاصا حساب</div>
-                                <input value={insuranceForm.clearanceNo || ""} onChange={(e) => setInsuranceField("clearanceNo", e.target.value)} className={inputCls} type="text" />
-                              </div>
-                            </>
-                          ) : null}
-                          <div className="min-w-0">
-                            <div className={labelCls}>توضیحات</div>
-                            <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
+                        {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
+                          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)_minmax(220px,1fr)]">
+                            <div className="min-w-0">
+                              <div className={labelCls}>نحوه محاسبه و ضرایب</div>
+                              <input value={insuranceForm.calculationMethod || ""} onChange={(e) => setInsuranceField("calculationMethod", e.target.value)} className={inputCls} type="text" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className={labelCls}>شماره مفاصا حساب</div>
+                              <input value={insuranceForm.clearanceNo || ""} onChange={(e) => setInsuranceField("clearanceNo", e.target.value)} className={inputCls} type="text" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className={labelCls}>توضیحات</div>
+                              <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
+                            </div>
                           </div>
-                        </div>
+                        ) : null}
                       </div>
 
                       <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
