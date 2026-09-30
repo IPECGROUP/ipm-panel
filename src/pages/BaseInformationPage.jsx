@@ -81,7 +81,12 @@ export default function BaseInformationPage() {
 {activeKnowledgeTab === "projectLessons" ? (
   <div className="space-y-4">
     <BaseOptionsTable title="دسته‌بندی درس‌آموخته" endpoint="/api/base/project-lesson-categories" />
-    <BaseOptionsTable title="توضیح" endpoint="/api/base/project-lesson-descriptions" />
+    <BaseOptionsTable
+      title="توضیح"
+      endpoint="/api/base/project-lesson-descriptions"
+      relatedOptionsEndpoint="/api/base/project-lesson-categories"
+      relatedFieldLabel="دسته‌بندی درس‌آموخته"
+    />
   </div>
 ) : activeKnowledgeTab === "trainingResources" ? (
                 <BaseOptionsTable title="دسته‌بندی" endpoint="/api/base/training-resource-categories" />

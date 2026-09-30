@@ -5,12 +5,15 @@ import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 const inputClass = "h-10 w-full rounded-2xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5";
 const checkboxClass = "h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200";
 
-export default function BaseOptionsTable({ title, endpoint }) {
+export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoint, relatedFieldLabel = "دسته‌بندی" }) {
   const [items, setItems] = useState([]);
+  const [relatedItems, setRelatedItems] = useState([]);
   const [newTitle, setNewTitle] = useState("");
+  const [newRelatedId, setNewRelatedId] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [editingId, setEditingId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [editingRelatedId, setEditingRelatedId] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -36,6 +39,19 @@ export default function BaseOptionsTable({ title, endpoint }) {
   }, [endpoint]);
 
   useEffect(() => {
+    if (!relatedOptionsEndpoint) return undefined;
+    let active = true;
+    fetch(relatedOptionsEndpoint, { credentials: "include" })
+      .then((response) => response.json().then((data) => ({ response, data })))
+      .then(({ response, data }) => {
+        if (!response.ok) throw new Error(data.error || "دریافت اطلاعات انجام نشد.");
+        if (active) setRelatedItems(data.items || []);
+      })
+      .catch((err) => { if (active) setError(err.message); });
+    return () => { active = false; };
+  }, [relatedOptionsEndpoint]);
+
+  useEffect(() => {
     if (!menuOpen) return undefined;
     const close = (event) => { if (!menuRef.current?.contains(event.target)) setMenuOpen(false); };
     const escape = (event) => { if (event.key === "Escape") setMenuOpen(false); };
@@ -44,11 +60,20 @@ export default function BaseOptionsTable({ title, endpoint }) {
     return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!relatedOptionsEndpoint || !editingId) return;
+    const item = items.find((entry) => entry.id === editingId);
+    setEditingRelatedId(item?.categoryId ? String(item.categoryId) : "");
+  }, [editingId, items, relatedOptionsEndpoint]);
+
   const add = async (event) => {
     event.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || (relatedOptionsEndpoint && !newRelatedId)) return;
     setBusy(true); setError("");
-    try { const data = await api({ method: "POST", body: JSON.stringify({ title: newTitle.trim() }) }); setItems((old) => [...old, data.item]); setNewTitle(""); }
+    try {
+      const data = await api({ method: "POST", body: JSON.stringify({ title: newTitle.trim(), categoryId: newRelatedId || undefined }) });
+      setItems((old) => [...old, data.item]); setNewTitle(""); setNewRelatedId("");
+    }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
@@ -56,7 +81,10 @@ export default function BaseOptionsTable({ title, endpoint }) {
   const saveEdit = async () => {
     if (!editingTitle.trim()) return;
     setBusy(true); setError("");
-    try { const data = await api({ method: "PATCH", body: JSON.stringify({ id: editingId, title: editingTitle.trim() }) }); setItems((old) => old.map((item) => item.id === data.item.id ? data.item : item)); setEditingId(null); }
+    try {
+      const data = await api({ method: "PATCH", body: JSON.stringify({ id: editingId, title: editingTitle.trim(), categoryId: editingRelatedId || undefined }) });
+      setItems((old) => old.map((item) => item.id === data.item.id ? data.item : item)); setEditingId(null);
+    }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
@@ -82,8 +110,12 @@ export default function BaseOptionsTable({ title, endpoint }) {
   return (
     <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
       <h2 className="mb-4 text-sm font-bold">{title}</h2>
-      <form onSubmit={add} className="grid grid-cols-[1fr_auto] items-center gap-3" dir="rtl">
+      <form onSubmit={add} className={`grid items-center gap-3 ${relatedOptionsEndpoint ? "grid-cols-[1fr_220px_auto]" : "grid-cols-[1fr_auto]"}`} dir="rtl">
         <input className={inputClass} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder={`${title}...`} />
+        {relatedOptionsEndpoint && <select className={inputClass} value={newRelatedId} onChange={(event) => setNewRelatedId(event.target.value)} required>
+          <option value="">{relatedFieldLabel} را انتخاب کنید</option>
+          {relatedItems.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+        </select>}
         <button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100" aria-label={`افزودن ${title}`}><img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5" /></button>
       </form>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
@@ -91,10 +123,10 @@ export default function BaseOptionsTable({ title, endpoint }) {
       <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="relative overflow-x-auto" dir="ltr">
           <table dir="rtl" className="w-full min-w-[620px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
-            <colgroup><col style={{ width: 48 }} /><col style={{ width: 80 }} /><col /><col style={{ width: 96 }} /></colgroup>
+            <colgroup><col style={{ width: 48 }} /><col style={{ width: 80 }} />{relatedOptionsEndpoint && <col style={{ width: "35%" }} />}<col /><col style={{ width: 96 }} /></colgroup>
             <thead><tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800">
               <th><input type="checkbox" className={checkboxClass} checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(items.map((item) => String(item.id))))} aria-label="انتخاب همه" /></th>
-              <th>#</th><th>عنوان</th>
+              <th>#</th>{relatedOptionsEndpoint && <th>{relatedFieldLabel}</th>}<th>عنوان</th>
               <th className="relative"><button type="button" onClick={openMenu} className="absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" aria-label="عملیات"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button></th>
             </tr></thead>
             <tbody className="text-[13px] [&>tr]:h-10">
@@ -103,6 +135,7 @@ export default function BaseOptionsTable({ title, endpoint }) {
                 return <tr key={item.id} className="bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                   <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className={checkboxClass} checked={selectedIds.has(String(item.id))} onChange={() => toggle(item.id)} /></td>
                   <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{index + 1}</td>
+                  {relatedOptionsEndpoint && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <select className="h-7 w-full rounded-xl border border-black/15 bg-white px-2 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingRelatedId} onChange={(event) => setEditingRelatedId(event.target.value)}>{relatedItems.map((related) => <option key={related.id} value={related.id}>{related.title}</option>)}</select> : item.categoryTitle || "—"}</td>}
                   <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input autoFocus className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") saveEdit(); if (event.key === "Escape") setEditingId(null); }} /> : item.title}</td>
                   <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{editing && <div className="flex items-center justify-start gap-1" dir="ltr"><RowActionIconBtn action="cancel" onClick={() => setEditingId(null)} size={30} iconSize={14} /><RowActionIconBtn action="save" onClick={saveEdit} disabled={busy} size={30} iconSize={15} /></div>}</td>
                 </tr>;
