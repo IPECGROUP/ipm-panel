@@ -596,15 +596,6 @@ export default function ProjectLessonsLearnedPage() {
                   <span className="ml-1 shrink-0 font-bold text-neutral-900 dark:text-white">شامل:</span>
                   <span className="truncate">{selectedCategoryDescription || "—"}</span>
                 </div>
-                <Field text="راهکار" required className="md:col-span-2">
-                  <textarea
-                    value={form.solution}
-                    onChange={(e) =>
-                      setForm((x) => ({ ...x, solution: e.target.value }))
-                    }
-                    className={`${input} min-h-24 py-3`}
-                  />
-                </Field>
                 <Field text="چالش" required className="md:col-span-2">
                   <textarea
                     value={form.challenge}
@@ -612,7 +603,17 @@ export default function ProjectLessonsLearnedPage() {
                       setForm((x) => ({ ...x, challenge: e.target.value }))
                     }
                     className={`${input} min-h-24 py-3`}
-                    placeholder="چه اتفاقی افتاد"
+                    placeholder="چالش یا مسئله ای که شرکت با آن رو به رو شد را شرح دهید"
+                  />
+                </Field>
+                <Field text="راهکار" required className="md:col-span-2">
+                  <textarea
+                    value={form.solution}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, solution: e.target.value }))
+                    }
+                    className={`${input} min-h-24 py-3`}
+                    placeholder="اقدام و فعالیت های لازم برای رفع چالش یا حل مسئله را شرح دهید"
                   />
                 </Field>
               </div>
