@@ -108,6 +108,7 @@ const EMPTY_GUARANTEE_ROW = {
 };
 
 const SOCIAL_INSURANCE_CLEARANCE_STATUS = "مفاصا حساب دریافت شده و خاتمه قرارداد";
+const SOCIAL_INSURANCE_RECEIVED_CLEARANCE_STATUS = "دریافت مفاصا حساب و خاتمه قرارداد";
 const SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS = "مفاصا حساب";
 
 const LEGACY_SOCIAL_INSURANCE_STATUS_OPTIONS = [
@@ -121,7 +122,7 @@ const LEGACY_SOCIAL_INSURANCE_STATUS_OPTIONS = [
 ];
 
 function isSocialInsuranceClearanceStatus(value) {
-  return [SOCIAL_INSURANCE_CLEARANCE_STATUS, SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS].includes(String(value || ""));
+  return [SOCIAL_INSURANCE_CLEARANCE_STATUS, SOCIAL_INSURANCE_RECEIVED_CLEARANCE_STATUS, SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS].includes(String(value || ""));
 }
 
 function effectiveContractEndDate(row) {
@@ -4759,11 +4760,15 @@ export default function ContractInformation() {
                               </div>
                             </div>
                           ) : null}
+                          <div className="min-w-0">
+                            <div className={labelCls}>توضیحات</div>
+                            <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
+                          </div>
                         </div>
 
                         {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
                           <div className="mt-3 rounded-2xl border border-black/10 bg-black/[0.02] p-3 dark:border-neutral-700 dark:bg-white/[0.03]">
-                            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)_minmax(220px,1fr)]">
+                            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)]">
                               <div className="min-w-0">
                                 <div className={labelCls}>نحوه محاسبه و ضرایب</div>
                                 <input value={insuranceForm.calculationMethod || ""} onChange={(e) => setInsuranceField("calculationMethod", e.target.value)} className={inputCls} type="text" />
@@ -4771,10 +4776,6 @@ export default function ContractInformation() {
                               <div className="min-w-0">
                                 <div className={labelCls}>شماره مفاصا حساب</div>
                                 <input value={insuranceForm.clearanceNo || ""} onChange={(e) => setInsuranceField("clearanceNo", e.target.value)} className={inputCls} type="text" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className={labelCls}>توضیحات</div>
-                                <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
                               </div>
                             </div>
 
