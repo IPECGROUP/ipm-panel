@@ -570,10 +570,19 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </select>
                 </Field>
-                <div className="flex min-h-11 items-center self-end rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-700 md:col-span-2 dark:border-white/15 dark:bg-white/5 dark:text-neutral-200">
+                <div className="flex min-h-11 items-center self-end px-1 text-sm text-neutral-700 md:col-span-2 dark:text-neutral-200">
                   <span className="ml-1 shrink-0 font-bold text-neutral-900 dark:text-white">شامل:</span>
                   <span className="truncate">{selectedCategoryDescription || "—"}</span>
                 </div>
+                <Field text="راهکار" required className="md:col-span-2">
+                  <textarea
+                    value={form.solution}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, solution: e.target.value }))
+                    }
+                    className={`${input} min-h-24 py-3`}
+                  />
+                </Field>
                 <Field text="چالش" required className="md:col-span-2">
                   <textarea
                     value={form.challenge}
@@ -582,15 +591,6 @@ export default function ProjectLessonsLearnedPage() {
                     }
                     className={`${input} min-h-24 py-3`}
                     placeholder="چه اتفاقی افتاد"
-                  />
-                </Field>
-                <Field text="راهکار" required className="md:col-span-4">
-                  <textarea
-                    value={form.solution}
-                    onChange={(e) =>
-                      setForm((x) => ({ ...x, solution: e.target.value }))
-                    }
-                    className={`${input} min-h-24 py-3`}
                   />
                 </Field>
               </div>
