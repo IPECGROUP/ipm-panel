@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 
 const inputClass = "h-10 w-full rounded-2xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5";
@@ -27,9 +28,11 @@ export default function ProjectLessonCategoryDescriptionsTable() {
   const [error, setError] = useState("");
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [editingId, setEditingId] = useState(null);
   const [editingCategoryTitle, setEditingCategoryTitle] = useState("");
   const [editingDescriptionTitle, setEditingDescriptionTitle] = useState("");
+  const menuRef = useRef(null);
 
   const loadCategories = () => request(categoryEndpoint).then((data) => setCategories(data.items || []));
   const loadDescriptions = () => request(descriptionEndpoint).then((data) => setDescriptions(data.items || []));
@@ -43,6 +46,15 @@ export default function ProjectLessonCategoryDescriptionsTable() {
     window.addEventListener("base-options-updated", refresh);
     return () => window.removeEventListener("base-options-updated", refresh);
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const close = (event) => { if (!menuRef.current?.contains(event.target)) setMenuOpen(false); };
+    const escape = (event) => { if (event.key === "Escape") setMenuOpen(false); };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
+  }, [menuOpen]);
 
   const descriptionsByCategory = useMemo(() => {
     const result = new Map();
@@ -140,6 +152,13 @@ export default function ProjectLessonCategoryDescriptionsTable() {
     finally { setBusy(false); }
   };
 
+  const openMenu = (event) => {
+    if (menuOpen) return setMenuOpen(false);
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMenuPosition({ top: rect.bottom + 8, left: Math.max(8, rect.right - 240) });
+    setMenuOpen(true);
+  };
+
   return (
     <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900" dir="rtl">
       <h2 className="mb-4 text-sm font-bold">دسته‌بندی درس‌آموخته</h2>
@@ -163,7 +182,7 @@ export default function ProjectLessonCategoryDescriptionsTable() {
         <div className="overflow-x-auto" dir="ltr">
           <table dir="rtl" className="w-full min-w-[700px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
             <colgroup><col style={{ width: 48 }} /><col style={{ width: 80 }} /><col style={{ width: "40%" }} /><col /><col style={{ width: 96 }} /></colgroup>
-            <thead><tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(categories.map((category) => String(category.id))))} aria-label="انتخاب همه" /></th><th>#</th><th>دسته‌بندی درس‌آموخته</th><th>توضیح</th><th className="relative"><button type="button" onClick={() => setMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" aria-label="عملیات"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>{menuOpen && <div className="absolute left-1 top-10 z-20 w-48 rounded-xl border border-black/10 bg-white p-1.5 text-right shadow-xl dark:border-white/10 dark:bg-neutral-900"><button type="button" disabled={!selectedCategory || busy} onClick={startEdit} className="w-full rounded-lg px-3 py-2 text-right text-sm hover:bg-amber-50 disabled:opacity-40 dark:hover:bg-amber-500/10">ویرایش</button><button type="button" disabled={!selectedIds.size || busy} onClick={deleteSelected} className="w-full rounded-lg px-3 py-2 text-right text-sm text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-300 dark:hover:bg-red-500/10">حذف موارد انتخاب‌شده</button></div>}</th></tr></thead>
+            <thead><tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(categories.map((category) => String(category.id))))} aria-label="انتخاب همه" /></th><th>#</th><th>دسته‌بندی درس‌آموخته</th><th>توضیح</th><th><button type="button" onClick={openMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" aria-label="عملیات"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button></th></tr></thead>
             <tbody className="text-[13px] [&>tr]:h-10">
               {categories.map((category, index) => {
                 const editing = String(editingId) === String(category.id);
@@ -173,6 +192,14 @@ export default function ProjectLessonCategoryDescriptionsTable() {
           </table>
         </div>
       </div>
+      {menuOpen && createPortal(
+        <div ref={menuRef} className="fixed z-[10001] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={menuPosition} dir="rtl">
+          <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${selectedIds.size} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+          <button type="button" disabled={!selectedCategory || busy} onClick={startEdit} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="flex-1 text-sm font-semibold">ویرایش</span></button>
+          <button type="button" disabled={!selectedIds.size || busy} onClick={deleteSelected} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button>
+        </div>,
+        document.body,
+      )}
     </section>
   );
 }
