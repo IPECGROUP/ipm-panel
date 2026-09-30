@@ -19,6 +19,16 @@ const filterTagColorClasses = [
   "border border-orange-200/90 bg-orange-100 text-orange-700 shadow-sm dark:border-orange-400/20 dark:bg-orange-500/15 dark:text-orange-300",
   "border border-indigo-200/90 bg-indigo-100 text-indigo-700 shadow-sm dark:border-indigo-400/20 dark:bg-indigo-500/15 dark:text-indigo-300",
 ];
+const filterTagSelectedColorClasses = [
+  "border border-[#036499] bg-[#036499] text-[#D5E6F1] shadow-sm",
+  "border border-emerald-700 bg-emerald-700 text-emerald-100 shadow-sm",
+  "border border-amber-700 bg-amber-700 text-amber-100 shadow-sm",
+  "border border-violet-700 bg-violet-700 text-violet-100 shadow-sm",
+  "border border-rose-700 bg-rose-700 text-rose-100 shadow-sm",
+  "border border-teal-700 bg-teal-700 text-teal-100 shadow-sm",
+  "border border-orange-700 bg-orange-700 text-orange-100 shadow-sm",
+  "border border-indigo-700 bg-indigo-700 text-indigo-100 shadow-sm",
+];
 
 const toFaDigits = (value = "") => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 const letterIdOf = (letter) => String(letter?.id ?? letter?.letterId ?? letter?.letter_id ?? "");
@@ -412,7 +422,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
             </button>
           </div>
 
-          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags tags={filterTags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} onToggleTag={toggleFilterTag} />}
+          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags showTagPicker={!isLibrary} tags={filterTags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} onToggleTag={toggleFilterTag} />}
 
           {formOpen && (
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
@@ -430,8 +440,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
           {notice && <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{notice}</div>}
 
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-            <div className="hidden max-h-[58vh] overflow-auto md:block" dir="ltr">
-              <table dir="rtl" className="w-full min-w-[900px] table-fixed text-sm [&_td]:text-center [&_th]:whitespace-nowrap [&_th]:text-center">
+            <div className={`hidden overflow-auto md:block ${isLibrary ? "" : "max-h-[58vh]"}`} dir="ltr">
+              <table dir="rtl" className={`w-full table-fixed text-sm [&_td]:text-center [&_th]:text-center ${isLibrary ? "min-w-[700px] [&_th]:!py-2 [&_td]:!py-0" : "min-w-[900px] [&_th]:whitespace-nowrap"}`}>
                 {isLibrary ? <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 140 }} /><col /><col style={{ width: 240 }} /><col style={{ width: 190 }} /></colgroup> : <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 220 }} /><col style={{ width: 150 }} /><col /><col style={{ width: 170 }} /></colgroup>}
                 <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
                   <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 dark:bg-neutral-800"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allSelected} onChange={toggleAll} aria-label="انتخاب همه" /></th>
@@ -440,7 +450,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                 </tr></thead>
                 <tbody className="text-[13px]">
                   {loading ? <EmptyRow colSpan={isLibrary ? 6 : 7} text="در حال دریافت..." /> : filteredItems.length === 0 ? <EmptyRow colSpan={isLibrary ? 6 : 7} text={items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."} /> : filteredItems.map((item, index) => (
-                    <tr key={item.id} className="h-11 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+                    <tr key={item.id} className={`${isLibrary ? "h-9" : "h-11"} bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10`}>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ${item.title}`} /></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
@@ -471,7 +481,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   );
 }
 
-function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, setToDate, onExport, canExport, showTags, tags, selectedTagIds, onOpenTags, onToggleTag }) {
+function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, setToDate, onExport, canExport, showTags, showTagPicker, tags, selectedTagIds, onOpenTags, onToggleTag }) {
   return (
     <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
       <div className="flex flex-wrap items-end gap-2">
@@ -496,9 +506,10 @@ function ResourceFilterBar({ query, setQuery, fromDate, setFromDate, toDate, set
         <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
           {tags.map((tag, index) => {
             const selected = selectedTagIds.map(String).includes(String(tag.id));
-            return <button key={tag.id} type="button" onClick={() => onToggleTag(tag.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${filterTagColorClasses[index % filterTagColorClasses.length]} ${selected ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{tag.label}</button>;
+            const colorIndex = index % filterTagColorClasses.length;
+            return <button key={tag.id} type="button" onClick={() => onToggleTag(tag.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${selected ? filterTagSelectedColorClasses[colorIndex] : `${filterTagColorClasses[colorIndex]} hover:brightness-95`}`}>{tag.label}</button>;
           })}
-          <button type="button" onClick={onOpenTags} className="relative grid h-9 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب برای فیلتر" aria-label="انتخاب برچسب برای فیلتر"><img src="/images/icons/tags.svg" alt="" className="h-5 w-5 dark:invert" />{selectedTagIds.length > 0 && <CountBadge value={selectedTagIds.length} />}</button>
+          {showTagPicker ? <button type="button" onClick={onOpenTags} className="relative grid h-9 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب برچسب برای فیلتر" aria-label="انتخاب برچسب برای فیلتر"><img src="/images/icons/tags.svg" alt="" className="h-5 w-5 dark:invert" />{selectedTagIds.length > 0 && <CountBadge value={selectedTagIds.length} />}</button> : null}
         </div>
       </div>}
     </div>
