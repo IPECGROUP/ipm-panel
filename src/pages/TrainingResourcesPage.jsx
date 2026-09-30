@@ -440,8 +440,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
           {notice && <div className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">{notice}</div>}
 
           <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-            <div className={`hidden overflow-auto md:block ${isLibrary ? "" : "max-h-[58vh]"}`} dir="ltr">
-              <table dir="rtl" className={`w-full table-fixed text-sm [&_td]:text-center [&_th]:text-center ${isLibrary ? "min-w-[700px] [&_th]:!py-2 [&_td]:!py-0" : "min-w-[900px] [&_th]:whitespace-nowrap"}`}>
+            <div className="hidden overflow-auto md:block" dir="ltr">
+              <table dir="rtl" className="w-full min-w-[700px] table-fixed text-sm [&_td]:text-center [&_th]:text-center [&_th]:!py-2 [&_td]:!py-0">
                 {isLibrary ? <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 140 }} /><col /><col style={{ width: 240 }} /><col style={{ width: 190 }} /></colgroup> : <colgroup><col style={{ width: 48 }} /><col style={{ width: 70 }} /><col style={{ width: 130 }} /><col style={{ width: 220 }} /><col style={{ width: 150 }} /><col /><col style={{ width: 170 }} /></colgroup>}
                 <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
                   <th className="sticky top-0 z-20 bg-neutral-200 px-3 py-2 dark:bg-neutral-800"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allSelected} onChange={toggleAll} aria-label="انتخاب همه" /></th>
@@ -450,7 +450,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                 </tr></thead>
                 <tbody className="text-[13px]">
                   {loading ? <EmptyRow colSpan={isLibrary ? 6 : 7} text="در حال دریافت..." /> : filteredItems.length === 0 ? <EmptyRow colSpan={isLibrary ? 6 : 7} text={items.length ? "موردی مطابق فیلتر پیدا نشد." : isLibrary ? "هنوز موردی در کتابخانه ثبت نشده است." : "هنوز منبع آموزشی ثبت نشده است."} /> : filteredItems.map((item, index) => (
-                    <tr key={item.id} className={`${isLibrary ? "h-9" : "h-11"} bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10`}>
+                    <tr key={item.id} className="h-9 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ${item.title}`} /></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(index + 1)}</td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{jalaliDate(item.createdAt)}</td>
