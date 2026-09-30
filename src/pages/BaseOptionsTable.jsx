@@ -110,12 +110,12 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
   return (
     <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
       <h2 className="mb-4 text-sm font-bold">{title}</h2>
-      <form onSubmit={add} className={`grid items-center gap-3 ${relatedOptionsEndpoint ? "grid-cols-[1fr_220px_auto]" : "grid-cols-[1fr_auto]"}`} dir="rtl">
-        <input className={inputClass} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder={`${title}...`} />
+      <form onSubmit={add} className={`grid items-center gap-3 ${relatedOptionsEndpoint ? "grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_auto]" : "grid-cols-[1fr_auto]"}`} dir="rtl">
         {relatedOptionsEndpoint && <select className={inputClass} value={newRelatedId} onChange={(event) => setNewRelatedId(event.target.value)} required>
           <option value="">{relatedFieldLabel} را انتخاب کنید</option>
           {relatedItems.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>}
+        <input className={inputClass} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder={`${title}...`} />
         <button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100" aria-label={`افزودن ${title}`}><img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5" /></button>
       </form>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
