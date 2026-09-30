@@ -650,9 +650,9 @@ export default function ProjectLessonsLearnedPage() {
                   title="افزودن به جدول"
                 >
                   <img
-                    src="/images/icons/afzodan.svg"
+                    src="/images/icons/check.svg"
                     alt=""
-                    className="h-4 w-4 invert dark:invert-0"
+                    className="h-5 w-5 invert dark:invert-0"
                   />
                 </button>
               </div>
@@ -1278,15 +1278,7 @@ function FilterBar({
       <div className="mt-2">
         <div className={label}>برچسب‌ها</div>
         <div className="flex flex-wrap items-center gap-2">
-          {[
-            ["low", "کم", "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20"],
-            ["medium", "متوسط", "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20"],
-            ["high", "زیاد", "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20"],
-          ].map(([id, title, tone]) => {
-            const active = selectedImportances.includes(id);
-            return <button key={id} type="button" onClick={() => onToggleImportance(id)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${tone} ${active ? "ring-2 ring-black/70 dark:ring-white/70" : "opacity-75 hover:opacity-100"}`} aria-pressed={active}>{title}</button>;
-          })}
-          {categories.slice(0, 2).map((category) => {
+          {categories.map((category) => {
             const categoryTitle = String(category.title || "").trim();
             const active = selected.map(String).includes(categoryTitle);
             return categoryTitle ? <button key={category.id} type="button" onClick={() => onToggleCategory(categoryTitle)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{categoryTitle}</button> : null;
