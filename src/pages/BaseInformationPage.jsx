@@ -4,6 +4,7 @@ import BaseCurrenciesPage from "./BaseCurrenciesPage.jsx";
 import BaseOptionsTable from "./BaseOptionsTable.jsx";
 import ContractManagementSection from "./ContractManagementSection.jsx";
 import FinancialManagementSection from "./FinancialManagementSection.jsx";
+import ProjectLessonCategoryDescriptionsTable from "./ProjectLessonCategoryDescriptionsTable.jsx";
 
 const tabs = [
   { id: "documents", label: "مدیریت اسناد" },
@@ -79,15 +80,7 @@ export default function BaseInformationPage() {
               </div>
 
 {activeKnowledgeTab === "projectLessons" ? (
-  <div className="space-y-4">
-    <BaseOptionsTable title="دسته‌بندی درس‌آموخته" endpoint="/api/base/project-lesson-categories" />
-    <BaseOptionsTable
-      title="توضیح"
-      endpoint="/api/base/project-lesson-descriptions"
-      relatedOptionsEndpoint="/api/base/project-lesson-categories"
-      relatedFieldLabel="دسته‌بندی درس‌آموخته"
-    />
-  </div>
+  <ProjectLessonCategoryDescriptionsTable />
 ) : activeKnowledgeTab === "trainingResources" ? (
                 <BaseOptionsTable title="دسته‌بندی" endpoint="/api/base/training-resource-categories" />
               ) : (

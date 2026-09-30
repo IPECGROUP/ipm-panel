@@ -231,6 +231,24 @@ export default function ProjectLessonsLearnedPage() {
       .catch(() => setLessonDescriptions([]));
   }, [authLoading, headers]);
 
+  useEffect(() => {
+    const refreshBaseOptions = (event) => {
+      const endpoint = event.detail?.endpoint;
+      if (endpoint === "/api/base/project-lesson-categories") {
+        api("/base/project-lesson-categories", { headers })
+          .then((data) => setLessonCategories(Array.isArray(data.items) ? data.items : []))
+          .catch(() => {});
+      }
+      if (endpoint === "/api/base/project-lesson-descriptions") {
+        api("/base/project-lesson-descriptions", { headers })
+          .then((data) => setLessonDescriptions(Array.isArray(data.items) ? data.items : []))
+          .catch(() => {});
+      }
+    };
+    window.addEventListener("base-options-updated", refreshBaseOptions);
+    return () => window.removeEventListener("base-options-updated", refreshBaseOptions);
+  }, [headers]);
+
   const selectedCategoryDescription = useMemo(() => {
     if (!form.category) return "";
     const category = lessonCategories.find((item) => item.title === form.category);

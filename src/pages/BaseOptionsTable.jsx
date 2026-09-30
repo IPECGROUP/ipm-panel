@@ -41,14 +41,19 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
   useEffect(() => {
     if (!relatedOptionsEndpoint) return undefined;
     let active = true;
-    fetch(relatedOptionsEndpoint, { credentials: "include" })
+    const loadRelatedItems = () => fetch(relatedOptionsEndpoint, { credentials: "include" })
       .then((response) => response.json().then((data) => ({ response, data })))
       .then(({ response, data }) => {
         if (!response.ok) throw new Error(data.error || "دریافت اطلاعات انجام نشد.");
         if (active) setRelatedItems(data.items || []);
       })
       .catch((err) => { if (active) setError(err.message); });
-    return () => { active = false; };
+    const onBaseOptionsUpdated = (event) => {
+      if (event.detail?.endpoint === relatedOptionsEndpoint) loadRelatedItems();
+    };
+    loadRelatedItems();
+    window.addEventListener("base-options-updated", onBaseOptionsUpdated);
+    return () => { active = false; window.removeEventListener("base-options-updated", onBaseOptionsUpdated); };
   }, [relatedOptionsEndpoint]);
 
   useEffect(() => {
@@ -73,6 +78,7 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
     try {
       const data = await api({ method: "POST", body: JSON.stringify({ title: newTitle.trim(), categoryId: newRelatedId || undefined }) });
       setItems((old) => [...old, data.item]); setNewTitle(""); setNewRelatedId("");
+      window.dispatchEvent(new CustomEvent("base-options-updated", { detail: { endpoint } }));
     }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
@@ -84,6 +90,7 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
     try {
       const data = await api({ method: "PATCH", body: JSON.stringify({ id: editingId, title: editingTitle.trim(), categoryId: editingRelatedId || undefined }) });
       setItems((old) => old.map((item) => item.id === data.item.id ? data.item : item)); setEditingId(null);
+      window.dispatchEvent(new CustomEvent("base-options-updated", { detail: { endpoint } }));
     }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
@@ -91,7 +98,7 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
 
   const removeSelected = async () => {
     setBusy(true); setError("");
-    try { await api({ method: "DELETE", body: JSON.stringify({ ids: [...selectedIds] }) }); setItems((old) => old.filter((item) => !selectedIds.has(String(item.id)))); setSelectedIds(new Set()); setDeleteOpen(false); }
+    try { await api({ method: "DELETE", body: JSON.stringify({ ids: [...selectedIds] }) }); setItems((old) => old.filter((item) => !selectedIds.has(String(item.id)))); setSelectedIds(new Set()); setDeleteOpen(false); window.dispatchEvent(new CustomEvent("base-options-updated", { detail: { endpoint } })); }
     catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
