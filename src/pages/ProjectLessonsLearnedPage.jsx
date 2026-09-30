@@ -107,7 +107,6 @@ function isFormComplete(form) {
     form.category.trim() &&
     form.challenge.trim() &&
     form.solution.trim() &&
-    form.importance &&
     form.impacts.length &&
     form.tagIds.length,
   );
@@ -543,36 +542,6 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </select>
                 </Field>
-                <Field text="اهمیت" required>
-                  <div className="flex h-11 items-center justify-around rounded-xl border border-black/10 bg-white px-3 dark:border-white/15 dark:bg-white/5">
-                    {importance.map(([id, name]) => (
-                      <label
-                        key={id}
-                        className="flex items-center gap-1 text-xs"
-                      >
-                        <input
-                          type="radio"
-                          name="importance"
-                          checked={form.importance === id}
-                          onChange={() =>
-                            setForm((x) => ({ ...x, importance: id }))
-                          }
-                        />
-                        {name}
-                      </label>
-                    ))}
-                  </div>
-                </Field>
-                <Field text="اثر" required>
-                  <div className="flex min-h-11 flex-wrap items-center justify-around gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
-                    {impacts.map(([id, name]) => (
-                      <label key={id} className="flex items-center gap-1 text-xs">
-                        <input type="checkbox" checked={form.impacts.includes(id)} onChange={() => setForm((x) => ({ ...x, impacts: x.impacts.includes(id) ? x.impacts.filter((v) => v !== id) : [...x.impacts, id] }))} />
-                        {name}
-                      </label>
-                    ))}
-                  </div>
-                </Field>
                 <Field text="چالش" required className="md:col-span-2">
                   <textarea
                     value={form.challenge}
@@ -594,12 +563,21 @@ export default function ProjectLessonsLearnedPage() {
                 </Field>
               </div>
               <div className="mt-3 flex flex-wrap items-end gap-3">
+                <Field text="اثر" required>
+                  <div className="flex min-h-11 flex-wrap items-center justify-around gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 dark:border-white/15 dark:bg-white/5">
+                    {impacts.map(([id, name]) => (
+                      <label key={id} className="flex items-center gap-1 text-xs">
+                        <input type="checkbox" checked={form.impacts.includes(id)} onChange={() => setForm((x) => ({ ...x, impacts: x.impacts.includes(id) ? x.impacts.filter((v) => v !== id) : [...x.impacts, id] }))} />
+                        {name}
+                      </label>
+                    ))}
+                  </div>
+                </Field>
                 <Field text="برچسب‌ها" required>
                   <TagButton
                     count={form.tagIds.length}
                     onClick={() => openTags("form")}
                   />
-                  {form.importance && <span className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${form.importance === "low" ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20" : form.importance === "medium" ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20" : "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20"}`}>{importance.find(([id]) => id === form.importance)?.[1]}</span>}
                 </Field>
                 <Field text="بارگذاری">
                   <UploadButton
@@ -1248,7 +1226,6 @@ function FilterBar({
             const active = selected.map(String).includes(categoryTitle);
             return categoryTitle ? <button key={category.id} type="button" onClick={() => onToggleCategory(categoryTitle)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>{categoryTitle}</button> : null;
           })}
-          <TagButton count={selected.length} onClick={openTags} />
         </div>
       </div>
     </div>

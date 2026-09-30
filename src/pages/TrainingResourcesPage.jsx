@@ -422,7 +422,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
             </button>
           </div>
 
-          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags showTagPicker={!isLibrary} tags={filterTags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} onToggleTag={toggleFilterTag} />}
+          {!formOpen && <ResourceFilterBar query={filterQuery} setQuery={setFilterQuery} fromDate={filterFromDate} setFromDate={setFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExport={exportFilteredItems} canExport={filteredItems.length > 0} showTags showTagPicker={false} tags={filterTags} selectedTagIds={filterTagIds} onOpenTags={() => openTagPicker("filter")} onToggleTag={toggleFilterTag} />}
 
           {formOpen && (
             <div className="mb-4 overflow-x-auto rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">

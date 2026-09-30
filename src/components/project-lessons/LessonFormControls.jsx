@@ -37,7 +37,7 @@ export function UploadButton({ count = 0, uploading = false, onClick, disabled =
       title="بارگذاری فایل"
     >
       <img
-        src="/images/icons/Uplod.svg"
+        src="/images/icons/upload.svg"
         alt=""
         className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`}
       />
