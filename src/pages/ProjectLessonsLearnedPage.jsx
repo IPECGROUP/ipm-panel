@@ -203,9 +203,8 @@ export default function ProjectLessonsLearnedPage() {
       api("/tags?scope=letters", { headers }),
       api("/tags?scope=execution", { headers }),
       api("/base/project-lesson-categories", { headers }),
-      api("/base/project-lesson-descriptions", { headers }),
     ])
-      .then(([projectData, projectTags, letterTags, executionTags, categoryData, descriptionData]) => {
+      .then(([projectData, projectTags, letterTags, executionTags, categoryData]) => {
         const allProjects = Array.isArray(projectData.items)
           ? projectData.items
           : [];
@@ -220,11 +219,16 @@ export default function ProjectLessonsLearnedPage() {
         setLessonCategories(
           Array.isArray(categoryData.items) ? categoryData.items : [],
         );
+      })
+      .catch(() => {});
+
+    api("/base/project-lesson-descriptions", { headers })
+      .then((descriptionData) => {
         setLessonDescriptions(
           Array.isArray(descriptionData.items) ? descriptionData.items : [],
         );
       })
-      .catch(() => {});
+      .catch(() => setLessonDescriptions([]));
   }, [authLoading, headers]);
 
   const selectedCategoryDescription = useMemo(() => {
