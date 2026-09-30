@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 
 const inputClass = "h-10 w-full rounded-2xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5";
 
@@ -24,6 +25,11 @@ export default function ProjectLessonCategoryDescriptionsTable() {
   const [descriptionTitle, setDescriptionTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editingCategoryTitle, setEditingCategoryTitle] = useState("");
+  const [editingDescriptionTitle, setEditingDescriptionTitle] = useState("");
 
   const loadCategories = () => request(categoryEndpoint).then((data) => setCategories(data.items || []));
   const loadDescriptions = () => request(descriptionEndpoint).then((data) => setDescriptions(data.items || []));
@@ -47,6 +53,17 @@ export default function ProjectLessonCategoryDescriptionsTable() {
     });
     return result;
   }, [descriptions]);
+
+  const toggleSelected = (id) => setSelectedIds((current) => {
+    const next = new Set(current);
+    const key = String(id);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+  const allSelected = categories.length > 0 && categories.every((category) => selectedIds.has(String(category.id)));
+  const selectedCategory = selectedIds.size === 1
+    ? categories.find((category) => selectedIds.has(String(category.id)))
+    : null;
 
   const addCategory = async (event) => {
     event.preventDefault();
@@ -76,6 +93,53 @@ export default function ProjectLessonCategoryDescriptionsTable() {
     finally { setBusy(false); }
   };
 
+  const startEdit = () => {
+    if (!selectedCategory) return;
+    const linkedDescriptions = descriptions.filter((item) => String(item.categoryId) === String(selectedCategory.id));
+    setEditingId(selectedCategory.id);
+    setEditingCategoryTitle(selectedCategory.title);
+    setEditingDescriptionTitle(linkedDescriptions.map((item) => item.title).filter(Boolean).join("، "));
+    setMenuOpen(false);
+  };
+
+  const saveEdit = async () => {
+    const category = categories.find((item) => String(item.id) === String(editingId));
+    const nextCategoryTitle = editingCategoryTitle.trim();
+    const nextDescriptionTitle = editingDescriptionTitle.trim();
+    if (!category || !nextCategoryTitle) return;
+    setBusy(true); setError("");
+    try {
+      const categoryResult = await request(categoryEndpoint, { method: "PATCH", body: JSON.stringify({ id: category.id, title: nextCategoryTitle }) });
+      setCategories((items) => items.map((item) => item.id === categoryResult.item.id ? categoryResult.item : item));
+      const linkedDescriptions = descriptions.filter((item) => String(item.categoryId) === String(category.id));
+      if (nextDescriptionTitle) {
+        const firstDescription = linkedDescriptions[0];
+        const descriptionResult = firstDescription
+          ? await request(descriptionEndpoint, { method: "PATCH", body: JSON.stringify({ id: firstDescription.id, categoryId: category.id, title: nextDescriptionTitle }) })
+          : await request(descriptionEndpoint, { method: "POST", body: JSON.stringify({ categoryId: category.id, title: nextDescriptionTitle }) });
+        setDescriptions((items) => firstDescription ? items.map((item) => item.id === descriptionResult.item.id ? descriptionResult.item : item) : [...items, descriptionResult.item]);
+      }
+      setEditingId(null);
+      window.dispatchEvent(new CustomEvent("base-options-updated", { detail: { endpoint: categoryEndpoint } }));
+      window.dispatchEvent(new CustomEvent("base-options-updated", { detail: { endpoint: descriptionEndpoint } }));
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  };
+
+  const deleteSelected = async () => {
+    if (!selectedIds.size || !window.confirm(`آیا از حذف ${selectedIds.size} دسته‌بندی انتخاب‌شده مطمئن هستید؟`)) return;
+    setBusy(true); setError("");
+    try {
+      await request(categoryEndpoint, { method: "DELETE", body: JSON.stringify({ ids: [...selectedIds] }) });
+      setCategories((items) => items.filter((item) => !selectedIds.has(String(item.id))));
+      setDescriptions((items) => items.filter((item) => !selectedIds.has(String(item.categoryId))));
+      setSelectedIds(new Set()); setMenuOpen(false);
+      window.dispatchEvent(new CustomEvent("base-options-updated", { detail: { endpoint: categoryEndpoint } }));
+      window.dispatchEvent(new CustomEvent("base-options-updated", { detail: { endpoint: descriptionEndpoint } }));
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  };
+
   return (
     <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900" dir="rtl">
       <h2 className="mb-4 text-sm font-bold">دسته‌بندی درس‌آموخته</h2>
@@ -97,11 +161,14 @@ export default function ProjectLessonCategoryDescriptionsTable() {
 
       <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="overflow-x-auto" dir="ltr">
-          <table dir="rtl" className="w-full min-w-[620px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
-            <colgroup><col style={{ width: 80 }} /><col style={{ width: "42%" }} /><col /></colgroup>
-            <thead><tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th>#</th><th>دسته‌بندی درس‌آموخته</th><th>توضیح</th></tr></thead>
+          <table dir="rtl" className="w-full min-w-[700px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
+            <colgroup><col style={{ width: 48 }} /><col style={{ width: 80 }} /><col style={{ width: "40%" }} /><col /><col style={{ width: 96 }} /></colgroup>
+            <thead><tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(categories.map((category) => String(category.id))))} aria-label="انتخاب همه" /></th><th>#</th><th>دسته‌بندی درس‌آموخته</th><th>توضیح</th><th className="relative"><button type="button" onClick={() => setMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" aria-label="عملیات"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>{menuOpen && <div className="absolute left-1 top-10 z-20 w-48 rounded-xl border border-black/10 bg-white p-1.5 text-right shadow-xl dark:border-white/10 dark:bg-neutral-900"><button type="button" disabled={!selectedCategory || busy} onClick={startEdit} className="w-full rounded-lg px-3 py-2 text-right text-sm hover:bg-amber-50 disabled:opacity-40 dark:hover:bg-amber-500/10">ویرایش</button><button type="button" disabled={!selectedIds.size || busy} onClick={deleteSelected} className="w-full rounded-lg px-3 py-2 text-right text-sm text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-300 dark:hover:bg-red-500/10">حذف موارد انتخاب‌شده</button></div>}</th></tr></thead>
             <tbody className="text-[13px] [&>tr]:h-10">
-              {categories.map((category, index) => <tr key={category.id} className="bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{index + 1}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{category.title}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{(descriptionsByCategory.get(String(category.id)) || []).filter(Boolean).join("، ") || "—"}</td></tr>)}
+              {categories.map((category, index) => {
+                const editing = String(editingId) === String(category.id);
+                return <tr key={category.id} className="bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(category.id))} onChange={() => toggleSelected(category.id)} /></td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{index + 1}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingCategoryTitle} onChange={(event) => setEditingCategoryTitle(event.target.value)} /> : category.title}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingDescriptionTitle} onChange={(event) => setEditingDescriptionTitle(event.target.value)} /> : (descriptionsByCategory.get(String(category.id)) || []).filter(Boolean).join("، ") || "—"}</td><td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{editing && <div className="flex items-center justify-center gap-1" dir="ltr"><RowActionIconBtn action="cancel" onClick={() => setEditingId(null)} size={30} iconSize={14} /><RowActionIconBtn action="save" onClick={saveEdit} disabled={busy} size={30} iconSize={15} /></div>}</td></tr>;
+              })}
             </tbody>
           </table>
         </div>
