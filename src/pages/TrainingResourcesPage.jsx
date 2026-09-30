@@ -54,6 +54,10 @@ function normalizedUrl(value) {
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
 }
 
+function normalizedLabel(value) {
+  return String(value || "").trim().replace(/[\u200c\u200d]/g, " ").replace(/\s+/g, " ");
+}
+
 function fileKind(file) {
   const name = String(file?.name || file?.originalName || file?.url || "").toLowerCase();
   if (/\.(xlsx?|xlsm|csv)$/.test(name)) return "excel";
@@ -345,6 +349,11 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     () => new Map(filterTags.map((tag, index) => [String(tag.id), filterTagColorClasses[index % filterTagColorClasses.length]])),
     [filterTags]
   );
+  const libraryTagColorByTitle = useMemo(
+    () => new Map(filterTags.map((tag, index) => [normalizedLabel(tag.label), filterTagColorClasses[index % filterTagColorClasses.length]])),
+    [filterTags]
+  );
+  const libraryTagColor = (item) => libraryTagColorById.get(String(item.libraryId)) || libraryTagColorByTitle.get(normalizedLabel(item.libraryTitle));
 
   const toggleFilterTag = (id) => setFilterTagIds((previous) => {
     const value = String(id);
@@ -438,7 +447,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
                       <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700"><span className="block truncate text-center font-medium" title={item.title}>{item.title}</span></td>
                       <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">
                         {isLibrary ? (
-                          item.libraryTitle ? <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${libraryTagColorById.get(String(item.libraryId)) || "border border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"}`}>{item.libraryTitle}</span> : "—"
+                          item.libraryTitle ? <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${libraryTagColor(item) || "border border-neutral-200 bg-neutral-100 text-neutral-700 dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"}`}>{item.libraryTitle}</span> : "—"
                         ) : item.category || "—"}
                       </td>
                       {!isLibrary && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><div className="flex min-w-0 items-center justify-center gap-1.5"><a href={normalizedUrl(item.link)} target="_blank" rel="noreferrer" dir="ltr" onClick={recordTrainingInteraction} className="min-w-0 truncate text-sky-700 underline-offset-4 hover:underline dark:text-sky-400" title={item.link}>{shortenedLink(item.link)}</a><button type="button" onClick={() => copyLink(item)} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title={copiedId === String(item.id) ? "کپی شد" : "کپی لینک"} aria-label="کپی لینک"><Copy className="h-3.5 w-3.5" /></button></div></td>}
