@@ -84,7 +84,7 @@ export default function ProjectLessonCategoryDescriptionsTable() {
           <input className={inputClass} value={categoryTitle} onChange={(event) => setCategoryTitle(event.target.value)} placeholder="دسته‌بندی درس‌آموخته..." />
           <button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100" aria-label="افزودن دسته‌بندی"><img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5" /></button>
         </form>
-        <form onSubmit={addDescription} className="grid grid-cols-[minmax(170px,0.85fr)_minmax(0,1.15fr)_auto] items-center gap-3">
+        <form onSubmit={addDescription} className="grid grid-cols-[minmax(130px,0.6fr)_minmax(0,1.4fr)_auto] items-center gap-3">
           <select className={inputClass} value={categoryId} onChange={(event) => setCategoryId(event.target.value)} required>
             <option value="">دسته‌بندی درس‌آموخته را انتخاب کنید</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.title}</option>)}
