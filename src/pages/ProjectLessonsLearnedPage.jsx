@@ -554,16 +554,7 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </select>
                 </Field>
-                <Field text="راهکار" required className="md:col-span-2">
-                  <textarea
-                    value={form.solution}
-                    onChange={(e) =>
-                      setForm((x) => ({ ...x, solution: e.target.value }))
-                    }
-                    className={`${input} min-h-24 py-3`}
-                  />
-                </Field>
-                <Field text="چالش" required className="md:col-span-4">
+                <Field text="چالش" required className="md:col-span-2">
                   <textarea
                     value={form.challenge}
                     onChange={(e) =>
@@ -571,6 +562,15 @@ export default function ProjectLessonsLearnedPage() {
                     }
                     className={`${input} min-h-24 py-3`}
                     placeholder="چه اتفاقی افتاد"
+                  />
+                </Field>
+                <Field text="راهکار" required className="md:col-span-4">
+                  <textarea
+                    value={form.solution}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, solution: e.target.value }))
+                    }
+                    className={`${input} min-h-24 py-3`}
                   />
                 </Field>
               </div>
