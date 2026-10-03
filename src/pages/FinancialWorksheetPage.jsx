@@ -1103,7 +1103,7 @@ export default function FinancialWorksheetPage() {
       received_amount: receiptReceivedAmountNumber,
       received_amount_foreign: isRialCurrency ? 0 : receiptReceivedAmountNumber,
       currency_id: receiptCurrencyId,
-      currency_label: selectedReceiptCurrencyLabel,
+      currency_label: selectedReceiptCurrencyLabel || "ریال",
       currency_source_id: receiptCurrencySourceId,
       currency_source_label: selectedReceiptCurrencySourceLabel,
       rial_description: receiptRialDescription,
@@ -1249,11 +1249,12 @@ export default function FinancialWorksheetPage() {
             <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
               {tab === "receipts" ? (
                 <>
+                  <div className="flex flex-wrap items-end gap-2">
                   {(receiptTypeRows || []).map((row, idx) => {
                     const showReceiptNumber = isStatementReceiptType(row.type);
                     return (
-                    <div key={row.id} className={`grid grid-cols-1 items-end gap-2 xl:justify-start ${showReceiptNumber ? "xl:grid-cols-[minmax(220px,30%)_minmax(160px,20%)_40px]" : "xl:grid-cols-[minmax(220px,30%)_40px]"}`}>
-                      <div>
+                    <div key={row.id} className="flex max-w-full items-end gap-2">
+                      <div className="w-[min(280px,calc(100vw-64px))]">
                         <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.basis}</label>
                         {isOtherReceiptType(row.type) ? (
                           <div className="mt-1 flex h-11 w-full items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-neutral-900 dark:border-white/15 dark:bg-white/5 dark:text-white">
@@ -1298,7 +1299,7 @@ export default function FinancialWorksheetPage() {
                       </div>
 
                       {showReceiptNumber ? (
-                        <div>
+                        <div className="w-[min(180px,calc(100vw-64px))]">
                           <label className="text-xs text-neutral-600 dark:text-white/60">شماره</label>
                           <input
                             value={row.number}
@@ -1311,32 +1312,21 @@ export default function FinancialWorksheetPage() {
                         </div>
                       ) : null}
 
-                      <div className="flex gap-2">
-                        {idx === 0 ? (
-                          <button type="button" onClick={addReceiptTypeRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label={`افزودن ${receiptUi.basis}`} title="افزودن">
-                            <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
-                          </button>
-                        ) : (
+                      {idx > 0 ? (
+                        <div className="flex">
                           <button type="button" onClick={() => removeReceiptTypeRow(row.id)} className="h-10 w-10 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10 grid place-items-center" aria-label="حذف این ردیف" title="حذف">
                             <span className="text-xl leading-none">−</span>
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
                     );
                   })}
-
-                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-                    <div className="lg:col-span-4">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.date}</label>
-                      <div className="mt-1">
-                        <JalaliPopupDatePicker value={receiptJalaliDate} onChange={setReceiptJalaliDate} />
-                      </div>
-                      <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
-                        میلادی: <span className="font-semibold text-black dark:text-neutral-100">{receiptGregorianDate || "انتخاب نشده"}</span>
-                      </div>
-                    </div>
+                  <button type="button" onClick={addReceiptTypeRow} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 transition hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10" aria-label={`افزودن ${receiptUi.basis}`} title="افزودن">
+                    <img src="/images/icons/afzodan.svg" alt="" className="h-4 w-4 dark:invert" />
+                  </button>
                   </div>
+
                 </>
               ) : (
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(145px,.9fr)_minmax(110px,.55fr)_minmax(270px,1.5fr)_minmax(195px,.85fr)_minmax(135px,.65fr)] lg:items-start">
@@ -1416,34 +1406,47 @@ export default function FinancialWorksheetPage() {
 
               {tab === "receipts" ? (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-3">
-                    <div className="xl:col-span-5">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(140px,.55fr)_minmax(210px,.8fr)_minmax(130px,.45fr)] xl:justify-start xl:items-end">
+                    <div>
+                      <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.date}</label>
+                      <div className="mt-1">
+                        <JalaliPopupDatePicker value={receiptJalaliDate} onChange={setReceiptJalaliDate} />
+                      </div>
+                      <div className="mt-2 text-xs text-black/55 dark:text-neutral-400">
+                        میلادی: <span className="font-semibold text-black dark:text-neutral-100">{receiptGregorianDate || "انتخاب نشده"}</span>
+                      </div>
+                    </div>
+                    <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.amount}</label>
-                      <input
-                        value={receiptReceivedAmount}
-                        onChange={(e) => setReceiptReceivedAmount(formatAmountInput(e.target.value))}
-                        className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                        type="text"
-                        dir="ltr"
-                        placeholder="0"
-                      />
+                      <div className="relative mt-1 min-w-0">
+                        <input
+                          value={receiptReceivedAmount}
+                          onChange={(e) => setReceiptReceivedAmount(formatAmountInput(e.target.value))}
+                          className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 pl-[72px] text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white"
+                          type="text"
+                          dir="ltr"
+                          placeholder="۰"
+                        />
+                        <select
+                          aria-label={`ارز ${receiptUi.amount}`}
+                          title="انتخاب ارز"
+                          value={receiptCurrencyId}
+                          onChange={(e) => setReceiptCurrencyId(e.target.value)}
+                          className="absolute left-1 top-1 h-8 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"
+                        >
+                          <option value="" className="bg-white text-neutral-900">ریال</option>
+                          {(currencyItems || []).filter((it) => !isRialCurrencyItem(it)).map((it) => {
+                            const id = readItemId(it);
+                            if (!id) return null;
+                            return <option key={id} value={id} className="bg-white text-neutral-900">{readItemLabel(it) || id}</option>;
+                          })}
+                        </select>
+                      </div>
                     </div>
 
-                    <div className="xl:col-span-3">
-                      <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
-                      <select value={receiptCurrencyId} onChange={(e) => setReceiptCurrencyId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
-                        <option value="">انتخاب ارز</option>
-                        {(currencyItems || []).map((it) => {
-                          const id = readItemId(it);
-                          if (!id) return null;
-                          return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
-                        })}
-                      </select>
-                    </div>
-
-                    <div className="xl:col-span-4">
+                    <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">منشا</label>
-                      <select value={receiptCurrencySourceId} onChange={(e) => setReceiptCurrencySourceId(e.target.value)} className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
+                      <select value={receiptCurrencySourceId} onChange={(e) => setReceiptCurrencySourceId(e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white">
                         <option value="">انتخاب منشا</option>
                         {(currencySourceItems || []).map((it) => {
                           const id = readItemId(it);
