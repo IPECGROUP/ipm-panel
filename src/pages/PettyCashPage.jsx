@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
+import { Banknote, CalendarDays, CreditCard, Eye, FileText, UserRound, X } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -167,6 +168,11 @@ function MyPettyCashTable() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [detailsProject, setDetailsProject] = useState(null);
+  const [receivedDetails, setReceivedDetails] = useState([]);
+  const [receivedDetailsTotal, setReceivedDetailsTotal] = useState("0");
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
 
   useEffect(() => {
     if (!user?.id) return;
@@ -196,6 +202,35 @@ function MyPettyCashTable() {
       active = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!detailsProject || !user?.id) return undefined;
+    let active = true;
+    setDetailsLoading(true);
+    setDetailsError("");
+    setReceivedDetails([]);
+    fetch(`/api/petty-cash-expenses?summary=received-details&projectId=${encodeURIComponent(detailsProject.projectId)}`, {
+      credentials: "include",
+      headers: { "x-user-id": String(user.id) },
+    })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "خطا در دریافت جزئیات تنخواه");
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        setReceivedDetails(Array.isArray(data.items) ? data.items : []);
+        setReceivedDetailsTotal(data.total || "0");
+      })
+      .catch((reason) => {
+        if (active) setDetailsError(reason.message || "خطا در دریافت جزئیات تنخواه");
+      })
+      .finally(() => {
+        if (active) setDetailsLoading(false);
+      });
+    return () => { active = false; };
+  }, [detailsProject, user?.id]);
 
   const money = (value) => {
     const amount = BigInt(value || "0");
@@ -253,7 +288,16 @@ function MyPettyCashTable() {
                   </span>
                 </td>
                 <td className="font-sans tabular-nums">
-                  {money(item.receivedAmount)}
+                  <button
+                    type="button"
+                    onClick={() => setDetailsProject(item)}
+                    className="group inline-flex items-center gap-2 rounded-xl px-2 py-1 font-semibold transition hover:bg-sky-50 hover:text-sky-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:hover:bg-sky-500/15 dark:hover:text-sky-100"
+                    title="مشاهده جزئیات تنخواه‌های دریافت‌شده"
+                    aria-label={`مشاهده جزئیات مجموع تنخواه دریافت‌شده برای ${item.projectName}`}
+                  >
+                    <span>{money(item.receivedAmount)}</span>
+                    <Eye className="h-4 w-4 text-neutral-400 transition group-hover:text-sky-600 dark:group-hover:text-sky-300" aria-hidden="true" />
+                  </button>
                 </td>
                 <td className="font-sans tabular-nums">
                   <span className="block font-semibold">
@@ -307,7 +351,7 @@ function MyPettyCashTable() {
               {toFa(index + 1)}. {normalizeDigits(item.projectCode)} - {item.projectName}
             </div>
             <div className="grid grid-cols-1 gap-2 text-sm">
-              <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} />
+              <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} onView={() => setDetailsProject(item)} />
               <SummaryAmount label="مجموع هزینه‌های ثبت‌شده" value={money(item.registeredExpenses)} />
               <SummaryAmount label="باقی‌مانده هزینه‌های ثبت‌شده" value={money(item.registeredBalance)} />
               <SummaryAmount label="مجموع هزینه‌های تأییدشده" value={money(item.approvedExpenses)} tone="approved" />
@@ -319,11 +363,20 @@ function MyPettyCashTable() {
         {!loading && !error && items.length === 0 && <div className="py-6 text-center text-sm text-neutral-500">هنوز تنخواه یا هزینه‌ای برای شما ثبت نشده است.</div>}
         {error && <div className="py-6 text-center text-sm text-red-600 dark:text-red-400">{error}</div>}
       </div>
+      {detailsProject && <ReceivedPettyCashDetailsModal
+        project={detailsProject}
+        items={receivedDetails}
+        total={receivedDetailsTotal}
+        loading={detailsLoading}
+        error={detailsError}
+        money={money}
+        onClose={() => setDetailsProject(null)}
+      />}
     </section>
   );
 }
 
-function SummaryAmount({ label, value, tone = "" }) {
+function SummaryAmount({ label, value, tone = "", onView }) {
   const toneClass = tone === "approved"
     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200"
     : tone === "unapproved"
@@ -332,9 +385,72 @@ function SummaryAmount({ label, value, tone = "" }) {
   return (
     <div className={`flex items-center justify-between gap-3 rounded-lg px-3 py-2 ${toneClass}`}>
       <span className={tone ? "font-medium" : "text-neutral-600 dark:text-neutral-300"}>{label}</span>
-      <span className="shrink-0 font-sans font-semibold tabular-nums">{value}</span>
+      <span className="inline-flex shrink-0 items-center gap-1.5 font-sans font-semibold tabular-nums">
+        {value}
+        {onView && <button type="button" onClick={onView} className="grid h-7 w-7 place-items-center rounded-lg text-neutral-500 transition hover:bg-sky-100 hover:text-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:hover:bg-sky-500/20 dark:hover:text-sky-200" title="مشاهده جزئیات" aria-label={`${label}؛ مشاهده جزئیات`}><Eye className="h-4 w-4" /></button>}
+      </span>
     </div>
   );
+}
+
+function ReceivedPettyCashDetailsModal({ project, items, total, loading, error, money, onClose }) {
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  const date = (value) => value ? toFa(String(value).replaceAll("-", "/")) : "—";
+  const projectTitle = `${normalizeDigits(project.projectCode)} - ${project.projectName}`;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-3 md:p-6" dir="rtl" role="dialog" aria-modal="true" aria-labelledby="received-petty-cash-title">
+      <button type="button" className="absolute inset-0 cursor-default bg-slate-950/55 backdrop-blur-[2px]" onClick={onClose} aria-label="بستن پنجره" />
+      <section className="relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/20 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+        <header className="flex items-start justify-between gap-4 border-b border-neutral-200 bg-gradient-to-l from-sky-50 to-white px-5 py-4 dark:border-white/10 dark:from-sky-500/10 dark:to-neutral-900 md:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-600 text-white shadow-lg shadow-sky-600/20"><Eye className="h-5 w-5" /></span>
+            <div className="min-w-0">
+              <h2 id="received-petty-cash-title" className="text-base font-bold md:text-lg">جزئیات تنخواه‌های دریافت‌شده</h2>
+              <p className="mt-1 truncate text-xs text-neutral-500 dark:text-neutral-400">{projectTitle}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-neutral-600 transition hover:bg-neutral-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-white/10 dark:bg-white/5 dark:text-neutral-200 dark:hover:bg-white/10" aria-label="بستن"><X className="h-5 w-5" /></button>
+        </header>
+        <div className="min-h-0 overflow-y-auto p-4 md:p-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-100 bg-sky-50/70 px-4 py-3 dark:border-sky-400/20 dark:bg-sky-500/10">
+            <span className="text-sm font-medium text-sky-950 dark:text-sky-100">مجموع تنخواه دریافت‌شده</span>
+            <span className="font-sans text-lg font-bold tabular-nums text-sky-800 dark:text-sky-200">{money(total)} <span className="text-xs font-medium">ریال</span></span>
+          </div>
+          {loading && <div className="py-16 text-center text-sm text-neutral-500">در حال دریافت جزئیات...</div>}
+          {!loading && error && <div className="rounded-xl bg-red-50 px-4 py-5 text-center text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
+          {!loading && !error && !items.length && <div className="py-16 text-center text-sm text-neutral-500">تنخواه دریافت‌شده‌ای برای نمایش وجود ندارد.</div>}
+          {!loading && !error && items.length > 0 && <div className="space-y-3">{items.map((item, index) => {
+            const cash = BigInt(item.cashPaymentAmount || "0");
+            const credit = BigInt(item.creditPaymentAmount || "0");
+            return <article key={item.id} className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[.03]">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-100 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-white/[.025]">
+                <span className="inline-flex items-center gap-2 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-sky-100 text-xs text-sky-700 dark:bg-sky-500/20 dark:text-sky-200">{toFa(index + 1)}</span>{item.requestNumber || "درخواست تنخواه"}</span>
+                <span className="font-sans text-base font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{money(item.chargedAmount)} <span className="text-[11px] font-medium">ریال</span></span>
+              </div>
+              <div className="grid gap-3 p-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                <DetailInfo icon={<CalendarDays />} label="تاریخ شارژ" value={date(item.chargedDate)} />
+                <DetailInfo icon={<UserRound />} label="تنخواه‌گیرنده" value={item.beneficiaryName || item.beneficiaryUsername || "—"} />
+                <DetailInfo icon={<FileText />} label="بابت" value={item.purpose || "—"} />
+                <DetailInfo icon={<CreditCard />} label="روش پرداخت" value={[cash > 0n && "نقدی", credit > 0n && "اعتباری"].filter(Boolean).join(" و ") || "—"} />
+                {cash > 0n && <DetailInfo icon={<Banknote />} label="پرداخت نقدی" value={`${money(item.cashPaymentAmount)} ${item.cashPaymentCurrency || "ریال"}${item.cashPaymentMethod ? ` · ${item.cashPaymentMethod}` : ""}`} />}
+                {credit > 0n && <DetailInfo icon={<CreditCard />} label="پرداخت اعتباری" value={`${money(item.creditPaymentAmount)} ${item.creditPaymentCurrency || "ریال"}${item.creditPaymentDescription ? ` · ${item.creditPaymentDescription}` : ""}`} />}
+              </div>
+            </article>;
+          })}</div>}
+        </div>
+      </section>
+    </div>, document.body,
+  );
+}
+
+function DetailInfo({ icon, label, value }) {
+  return <div className="flex min-w-0 items-start gap-2.5 rounded-xl bg-neutral-50 px-3 py-2.5 dark:bg-white/[.04]"><span className="mt-0.5 text-sky-600 dark:text-sky-300">{React.cloneElement(icon, { className: "h-4 w-4" })}</span><span className="min-w-0"><span className="block text-[11px] text-neutral-500 dark:text-neutral-400">{label}</span><span className="mt-0.5 block break-words text-xs font-medium leading-5">{value}</span></span></div>;
 }
 
 function reportPreparedDate(value) {

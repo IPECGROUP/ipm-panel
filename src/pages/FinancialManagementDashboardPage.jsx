@@ -745,6 +745,7 @@ function ReportRequestPreview({ item, onClose }) {
 function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userId }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
+  const [visibleCount, setVisibleCount] = useState(50);
   const rows = useMemo(
     () =>
       [
@@ -817,7 +818,7 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
         </span>
         <input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => { setQuery(event.target.value); setVisibleCount(50); }}
           className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-indigo-400 dark:border-white/10 dark:bg-neutral-900 sm:w-80"
           placeholder="جست‌وجو در همه درخواست‌ها..."
         />
@@ -864,7 +865,7 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
             </thead>
             <tbody className="text-[13px] text-black [&>tr]:h-10 dark:text-neutral-100">
               {filtered.length ? (
-                filtered.map((item) => (
+                filtered.slice(0, visibleCount).map((item) => (
                   <tr
                     key={item.key}
                     onClick={() => setSelected(item)}
@@ -912,6 +913,11 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
           </table>
         </div>
       </div>
+      {filtered.length > visibleCount && (
+        <button type="button" onClick={() => setVisibleCount((count) => count + 50)} className="mt-3 rounded-lg border border-neutral-300 px-4 py-2 text-sm dark:border-neutral-700">
+          نمایش بیشتر ({faNumber(filtered.length - visibleCount)})
+        </button>
+      )}
       {selected?.kind === "payment" ? <PaymentPreview item={{ ...selected, status: selected.status?.status || selected.status, canAct: false, canEdit: false, canDelete: false }} projects={projects} letters={[]} supplyRequests={[]} currencyTypes={[]} currencySources={[]} documentTypes={[]} userId={userId} api={null} actionNote="" setActionNote={() => {}} actionBusy={false} actionError="" onAction={() => {}} onResubmit={() => {}} onEdit={() => {}} onClose={() => setSelected(null)} /> : selected?.kind === "tenkhah" ? <TenkhahPreviewV4 item={{ ...selected, status: selected.status?.status || selected.status, canAct: false }} userId={userId} api={null} onRefresh={() => {}} onClose={() => setSelected(null)} /> : selected ? <ReportRequestPreview item={selected} onClose={() => setSelected(null)} /> : null}
     </Card>
   );
@@ -932,70 +938,33 @@ export default function FinancialManagementDashboardPage() {
 
   useEffect(() => {
     if (!user?.id) return undefined;
-    let cancelled = false;
+    const controller = new AbortController();
     const options = {
       credentials: "include",
       headers: { "x-user-id": String(user.id) },
+      signal: controller.signal,
     };
-    Promise.all([
-      fetch("/api/liquidity-allocations?dashboard=1", options).then(
-        (response) => (response.ok ? response.json() : { projects: [] }),
-      ),
-      fetch("/api/requests?dashboard=1", options).then((response) =>
-        response.ok ? response.json() : { items: [] },
-      ),
-      fetch("/api/tenkhah?dashboard=1", options).then((response) =>
-        response.ok ? response.json() : { items: [] },
-      ),
-      fetch("/api/projects", options).then((response) =>
-        response.ok ? response.json() : { items: [] },
-      ),
-    ])
-      .then(
-        ([
-          liquidityData,
-          reportNormalData,
-          reportTenkhahData,
-          projectsData,
-        ]) => {
-          if (cancelled) return;
-          const normalItems = Array.isArray(reportNormalData?.items)
-            ? reportNormalData.items
-            : [];
-          setNormalRequests(
-            normalItems.filter(
-              (item) =>
-                String(item?.requestType || item?.docId || "").toLowerCase() !==
-                  "tenkhah_request" &&
-                String(item?.scope || "").toLowerCase() !== "tenkhah",
-            ),
-          );
-          setTenkhahRequests(
-            Array.isArray(reportTenkhahData?.items)
-              ? reportTenkhahData.items
-              : [],
-          );
-          setLiquidityProjects(
-            Array.isArray(liquidityData?.projects)
-              ? liquidityData.projects
-              : [],
-          );
-          setProjects(
-            Array.isArray(projectsData?.items) ? projectsData.items : [],
-          );
-        },
-      )
-      .catch(() => {
-        if (!cancelled) {
-          setNormalRequests([]);
-          setTenkhahRequests([]);
-          setLiquidityProjects([]);
-          setProjects([]);
-        }
-      });
-    return () => {
-      cancelled = true;
+    const load = async (url, update) => {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted) update(data);
+      } catch (error) {
+        if (error?.name !== "AbortError") console.error("financial_dashboard_load_failed", url, error);
+      }
     };
+    load("/api/liquidity-allocations?dashboard=1", (data) =>
+      setLiquidityProjects(Array.isArray(data?.projects) ? data.projects : []));
+    load("/api/requests?dashboard=1", (data) =>
+      setNormalRequests((Array.isArray(data?.items) ? data.items : []).filter((item) =>
+        String(item?.requestType || item?.docId || "").toLowerCase() !== "tenkhah_request" &&
+        String(item?.scope || "").toLowerCase() !== "tenkhah")));
+    load("/api/tenkhah?dashboard=1", (data) =>
+      setTenkhahRequests(Array.isArray(data?.items) ? data.items : []));
+    load("/api/projects", (data) =>
+      setProjects(Array.isArray(data?.items) ? data.items : []));
+    return () => controller.abort();
   }, [user?.id]);
 
   const normalMetrics = useMemo(
