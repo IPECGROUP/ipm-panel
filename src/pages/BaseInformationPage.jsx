@@ -26,8 +26,8 @@ export default function BaseInformationPage() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <Card className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900 md:p-5">
-        <div className="flex items-center gap-3">
+      <Card className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
+        <div className="flex items-center gap-3 pt-3 md:pt-4">
           <span className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-black/[.03] dark:border-white/10 dark:bg-white/[.06]">
             <img src="/images/icons/etelaat-paye.svg" alt="" className="h-6 w-6 dark:invert" />
           </span>
