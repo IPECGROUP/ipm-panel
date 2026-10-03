@@ -1678,6 +1678,7 @@ export default function FinancialWorksheetPage() {
             </div>
           )}
 
+          <div className="!mt-0">
           <TableWrap>
             <div className={tablePreset.outer}>
               <div className={tablePreset.innerPad}>
@@ -1780,6 +1781,7 @@ export default function FinancialWorksheetPage() {
               </div>
             </div>
           </TableWrap>
+          </div>
             </>
           ) : null}
 
