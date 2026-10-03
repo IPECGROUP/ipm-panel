@@ -698,6 +698,10 @@ export default function FinancialWorksheetPage() {
 
   const readItemId = (it) => String(it?.id ?? it?.code ?? it?.value ?? it?.key ?? "");
   const readItemLabel = (it) => String(it?.label ?? it?.title ?? it?.name ?? it?.code ?? "").trim();
+  const isRialCurrencyItem = (it) => {
+    const value = `${readItemId(it)} ${readItemLabel(it)}`.toLowerCase();
+    return value.includes("ریال") || value.includes("irr") || value.includes("rial");
+  };
   const currencyById = useMemo(() => {
     const map = new Map();
     (currencyItems || []).forEach((item) => {
@@ -997,7 +1001,7 @@ export default function FinancialWorksheetPage() {
       description,
       gross_amount: grossAmountNumber,
       currency_id: currencyId,
-      currency_label: selectedCurrencyLabel,
+      currency_label: selectedCurrencyLabel || "ریال",
       currency_source_id: currencySourceId,
       currency_source_label: selectedCurrencySourceLabel,
       prepayment_depreciation: prepaymentDepreciationNumber,
@@ -1321,7 +1325,7 @@ export default function FinancialWorksheetPage() {
                   </div>
                 </>
               ) : (
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(110px,.55fr)_minmax(125px,.6fr)_minmax(190px,.9fr)_minmax(250px,1.25fr)_minmax(180px,.8fr)] lg:items-start">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(145px,.9fr)_minmax(110px,.55fr)_minmax(270px,1.5fr)_minmax(195px,.85fr)_minmax(135px,.65fr)] lg:items-start">
                   <div>
                     <label className="text-xs text-neutral-600 dark:text-white/60">شماره صورت وضعیت</label>
                     <input
@@ -1356,25 +1360,30 @@ export default function FinancialWorksheetPage() {
 
                   <div>
                     <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ ناخالص تایید شده</label>
-                    <AmountInputWithMeta
-                      value={grossAmount}
-                      onChange={(e) => setGrossAmount(formatAmountInput(e.target.value))}
-                      leadingControl={
-                        <select
-                          value={currencyId}
-                          onChange={(e) => setCurrencyId(e.target.value)}
-                          className="h-8 w-[72px] shrink-0 rounded-lg border border-black/10 bg-white px-1 text-xs font-semibold text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
-                          aria-label="ارز"
-                        >
-                          <option value="">ارز</option>
-                          {(currencyItems || []).map((it) => {
-                            const id = readItemId(it);
-                            if (!id) return null;
-                            return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
-                          })}
-                        </select>
-                      }
-                    />
+                    <div className="relative mt-1 min-w-0">
+                      <input
+                        dir="ltr"
+                        inputMode="decimal"
+                        value={grossAmount}
+                        onChange={(e) => setGrossAmount(formatAmountInput(e.target.value))}
+                        className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 pl-[72px] text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white"
+                        placeholder="۰"
+                      />
+                      <select
+                        aria-label="ارز مبلغ ناخالص تایید شده"
+                        title="انتخاب ارز"
+                        value={currencyId}
+                        onChange={(e) => setCurrencyId(e.target.value)}
+                        className="absolute left-1 top-1 h-8 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"
+                      >
+                        <option value="" className="bg-white text-neutral-900">ریال</option>
+                        {(currencyItems || []).filter((it) => !isRialCurrencyItem(it)).map((it) => {
+                          const id = readItemId(it);
+                          if (!id) return null;
+                          return <option key={id} value={id} className="bg-white text-neutral-900">{readItemLabel(it) || id}</option>;
+                        })}
+                      </select>
+                    </div>
                   </div>
 
                   <div>
@@ -1579,17 +1588,17 @@ export default function FinancialWorksheetPage() {
                     {uploadedFiles.length || relatedLetterIds.length ? <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(uploadedFiles.length + relatedLetterIds.length)}</span> : null}
                     </button>
                 </div>
-                <div className={confirmActionWrapCls}>
-                  <button
-                    type="button"
-                    onClick={handleSaveStatement}
-                    className={confirmActionBtnCls}
-                    aria-label="تایید و ثبت"
-                    title="تایید و ثبت"
-                  >
-                    <img src="/images/icons/check.svg" alt="" className={confirmActionIconCls} />
-                  </button>
-                </div>
+              </div>
+              <div className="flex justify-end border-t border-black/10 pt-3 dark:border-white/10">
+                <button
+                  type="button"
+                  onClick={handleSaveStatement}
+                  className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                  aria-label="تایید و ثبت"
+                  title="تایید و ثبت"
+                >
+                  <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
+                </button>
               </div>
               {selectedRelatedLetters.length || uploadedFiles.length ? (
                 <div className="flex flex-wrap items-center gap-2 text-xs text-black/55 dark:text-white/60">
