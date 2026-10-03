@@ -40,6 +40,7 @@ const importance = [
 
 const empty = () => ({
   projectId: "",
+  subject: "",
   category: "",
   challenge: "",
   solution: "",
@@ -92,6 +93,7 @@ function matchesFilters(item, query, from, to, selectedTagIds, selectedImportanc
   const searchableText = [
     item.projectName,
     item.projectCode,
+    item.subject,
     item.category,
     item.challenge,
     item.solution,
@@ -115,6 +117,7 @@ function isFormComplete(form) {
 function createFormFromItem(item) {
   return {
     projectId: String(item.projectId),
+    subject: item.subject || "",
     category: item.category,
     challenge: item.challenge,
     solution: item.solution,
@@ -575,6 +578,16 @@ export default function ProjectLessonsLearnedPage() {
                       </option>
                     ))}
                   </select>
+                </Field>
+                <Field text="موضوع">
+                  <input
+                    value={form.subject}
+                    onChange={(e) =>
+                      setForm((x) => ({ ...x, subject: e.target.value }))
+                    }
+                    className={input}
+                    placeholder="موضوع درس‌آموخته"
+                  />
                 </Field>
                 <Field text="دسته‌بندی درس‌آموخته" required>
                   <select
