@@ -1406,7 +1406,7 @@ export default function FinancialWorksheetPage() {
 
               {tab === "receipts" ? (
                 <>
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(140px,.55fr)_minmax(210px,.8fr)_minmax(130px,.45fr)] xl:justify-start xl:items-end">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(100px,.385fr)_minmax(125px,.48fr)_minmax(90px,.315fr)_minmax(240px,1fr)] xl:justify-start xl:items-end">
                     <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.date}</label>
                       <div className="mt-1">
@@ -1455,6 +1455,15 @@ export default function FinancialWorksheetPage() {
                         })}
                       </select>
                     </div>
+                    <div>
+                      <label className="text-xs text-neutral-600 dark:text-white/60">توضیحات</label>
+                      <input
+                        value={receiptDescription}
+                        onChange={(e) => setReceiptDescription(e.target.value)}
+                        className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
+                        placeholder="توضیحات..."
+                      />
+                    </div>
                   </div>
 
                   {isRialCurrency ? (
@@ -1472,27 +1481,15 @@ export default function FinancialWorksheetPage() {
                     </div>
                   ) : null}
 
-                  <div className="grid grid-cols-1 gap-3">
-                    <div>
-                      <label className="text-xs text-neutral-600 dark:text-white/60">توضیحات</label>
-                      <textarea
-                        value={receiptDescription}
-                        onChange={(e) => setReceiptDescription(e.target.value)}
-                        className="mt-1 w-full min-h-[88px] rounded-xl px-3 py-2 border outline-none resize-y bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                        placeholder="توضیحات..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className={confirmActionWrapCls}>
+                  <div className="flex justify-end border-t border-black/10 pt-3 dark:border-white/10">
                     <button
                       type="button"
                       onClick={handleSaveReceipt}
-                      className={confirmActionBtnCls}
+                      className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
                       aria-label="تایید و ثبت"
                       title="تایید و ثبت"
                     >
-                      <img src="/images/icons/check.svg" alt="" className={confirmActionIconCls} />
+                      <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
                     </button>
                   </div>
                 </>
