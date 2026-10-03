@@ -7,6 +7,7 @@ import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/table
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
+const PAGE_ICON = "/images/icons/karbarg-mali.svg";
 
 function toFaDigits(s) {
   return String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
@@ -355,6 +356,7 @@ export default function FinancialWorksheetPage() {
   const [projectId, setProjectId] = useState("");
   const [contractRows, setContractRows] = useState([]);
   const [contractId, setContractId] = useState("");
+  const [contractKind, setContractKind] = useState("main");
 
   const [tab, setTab] = useState("statement");
   const [formOpen, setFormOpen] = useState(false);
@@ -534,6 +536,11 @@ export default function FinancialWorksheetPage() {
         return a.typeLabel.localeCompare(b.typeLabel, "fa");
       });
   }, [contractById, contractNoForRow, contractRows, documentTypeForContract, projectId]);
+
+  const visibleProjectContractOptions = useMemo(
+    () => projectContractOptions.filter((item) => item.documentType === contractKind),
+    [contractKind, projectContractOptions],
+  );
 
   useEffect(() => {
     if (!contractId) return;
@@ -1088,10 +1095,14 @@ export default function FinancialWorksheetPage() {
   return (
     <>
       <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <div className="mb-4 text-black/70 dark:text-neutral-300 text-base md:text-lg">
-          <span>پروژه‌ها</span>
-          <span className="mx-2">›</span>
-          <span className="font-semibold text-black dark:text-neutral-100">کاربرگ مالی</span>
+        <div className="mb-5 flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[.06]">
+            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-bold md:text-lg">کاربرگ مالی</span>
+            <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه‌ها</span>
+          </span>
         </div>
 
         <div className="space-y-4">
@@ -1103,6 +1114,7 @@ export default function FinancialWorksheetPage() {
                 onChange={(e) => {
                   setProjectId(e.target.value);
                   setContractId("");
+                  setContractKind("main");
                 }}
                 disabled={projectsLoading}
                 className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
@@ -1117,15 +1129,43 @@ export default function FinancialWorksheetPage() {
             </div>
 
             <div>
-              <label className="text-xs text-neutral-600 dark:text-white/60">شماره قرارداد</label>
+              <label className="text-xs text-neutral-600 dark:text-white/60">قرارداد</label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {[
+                  { id: "main", label: "اصلی" },
+                  { id: "sub", label: "فرعی" },
+                ].map((item) => {
+                  const active = contractKind === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      disabled={!projectId}
+                      aria-pressed={active}
+                      onClick={() => {
+                        setContractKind(item.id);
+                        setContractId("");
+                      }}
+                      className={`h-10 rounded-xl border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                        active
+                          ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                          : "border-black/10 bg-white text-neutral-700 hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
               <select
                 value={contractId}
                 onChange={(e) => setContractId(e.target.value)}
                 disabled={!projectId}
-                className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15 disabled:opacity-60"
+                aria-label="شماره قرارداد"
+                className="mt-2 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15 disabled:opacity-60"
               >
-                <option value="">{projectId ? "انتخاب قرارداد" : "ابتدا پروژه را انتخاب کنید"}</option>
-                {projectContractOptions.map((item) => (
+                <option value="">{projectId ? `انتخاب قرارداد ${contractKind === "main" ? "اصلی" : "فرعی"}` : "ابتدا پروژه را انتخاب کنید"}</option>
+                {visibleProjectContractOptions.map((item) => (
                   <option key={item.id} value={item.id}>
                     {toFaDigits(item.no)} - {item.typeLabel}
                     {item.documentType === "sub" && item.parentNo ? ` - اصلی: ${toFaDigits(item.parentNo)}` : ""}
