@@ -575,7 +575,7 @@ function TenkhahAggregateRequestsDialog({ details, userId, onClose }) {
         </div>
         <div className="max-h-[68vh] overflow-auto p-4">
           <table className="w-full min-w-[680px] text-sm"><thead className="sticky top-0 bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-3 text-right font-medium">شماره درخواست</th><th className="px-3 py-3 text-right font-medium">پروژه</th><th className="px-3 py-3 text-center font-medium">مبلغ</th><th className="px-3 py-3 text-center font-medium">مانده تسویه‌نشده</th><th className="px-3 py-3 text-center font-medium">مشاهده</th></tr></thead><tbody>
-            {items.map((item) => <tr key={item.id} className="border-t border-black/[0.07] dark:border-white/[0.08]"><td className="px-3 py-3 tabular-nums">{item.requestNumber || "—"}</td><td className="px-3 py-3">{item.projectCode ? `${item.projectCode} - ` : ""}{item.projectName || "—"}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(item.chargedAmount || item.requestedAmount)} ریال</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(item.unsettledBalance)} ریال</td><td className="px-3 py-3 text-center"><button type="button" onClick={() => setSelected(item)} className="grid h-9 w-9 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست" aria-label="مشاهده درخواست"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button></td></tr>)}
+            {items.map((item) => <tr key={item.id} className="border-t border-black/[0.07] dark:border-white/[0.08]"><td className="px-3 py-3 tabular-nums">{item.requestNumber || "—"}</td><td className="px-3 py-3">{item.projectCode ? `${item.projectCode} - ` : ""}{item.projectName || "—"}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(item.chargedAmount || item.requestedAmount)} ریال</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(item.unsettledBalance)} ریال</td><td className="px-3 py-3 text-center"><button type="button" onClick={() => setSelected(item)} className="grid h-9 w-9 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست" aria-label="مشاهده درخواست"><img src="/images/icons/namayesh.svg" alt="" className="h-4 w-4 dark:invert" /></button></td></tr>)}
           </tbody></table>
         </div>
       </div>
@@ -623,7 +623,7 @@ function TenkhahHoldersPanel({ rows, onShowRequests }) {
                           {key === "received" ? (
                             <span className="inline-flex items-center gap-1.5">
                               <span>{faNumber(row[key])} ریال</span>
-                              <button type="button" onClick={() => onShowRequests({ title: `درخواست‌های تنخواه ${row.beneficiary}`, items: row.receivedItems })} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست‌ها" aria-label="مشاهده درخواست‌ها"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>
+                              <button type="button" onClick={() => onShowRequests({ title: `درخواست‌های تنخواه ${row.beneficiary}`, items: row.receivedItems })} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست‌ها" aria-label="مشاهده درخواست‌ها"><img src="/images/icons/namayesh.svg" alt="" className="h-4 w-4 dark:invert" /></button>
                             </span>
                           ) : <>{faNumber(row[key])} ریال</>}
                         </td>
@@ -687,7 +687,7 @@ function TenkhahRankingPanel({
               </span>
               <span className="inline-flex shrink-0 items-center gap-1 text-sm font-bold tabular-nums">
                 <span>{faNumber(person[primaryKey])} <span className="text-[10px] font-medium text-neutral-400">ریال</span></span>
-                {detailItemsKey && <button type="button" onClick={() => onShowRequests({ title: `درخواست‌های تنخواه ${person.label}`, items: person[detailItemsKey] })} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست‌ها" aria-label="مشاهده درخواست‌ها"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
+                {detailItemsKey && <button type="button" onClick={() => onShowRequests({ title: `درخواست‌های تنخواه ${person.label}`, items: person[detailItemsKey] })} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست‌ها" aria-label="مشاهده درخواست‌ها"><img src="/images/icons/namayesh.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
               </span>
             </div>
           ))
