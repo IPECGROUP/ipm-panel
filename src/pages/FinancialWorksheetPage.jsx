@@ -405,11 +405,13 @@ export default function FinancialWorksheetPage() {
       setErr("");
       setProjectsLoading(true);
       try {
-        const [pResp, tResp, sResp, cResp] = await Promise.all([
+        const [pResp, tResp, sResp, cResp, subContractsResp] = await Promise.all([
           api("/projects").catch(() => ({ items: [] })),
           api("/base/currencies/types").catch(() => ({ items: [] })),
           api("/base/currencies/sources").catch(() => ({ items: [] })),
           api("/contracts").catch(() => ({ items: [] })),
+          // قراردادهای فرعی در برخی نسخه‌های API فقط با این فیلتر بازگردانده می‌شوند.
+          api("/contracts?documentType=sub").catch(() => ({ items: [] })),
         ]);
 
         if (stop) return;
@@ -420,7 +422,11 @@ export default function FinancialWorksheetPage() {
         const tList = tResp?.items || tResp?.data || tResp?.types || [];
         const sList = sResp?.items || sResp?.data || sResp?.sources || [];
         const cList = cResp?.items || cResp?.data || cResp?.contracts || [];
-        const baseContracts = Array.isArray(cList) ? cList : [];
+        const subContracts = subContractsResp?.items || subContractsResp?.data || subContractsResp?.contracts || [];
+        const baseContracts = mergeContractRowsById(
+          Array.isArray(cList) ? cList : [],
+          Array.isArray(subContracts) ? subContracts : [],
+        );
         const knownContractIds = new Set(baseContracts.map((row) => String(row?.id || "")).filter(Boolean));
         const cachedContracts = readVerifiedContractCache()
           .filter((row) => row?.id && !knownContractIds.has(String(row.id)))
