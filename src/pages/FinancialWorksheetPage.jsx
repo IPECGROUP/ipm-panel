@@ -1194,7 +1194,7 @@ export default function FinancialWorksheetPage() {
                 <option value="">{projectId ? `انتخاب قرارداد ${contractKind === "main" ? "اصلی" : "فرعی"}` : "ابتدا پروژه را انتخاب کنید"}</option>
                 {visibleProjectContractOptions.map((item) => (
                   <option key={item.id} value={item.id}>
-                    {toFaDigits(item.no)} - {item.typeLabel}
+                    {toFaDigits(item.no)}
                     {item.documentType === "sub" && item.parentNo ? ` - اصلی: ${toFaDigits(item.parentNo)}` : ""}
                     {item.subject ? ` - ${item.subject}` : ""}
                   </option>
