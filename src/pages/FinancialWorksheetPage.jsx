@@ -291,6 +291,7 @@ function AmountInputWithMeta({
   value,
   onChange,
   metaLabel,
+  leadingControl = null,
   readOnly = false,
   placeholder = "0",
   className = "",
@@ -304,6 +305,7 @@ function AmountInputWithMeta({
           : "border-black/10 bg-white dark:border-white/15 dark:bg-white/5 dark:text-white"
       } ${className}`}
     >
+      {leadingControl}
       <input
         value={value}
         onChange={onChange}
@@ -1319,8 +1321,8 @@ export default function FinancialWorksheetPage() {
                   </div>
                 </>
               ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
-                  <div className="lg:col-span-3">
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(110px,.55fr)_minmax(125px,.6fr)_minmax(190px,.9fr)_minmax(250px,1.25fr)_minmax(180px,.8fr)] lg:items-start">
+                  <div>
                     <label className="text-xs text-neutral-600 dark:text-white/60">شماره صورت وضعیت</label>
                     <input
                       value={statementNo}
@@ -1331,7 +1333,7 @@ export default function FinancialWorksheetPage() {
                     />
                   </div>
 
-                  <div className="lg:col-span-3">
+                  <div>
                     <label className="text-xs text-neutral-600 dark:text-white/60">تاریخ</label>
                     <div className="mt-1">
                       <JalaliPopupDatePicker value={jalaliDate} onChange={setJalaliDate} />
@@ -1341,7 +1343,7 @@ export default function FinancialWorksheetPage() {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-6">
+                  <div>
                     <label className="text-xs text-neutral-600 dark:text-white/60">عنوان صورت وضعیت دوره عملکرد</label>
                     <input
                       value={description}
@@ -1350,6 +1352,41 @@ export default function FinancialWorksheetPage() {
                       type="text"
                       placeholder="عنوان صورت وضعیت..."
                     />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ ناخالص تایید شده</label>
+                    <AmountInputWithMeta
+                      value={grossAmount}
+                      onChange={(e) => setGrossAmount(formatAmountInput(e.target.value))}
+                      leadingControl={
+                        <select
+                          value={currencyId}
+                          onChange={(e) => setCurrencyId(e.target.value)}
+                          className="h-8 w-[72px] shrink-0 rounded-lg border border-black/10 bg-white px-1 text-xs font-semibold text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
+                          aria-label="ارز"
+                        >
+                          <option value="">ارز</option>
+                          {(currencyItems || []).map((it) => {
+                            const id = readItemId(it);
+                            if (!id) return null;
+                            return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
+                          })}
+                        </select>
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-neutral-600 dark:text-white/60">منشا</label>
+                    <select value={currencySourceId} onChange={(e) => setCurrencySourceId(e.target.value)} className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white">
+                      <option value="">انتخاب منشا</option>
+                      {(currencySourceItems || []).map((it) => {
+                        const id = readItemId(it);
+                        if (!id) return null;
+                        return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
+                      })}
+                    </select>
                   </div>
                 </div>
               )}
@@ -1435,43 +1472,9 @@ export default function FinancialWorksheetPage() {
                 </>
               ) : (
                 <>
-              <div className="grid grid-cols-1 gap-3 px-3 xl:grid-cols-[minmax(280px,420px)_minmax(220px,280px)_minmax(220px,280px)]">
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ ناخالص تایید شده</label>
-                  <AmountInputWithMeta
-                    value={grossAmount}
-                    onChange={(e) => setGrossAmount(formatAmountInput(e.target.value))}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">ارز</label>
-                  <select value={currencyId} onChange={(e) => setCurrencyId(e.target.value)} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
-                    <option value="">انتخاب ارز</option>
-                    {(currencyItems || []).map((it) => {
-                      const id = readItemId(it);
-                      if (!id) return null;
-                      return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
-                    })}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-xs text-neutral-600 dark:text-white/60">منشا ارز</label>
-                  <select value={currencySourceId} onChange={(e) => setCurrencySourceId(e.target.value)} className="mt-1 w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15">
-                    <option value="">انتخاب منشا</option>
-                    {(currencySourceItems || []).map((it) => {
-                      const id = readItemId(it);
-                      if (!id) return null;
-                      return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
-                    })}
-                  </select>
-                </div>
-              </div>
-
               <div className="rounded-2xl border border-black/10 bg-black/[0.025] p-3 space-y-3 dark:border-white/10 dark:bg-white/[0.04]">
                 <div className="text-sm font-semibold text-neutral-800 dark:text-white/85">کسور</div>
-                <div className="grid grid-cols-1 gap-3 items-start md:max-w-[420px]">
+                <div className="grid grid-cols-1 gap-3 items-start md:grid-cols-3">
                   <div>
                     <label className="text-xs text-neutral-600 dark:text-white/60">استهلاک پیش پرداخت</label>
                     <AmountInputWithMeta
@@ -1536,7 +1539,7 @@ export default function FinancialWorksheetPage() {
                 ))}
               </div>
 
-              <div className="mx-3 grid max-w-[420px] grid-cols-1 gap-3 items-start">
+              <div className="grid grid-cols-1 gap-3 px-3 xl:grid-cols-[minmax(165px,.9fr)_auto_minmax(145px,.75fr)_minmax(180px,1fr)_auto_auto] xl:items-end">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithoutVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
@@ -1566,22 +1569,15 @@ export default function FinancialWorksheetPage() {
                   <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(vatAmountNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
-              </div>
-
-              <div className="grid grid-cols-1 px-3 xl:grid-cols-[minmax(280px,420px)_auto_1fr] gap-3 items-end">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده با احتساب VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
                 <div className="flex items-end">
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs text-neutral-600 dark:text-white/60">اسناد</span>
-                    <button type="button" onClick={openUploadModal} className="h-10 px-4 rounded-xl border transition inline-flex items-center justify-center gap-2 whitespace-nowrap border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
+                    <button type="button" onClick={openUploadModal} className="relative grid h-10 w-10 place-items-center rounded-xl border border-black/10 bg-white text-neutral-900 transition hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
                     <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                    بارگذاری اسناد
-                    {uploadedFiles.length || relatedLetterIds.length ? <span className="text-xs opacity-80">({toFaDigits(uploadedFiles.length + relatedLetterIds.length)})</span> : null}
+                    {uploadedFiles.length || relatedLetterIds.length ? <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(uploadedFiles.length + relatedLetterIds.length)}</span> : null}
                     </button>
-                  </div>
                 </div>
                 <div className={confirmActionWrapCls}>
                   <button
