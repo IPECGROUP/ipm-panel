@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, Paperclip, X } from "lucide-react";
+import { Check, Eye, Paperclip, X } from "lucide-react";
 import { TagButton, TagPicker, UploadButton } from "./LessonFormControls.jsx";
 
 const INPUT_CLASS = [
@@ -19,6 +19,7 @@ const IMPACT_OPTIONS = [
 function createDraft(item) {
   return {
     projectId: String(item.projectId),
+    subject: item.subject || "",
     category: item.category,
     challenge: item.challenge,
     solution: item.solution,
@@ -271,6 +272,16 @@ function LessonFields({
         </select>
       </Field>
 
+      <Field label="موضوع">
+        <input
+          type="text"
+          value={draft.subject}
+          onChange={(event) => updateDraft({ subject: event.target.value })}
+          className={INPUT_CLASS}
+          placeholder="موضوع درس‌آموخته"
+        />
+      </Field>
+
       <Field label="دسته‌بندی درس‌آموخته" required>
         <select
           value={draft.category}
@@ -376,6 +387,18 @@ function FileEditor({
             >
               <Paperclip className="h-4 w-4" />
               <span className="max-w-52 truncate">{file.name}</span>
+              {file.url ? (
+                <a
+                  href={file.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-neutral-600 transition hover:text-sky-600 dark:text-neutral-300 dark:hover:text-sky-300"
+                  title={`مشاهده ${file.name}`}
+                  aria-label={`مشاهده ${file.name}`}
+                >
+                  <Eye className="h-4 w-4" />
+                </a>
+              ) : null}
               <button
                 type="button"
                 onClick={() => onRemoveFile(index)}
