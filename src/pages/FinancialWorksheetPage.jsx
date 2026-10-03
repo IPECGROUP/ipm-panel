@@ -464,6 +464,11 @@ export default function FinancialWorksheetPage() {
       );
   }, [projects]);
 
+  const selectedProject = useMemo(
+    () => activeProjects.find((project) => String(project?.id) === String(projectId)) || null,
+    [activeProjects, projectId],
+  );
+
   const contractById = useMemo(() => {
     const map = new Map();
     (Array.isArray(contractRows) ? contractRows : []).forEach((row) => {
@@ -546,6 +551,12 @@ export default function FinancialWorksheetPage() {
     if (!contractId) return;
     if (!projectContractOptions.some((item) => item.id === String(contractId))) setContractId("");
   }, [contractId, projectContractOptions]);
+
+  useEffect(() => {
+    if (contractKind !== "main" || !selectedProject || toEnDigits(selectedProject?.code).trim() === "100") return;
+    const mainContracts = projectContractOptions.filter((item) => item.documentType === "main");
+    if (mainContracts.length === 1) setContractId(mainContracts[0].id);
+  }, [contractKind, projectContractOptions, selectedProject]);
 
   const normalizeRows = useCallback((items) => {
     const list = Array.isArray(items) ? items : [];
@@ -1106,7 +1117,7 @@ export default function FinancialWorksheetPage() {
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_minmax(250px,1fr)] lg:items-end">
             <div>
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
@@ -1128,9 +1139,9 @@ export default function FinancialWorksheetPage() {
               </select>
             </div>
 
-            <div>
+            <div className="lg:justify-self-center">
               <label className="text-xs text-neutral-600 dark:text-white/60">قرارداد</label>
-              <div className="mt-1 grid grid-cols-2 gap-2">
+              <div className="mt-1 flex items-center gap-1">
                 {[
                   { id: "main", label: "اصلی" },
                   { id: "sub", label: "فرعی" },
@@ -1146,7 +1157,7 @@ export default function FinancialWorksheetPage() {
                         setContractKind(item.id);
                         setContractId("");
                       }}
-                      className={`h-10 rounded-xl border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      className={`h-9 rounded-lg border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                         active
                           ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
                           : "border-black/10 bg-white text-neutral-700 hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
@@ -1157,12 +1168,16 @@ export default function FinancialWorksheetPage() {
                   );
                 })}
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs text-neutral-600 dark:text-white/60">شماره قرارداد</label>
               <select
                 value={contractId}
                 onChange={(e) => setContractId(e.target.value)}
                 disabled={!projectId}
                 aria-label="شماره قرارداد"
-                className="mt-2 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15 disabled:opacity-60"
+                className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15 disabled:opacity-60"
               >
                 <option value="">{projectId ? `انتخاب قرارداد ${contractKind === "main" ? "اصلی" : "فرعی"}` : "ابتدا پروژه را انتخاب کنید"}</option>
                 {visibleProjectContractOptions.map((item) => (
