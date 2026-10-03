@@ -605,7 +605,7 @@ export default function ProjectLessonsLearnedPage() {
                     ))}
                   </select>
                 </Field>
-                <div className="flex min-h-11 items-center self-end px-1 text-sm text-neutral-700 md:col-span-2 dark:text-neutral-200">
+                <div className="flex min-h-11 items-center self-end px-1 text-sm text-neutral-700 dark:text-neutral-200">
                   <span className="ml-1 shrink-0 font-bold text-neutral-900 dark:text-white">شامل:</span>
                   <span className="truncate">{selectedCategoryDescription || "—"}</span>
                 </div>
