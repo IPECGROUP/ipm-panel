@@ -403,6 +403,7 @@ export default function FinancialWorksheetPage() {
   const [tab, setTab] = useState("statement");
   const [formOpen, setFormOpen] = useState(false);
   const [err, setErr] = useState("");
+  const [editingRowId, setEditingRowId] = useState("");
 
   const [statementNo, setStatementNo] = useState("");
   const [jalaliDate, setJalaliDate] = useState("");
@@ -417,6 +418,7 @@ export default function FinancialWorksheetPage() {
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [filesUploading, setFilesUploading] = useState(false);
   const [relatedDocumentsOpen, setRelatedDocumentsOpen] = useState(false);
   const [uploadDraftFiles, setUploadDraftFiles] = useState([]);
   const [letters, setLetters] = useState([]);
@@ -844,6 +846,32 @@ export default function FinancialWorksheetPage() {
   const openUploadModal = () => {
     setUploadOpen(true);
   };
+  const uploadWorksheetFiles = async (fileList) => {
+    const files = Array.from(fileList || []).filter(Boolean);
+    if (!files.length) return;
+    setFilesUploading(true);
+    setErr("");
+    try {
+      const uploaded = [];
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await fetch(`${API_BASE}/financial-worksheet/upload`, {
+          method: "POST",
+          credentials: "include",
+          body,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data?.error || "upload_failed");
+        uploaded.push(...(Array.isArray(data?.items) ? data.items : data?.file ? [data.file] : []));
+      }
+      if (uploaded.length) setUploadedFiles((previous) => [...(Array.isArray(previous) ? previous : []), ...uploaded]);
+    } catch (error) {
+      setErr(error?.message || "خطا در بارگذاری فایل");
+    } finally {
+      setFilesUploading(false);
+    }
+  };
   const openRelatedDocumentsModal = () => {
     setUploadDraftLetterIds(Array.isArray(relatedLetterIds) ? relatedLetterIds : []);
     setUploadLetterQuery("");
@@ -960,27 +988,44 @@ export default function FinancialWorksheetPage() {
   };
 
   const handleEditRow = (row) => {
+    const source = row?.raw && typeof row.raw === "object" ? row.raw : row || {};
     setFormOpen(true);
+    setErr("");
+    setEditingRowId(String(row?.id || source?.id || ""));
     if (tab === "receipts") {
-      setReceiptTypeRows([
-        {
-          id: Date.now() + Math.random(),
-          type: String(row?.receiptType || ""),
-          number: String(row?.number || ""),
-          otherDescription: String(row?.receiptTypeOtherDescription || ""),
-        },
-      ]);
-      setReceiptJalaliDate(String(row?.date || ""));
-      setReceiptReceivedAmount(formatAmountInput(row?.receiptAmount || ""));
-      setReceiptCurrencyId(String(row?.currencyId || ""));
-      setReceiptCurrencySourceId(String(row?.currencySourceId || ""));
-      setReceiptRialDescription(String(row?.rialDescription || ""));
-      setReceiptDescription(String(row?.description || ""));
+      const storedTypes = Array.isArray(source?.receipt_types) && source.receipt_types.length
+        ? source.receipt_types
+        : [{ type: source?.receipt_type ?? row?.receiptType, number: source?.receipt_no ?? row?.number, otherDescription: source?.receipt_type_other_description ?? row?.receiptTypeOtherDescription }];
+      setReceiptTypeRows(storedTypes.map((item) => ({
+        id: Date.now() + Math.random(),
+        type: String(item?.type || ""),
+        number: String(item?.number || ""),
+        otherDescription: String(item?.otherDescription ?? item?.other_description ?? ""),
+      })));
+      setReceiptJalaliDate(String(source?.jalali_date ?? row?.date ?? ""));
+      setReceiptReceivedAmount(formatAmountInput(source?.received_amount ?? row?.receiptAmount ?? ""));
+      setReceiptCurrencyId(String(source?.currency_id ?? row?.currencyId ?? ""));
+      setReceiptCurrencySourceId(String(source?.currency_source_id ?? row?.currencySourceId ?? ""));
+      setReceiptRialDescription(String(source?.rial_description ?? row?.rialDescription ?? ""));
+      setReceiptDescription(String(source?.description ?? row?.description ?? ""));
       return;
     }
-    setStatementNo(String(row?.number || ""));
-    setJalaliDate(String(row?.date || ""));
-    setGrossAmount(formatAmountInput(row?.grossAmount || ""));
+    setStatementNo(String(source?.statement_no ?? row?.number ?? ""));
+    setJalaliDate(String(source?.jalali_date ?? row?.date ?? ""));
+    setDescription(String(source?.description ?? row?.description ?? ""));
+    setGrossAmount(formatAmountInput(source?.gross_amount ?? row?.grossAmount ?? ""));
+    setCurrencyId(String(source?.currency_id ?? row?.currencyId ?? ""));
+    setCurrencySourceId(String(source?.currency_source_id ?? row?.currencySourceId ?? ""));
+    setPrepaymentDepreciation(formatAmountInput(source?.prepayment_depreciation ?? ""));
+    setInsuranceDeposit(formatAmountInput(source?.insurance_deposit ?? ""));
+    setPerformanceDeposit(formatAmountInput(source?.performance_deposit ?? ""));
+    setOtherDebts((Array.isArray(source?.other_deductions) && source.other_deductions.length ? source.other_deductions : [{ amount: "", description: "" }]).map((item) => ({
+      id: Date.now() + Math.random(), amount: formatAmountInput(item?.amount ?? ""), description: String(item?.description || ""),
+    })));
+    setVatStatus(String(source?.vat_status || "none"));
+    setVatPercent(formatAmountInput(source?.vat_percent ?? ""));
+    setRelatedLetterIds(Array.isArray(source?.related_letter_ids) ? source.related_letter_ids.map(String) : []);
+    setUploadedFiles(Array.isArray(source?.uploaded_files) ? source.uploaded_files : []);
   };
 
   const handleDeleteRow = async (row) => {
@@ -997,6 +1042,7 @@ export default function FinancialWorksheetPage() {
   };
 
   const resetStatementForm = () => {
+    setEditingRowId("");
     setStatementNo("");
     setJalaliDate("");
     setDescription("");
@@ -1012,6 +1058,7 @@ export default function FinancialWorksheetPage() {
   };
 
   const resetReceiptForm = () => {
+    setEditingRowId("");
     setReceiptTypeRows([{ id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
     setReceiptJalaliDate("");
     setReceiptReceivedAmount("");
@@ -1041,6 +1088,7 @@ export default function FinancialWorksheetPage() {
     }
 
     const payload = {
+      ...(editingRowId ? { id: editingRowId } : {}),
       kind: "statement",
       project_id: projectId,
       contract_id: contractId,
@@ -1070,9 +1118,11 @@ export default function FinancialWorksheetPage() {
       net_with_vat: netWithVatNumber,
       related_letter_ids: relatedLetterIds,
       uploaded_files: (uploadedFiles || []).map((file) => ({
+        id: file?.id ?? file?.serverId ?? "",
         name: file?.name || "فایل",
         size: file?.size || 0,
         type: file?.type || "",
+        url: file?.url || file?.href || "",
       })),
     };
 
@@ -1082,7 +1132,10 @@ export default function FinancialWorksheetPage() {
         body: JSON.stringify(payload),
       });
       const item = saved?.item || saved?.data || payload;
-      setWorksheetRows((prev) => [...normalizeRows([item]), ...(Array.isArray(prev) ? prev : [])]);
+      const normalized = normalizeRows([item])[0];
+      setWorksheetRows((prev) => editingRowId
+        ? (Array.isArray(prev) ? prev.map((row) => String(row.id) === String(editingRowId) ? normalized : row) : [normalized])
+        : [normalized, ...(Array.isArray(prev) ? prev : [])]);
       resetStatementForm();
       setFormOpen(false);
     } catch (e) {
@@ -1126,6 +1179,7 @@ export default function FinancialWorksheetPage() {
 
     const firstType = cleanedTypeRows[0] || {};
     const payload = {
+      ...(editingRowId ? { id: editingRowId } : {}),
       kind: "receipts",
       project_id: projectId,
       contract_id: contractId,
@@ -1152,7 +1206,10 @@ export default function FinancialWorksheetPage() {
         body: JSON.stringify(payload),
       });
       const item = saved?.item || saved?.data || payload;
-      setWorksheetRows((prev) => [...normalizeRows([item]), ...(Array.isArray(prev) ? prev : [])]);
+      const normalized = normalizeRows([item])[0];
+      setWorksheetRows((prev) => editingRowId
+        ? (Array.isArray(prev) ? prev.map((row) => String(row.id) === String(editingRowId) ? normalized : row) : [normalized])
+        : [normalized, ...(Array.isArray(prev) ? prev : [])]);
       resetReceiptForm();
       setFormOpen(false);
     } catch (e) {
@@ -1667,9 +1724,15 @@ export default function FinancialWorksheetPage() {
                     </span>
                   ))}
                   {uploadedFiles.map((file, index) => (
-                    <span key={`${file?.name || "file"}_${index}`} className="max-w-[220px] truncate rounded-lg bg-black/[0.05] px-2 py-1 dark:bg-white/10">
-                      {file?.name || `فایل ${toFaDigits(index + 1)}`}
-                    </span>
+                    file?.url ? (
+                      <a key={`${file?.id || file?.url}_${index}`} href={file.url} target="_blank" rel="noreferrer" className="max-w-[220px] truncate rounded-lg bg-black/[0.05] px-2 py-1 hover:bg-black/[0.1] dark:bg-white/10 dark:hover:bg-white/15">
+                        {file?.name || `فایل ${toFaDigits(index + 1)}`}
+                      </a>
+                    ) : (
+                      <span key={`${file?.name || "file"}_${index}`} className="max-w-[220px] truncate rounded-lg bg-black/[0.05] px-2 py-1 dark:bg-white/10">
+                        {file?.name || `فایل ${toFaDigits(index + 1)}`}
+                      </span>
+                    )
                   ))}
                 </div>
               ) : null}
@@ -1816,12 +1879,8 @@ export default function FinancialWorksheetPage() {
             size: file?.size,
           }))}
           fileRef={uploadInputRef}
-          onUpload={(fileList) => {
-            const incoming = Array.from(fileList || []).filter(Boolean);
-            if (incoming.length) {
-              setUploadedFiles((previous) => [...(Array.isArray(previous) ? previous : []), ...incoming]);
-            }
-          }}
+          uploading={filesUploading}
+          onUpload={uploadWorksheetFiles}
           onRemove={(id) => {
             setUploadedFiles((previous) => {
               const items = Array.isArray(previous) ? previous : [];
