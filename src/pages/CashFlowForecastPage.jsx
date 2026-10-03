@@ -45,8 +45,8 @@ export default function CashFlowForecastPage() {
   const [activeTab, setActiveTab] = useState("costs");
 
   return (
-    <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-      <div className="mb-5 flex min-w-0 items-center gap-3 pt-3 md:pt-4">
+    <Card className="rounded-2xl border bg-white p-7 text-neutral-900 border-neutral-200 md:p-8 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
+      <div className="mb-5 flex min-w-0 items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
           <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
         </span>
