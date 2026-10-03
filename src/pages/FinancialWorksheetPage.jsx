@@ -1406,7 +1406,7 @@ export default function FinancialWorksheetPage() {
 
               {tab === "receipts" ? (
                 <>
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(100px,.385fr)_minmax(125px,.48fr)_minmax(90px,.315fr)_minmax(240px,1fr)] xl:justify-start xl:items-end">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(100px,.385fr)_minmax(125px,.48fr)_minmax(90px,.315fr)_minmax(240px,1fr)] xl:justify-start xl:items-start">
                     <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.date}</label>
                       <div className="mt-1">
@@ -1457,10 +1457,10 @@ export default function FinancialWorksheetPage() {
                     </div>
                     <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">توضیحات</label>
-                      <input
+                      <textarea
                         value={receiptDescription}
                         onChange={(e) => setReceiptDescription(e.target.value)}
-                        className="mt-1 h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
+                        className="mt-1 min-h-10 w-full resize-y rounded-xl border border-black/10 bg-white px-3 py-2 leading-5 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white"
                         placeholder="توضیحات..."
                       />
                     </div>
