@@ -1252,8 +1252,8 @@ export default function FinancialWorksheetPage() {
                   {(receiptTypeRows || []).map((row, idx) => {
                     const showReceiptNumber = isStatementReceiptType(row.type);
                     return (
-                    <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
-                      <div className={showReceiptNumber ? "xl:col-span-5" : "xl:col-span-10"}>
+                    <div key={row.id} className={`grid grid-cols-1 items-end gap-2 xl:justify-start ${showReceiptNumber ? "xl:grid-cols-[minmax(220px,30%)_minmax(160px,20%)_40px]" : "xl:grid-cols-[minmax(220px,30%)_40px]"}`}>
+                      <div>
                         <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.basis}</label>
                         {isOtherReceiptType(row.type) ? (
                           <div className="mt-1 flex h-11 w-full items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-neutral-900 dark:border-white/15 dark:bg-white/5 dark:text-white">
@@ -1298,7 +1298,7 @@ export default function FinancialWorksheetPage() {
                       </div>
 
                       {showReceiptNumber ? (
-                        <div className="xl:col-span-5">
+                        <div>
                           <label className="text-xs text-neutral-600 dark:text-white/60">شماره</label>
                           <input
                             value={row.number}
@@ -1311,7 +1311,7 @@ export default function FinancialWorksheetPage() {
                         </div>
                       ) : null}
 
-                      <div className="xl:col-span-2 flex xl:justify-end gap-2">
+                      <div className="flex gap-2">
                         {idx === 0 ? (
                           <button type="button" onClick={addReceiptTypeRow} className="h-10 w-10 rounded-xl border border-black/15 hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10 grid place-items-center" aria-label={`افزودن ${receiptUi.basis}`} title="افزودن">
                             <img src="/images/icons/afzodan.svg" alt="" className="w-4 h-4 dark:invert" />
