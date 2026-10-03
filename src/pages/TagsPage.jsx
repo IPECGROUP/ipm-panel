@@ -854,10 +854,9 @@ function TagsPage() {
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
           <img src="/images/icons/tags.svg" alt="" className="h-6 w-6 dark:invert" />
         </span>
-        <div className="min-w-0 text-base md:text-lg">
-          <span className="text-neutral-700 dark:text-neutral-300">تنظیمات</span>
-          <span className="mx-2 text-neutral-500 dark:text-neutral-400">›</span>
-          <span className="font-semibold text-neutral-900 dark:text-neutral-100">برچسب‌ها</span>
+        <div className="min-w-0">
+          <span className="block truncate text-base font-bold md:text-lg">برچسب‌ها</span>
+          <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">تنظیمات</span>
         </div>
       </div>
 
