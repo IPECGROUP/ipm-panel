@@ -20,6 +20,37 @@ function toFaDigits(s) {
   return String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 }
 
+function RelatedDocumentsPickerModal({ letters, loading, query, onQueryChange, selectedIds, selectedCount, onToggle, onClose, onConfirm }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
+        <div className="flex max-h-[min(720px,calc(100vh-24px))] w-[min(760px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+          <div className="flex items-center justify-between border-b border-black/10 p-4 dark:border-white/10">
+            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
+              <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+            </button>
+            <div className="flex items-center gap-2 text-sm font-semibold md:text-base"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />اسناد مرتبط</div>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <input value={query} onChange={(event) => onQueryChange(event.target.value)} className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white" type="text" placeholder="جستجو با شماره / موضوع / سازمان / شماره ثبت دبیرخانه" autoFocus />
+            <div className="mt-3 max-h-[46vh] overflow-auto rounded-xl border border-black/10 p-2 dark:border-white/10">
+              {loading ? <div className="p-4 text-center text-sm text-neutral-500 dark:text-white/60">در حال بارگذاری نامه‌ها...</div> : letters.length ? letters.map((letter) => {
+                const id = String(letterIdOf(letter));
+                const checked = selectedIds.has(id);
+                const no = secretariatNoOf(letter) || letterNoOf(letter) || id;
+                return <button key={id} type="button" onClick={() => onToggle(id)} className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/10"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{toFaDigits(no)}</span>{letterDateOf(letter) ? <span className="text-xs text-black/45 dark:text-white/45">{toFaDigits(letterDateOf(letter))}</span> : null}</div><div className="mt-1 truncate text-xs text-black/60 dark:text-white/60">{subjectOf(letter) || orgOf(letter) || "بدون شرح"}</div></div><div className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/15 dark:border-white/20"}`}>{checked ? <span className="text-xs">✓</span> : null}</div></button>;
+              }) : <div className="p-4 text-center text-sm text-neutral-500 dark:text-white/60">موردی پیدا نشد.</div>}
+            </div>
+          </div>
+          <div className="flex items-center justify-between border-t border-black/10 p-4 dark:border-white/10"><span className="text-xs text-neutral-500 dark:text-white/60">{toFaDigits(selectedCount)} سند انتخاب شده</span><button type="button" onClick={onConfirm} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="تأیید" aria-label="تأیید"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function toEnDigits(s) {
   return String(s ?? "")
     .replace(/[۰-۹]/g, (d) => "0123456789"["۰۱۲۳۴۵۶۷۸۹".indexOf(d)])
@@ -384,6 +415,7 @@ export default function FinancialWorksheetPage() {
 
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [relatedDocumentsOpen, setRelatedDocumentsOpen] = useState(false);
   const [uploadDraftFiles, setUploadDraftFiles] = useState([]);
   const [letters, setLetters] = useState([]);
   const [lettersLoading, setLettersLoading] = useState(false);
@@ -809,9 +841,12 @@ export default function FinancialWorksheetPage() {
 
   const openUploadModal = () => {
     setUploadDraftFiles(Array.isArray(uploadedFiles) ? uploadedFiles : []);
+    setUploadOpen(true);
+  };
+  const openRelatedDocumentsModal = () => {
     setUploadDraftLetterIds(Array.isArray(relatedLetterIds) ? relatedLetterIds : []);
     setUploadLetterQuery("");
-    setUploadOpen(true);
+    setRelatedDocumentsOpen(true);
     void loadLettersForUpload();
   };
   const addFilesToDraft = (fileList) => {
@@ -1131,18 +1166,20 @@ export default function FinancialWorksheetPage() {
 
   return (
     <>
-      <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-        <div className="mb-5 flex min-w-0 items-center gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[.06]">
-            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-base font-bold md:text-lg">کاربرگ مالی</span>
-            <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه‌ها</span>
-          </span>
-        </div>
+      <Card className="overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="p-3 md:p-4">
+          <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[.06]">
+                <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-base font-bold md:text-lg">کاربرگ مالی</span>
+              </span>
+            </div>
+          </div>
 
-        <div className="space-y-4">
+          <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_minmax(250px,1fr)] lg:items-end">
             <div>
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
@@ -1562,7 +1599,7 @@ export default function FinancialWorksheetPage() {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 gap-3 px-3 xl:grid-cols-[minmax(165px,.9fr)_auto_minmax(145px,.75fr)_minmax(180px,1fr)_auto_auto] xl:items-end">
+              <div className="grid grid-cols-1 gap-3 px-3 xl:grid-cols-[minmax(165px,.9fr)_auto_minmax(145px,.75fr)_minmax(130px,.7fr)_auto] xl:items-end">
                 <div>
                   <label className="text-xs text-neutral-600 dark:text-white/60">جمع خالص تایید شده بدون VAT</label>
                   <AmountInputWithMeta value={formatComputedAmount(netWithoutVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
@@ -1573,7 +1610,7 @@ export default function FinancialWorksheetPage() {
                     {renderVatOption("has", "دارد")}
                     {renderVatOption("none", "ندارد")}
                     {vatStatus === "has" ? (
-                      <div className="flex h-8 items-center gap-1 rounded-lg border border-black/10 bg-white px-2.5 dark:border-white/15 dark:bg-white/5">
+                      <div className="flex h-10 items-center gap-1 rounded-xl border border-black/10 bg-white px-2.5 dark:border-white/15 dark:bg-white/5">
                         <input
                           value={vatPercent}
                           onChange={(e) => setVatPercent(formatAmountInput(e.target.value))}
@@ -1597,10 +1634,16 @@ export default function FinancialWorksheetPage() {
                   <AmountInputWithMeta value={formatComputedAmount(netWithVatNumber)} readOnly metaLabel={selectedCurrencyMetaLabel} />
                 </div>
                 <div className="flex items-end">
+                  <div className="flex items-center gap-1">
                     <button type="button" onClick={openUploadModal} className="relative grid h-10 w-10 place-items-center rounded-xl border border-black/10 bg-white text-neutral-900 transition hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="بارگذاری اسناد" aria-label="بارگذاری اسناد">
-                    <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
-                    {uploadedFiles.length || relatedLetterIds.length ? <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(uploadedFiles.length + relatedLetterIds.length)}</span> : null}
+                      <img src="/images/icons/upload.svg" alt="" className="w-5 h-5 dark:invert" />
+                      {uploadedFiles.length ? <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(uploadedFiles.length)}</span> : null}
                     </button>
+                    <button type="button" onClick={openRelatedDocumentsModal} className="relative grid h-10 w-10 place-items-center rounded-xl border border-black/10 bg-white text-neutral-900 transition hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10" title="اسناد مرتبط" aria-label="اسناد مرتبط">
+                      <img src="/images/icons/asnad-mortabet.svg" alt="" className="w-5 h-5 dark:invert" />
+                      {relatedLetterIds.length ? <span className="absolute -left-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] text-white dark:bg-white dark:text-black">{toFaDigits(relatedLetterIds.length)}</span> : null}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="flex justify-end border-t border-black/10 pt-3 dark:border-white/10">
@@ -1741,7 +1784,25 @@ export default function FinancialWorksheetPage() {
 
           {err ? <div className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
+        </div>
       </Card>
+
+      {relatedDocumentsOpen && (
+        <RelatedDocumentsPickerModal
+          letters={filteredUploadLetters}
+          loading={lettersLoading}
+          query={uploadLetterQuery}
+          onQueryChange={setUploadLetterQuery}
+          selectedIds={uploadDraftLetterIdSet}
+          selectedCount={uploadDraftLetterIds.length}
+          onToggle={toggleUploadDraftLetter}
+          onClose={() => setRelatedDocumentsOpen(false)}
+          onConfirm={() => {
+            setRelatedLetterIds(uploadDraftLetterIds);
+            setRelatedDocumentsOpen(false);
+          }}
+        />
+      )}
 
       {uploadOpen &&
         createPortal(
@@ -1757,56 +1818,6 @@ export default function FinancialWorksheetPage() {
                 </div>
 
                 <div className="max-h-[78vh] overflow-y-auto p-4 space-y-4">
-                  <div className="rounded-2xl border border-black/10 dark:border-white/10 p-3 space-y-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700 dark:text-white/80"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />اسناد مرتبط</div>
-                      <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
-                        {toFaDigits(uploadDraftLetterIds.length)}
-                      </div>
-                    </div>
-                    <input
-                      value={uploadLetterQuery}
-                      onChange={(e) => setUploadLetterQuery(e.target.value)}
-                      className="w-full h-10 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                      type="text"
-                      placeholder="جستجو با شماره / موضوع / سازمان / شماره ثبت دبیرخانه"
-                    />
-                    <div className="max-h-56 overflow-auto rounded-xl border border-black/10 p-2 dark:border-white/10">
-                      {lettersLoading ? (
-                        <div className="p-3 text-center text-sm text-neutral-500 dark:text-white/60">در حال بارگذاری نامه‌ها...</div>
-                      ) : filteredUploadLetters.length ? (
-                        filteredUploadLetters.map((letter) => {
-                          const id = String(letterIdOf(letter));
-                          const checked = uploadDraftLetterIdSet.has(id);
-                          const no = secretariatNoOf(letter) || letterNoOf(letter) || id;
-                          return (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() => toggleUploadDraftLetter(id)}
-                              className="w-full rounded-xl px-3 py-2 text-right transition flex items-center justify-between gap-3 hover:bg-black/[0.04] dark:hover:bg-white/10"
-                            >
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="font-semibold">{toFaDigits(no)}</span>
-                                  {letterDateOf(letter) ? <span className="text-xs text-black/45 dark:text-white/45">{toFaDigits(letterDateOf(letter))}</span> : null}
-                                </div>
-                                <div className="mt-1 truncate text-xs text-black/60 dark:text-white/60">
-                                  {subjectOf(letter) || orgOf(letter) || "بدون شرح"}
-                                </div>
-                              </div>
-                              <div className="h-5 w-5 rounded-md border border-black/15 grid place-items-center shrink-0 dark:border-white/20">
-                                {checked ? <span className="text-xs">✓</span> : null}
-                              </div>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="p-3 text-center text-sm text-neutral-500 dark:text-white/60">موردی پیدا نشد.</div>
-                      )}
-                    </div>
-                  </div>
-
                   <div className="rounded-2xl border border-black/10 dark:border-white/10 p-3 space-y-3">
                     <div className="text-sm text-neutral-700 dark:text-white/80">فایل های انتخاب‌شده</div>
                     <div className="rounded-xl border border-black/10 dark:border-white/10 p-2 max-h-44 overflow-y-auto">
@@ -1856,7 +1867,6 @@ export default function FinancialWorksheetPage() {
                       type="button"
                       onClick={() => {
                         setUploadedFiles(uploadDraftFiles);
-                        setRelatedLetterIds(uploadDraftLetterIds);
                         setUploadOpen(false);
                       }}
                       className={confirmActionBtnCls}
