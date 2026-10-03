@@ -258,7 +258,7 @@ function JalaliPopupDatePicker({ value, onChange }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full h-11 px-3 rounded-xl border text-right flex items-center justify-between gap-2 border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
+        className="w-full h-10 px-3 rounded-xl border text-right flex items-center justify-between gap-2 border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
       >
         <span className={value ? "" : "text-neutral-400 dark:text-white/50"}>{value ? toFaDigits(value) : "انتخاب تاریخ"}</span>
         <img src="/images/icons/tarikh.svg" alt="" className="h-[18px] w-[18px] dark:invert" />
@@ -897,7 +897,7 @@ export default function FinancialWorksheetPage() {
         : "bg-white text-[#1f2937] hover:bg-neutral-50 md:bg-white dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 md:dark:bg-neutral-900",
     ].join(" ");
   const renderVatOption = (value, label) => (
-    <label className="inline-flex h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2.5 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
+    <label className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
       <input
         type="checkbox"
         checked={vatStatus === value}
@@ -1183,7 +1183,7 @@ export default function FinancialWorksheetPage() {
                         setContractKind(item.id);
                         setContractId("");
                       }}
-                      className={`h-9 rounded-lg border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      className={`h-11 rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                         active
                           ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
                           : "border-black/10 bg-white text-neutral-700 hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
@@ -1249,11 +1249,11 @@ export default function FinancialWorksheetPage() {
             <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
               {tab === "receipts" ? (
                 <>
-                  <div className="flex flex-wrap items-end gap-2">
+                  <div className="flex flex-wrap items-end gap-1">
                   {(receiptTypeRows || []).map((row, idx) => {
                     const showReceiptNumber = isStatementReceiptType(row.type);
                     return (
-                    <div key={row.id} className="flex max-w-full items-end gap-2">
+                    <div key={row.id} className="flex max-w-full items-end gap-1">
                       <div className="w-[min(280px,calc(100vw-64px))]">
                         <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.basis}</label>
                         {isOtherReceiptType(row.type) ? (
@@ -1314,7 +1314,7 @@ export default function FinancialWorksheetPage() {
 
                       {idx > 0 ? (
                         <div className="flex">
-                          <button type="button" onClick={() => removeReceiptTypeRow(row.id)} className="h-10 w-10 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10 grid place-items-center" aria-label="حذف این ردیف" title="حذف">
+                          <button type="button" onClick={() => removeReceiptTypeRow(row.id)} className="grid h-11 w-11 place-items-center rounded-xl border border-red-300 text-red-600 hover:bg-red-50 dark:border-red-500/50 dark:text-red-400 dark:hover:bg-red-500/10" aria-label="حذف این ردیف" title="حذف">
                             <span className="text-xl leading-none">−</span>
                           </button>
                         </div>
@@ -1322,7 +1322,7 @@ export default function FinancialWorksheetPage() {
                     </div>
                     );
                   })}
-                  <button type="button" onClick={addReceiptTypeRow} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 transition hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10" aria-label={`افزودن ${receiptUi.basis}`} title="افزودن">
+                  <button type="button" onClick={addReceiptTypeRow} className="grid h-11 w-11 place-items-center rounded-xl border border-black/15 transition hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10" aria-label={`افزودن ${receiptUi.basis}`} title="افزودن">
                     <img src="/images/icons/afzodan.svg" alt="" className="h-4 w-4 dark:invert" />
                   </button>
                   </div>
