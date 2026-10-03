@@ -1257,7 +1257,7 @@ export default function FinancialWorksheetPage() {
 
           {canShowWorksheet ? (
             <>
-          <div className="flex items-start gap-2">
+          <div className="-mb-4 flex items-start gap-2">
             <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
               {worksheetTabs.map((item, index) => (
                 <button
