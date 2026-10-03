@@ -455,7 +455,7 @@ function ProjectsPage() {
 
   return (
     <Card
-      className="p-5 md:p-6 rounded-2xl border bg-white text-black border-black/10
+      className="p-7 md:p-8 rounded-2xl border bg-white text-black border-black/10
                  dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
       dir="rtl"
     >

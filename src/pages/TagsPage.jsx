@@ -846,7 +846,7 @@ function TagsPage() {
 
   return (
     <Card
-      className="rounded-2xl border bg-white text-neutral-900 border-black/10
+      className="rounded-2xl border bg-white p-7 text-neutral-900 border-black/10 md:p-8
                  dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
       dir="rtl"
     >
