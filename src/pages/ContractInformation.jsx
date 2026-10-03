@@ -3635,8 +3635,8 @@ export default function ContractInformation() {
 
   return (
     <div dir="rtl" className="ipm-contract-information mx-auto w-full max-w-[1400px] px-2 font-sans text-[13px] sm:px-0 sm:text-sm">
-      <Card className="!p-0 rounded-xl border overflow-hidden border-black/10 bg-white text-black sm:rounded-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="p-2.5 sm:p-3 md:p-4">
+      <Card className="rounded-xl border overflow-hidden border-black/10 bg-white text-black sm:rounded-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="p-3 md:p-4">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
