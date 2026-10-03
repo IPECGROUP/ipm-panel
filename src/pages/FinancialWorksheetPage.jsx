@@ -8,6 +8,13 @@ import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
 const PAGE_ICON = "/images/icons/karbarg-mali.svg";
+const DEFAULT_RECEIPT_TYPE_OPTIONS = [
+  { value: "prepayment", label: "پیش پرداخت" },
+  { value: "statement", label: "صورت وضعیت" },
+  { value: "interim", label: "علی الحساب" },
+  { value: "vat", label: "ارزش افزوده" },
+  { value: "other", label: "سایر" },
+];
 
 function toFaDigits(s) {
   return String(s ?? "").replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
@@ -388,6 +395,7 @@ export default function FinancialWorksheetPage() {
 
   const [currencyItems, setCurrencyItems] = useState([]);
   const [currencySourceItems, setCurrencySourceItems] = useState([]);
+  const [receiptBasisItems, setReceiptBasisItems] = useState([]);
   const [currencyId, setCurrencyId] = useState("");
   const [currencySourceId, setCurrencySourceId] = useState("");
   const [receiptTypeRows, setReceiptTypeRows] = useState([{ id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
@@ -407,13 +415,14 @@ export default function FinancialWorksheetPage() {
       setErr("");
       setProjectsLoading(true);
       try {
-        const [pResp, tResp, sResp, cResp, subContractsResp] = await Promise.all([
+        const [pResp, tResp, sResp, cResp, subContractsResp, receiptBasisResp] = await Promise.all([
           api("/projects").catch(() => ({ items: [] })),
           api("/base/currencies/types").catch(() => ({ items: [] })),
           api("/base/currencies/sources").catch(() => ({ items: [] })),
           api("/contracts").catch(() => ({ items: [] })),
           // قراردادهای فرعی در برخی نسخه‌های API فقط با این فیلتر بازگردانده می‌شوند.
           api("/contracts?documentType=sub").catch(() => ({ items: [] })),
+          api("/base/financial-options?category=worksheet-receipt").catch(() => ({ items: [] })),
         ]);
 
         if (stop) return;
@@ -423,6 +432,7 @@ export default function FinancialWorksheetPage() {
 
         const tList = tResp?.items || tResp?.data || tResp?.types || [];
         const sList = sResp?.items || sResp?.data || sResp?.sources || [];
+        const receiptBasisList = receiptBasisResp?.items || receiptBasisResp?.data || [];
         const cList = cResp?.items || cResp?.data || cResp?.contracts || [];
         const subContracts = subContractsResp?.items || subContractsResp?.data || subContractsResp?.contracts || [];
         const baseContracts = mergeContractRowsById(
@@ -446,6 +456,7 @@ export default function FinancialWorksheetPage() {
 
         setCurrencyItems(Array.isArray(tList) ? tList : []);
         setCurrencySourceItems(Array.isArray(sList) ? sList : []);
+        setReceiptBasisItems(Array.isArray(receiptBasisList) ? receiptBasisList : []);
         setContractRows(mergeContractRowsById(baseContracts, verifiedCachedContracts));
       } catch (e) {
         if (!stop) setErr(e.message || "خطا در بارگذاری اطلاعات");
@@ -730,13 +741,16 @@ export default function FinancialWorksheetPage() {
     const parts = [selectedCurrencyLabel, selectedCurrencySourceLabel].filter(Boolean);
     return parts.length ? parts.join(" / ") : "";
   }, [selectedCurrencyLabel, selectedCurrencySourceLabel]);
-  const receiptTypeOptions = [
-    { value: "prepayment", label: "پیش پرداخت" },
-    { value: "statement", label: "صورت وضعیت" },
-    { value: "interim", label: "علی الحساب" },
-    { value: "vat", label: "ارزش افزوده" },
-    { value: "other", label: "سایر" },
-  ];
+  const receiptTypeOptions = useMemo(() => {
+    const configured = (receiptBasisItems || [])
+      .map((item) => String(item?.title || "").trim())
+      .filter(Boolean)
+      .map((title) => ({ value: title, label: title }));
+    return configured.length ? configured : DEFAULT_RECEIPT_TYPE_OPTIONS;
+  }, [receiptBasisItems]);
+  const receiptTypeLabel = (value) => receiptTypeOptions.find((item) => item.value === value)?.label || String(value || "");
+  const isStatementReceiptType = (value) => String(value) === "statement" || receiptTypeLabel(value) === "صورت وضعیت";
+  const isOtherReceiptType = (value) => String(value) === "other" || receiptTypeLabel(value) === "سایر";
 
   const addReceiptTypeRow = () =>
     setReceiptTypeRows((prev) => [...(Array.isArray(prev) ? prev : []), { id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
@@ -1053,19 +1067,19 @@ export default function FinancialWorksheetPage() {
     const cleanedTypeRows = (receiptTypeRows || [])
       .map((row) => ({
         type: String(row?.type || "").trim(),
-        number: String(row?.type === "statement" ? row?.number || "" : "").trim(),
-        otherDescription: String(row?.type === "other" ? row?.otherDescription || "" : "").trim(),
+        number: String(isStatementReceiptType(row?.type) ? row?.number || "" : "").trim(),
+        otherDescription: String(isOtherReceiptType(row?.type) ? row?.otherDescription || "" : "").trim(),
       }))
       .filter((row) => row.type);
     if (!cleanedTypeRows.length) {
       setErr(`${receiptUi.basis} را انتخاب کنید.`);
       return;
     }
-    if (cleanedTypeRows.some((row) => row.type === "statement" && !row.number)) {
+    if (cleanedTypeRows.some((row) => isStatementReceiptType(row.type) && !row.number)) {
       setErr("شماره صورت وضعیت را وارد کنید.");
       return;
     }
-    if (cleanedTypeRows.some((row) => row.type === "other" && !row.otherDescription)) {
+    if (cleanedTypeRows.some((row) => isOtherReceiptType(row.type) && !row.otherDescription)) {
       setErr(`${receiptUi.basis} سایر را وارد کنید.`);
       return;
     }
@@ -1236,12 +1250,12 @@ export default function FinancialWorksheetPage() {
               {tab === "receipts" ? (
                 <>
                   {(receiptTypeRows || []).map((row, idx) => {
-                    const showReceiptNumber = row.type === "statement";
+                    const showReceiptNumber = isStatementReceiptType(row.type);
                     return (
                     <div key={row.id} className="grid grid-cols-1 xl:grid-cols-12 gap-3 items-end">
                       <div className={showReceiptNumber ? "xl:col-span-5" : "xl:col-span-10"}>
                         <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.basis}</label>
-                        {row.type === "other" ? (
+                        {isOtherReceiptType(row.type) ? (
                           <div className="mt-1 flex h-11 w-full items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-neutral-900 dark:border-white/15 dark:bg-white/5 dark:text-white">
                             <input
                               value={row.otherDescription}
@@ -1267,8 +1281,8 @@ export default function FinancialWorksheetPage() {
                               const nextType = e.target.value;
                               updateReceiptTypeRow(row.id, {
                                 type: nextType,
-                                ...(nextType !== "statement" ? { number: "" } : {}),
-                                ...(nextType !== "other" ? { otherDescription: "" } : {}),
+                                ...(!isStatementReceiptType(nextType) ? { number: "" } : {}),
+                                ...(!isOtherReceiptType(nextType) ? { otherDescription: "" } : {}),
                               });
                             }}
                             className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
