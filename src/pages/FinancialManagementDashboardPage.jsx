@@ -407,10 +407,12 @@ function tenkhahRankings(items) {
       received: 0,
       unregistered: 0,
       unsettled: 0,
+      unsettledItems: [],
     };
     current.received += amountOf(item?.chargedAmount ?? item?.requestedAmount);
     current.unregistered += amountOf(item?.unregisteredBalance);
     current.unsettled += amountOf(item?.unsettledBalance);
+    if (amountOf(item?.unsettledBalance) > 0) current.unsettledItems.push(item);
     people.set(key, current);
   });
   const rows = [...people.values()];
@@ -473,10 +475,12 @@ function buildTenkhahHolderRows(items) {
       unsettled: 0,
       registered: 0,
       settled: 0,
+      receivedItems: [],
     };
     const unregistered = Math.min(received, amountOf(item?.unregisteredBalance));
     const unsettled = Math.min(received, amountOf(item?.unsettledBalance));
     current.received += received;
+    current.receivedItems.push(item);
     current.unregistered += unregistered;
     current.unsettled += unsettled;
     current.registered += received - unregistered;
@@ -558,7 +562,29 @@ function MoneyByProjectPanel({
   );
 }
 
-function TenkhahHoldersPanel({ rows }) {
+function TenkhahAggregateRequestsDialog({ details, userId, onClose }) {
+  const [selected, setSelected] = useState(null);
+  if (!details) return null;
+  const items = Array.isArray(details.items) ? details.items : [];
+  return createPortal(
+    <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/55 p-3" dir="rtl">
+      <div className="max-h-[88vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+        <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
+          <span><b className="block">درخواست‌های تنخواه</b><span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">{details.title}</span></span>
+          <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-lg text-white dark:bg-white dark:text-black" aria-label="بستن">×</button>
+        </div>
+        <div className="max-h-[68vh] overflow-auto p-4">
+          <table className="w-full min-w-[680px] text-sm"><thead className="sticky top-0 bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-3 text-right font-medium">شماره درخواست</th><th className="px-3 py-3 text-right font-medium">پروژه</th><th className="px-3 py-3 text-center font-medium">مبلغ</th><th className="px-3 py-3 text-center font-medium">مانده تسویه‌نشده</th><th className="px-3 py-3 text-center font-medium">مشاهده</th></tr></thead><tbody>
+            {items.map((item) => <tr key={item.id} className="border-t border-black/[0.07] dark:border-white/[0.08]"><td className="px-3 py-3 tabular-nums">{item.requestNumber || "—"}</td><td className="px-3 py-3">{item.projectCode ? `${item.projectCode} - ` : ""}{item.projectName || "—"}</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(item.chargedAmount || item.requestedAmount)} ریال</td><td className="px-3 py-3 text-center tabular-nums">{faNumber(item.unsettledBalance)} ریال</td><td className="px-3 py-3 text-center"><button type="button" onClick={() => setSelected(item)} className="grid h-9 w-9 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست" aria-label="مشاهده درخواست"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button></td></tr>)}
+          </tbody></table>
+        </div>
+      </div>
+      {selected && <TenkhahPreviewV4 item={{ ...selected, canAct: false }} userId={userId} api={null} onRefresh={() => {}} onClose={() => setSelected(null)} />}
+    </div>, document.body,
+  );
+}
+
+function TenkhahHoldersPanel({ rows, onShowRequests }) {
   return (
     <Card className="min-h-[420px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
       <div className="mb-4">
@@ -594,7 +620,12 @@ function TenkhahHoldersPanel({ rows }) {
                           key={key}
                           className="whitespace-nowrap px-3 py-3 text-center tabular-nums"
                         >
-                          {faNumber(row[key])} ریال
+                          {key === "received" ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span>{faNumber(row[key])} ریال</span>
+                              <button type="button" onClick={() => onShowRequests({ title: `درخواست‌های تنخواه ${row.beneficiary}`, items: row.receivedItems })} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست‌ها" aria-label="مشاهده درخواست‌ها"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>
+                            </span>
+                          ) : <>{faNumber(row[key])} ریال</>}
                         </td>
                       ),
                     )}
@@ -625,6 +656,8 @@ function TenkhahRankingPanel({
   valueKey,
   valueLabel,
   primaryKey = "received",
+  detailItemsKey,
+  onShowRequests,
 }) {
   return (
     <Card className="min-h-[330px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
@@ -652,11 +685,9 @@ function TenkhahRankingPanel({
                   {valueLabel}: {faNumber(person[valueKey])} ریال
                 </span>
               </span>
-              <span className="shrink-0 text-sm font-bold tabular-nums">
-                {faNumber(person[primaryKey])}{" "}
-                <span className="text-[10px] font-medium text-neutral-400">
-                  ریال
-                </span>
+              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-bold tabular-nums">
+                <span>{faNumber(person[primaryKey])} <span className="text-[10px] font-medium text-neutral-400">ریال</span></span>
+                {detailItemsKey && <button type="button" onClick={() => onShowRequests({ title: `درخواست‌های تنخواه ${person.label}`, items: person[detailItemsKey] })} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست‌ها" aria-label="مشاهده درخواست‌ها"><img src="/images/icons/list.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
               </span>
             </div>
           ))
@@ -742,6 +773,15 @@ function ReportRequestPreview({ item, onClose }) {
   ];
   return createPortal(<div className="fixed inset-0 z-[9999]" dir="rtl"><div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3 md:p-6"><div className="flex max-h-[88vh] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}><div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b>جزئیات {item.kind === "tenkhah" ? "درخواست تنخواه" : "درخواست پرداخت"}</b><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-lg text-white dark:bg-white dark:text-black" aria-label="بستن">×</button></div><div className="grid min-h-0 gap-4 overflow-y-auto p-4 md:grid-cols-[260px_minmax(0,1fr)] md:p-5"><section className="self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-bold dark:border-white/10 dark:bg-white/5">وضعیت درخواست</div><div className="p-4"><span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${reportBadgeClass(waiting.tone)}`}>{waiting.label}</span><p className="mt-3 text-xs leading-6 text-neutral-500 dark:text-neutral-400">این پنجره در حالت گزارش و فقط برای مشاهده اطلاعات است.</p></div></section><section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-bold dark:border-white/10 dark:bg-white/5">جزئیات درخواست</div><div className="grid grid-cols-1 divide-y divide-black/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 dark:divide-white/10">{rows.map(([label, value]) => <div key={label} className="min-w-0 px-4 py-3 text-xs"><span className="block text-neutral-500 dark:text-neutral-400">{label}</span><span className="mt-1 block break-words font-medium">{value || "—"}</span></div>)}</div></section></div></div></div></div>, document.body);
 }
+
+function managementApproverOf(item) {
+  const approval = [...historyOf(item)].reverse().find((entry) =>
+    ["approve", "approved"].includes(String(entry?.type || "").toLowerCase()) &&
+    (entry?.roleKey === "management" || entry?.stage === "management"),
+  );
+  return item?.managementApprover || approval?.actorName || approval?.userName || "";
+}
+
 function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userId }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(null);
@@ -763,6 +803,7 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
               `${item.projectCode || project?.code ? `${item.projectCode || project?.code} - ` : ""}${item.projectName || project?.name || "—"}`,
             ),
             requester: item.createdByName,
+            managementApprover: managementApproverOf(item),
             amount: item.amount,
             currency: item.currencyName || "ریال",
             status: { ...item, kind: "payment" },
@@ -780,6 +821,7 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
             ),
             title: item.purpose,
             requester: item.requesterName || item.beneficiaryName,
+            managementApprover: managementApproverOf(item),
             amount: item.requestedAmount,
             currency: item.currency || "ریال",
             status: { ...item, kind: "tenkhah" },
@@ -798,6 +840,7 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
             item.project,
             item.title,
             item.requester,
+            item.managementApprover,
             reportStatusLabel(item.status),
           ].some((value) =>
             String(value || "")
@@ -827,19 +870,17 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
         <div className="max-h-[55vh] overflow-auto">
           <table className="w-full min-w-[900px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center">
             <colgroup>
-              <col style={{ width: 90 }} />
               <col style={{ width: 100 }} />
               <col style={{ width: 205 }} />
               <col />
               <col style={{ width: 165 }} />
               <col style={{ width: 130 }} />
               <col style={{ width: 140 }} />
+              <col style={{ width: 140 }} />
+              <col style={{ width: 130 }} />
             </colgroup>
             <thead>
               <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-                <th className="sticky top-0 z-30 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800">
-                  نوع
-                </th>
                 <th className="sticky top-0 z-30 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800">
                   شماره
                 </th>
@@ -859,6 +900,9 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
                   درخواست‌کننده
                 </th>
                 <th className="sticky top-0 z-30 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800">
+                  مدیریت ارشد
+                </th>
+                <th className="sticky top-0 z-30 bg-neutral-200 px-3 py-2 text-[14px] font-semibold dark:bg-neutral-800">
                   وضعیت
                 </th>
               </tr>
@@ -873,13 +917,6 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
                     tabIndex={0}
                     className={`cursor-pointer border-b border-neutral-300 transition-colors hover:bg-black/[0.06] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${item.kind === "tenkhah" ? "bg-violet-50/90 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] dark:bg-white/5 dark:hover:bg-white/10"} dark:border-neutral-700`}
                   >
-                    <td className="px-3">
-                      <span
-                        className={`rounded-md px-2 py-1 text-[11px] font-medium ${item.kind === "tenkhah" ? "bg-violet-100 text-violet-800 dark:bg-violet-500/20 dark:text-violet-200" : "bg-sky-100 text-sky-800 dark:bg-sky-500/20 dark:text-sky-200"}`}
-                      >
-                        {item.kind === "tenkhah" ? "تنخواه" : "پرداخت"}
-                      </span>
-                    </td>
                     <td className="px-3 tabular-nums">{item.serial || "—"}</td>
                     <td className="px-3 tabular-nums">{item.date || "—"}</td>
                     <td className="truncate px-3 text-right">
@@ -892,6 +929,7 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
                       {faNumber(item.amount)} {item.currency}
                     </td>
                     <td className="truncate px-3">{item.requester || "—"}</td>
+                    <td className="truncate px-3">{item.managementApprover || "—"}</td>
                     <td className="px-3">
                       <span className="whitespace-nowrap text-neutral-600 dark:text-neutral-300">
                         {reportStatusLabel(item.status)}
@@ -935,6 +973,7 @@ export default function FinancialManagementDashboardPage() {
   const [tenkhahRequests, setTenkhahRequests] = useState([]);
   const [liquidityProjects, setLiquidityProjects] = useState([]);
   const [projects, setProjects] = useState([]);
+  const [aggregateDetails, setAggregateDetails] = useState(null);
 
   useEffect(() => {
     if (!user?.id) return undefined;
@@ -1077,6 +1116,8 @@ export default function FinancialManagementDashboardPage() {
             valueKey="unsettled"
             valueLabel="مانده تسویه‌نشده"
             primaryKey="unsettled"
+            detailItemsKey="unsettledItems"
+            onShowRequests={setAggregateDetails}
           />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
@@ -1109,9 +1150,10 @@ export default function FinancialManagementDashboardPage() {
           />
         </div>
         <div className="mt-3">
-          <TenkhahHoldersPanel rows={tenkhahHolderRows} />
+          <TenkhahHoldersPanel rows={tenkhahHolderRows} onShowRequests={setAggregateDetails} />
         </div>
       </Card>
+      <TenkhahAggregateRequestsDialog details={aggregateDetails} userId={user?.id} onClose={() => setAggregateDetails(null)} />
     </div>
   );
 }
