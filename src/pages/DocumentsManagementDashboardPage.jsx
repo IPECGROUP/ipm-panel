@@ -154,7 +154,7 @@ export default function DocumentsManagementDashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100" dir="rtl">
-      <Card className="rounded-2xl border border-neutral-200 bg-white p-4 shadow-none dark:border-neutral-800 dark:bg-neutral-900 sm:p-5">
+      <Card className="rounded-2xl border border-neutral-200 bg-white p-7 shadow-none md:p-8 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mb-5 flex min-w-0 items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
             <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
