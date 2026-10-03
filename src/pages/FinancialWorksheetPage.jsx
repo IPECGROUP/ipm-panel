@@ -5,6 +5,8 @@ import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
+import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
+import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
 const PAGE_ICON = "/images/icons/karbarg-mali.svg";
@@ -840,7 +842,6 @@ export default function FinancialWorksheetPage() {
   }, [api, lettersLoading]);
 
   const openUploadModal = () => {
-    setUploadDraftFiles(Array.isArray(uploadedFiles) ? uploadedFiles : []);
     setUploadOpen(true);
   };
   const openRelatedDocumentsModal = () => {
@@ -1788,13 +1789,13 @@ export default function FinancialWorksheetPage() {
       </Card>
 
       {relatedDocumentsOpen && (
-        <RelatedDocumentsPickerModal
-          letters={filteredUploadLetters}
+        <RelatedLettersPickerModal
+          api={api}
+          items={letters}
           loading={lettersLoading}
           query={uploadLetterQuery}
           onQueryChange={setUploadLetterQuery}
-          selectedIds={uploadDraftLetterIdSet}
-          selectedCount={uploadDraftLetterIds.length}
+          selectedIds={uploadDraftLetterIds}
           onToggle={toggleUploadDraftLetter}
           onClose={() => setRelatedDocumentsOpen(false)}
           onConfirm={() => {
@@ -1804,7 +1805,32 @@ export default function FinancialWorksheetPage() {
         />
       )}
 
-      {uploadOpen &&
+      {uploadOpen && (
+        <DocumentUploadModal
+          title="بارگذاری اسناد"
+          files={(Array.isArray(uploadedFiles) ? uploadedFiles : []).map((file, index) => ({
+            id: `worksheet-file-${index}`,
+            name: file?.name,
+            size: file?.size,
+          }))}
+          fileRef={uploadInputRef}
+          onUpload={(fileList) => {
+            const incoming = Array.from(fileList || []).filter(Boolean);
+            if (incoming.length) {
+              setUploadedFiles((previous) => [...(Array.isArray(previous) ? previous : []), ...incoming]);
+            }
+          }}
+          onRemove={(id) => {
+            setUploadedFiles((previous) => {
+              const items = Array.isArray(previous) ? previous : [];
+              return items.filter((_, index) => `worksheet-file-${index}` !== id);
+            });
+          }}
+          onClose={() => setUploadOpen(false)}
+        />
+      )}
+
+      {false && uploadOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999]">
             <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setUploadOpen(false)} />
