@@ -1181,7 +1181,7 @@ export default function FinancialWorksheetPage() {
           </div>
 
           <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(220px,1fr)_auto_minmax(250px,1fr)] lg:items-end">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(176px,.8fr)_auto_minmax(310px,1.2fr)] lg:items-end">
             <div>
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
@@ -1221,7 +1221,7 @@ export default function FinancialWorksheetPage() {
                         setContractKind(item.id);
                         setContractId("");
                       }}
-                      className={`h-11 rounded-xl border px-3 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      className={`h-11 min-w-[68px] rounded-xl border px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                         active
                           ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
                           : "border-black/10 bg-white text-neutral-700 hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
