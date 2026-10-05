@@ -581,6 +581,7 @@ export default function FinancialWorksheetPage() {
     () => activeProjects.find((project) => String(project?.id) === String(projectId)) || null,
     [activeProjects, projectId],
   );
+  const detailProject = detailRow ? projects.find((project) => String(project?.id) === String(detailRow.raw?.project_id ?? detailRow.raw?.projectId ?? projectId)) || null : null;
 
   const contractById = useMemo(() => {
     const map = new Map();
@@ -714,15 +715,10 @@ export default function FinancialWorksheetPage() {
   useEffect(() => {
     let dead = false;
     (async () => {
-      if (!projectId) {
-        setWorksheetRows([]);
-        setRowsLoading(false);
-        return;
-      }
       setRowsLoading(true);
       try {
         const q = new URLSearchParams();
-        q.set("project_id", String(projectId));
+        if (projectId) q.set("project_id", String(projectId));
         if (contractId) q.set("contract_id", String(contractId));
         q.set("kind", tab === "receipts" ? "receipts" : "statement");
         const r = await api("/financial-worksheet?" + q.toString());
@@ -1113,6 +1109,8 @@ export default function FinancialWorksheetPage() {
 
   const handleEditRow = (row) => {
     const source = row?.raw && typeof row.raw === "object" ? row.raw : row || {};
+    const rowProjectId = String(source?.project_id ?? source?.projectId ?? "");
+    if (rowProjectId && rowProjectId !== String(projectId)) setProjectId(rowProjectId);
     if (row?.contractId && String(row.contractId) !== String(contractId)) {
       const rowContract = contractById.get(String(row.contractId));
       setContractKind(documentTypeForContract(rowContract) === "sub" ? "sub" : "main");
@@ -1392,8 +1390,8 @@ export default function FinancialWorksheetPage() {
           </div>
 
           <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(176px,.8fr)_auto_minmax(310px,1.2fr)] lg:items-end">
-            <div>
+          <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(220px,.35fr)_minmax(0,1fr)] lg:items-end">
+            <div className="min-w-0">
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
                 value={projectId}
@@ -1408,7 +1406,7 @@ export default function FinancialWorksheetPage() {
                 disabled={projectsLoading}
                 className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
               >
-                <option value="">{projectsLoading ? "در حال بارگذاری..." : "انتخاب پروژه فعال"}</option>
+                <option value="">{projectsLoading ? "در حال بارگذاری..." : "همه پروژه‌ها"}</option>
                 {activeProjects.map((p) => (
                   <option key={String(p?.id)} value={String(p?.id)}>
                     {projectLabel(p)}
@@ -1416,7 +1414,13 @@ export default function FinancialWorksheetPage() {
                 ))}
               </select>
             </div>
+            <div className="min-w-0">
+              <label htmlFor="worksheet-search" className="block text-xs text-neutral-600 dark:text-white/60">جست و جو</label>
+              <input id="worksheet-search" type="search" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setPage(0); }} placeholder="جستجو در شماره، تاریخ، شرح، قرارداد یا مبلغ..." className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white" />
+            </div>
+          </div>
 
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[auto_minmax(310px,1fr)] lg:items-end">
             <div className="lg:justify-self-center">
               <label className="text-xs text-neutral-600 dark:text-white/60">قرارداد</label>
               <div className="mt-1 flex items-center gap-1">
@@ -1467,11 +1471,6 @@ export default function FinancialWorksheetPage() {
                 ))}
               </select>
             </div>
-          </div>
-
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
-            <label htmlFor="worksheet-search" className="block text-xs text-neutral-600 dark:text-white/60">جست و جو</label>
-            <input id="worksheet-search" type="search" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setPage(0); }} placeholder="جستجو در شماره، تاریخ، شرح، قرارداد یا مبلغ..." className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white" />
           </div>
 
           <div className="-mb-4 flex items-start gap-2">
@@ -1927,9 +1926,9 @@ export default function FinancialWorksheetPage() {
                       <tbody className={`${tablePreset.body} [&_tr]:h-9 [&_td]:!py-0`}>
                         {tab === "receipts" ? (
                           rowsLoading ? (
-                            <TR><TD colSpan={6} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
+                            <TR><td colSpan={6} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
                           ) : !pageRows.length ? (
-                            <TR><TD colSpan={6} className={tablePreset.emptyRow}>{!projectId ? "برای مشاهده یک پروژه را انتخاب کنید." : searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</TD></TR>
+                            <TR><td colSpan={6} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</td></TR>
                           ) : (
                             <>
                               <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
@@ -1952,9 +1951,9 @@ export default function FinancialWorksheetPage() {
                             </>
                           )
                         ) : rowsLoading ? (
-                          <TR><TD colSpan={8} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
+                          <TR><td colSpan={8} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
                         ) : !pageRows.length ? (
-                          <TR><TD colSpan={8} className={tablePreset.emptyRow}>{!projectId ? "برای مشاهده یک پروژه را انتخاب کنید." : searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</TD></TR>
+                          <TR><td colSpan={8} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</td></TR>
                         ) : (
                           <>
                             <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
@@ -2018,7 +2017,7 @@ export default function FinancialWorksheetPage() {
       {detailRow && <FinancialWorksheetDetailModal
         row={detailRow}
         kind={tab}
-        project={selectedProject ? projectLabel(selectedProject) : ""}
+        project={detailProject ? projectLabel(detailProject) : ""}
         contract={detailRow.raw?.contract_no || contractNoForRow(selectedContract)}
         currency={readItemLabel(currencyById.get(String(detailRow.currencyId)))}
         currencySource={readItemLabel(currencySourceById.get(String(detailRow.currencySourceId)))}
