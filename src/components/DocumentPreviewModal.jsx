@@ -1,14 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const nameOf = (file) => String(file?.name ?? file?.filename ?? file?.fileName ?? file?.originalName ?? "");
+const nameOf = (file) => String(file?.name ?? file?.filename ?? file?.file_name ?? file?.fileName ?? file?.original_name ?? file?.originalName ?? "");
 const filesOf = (letter) => {
   const raw = letter?.attachments ?? letter?.attachment ?? letter?.files ?? letter?.files_json;
   if (Array.isArray(raw)) return raw;
   if (typeof raw === "string") { try { const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed : []; } catch { return []; } }
   return Array.isArray(raw?.items) ? raw.items : [];
 };
-const urlOf = (file, letterId, index) => String(file?.url ?? file?.href ?? file?.path ?? file?.publicUrl ?? file?.public_url ?? file?.fileUrl ?? "") || (/^\d+$/.test(String(file?.fileId ?? file?.file_id ?? file?.serverId ?? "")) ? `/api/files/${file.fileId ?? file.file_id ?? file.serverId}` : (/^\d+$/.test(String(letterId ?? "")) ? `/api/letter-attachments/${letterId}/${index}` : ""));
+const urlOf = (file, letterId, index) => {
+  if (!file) return "";
+  const raw = String(file.url ?? file.href ?? file.path ?? file.publicUrl ?? file.public_url ?? file.fileUrl ?? file.file_url ?? "").trim();
+  if (/^https?:\/\//i.test(raw) || raw.startsWith("//")) return raw;
+  const apiBase = String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
+  // Use the same attachment endpoint as document management. Legacy upload paths
+  // can fall through to the frontend and return the site's HTML instead of a file.
+  if (/^\d+$/.test(String(letterId ?? ""))) return `${apiBase}/letter-attachments/${encodeURIComponent(letterId)}/${index}`;
+  const fileId = file.file_id ?? file.fileId ?? file.serverId;
+  if (/^\d+$/.test(String(fileId ?? ""))) return `${apiBase}/files/${encodeURIComponent(fileId)}`;
+  return raw;
+};
 const kindOf = (file) => String(file?.type ?? file?.mime ?? file?.mimeType ?? file?.mime_type ?? "").toLowerCase();
 const isPdf = (url, name, type) => type.includes("pdf") || /\.pdf(\?|#|$)/i.test(`${url} ${name}`);
 const isImage = (url, name, type) => type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(\?|#|$)/i.test(`${url} ${name}`);
