@@ -4,6 +4,7 @@ import React from "react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TD } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 import { baseCurrenciesTablePreset as tablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 
 function BaseCurrenciesPage({ embedded = false }) {
@@ -32,6 +33,8 @@ function BaseCurrenciesPage({ embedded = false }) {
 
   const [typeSortDir, setTypeSortDir] = React.useState("asc");
   const [srcSortDir, setSrcSortDir] = React.useState("asc");
+  const [pageSizeByKind, setPageSizeByKind] = React.useState({ type: 10, source: 10 });
+  const [pageByKind, setPageByKind] = React.useState({ type: 0, source: 0 });
 
   const api = async (path, opt = {}) => {
     const res = await fetch("/api" + path, {
@@ -398,9 +401,14 @@ function BaseCurrenciesPage({ embedded = false }) {
   );
 
   const SimpleTable = ({ rows, kind, sortDir, onToggleSort }) => {
+    const pageSize = pageSizeByKind[kind];
+    const safePage = Math.min(pageByKind[kind], Math.max(0, Math.ceil(rows.length / pageSize) - 1));
+    const startIndex = safePage * pageSize;
+    const pageRows = rows.slice(startIndex, startIndex + pageSize);
+    const setCurrentPage = (value) => setPageByKind((current) => ({ ...current, [kind]: value }));
     const selectedIds = Array.isArray(selectedByKind[kind]) ? selectedByKind[kind] : [];
     const selectedSet = new Set(selectedIds.map((id) => String(id)));
-    const visibleIds = (rows || []).map((r) => String(r.id));
+    const visibleIds = pageRows.map((r) => String(r.id));
     const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSet.has(id));
     const someVisibleSelected = visibleIds.some((id) => selectedSet.has(id)) && !allVisibleSelected;
 
@@ -426,11 +434,12 @@ function BaseCurrenciesPage({ embedded = false }) {
     return (
       <TableWrap>
         <div className={tablePreset.outer}>
-          <div className={tablePreset.innerPad}>
+          <div className={embedded ? "" : tablePreset.innerPad}>
             <div className={tablePreset.frame}>
-              <table className={tablePreset.table} dir="rtl">
+              <div className="max-h-[55vh] overflow-auto">
+              <table className={`${tablePreset.table} [&_th]:!py-2 [&_td]:!py-0 [&_tbody_tr]:h-9`} dir="rtl">
                 <THead>
-                  <tr className={tablePreset.headRow}>
+                  <tr className={`${tablePreset.headRow} sticky top-0 z-10`}>
                     <TH className={`w-12 ${tablePreset.th}`}>
                       <input
                         type="checkbox"
@@ -480,16 +489,16 @@ function BaseCurrenciesPage({ embedded = false }) {
                         در حال بارگذاری…
                       </TD>
                     </tr>
-                  ) : (rows || []).length === 0 ? (
+                  ) : pageRows.length === 0 ? (
                     <tr>
                       <TD colSpan={3} className={tablePreset.emptyRow}>
                         موردی ثبت نشده.
                       </TD>
                     </tr>
                   ) : (
-                    rows.map((r, idx) => {
+                    pageRows.map((r, idx) => {
                       const rowId = String(r.id);
-                      const isLast = idx === rows.length - 1;
+                      const isLast = idx === pageRows.length - 1;
                       const tdBorder = isLast ? "" : tablePreset.rowDivider;
                       const rowDraft = editingByKind?.[kind]?.[rowId];
                       const isEditing = Boolean(rowDraft);
@@ -514,7 +523,7 @@ function BaseCurrenciesPage({ embedded = false }) {
                             />
                           </TD>
 
-                          <TD className={`px-3 ${tdBorder}`}>{idx + 1}</TD>
+                          <TD className={`px-3 ${tdBorder}`}>{startIndex + idx + 1}</TD>
 
                           <TD className={`px-3 ${hoverSelectableRowPreset.valueCell} ${tdBorder}`}>
                             {isEditing ? (
@@ -565,6 +574,8 @@ function BaseCurrenciesPage({ embedded = false }) {
                   )}
                 </tbody>
               </table>
+              </div>
+              <BaseTablePager total={rows.length} page={safePage} pageSize={pageSize} onPageChange={setCurrentPage} onPageSizeChange={(value) => setPageSizeByKind((current) => ({ ...current, [kind]: value }))} />
             </div>
           </div>
         </div>
@@ -588,7 +599,7 @@ function BaseCurrenciesPage({ embedded = false }) {
 
   return (
     <>
-      <Card className={embedded ? "!border-0 !bg-transparent !p-0 !shadow-none dark:!bg-transparent" : "rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"}>
+      <Card className={embedded ? "-mx-4 !border-0 !bg-transparent !p-0 !shadow-none dark:!bg-transparent" : "rounded-2xl border bg-white text-black border-black/10 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"}>
         {!embedded && <div className="mb-4 text-base md:text-lg">
           <span className="text-black/70 dark:text-neutral-300">تنظیمات</span>
           <span className="mx-2 text-black/50 dark:text-neutral-400">›</span>

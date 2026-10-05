@@ -60,7 +60,7 @@ export default function BaseInformationPage() {
         <section role="tabpanel" className="rounded-b-2xl rounded-t-none border border-black/10 p-4 dark:border-white/10">
           {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : (
             <div>
-              <div className="relative z-10 -mb-px flex justify-start">
+              <div className="mb-5 flex justify-start">
                 <div className="flex w-fit rounded-2xl border border-black/10 bg-neutral-50 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="گزینه‌های مدیریت دانش">
                   {knowledgeTabs.map((tab) => {
                     const active = activeKnowledgeTab === tab.id;

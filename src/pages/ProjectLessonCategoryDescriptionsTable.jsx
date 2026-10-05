@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
+import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 
 const inputClass = "h-10 w-full rounded-2xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5";
 
@@ -32,6 +33,8 @@ export default function ProjectLessonCategoryDescriptionsTable() {
   const [editingId, setEditingId] = useState(null);
   const [editingCategoryTitle, setEditingCategoryTitle] = useState("");
   const [editingDescriptionTitle, setEditingDescriptionTitle] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [page, setPage] = useState(0);
   const menuRef = useRef(null);
 
   const loadCategories = () => request(categoryEndpoint).then((data) => setCategories(data.items || []));
@@ -72,7 +75,10 @@ export default function ProjectLessonCategoryDescriptionsTable() {
     next.has(key) ? next.delete(key) : next.add(key);
     return next;
   });
-  const allSelected = categories.length > 0 && categories.every((category) => selectedIds.has(String(category.id)));
+  const safePage = Math.min(page, Math.max(0, Math.ceil(categories.length / pageSize) - 1));
+  const startIndex = safePage * pageSize;
+  const pageCategories = categories.slice(startIndex, startIndex + pageSize);
+  const allSelected = pageCategories.length > 0 && pageCategories.every((category) => selectedIds.has(String(category.id)));
   const selectedCategory = selectedIds.size === 1
     ? categories.find((category) => selectedIds.has(String(category.id)))
     : null;
@@ -160,7 +166,7 @@ export default function ProjectLessonCategoryDescriptionsTable() {
   };
 
   return (
-    <section className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900" dir="rtl">
+    <section className="-mx-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900" dir="rtl">
       <h2 className="mb-4 text-sm font-bold">دسته‌بندی درس‌آموخته</h2>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
         <form onSubmit={addCategory} className="grid grid-cols-[1fr_auto] items-center gap-3">
@@ -178,19 +184,20 @@ export default function ProjectLessonCategoryDescriptionsTable() {
       </div>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
-      <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-        <div className="overflow-x-auto" dir="ltr">
+      <div className="-mx-4 mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+        <div className="max-h-[55vh] overflow-auto" dir="ltr">
           <table dir="rtl" className="w-full min-w-[700px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
             <colgroup><col style={{ width: 48 }} /><col style={{ width: 80 }} /><col style={{ width: "40%" }} /><col /><col style={{ width: 96 }} /></colgroup>
-            <thead><tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={allSelected} onChange={() => setSelectedIds(allSelected ? new Set() : new Set(categories.map((category) => String(category.id))))} aria-label="انتخاب همه" /></th><th>#</th><th>دسته‌بندی درس‌آموخته</th><th>توضیح</th><th className="relative"><button type="button" onClick={openMenu} className="absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" aria-label="عملیات"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button></th></tr></thead>
-            <tbody className="text-[13px] [&>tr]:h-10">
-              {categories.map((category, index) => {
+            <thead><tr className="sticky top-0 z-10 border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={allSelected} onChange={() => setSelectedIds((current) => { const next = new Set(current); pageCategories.forEach((category) => { const id = String(category.id); if (allSelected) next.delete(id); else next.add(id); }); return next; })} aria-label="انتخاب همه" /></th><th>#</th><th>دسته‌بندی درس‌آموخته</th><th>توضیح</th><th className="relative"><button type="button" onClick={openMenu} className="absolute left-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg transition hover:bg-black/[.08] dark:hover:bg-white/10" aria-label="عملیات"><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button></th></tr></thead>
+            <tbody className="text-[13px] [&>tr]:h-9 [&>tr>td]:!py-0">
+              {pageCategories.map((category, index) => {
                 const editing = String(editingId) === String(category.id);
-                return <tr key={category.id} className="bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(category.id))} onChange={() => toggleSelected(category.id)} /></td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{index + 1}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingCategoryTitle} onChange={(event) => setEditingCategoryTitle(event.target.value)} /> : category.title}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingDescriptionTitle} onChange={(event) => setEditingDescriptionTitle(event.target.value)} /> : (descriptionsByCategory.get(String(category.id)) || []).filter(Boolean).join("، ") || "—"}</td><td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{editing && <div className="flex items-center justify-center gap-1" dir="ltr"><RowActionIconBtn action="cancel" onClick={() => setEditingId(null)} size={30} iconSize={14} /><RowActionIconBtn action="save" onClick={saveEdit} disabled={busy} size={30} iconSize={15} /></div>}</td></tr>;
+                return <tr key={category.id} className="bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(category.id))} onChange={() => toggleSelected(category.id)} /></td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{startIndex + index + 1}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingCategoryTitle} onChange={(event) => setEditingCategoryTitle(event.target.value)} /> : category.title}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingDescriptionTitle} onChange={(event) => setEditingDescriptionTitle(event.target.value)} /> : (descriptionsByCategory.get(String(category.id)) || []).filter(Boolean).join("، ") || "—"}</td><td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{editing && <div className="flex items-center justify-center gap-1" dir="ltr"><RowActionIconBtn action="cancel" onClick={() => setEditingId(null)} size={30} iconSize={14} /><RowActionIconBtn action="save" onClick={saveEdit} disabled={busy} size={30} iconSize={15} /></div>}</td></tr>;
               })}
             </tbody>
           </table>
         </div>
+        <BaseTablePager total={categories.length} page={safePage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
       </div>
       {menuOpen && createPortal(
         <div ref={menuRef} className="fixed z-[10001] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={menuPosition} dir="rtl">
