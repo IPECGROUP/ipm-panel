@@ -85,24 +85,31 @@ export default function DocumentsManagementDashboardPage() {
 
   useEffect(() => {
     if (!user?.id) return undefined;
-    let cancelled = false;
-    // The document-management registry is shared. This endpoint returns the
-    // page's complete visible registry, not a list limited to records created
-    // by the signed-in user.
-    const options = { credentials: "include", headers: { "x-user-id": String(user.id) } };
-    Promise.all([
-      fetch("/api/letters?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
-      fetch("/api/projects?isActive=true", options).then((response) => response.ok ? response.json() : { items: [] }),
-      fetch("/api/tags?scope=letters", options).then((response) => response.ok ? response.json() : { tags: [] }),
-    ])
-      .then(([lettersData, projectsData, tagsData]) => {
-        if (cancelled) return;
-        setLetters(Array.isArray(lettersData?.items) ? lettersData.items : Array.isArray(lettersData) ? lettersData : []);
-        setProjects(Array.isArray(projectsData?.items) ? projectsData.items : Array.isArray(projectsData?.projects) ? projectsData.projects : []);
-        setTags(Array.isArray(tagsData?.tags) ? tagsData.tags : Array.isArray(tagsData?.items) ? tagsData.items : []);
-      })
-      .catch(() => { if (!cancelled) { setLetters([]); setProjects([]); setTags([]); } });
-    return () => { cancelled = true; };
+    const controller = new AbortController();
+    const load = async () => {
+      try {
+        const response = await fetch("/api/letters?dashboard=1", {
+          credentials: "include",
+          headers: { "x-user-id": String(user.id) },
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("documents_dashboard_failed");
+        const data = await response.json();
+        if (controller.signal.aborted) return;
+        setLetters(Array.isArray(data?.items) ? data.items : []);
+        setProjects(Array.isArray(data?.projects) ? data.projects : []);
+        setTags(Array.isArray(data?.tags) ? data.tags : []);
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          console.error("documents_dashboard_load_failed", error);
+          setLetters([]);
+          setProjects([]);
+          setTags([]);
+        }
+      }
+    };
+    load();
+    return () => controller.abort();
   }, [user?.id]);
 
   const statistics = useMemo(() => {

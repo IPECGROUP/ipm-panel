@@ -444,6 +444,8 @@ export default function FinancialWorksheetPage() {
 
   const [worksheetRows, setWorksheetRows] = useState([]);
   const [rowsLoading, setRowsLoading] = useState(false);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
     let stop = false;
@@ -698,6 +700,20 @@ export default function FinancialWorksheetPage() {
   const sumVat = worksheetTotals.vat;
   const sumReceiptAmount = worksheetTotals.receipt;
   const sumReceiptForeignAmount = worksheetTotals.receiptForeign;
+  const totalRows = worksheetRows.length;
+  const pageCount = Math.max(1, Math.ceil(totalRows / rowsPerPage));
+  const safePage = Math.min(page, pageCount - 1);
+  const startIndex = safePage * rowsPerPage;
+  const endIndex = Math.min(totalRows, startIndex + rowsPerPage);
+  const pageRows = worksheetRows.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [contractId, projectId, tab]);
 
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
   const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
@@ -1746,7 +1762,7 @@ export default function FinancialWorksheetPage() {
             <div className={tablePreset.outer}>
               <div className={tablePreset.innerPad}>
                 <div className={tablePreset.frame + " shadow-sm"}>
-                  <div className="overflow-x-auto">
+                  <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
                     <table className={tablePreset.table + " table-fixed text-[12px] md:text-[13px]"} dir="rtl">
                       <THead>
                         {tab === "receipts" ? (
@@ -1774,7 +1790,7 @@ export default function FinancialWorksheetPage() {
                         {tab === "receipts" ? (
                           rowsLoading ? (
                             <TR><TD colSpan={5} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
-                          ) : !worksheetRows.length ? (
+                          ) : !pageRows.length ? (
                             <TR><TD colSpan={5} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
                           ) : (
                             <>
@@ -1785,9 +1801,9 @@ export default function FinancialWorksheetPage() {
                                 <TD>{toFaDigits(formatMoney(sumReceiptForeignAmount))}</TD>
                                 <TD>—</TD>
                               </TR>
-                              {worksheetRows.map((row, idx) => (
+                              {pageRows.map((row, idx) => (
                                 <TR key={row.id} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
-                                  <TD>{toFaDigits(idx + 1)}</TD>
+                                  <TD>{toFaDigits(startIndex + idx + 1)}</TD>
                                   <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptAmount || 0))}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptForeignAmount || 0))}</TD>
@@ -1806,7 +1822,7 @@ export default function FinancialWorksheetPage() {
                           )
                         ) : rowsLoading ? (
                           <TR><TD colSpan={7} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
-                        ) : !worksheetRows.length ? (
+                        ) : !pageRows.length ? (
                           <TR><TD colSpan={7} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
                         ) : (
                           <>
@@ -1816,9 +1832,9 @@ export default function FinancialWorksheetPage() {
                               <TD>{toFaDigits(formatMoney(sumVat))}</TD>
                               <TD>—</TD><TD>—</TD>
                             </TR>
-                            {worksheetRows.map((row, idx) => (
+                            {pageRows.map((row, idx) => (
                               <TR key={row.id} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
-                                <TD>{toFaDigits(idx + 1)}</TD>
+                                <TD>{toFaDigits(startIndex + idx + 1)}</TD>
                                 <TD>{row.number ? toFaDigits(row.number) : "—"}</TD>
                                 <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                 <TD>{toFaDigits(formatMoney(row.grossAmount || 0))}</TD>
@@ -1839,6 +1855,29 @@ export default function FinancialWorksheetPage() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="border-t border-neutral-300 px-2.5 py-2.5 dark:border-neutral-800 sm:px-3">
+                    <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                      <div className="flex items-center justify-between gap-2 text-sm md:justify-start">
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg>
+                          </button>
+                          <button type="button" onClick={() => setPage((old) => Math.min(pageCount - 1, old + 1))} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg>
+                          </button>
+                        </div>
+                        <div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{totalRows === 0 ? "۰ از ۰" : `${toFaDigits(startIndex + 1)}–${toFaDigits(endIndex)} از ${toFaDigits(totalRows)}`}</div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start">
+                        <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
+                        <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                          {[10, 25, 100].map((count) => (
+                            <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFaDigits(count)}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

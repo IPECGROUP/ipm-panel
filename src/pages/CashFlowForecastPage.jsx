@@ -14,7 +14,7 @@ const TABS = [
 function ForecastTabs({ active, onChange }) {
   return (
     <div className="overflow-visible px-0 sm:px-2" dir="rtl">
-      <div className="mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900">
+      <div className="mb-0 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900">
         {TABS.map((tab, index) => (
           <button
             key={tab.id}
@@ -56,7 +56,7 @@ export default function CashFlowForecastPage() {
         </span>
       </div>
 
-      <div className="space-y-3 md:space-y-4">
+      <div className="space-y-0">
         <ForecastTabs active={activeTab} onChange={setActiveTab} />
 
         <div dir="rtl">

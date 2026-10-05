@@ -38,7 +38,7 @@ export default function BaseInformationPage() {
         </div>
 
         <div className="mt-6">
-          <div className="mx-auto flex w-full max-w-[1280px]" role="tablist" aria-label="بخش‌های اطلاعات پایه">
+          <div className="relative z-10 mx-auto -mb-px flex w-full max-w-[1280px]" role="tablist" aria-label="بخش‌های اطلاعات پایه">
             {tabs.map((tab) => {
               const active = activeTab === tab.id;
               return (
@@ -57,10 +57,10 @@ export default function BaseInformationPage() {
           </div>
         </div>
 
-        <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
+        <section role="tabpanel" className="rounded-b-2xl rounded-t-none border border-black/10 p-4 dark:border-white/10">
           {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : (
             <div>
-              <div className="mb-5 flex justify-start">
+              <div className="relative z-10 -mb-px flex justify-start">
                 <div className="flex w-fit rounded-2xl border border-black/10 bg-neutral-50 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="گزینه‌های مدیریت دانش">
                   {knowledgeTabs.map((tab) => {
                     const active = activeKnowledgeTab === tab.id;

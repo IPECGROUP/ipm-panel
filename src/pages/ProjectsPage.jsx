@@ -46,7 +46,7 @@ function ProjectsPage() {
   const [codeSortDir, setCodeSortDir] = React.useState("asc");
 
   // pagination
-  const [pageSize, setPageSize] = React.useState(20);
+  const [pageSize, setPageSize] = React.useState(10);
   const [page, setPage] = React.useState(0);
 
   const setSelected = (nextOrUpdater) => {
@@ -263,17 +263,16 @@ function ProjectsPage() {
     return arr;
   }, [rows, codeSortDir]);
 
-  // clamp page when data/pageSize changes
-  React.useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil((sortedRows.length || 0) / (pageSize || 1)));
-    if (page > totalPages - 1) setPage(totalPages - 1);
-  }, [sortedRows.length, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const total = sortedRows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const startIdx = total === 0 ? 0 : page * pageSize;
+  const safePage = Math.min(page, totalPages - 1);
+  const startIdx = total === 0 ? 0 : safePage * pageSize;
   const endIdx = Math.min(total, startIdx + pageSize);
   const pageRows = sortedRows.slice(startIdx, endIdx);
+
+  React.useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
   const tableUi = tablePreset.table;
   const rowUi = tablePreset.row;
   const visibleIds = pageRows.map((r) => String(r.id));
@@ -423,36 +422,6 @@ function ProjectsPage() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  const PagerBtn = ({ disabled, onClick, direction }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className="h-10 w-10 grid place-items-center rounded-xl bg-transparent
-                 hover:bg-black/5 active:bg-black/10 disabled:opacity-40 disabled:cursor-not-allowed
-                 dark:hover:bg-white/10 dark:active:bg-white/15"
-      aria-label={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
-      title={direction === "prev" ? "صفحه قبل" : "صفحه بعد"}
-    >
-      {/* RTL: prev = chevron-right, next = chevron-left */}
-      {direction === "prev" ? (
-        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M10.7 6.3a1 1 0 0 1 1.4 0l5 5a1 1 0 0 1 0 1.4l-5 5a1 1 0 1 1-1.4-1.4L15.29 12 10.7 7.7a1 1 0 0 1 0-1.4z"
-          />
-        </svg>
-      ) : (
-        <svg className="w-5 h-5 text-black/70 dark:text-neutral-200" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            fill="currentColor"
-            d="M13.3 17.7a1 1 0 0 1-1.4 0l-5-5a1 1 0 0 1 0-1.4l5-5a1 1 0 1 1 1.4 1.4L8.71 12l4.59 4.3a1 1 0 0 1 0 1.4z"
-          />
-        </svg>
-      )}
-    </button>
-  );
-
   return (
     <Card
       className="p-7 md:p-8 rounded-2xl border bg-white text-black border-black/10
@@ -528,7 +497,7 @@ function ProjectsPage() {
             <div className="px-[15px] pb-4">
               <div className={tableUi.frame}>
                 {/* ✅ اسکرول فقط داخل جدول */}
-                <div className="max-h-[520px] overflow-auto">
+                <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
                   <table className={`${tableUi.table} min-w-[760px] mx-auto`} dir="rtl">
                     <THead>
                       <tr className={`sticky top-0 z-20 ${tableUi.headRow}`}>
@@ -555,7 +524,7 @@ function ProjectsPage() {
                             <span>کد</span>
                             <button
                               type="button"
-                              onClick={() => setCodeSortDir((d) => (d === "asc" ? "desc" : "asc"))}
+                              onClick={() => { setCodeSortDir((d) => (d === "asc" ? "desc" : "asc")); setPage(0); }}
                               className={tablePreset.sortButton}
                               title="مرتب‌سازی کد"
                               aria-label="مرتب‌سازی کد"
@@ -795,43 +764,20 @@ function ProjectsPage() {
                 </div>
 
                 {/* pagination bar */}
-                <div className="border-t border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-                  <div className="px-3 py-2 flex items-center justify-between gap-3" dir="rtl">
-                    <div className="flex items-center gap-2">
-                      <PagerBtn
-                        direction="prev"
-                        disabled={page <= 0}
-                        onClick={() => setPage((p) => Math.max(0, p - 1))}
-                      />
-                      <PagerBtn
-                        direction="next"
-                        disabled={page >= totalPages - 1}
-                        onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                      />
-                      <div className="text-sm text-black/70 dark:text-neutral-300">
-                        {total === 0
-                          ? "۰ از ۰"
-                          : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}
+                <div className="border-t border-neutral-300 px-2.5 py-2.5 dark:border-neutral-800 sm:px-3">
+                  <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                    <div className="flex items-center justify-between gap-2 text-sm md:justify-start">
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button>
+                        <button type="button" onClick={() => setPage((old) => Math.min(totalPages - 1, old + 1))} disabled={safePage >= totalPages - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button>
                       </div>
+                      <div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFaDigits(startIdx + 1)}–${toFaDigits(endIdx)} از ${toFaDigits(total)}`}</div>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-black/70 dark:text-neutral-300">تعداد در هر صفحه:</span>
-                      <select
-                        value={pageSize}
-                        onChange={(e) => {
-                          const v = Number(e.target.value) || 20;
-                          setPageSize(v);
-                          setPage(0);
-                        }}
-                        className="h-10 rounded-xl px-3 bg-white text-black border border-black/15
-                                   dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700"
-                      >
-                        <option value={10}>۱۰</option>
-                        <option value={20}>۲۰</option>
-                        <option value={50}>۵۰</option>
-                        <option value={100}>۱۰۰</option>
-                      </select>
+                    <div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start">
+                      <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
+                      <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
+                        {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setPageSize(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${pageSize === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFaDigits(count)}</button>)}
+                      </div>
                     </div>
                   </div>
                 </div>

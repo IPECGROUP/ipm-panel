@@ -3449,14 +3449,14 @@ export default function ContractInformation() {
   }, [previewContractId, relatedLetterPreviewId]);
 
   const renderDeductionFields = () => (
-    <div className="min-w-0 xl:-translate-y-1">
+    <div className="min-w-0 2xl:-translate-y-1">
       <div className="mb-2 text-sm font-semibold text-black/70 dark:text-neutral-200">کسور</div>
-      <div className="flex flex-row-reverse flex-nowrap items-center gap-x-4 gap-y-2 overflow-x-auto">
+      <div className="flex flex-row-reverse flex-nowrap items-center justify-between gap-x-3 gap-y-2 overflow-visible">
         {[
           { field: "capitalDeposit", amountField: "capitalDepositAmount", label: "سپرده بیمه *" },
           { field: "performanceBond", amountField: "performanceBondAmount", label: "حسن انجام کار *" },
         ].map((item) => (
-          <div key={item.field} className="flex items-center gap-2 whitespace-nowrap">
+          <div key={item.field} className="flex min-w-0 items-center gap-2 whitespace-nowrap">
             <div className="text-sm text-black/70 dark:text-neutral-300">{item.label}</div>
             <div className="flex items-center gap-2">
               {renderPaymentOption(item.field, "none", "ندارد")}
@@ -3492,20 +3492,20 @@ export default function ContractInformation() {
       <div className="mb-3 text-sm font-semibold text-black dark:text-neutral-100">{title}</div>
       <div className="space-y-2">
         {rows.map((row, index) => (
-          <div key={row.id} className="grid grid-cols-1 gap-2 xl:grid-cols-[minmax(97px,0.291fr)_108px_142px_auto_minmax(343px,1fr)] xl:items-end">
-            <div>
+          <div key={row.id} className="grid grid-cols-1 gap-2 2xl:grid-cols-[minmax(85px,0.255fr)_100px_132px_auto_minmax(488px,1fr)] 2xl:items-end">
+            <div className="min-w-0">
               <div className={labelCls}>{amountLabel} *</div>
               <input
                 value={formatAmountInput(row.amount || "")}
                 onChange={(e) => updateFinancialRow(sectionKey, row.id, "amount", e.target.value)}
-                className={inputCls}
+                className={`${inputCls} min-w-0`}
                 type="text"
                 inputMode="decimal"
                 dir="ltr"
                 placeholder="0"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className={labelCls}>ارز *</div>
               <select
                 value={row.currencyId || ""}
@@ -3525,7 +3525,7 @@ export default function ContractInformation() {
                 })}
               </select>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className={labelCls}>منشأ {isRialCurrencyRow(row) ? "" : "*"}</div>
               <select
                 value={row.sourceId || ""}
