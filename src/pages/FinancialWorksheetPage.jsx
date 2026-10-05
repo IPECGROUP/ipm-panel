@@ -7,9 +7,53 @@ import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/table
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
+import { useAuth } from "../components/AuthProvider";
 
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
 const PAGE_ICON = "/images/icons/karbarg-mali.svg";
+
+function WorksheetReadingMenu({ selectedCount, canEdit, deleting, onReadStatus, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOutside = (event) => {
+      if (!triggerRef.current?.contains(event.target) && !popoverRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeEscape = (event) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", closeOutside);
+    document.addEventListener("keydown", closeEscape);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", closeOutside);
+      document.removeEventListener("keydown", closeEscape);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  const run = (action) => () => { setOpen(false); action(); };
+  return <div className="absolute left-2 top-1/2 z-30 -translate-y-1/2" dir="rtl">
+    <button ref={triggerRef} type="button" onClick={() => { if (!open) updatePosition(); setOpen((value) => !value); }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={open}>
+      <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
+    </button>
+    {open && position && createPortal(<div ref={popoverRef} className="fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
+      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+      <button type="button" disabled={!selectedCount} onClick={run(() => onReadStatus(false))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:opacity-45 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span><span className="text-sm font-semibold">خوانده شده</span></button>
+      <button type="button" disabled={!selectedCount} onClick={run(() => onReadStatus(true))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:opacity-45 dark:hover:bg-sky-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 dark:bg-sky-500/15"><span className="h-2.5 w-2.5 rounded-full bg-sky-500" /></span><span className="text-sm font-semibold">خوانده نشده</span></button>
+      <button type="button" disabled={!canEdit} onClick={run(onEdit)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش مورد انتخاب‌شده</span></button>
+      <button type="button" disabled={!selectedCount || deleting} onClick={run(onDelete)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
+    </div>, document.body)}
+  </div>;
+}
 const DEFAULT_RECEIPT_TYPE_OPTIONS = [
   { value: "prepayment", label: "پیش پرداخت" },
   { value: "statement", label: "صورت وضعیت" },
@@ -370,6 +414,7 @@ function AmountInputWithMeta({
 
 export default function FinancialWorksheetPage() {
   useFeatureVisibility("کاربرگ مالی", { "صورت وضعیت‌ها": "صورت وضعیت", "دریافتی‌ها": "دریافتی" });
+  const { user } = useAuth();
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
 
   const api = useCallback(
@@ -444,6 +489,9 @@ export default function FinancialWorksheetPage() {
 
   const [worksheetRows, setWorksheetRows] = useState([]);
   const [rowsLoading, setRowsLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [unreadIds, setUnreadIds] = useState(() => new Set());
+  const [deletingSelected, setDeletingSelected] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
 
@@ -706,6 +754,50 @@ export default function FinancialWorksheetPage() {
   const startIndex = safePage * rowsPerPage;
   const endIndex = Math.min(totalRows, startIndex + rowsPerPage);
   const pageRows = worksheetRows.slice(startIndex, endIndex);
+  const visibleIds = pageRows.map((row) => String(row.id));
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
+  const selectAllRef = useRef(null);
+  const readStatusKey = user?.id ? `financial_worksheet_unread:u${user.id}` : "";
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someVisibleSelected;
+  }, [someVisibleSelected]);
+
+  useEffect(() => {
+    if (!readStatusKey) { setUnreadIds(new Set()); return; }
+    try { setUnreadIds(new Set(JSON.parse(localStorage.getItem(readStatusKey) || "[]").map(String))); }
+    catch { setUnreadIds(new Set()); }
+  }, [readStatusKey]);
+
+  const updateUnreadIds = (update) => setUnreadIds((current) => {
+    const next = update(new Set(current));
+    if (readStatusKey) {
+      try { localStorage.setItem(readStatusKey, JSON.stringify([...next])); } catch {}
+    }
+    return next;
+  });
+
+  const toggleSelected = (id) => setSelectedIds((current) => {
+    const next = new Set(current);
+    const key = String(id);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
+  const toggleSelectAll = () => setSelectedIds((current) => {
+    const next = new Set(current);
+    visibleIds.forEach((id) => { if (allVisibleSelected) next.delete(id); else next.add(id); });
+    return next;
+  });
+
+  const setSelectedReadStatus = (unread) => {
+    updateUnreadIds((next) => {
+      selectedIds.forEach((id) => { if (unread) next.add(id); else next.delete(id); });
+      return next;
+    });
+    setSelectedIds(new Set());
+  };
 
   useEffect(() => {
     if (page !== safePage) setPage(safePage);
@@ -713,6 +805,7 @@ export default function FinancialWorksheetPage() {
 
   useEffect(() => {
     setPage(0);
+    setSelectedIds(new Set());
   }, [contractId, projectId, tab]);
 
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
@@ -931,8 +1024,6 @@ export default function FinancialWorksheetPage() {
     });
   };
 
-  const iconBtnCls =
-    "h-10 w-10 inline-grid place-items-center !bg-transparent !ring-0 !border-0 !shadow-none hover:opacity-80 active:opacity-70 transition disabled:opacity-50";
   const worksheetTabs = useMemo(
     () => [
       { id: "statement", label: isSelectedSubContract ? "صورت وضعیت‌ها / صورت حساب‌ها" : "صورت وضعیت‌ها" },
@@ -991,18 +1082,6 @@ export default function FinancialWorksheetPage() {
     </label>
   );
 
-  const handleViewRow = (row) => {
-    const dt = row?.date ? toFaDigits(row.date) : "—";
-    if (tab === "receipts") {
-      const amount = toFaDigits(formatMoney(row?.receiptAmount || 0));
-      const amountForeign = toFaDigits(formatMoney(row?.receiptForeignAmount || 0));
-      window.alert(`تاریخ: ${dt}\n${receiptUi.amount}: ${amount}\n${receiptUi.foreignAmount}: ${amountForeign}`);
-      return;
-    }
-    const no = row?.number ? toFaDigits(row.number) : "—";
-    window.alert(`شماره: ${no}\nتاریخ: ${dt}`);
-  };
-
   const handleEditRow = (row) => {
     const source = row?.raw && typeof row.raw === "object" ? row.raw : row || {};
     setFormOpen(true);
@@ -1044,16 +1123,31 @@ export default function FinancialWorksheetPage() {
     setUploadedFiles(Array.isArray(source?.uploaded_files) ? source.uploaded_files : []);
   };
 
-  const handleDeleteRow = async (row) => {
-    const id = String(row?.id || "").trim();
-    if (!id) return;
-    const ok = window.confirm("آیا از حذف این مورد مطمئن هستید؟");
-    if (!ok) return;
+  const editSelectedRow = () => {
+    const row = worksheetRows.find((item) => selectedIds.has(String(item.id)));
+    if (!row || selectedIds.size !== 1) return;
+    handleEditRow(row);
+    setSelectedIds(new Set());
+  };
+
+  const deleteSelectedRows = async () => {
+    const ids = worksheetRows.filter((row) => selectedIds.has(String(row.id))).map((row) => String(row.id));
+    if (!ids.length || deletingSelected) return;
+    if (!window.confirm(`آیا ${toFaDigits(ids.length)} مورد انتخاب‌شده حذف شود؟ این عملیات قابل بازگشت نیست.`)) return;
+    setDeletingSelected(true);
     try {
-      await api(`/financial-worksheet?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      setWorksheetRows((prev) => (Array.isArray(prev) ? prev.filter((x) => String(x.id) !== id) : []));
+      const results = await Promise.allSettled(ids.map((id) => api(`/financial-worksheet?id=${encodeURIComponent(id)}`, { method: "DELETE" })));
+      const deleted = new Set(ids.filter((_, index) => results[index].status === "fulfilled"));
+      if (deleted.size) {
+        setWorksheetRows((prev) => prev.filter((row) => !deleted.has(String(row.id))));
+        setSelectedIds((prev) => new Set([...prev].filter((id) => !deleted.has(id))));
+        updateUnreadIds((next) => { deleted.forEach((id) => next.delete(id)); return next; });
+      }
+      if (deleted.size !== ids.length) setErr(`حذف ${toFaDigits(ids.length - deleted.size)} مورد انجام نشد. دوباره تلاش کنید.`);
     } catch (e) {
       setErr(e.message || "خطا در حذف");
+    } finally {
+      setDeletingSelected(false);
     }
   };
 
@@ -1763,92 +1857,81 @@ export default function FinancialWorksheetPage() {
               <div className={tablePreset.innerPad}>
                 <div className={tablePreset.frame + " shadow-sm"}>
                   <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
-                    <table className={tablePreset.table + " table-fixed text-[12px] md:text-[13px]"} dir="rtl">
+                    <table className={tablePreset.table + " table-fixed text-[13px] [&_th]:!py-2 [&_td]:!py-0"} dir="rtl">
                       <THead>
                         {tab === "receipts" ? (
                           <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                            <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
+                            <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
                             <TH className={`w-14 ${tablePreset.th}`}>#</TH>
                             <TH className={`w-36 ${tablePreset.th}`}>{receiptUi.date}</TH>
                             <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.amount}</TH>
-                            <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.foreignAmount}</TH>
-                            <TH className={`w-36 ${tablePreset.th}`}>عملیات</TH>
+                            <TH className={`relative w-44 !pl-10 ${tablePreset.th}`}>{receiptUi.foreignAmount}<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onReadStatus={setSelectedReadStatus} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                           </tr>
                         ) : (
                           <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                            <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
+                            <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
                             <TH className={`w-14 ${tablePreset.th}`}>#</TH>
                             <TH className={`w-32 ${tablePreset.th}`}>شماره صورت وضعیت</TH>
                             <TH className={`w-32 ${tablePreset.th}`}>تاریخ</TH>
                             <TH className={`w-40 ${tablePreset.th}`}>مبلغ ناخالص</TH>
                             <TH className={`w-32 ${tablePreset.th}`}>VAT</TH>
-                            <TH className={`w-32 ${tablePreset.th}`}>ارز منشا</TH>
-                            <TH className={`w-36 ${tablePreset.th}`}>عملیات</TH>
+                            <TH className={`relative w-32 !pl-10 ${tablePreset.th}`}>ارز منشا<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onReadStatus={setSelectedReadStatus} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                           </tr>
                         )}
                       </THead>
 
-                      <tbody className={tablePreset.body}>
+                      <tbody className={`${tablePreset.body} [&_tr]:h-9 [&_td]:!py-0`}>
                         {tab === "receipts" ? (
                           rowsLoading ? (
-                            <TR><TD colSpan={5} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
+                            <TR><TD colSpan={6} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
                           ) : !pageRows.length ? (
-                            <TR><TD colSpan={5} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
+                            <TR><TD colSpan={6} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
                           ) : (
                             <>
                               <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
+                                <TD /><TD />
                                 <TD>-</TD>
                                 <TD>جمع</TD>
                                 <TD>{toFaDigits(formatMoney(sumReceiptAmount))}</TD>
                                 <TD>{toFaDigits(formatMoney(sumReceiptForeignAmount))}</TD>
-                                <TD>—</TD>
                               </TR>
                               {pageRows.map((row, idx) => (
-                                <TR key={row.id} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
+                                <TR key={row.id} className={`text-center transition-colors hover:bg-black/[0.06] dark:hover:bg-white/15 ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
+                                  <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
+                                  <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
                                   <TD>{toFaDigits(startIndex + idx + 1)}</TD>
                                   <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptAmount || 0))}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptForeignAmount || 0))}</TD>
-                                  <TD>
-                                    <div className="w-full flex items-center justify-center gap-1">
-                                      <button type="button" onClick={() => handleViewRow(row)} className={iconBtnCls} aria-label="نمایش" title="نمایش"><img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" /></button>
-                                      <button type="button" onClick={() => handleEditRow(row)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش"><img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" /></button>
-                                      <button type="button" onClick={() => handleDeleteRow(row)} className={iconBtnCls} aria-label="حذف" title="حذف">
-                                        <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)" }} />
-                                      </button>
-                                    </div>
-                                  </TD>
                                 </TR>
                               ))}
                             </>
                           )
                         ) : rowsLoading ? (
-                          <TR><TD colSpan={7} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
+                          <TR><TD colSpan={8} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
                         ) : !pageRows.length ? (
-                          <TR><TD colSpan={7} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
+                          <TR><TD colSpan={8} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
                         ) : (
                           <>
                             <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
+                              <TD /><TD />
                               <TD>-</TD><TD>-</TD><TD>جمع</TD>
                               <TD>{toFaDigits(formatMoney(sumGross))}</TD>
                               <TD>{toFaDigits(formatMoney(sumVat))}</TD>
-                              <TD>—</TD><TD>—</TD>
+                              <TD>—</TD>
                             </TR>
                             {pageRows.map((row, idx) => (
-                              <TR key={row.id} className="text-center hover:bg-black/[0.06] transition-colors dark:hover:bg-white/15">
+                              <TR key={row.id} className={`text-center transition-colors hover:bg-black/[0.06] dark:hover:bg-white/15 ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
+                                <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
+                                <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
                                 <TD>{toFaDigits(startIndex + idx + 1)}</TD>
                                 <TD>{row.number ? toFaDigits(row.number) : "—"}</TD>
                                 <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                 <TD>{toFaDigits(formatMoney(row.grossAmount || 0))}</TD>
                                 <TD>{toFaDigits(formatMoney(row.vatAmount || 0))}</TD>
                                 <TD>{row.currencySourceLabel || "—"}</TD>
-                                <TD>
-                                  <div className="w-full flex items-center justify-center gap-1">
-                                    <button type="button" onClick={() => handleViewRow(row)} className={iconBtnCls} aria-label="نمایش" title="نمایش"><img src="/images/icons/namayeshname.svg" alt="" className="w-5 h-5 dark:invert" /></button>
-                                    <button type="button" onClick={() => handleEditRow(row)} className={iconBtnCls} aria-label="ویرایش" title="ویرایش"><img src="/images/icons/pencil.svg" alt="" className="w-5 h-5 dark:invert" /></button>
-                                    <button type="button" onClick={() => handleDeleteRow(row)} className={iconBtnCls} aria-label="حذف" title="حذف">
-                                      <img src="/images/icons/hazf.svg" alt="" className="w-5 h-5" style={{ filter: "brightness(0) saturate(100%) invert(25%) sepia(95%) saturate(4870%) hue-rotate(355deg) brightness(95%) contrast(110%)" }} />
-                                    </button>
-                                  </div>
-                                </TD>
                               </TR>
                             ))}
                           </>
