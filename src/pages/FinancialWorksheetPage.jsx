@@ -12,7 +12,7 @@ import { useAuth } from "../components/AuthProvider";
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
 const PAGE_ICON = "/images/icons/karbarg-mali.svg";
 
-function WorksheetReadingMenu({ selectedCount, canEdit, deleting, onReadStatus, onEdit, onDelete }) {
+function WorksheetReadingMenu({ selectedCount, canEdit, deleting, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState(null);
   const triggerRef = useRef(null);
@@ -42,13 +42,11 @@ function WorksheetReadingMenu({ selectedCount, canEdit, deleting, onReadStatus, 
 
   const run = (action) => () => { setOpen(false); action(); };
   return <div className="absolute left-2 top-1/2 z-30 -translate-y-1/2" dir="rtl">
-    <button ref={triggerRef} type="button" onClick={() => { if (!open) updatePosition(); setOpen((value) => !value); }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={open}>
+    <button ref={triggerRef} type="button" onClick={() => { if (!open) updatePosition(); setOpen((value) => !value); }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="عملیات" aria-label="عملیات" aria-expanded={open}>
       <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
     </button>
     {open && position && createPortal(<div ref={popoverRef} className="fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
-      <button type="button" disabled={!selectedCount} onClick={run(() => onReadStatus(false))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:opacity-45 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span><span className="text-sm font-semibold">خوانده شده</span></button>
-      <button type="button" disabled={!selectedCount} onClick={run(() => onReadStatus(true))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:opacity-45 dark:hover:bg-sky-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 dark:bg-sky-500/15"><span className="h-2.5 w-2.5 rounded-full bg-sky-500" /></span><span className="text-sm font-semibold">خوانده نشده</span></button>
       <button type="button" disabled={!canEdit} onClick={run(onEdit)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش مورد انتخاب‌شده</span></button>
       <button type="button" disabled={!selectedCount || deleting} onClick={run(onDelete)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
     </div>, document.body)}
@@ -791,13 +789,6 @@ export default function FinancialWorksheetPage() {
     return next;
   });
 
-  const setSelectedReadStatus = (unread) => {
-    updateUnreadIds((next) => {
-      selectedIds.forEach((id) => { if (unread) next.add(id); else next.delete(id); });
-      return next;
-    });
-    setSelectedIds(new Set());
-  };
 
   useEffect(() => {
     if (page !== safePage) setPage(safePage);
@@ -1866,7 +1857,7 @@ export default function FinancialWorksheetPage() {
                             <TH className={`w-14 ${tablePreset.th}`}>#</TH>
                             <TH className={`w-36 ${tablePreset.th}`}>{receiptUi.date}</TH>
                             <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.amount}</TH>
-                            <TH className={`relative w-44 !pl-10 ${tablePreset.th}`}>{receiptUi.foreignAmount}<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onReadStatus={setSelectedReadStatus} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
+                            <TH className={`relative w-44 !pl-10 ${tablePreset.th}`}>{receiptUi.foreignAmount}<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                           </tr>
                         ) : (
                           <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
@@ -1877,7 +1868,7 @@ export default function FinancialWorksheetPage() {
                             <TH className={`w-32 ${tablePreset.th}`}>تاریخ</TH>
                             <TH className={`w-40 ${tablePreset.th}`}>مبلغ ناخالص</TH>
                             <TH className={`w-32 ${tablePreset.th}`}>VAT</TH>
-                            <TH className={`relative w-32 !pl-10 ${tablePreset.th}`}>ارز منشا<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onReadStatus={setSelectedReadStatus} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
+                            <TH className={`relative w-32 !pl-10 ${tablePreset.th}`}>ارز منشا<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                           </tr>
                         )}
                       </THead>
