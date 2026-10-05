@@ -7,6 +7,7 @@ import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/table
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
+import FinancialWorksheetDetailModal from "../components/FinancialWorksheetDetailModal.jsx";
 import { useAuth } from "../components/AuthProvider";
 
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
@@ -486,6 +487,7 @@ export default function FinancialWorksheetPage() {
   const [receiptDescription, setReceiptDescription] = useState("");
 
   const [worksheetRows, setWorksheetRows] = useState([]);
+  const [detailRow, setDetailRow] = useState(null);
   const [rowsLoading, setRowsLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [unreadIds, setUnreadIds] = useState(() => new Set());
@@ -783,6 +785,12 @@ export default function FinancialWorksheetPage() {
     return next;
   });
 
+  const openRowDetails = (row) => {
+    setDetailRow(row);
+    updateUnreadIds((next) => { next.delete(String(row.id)); return next; });
+    if (Array.isArray(row?.raw?.related_letter_ids) && row.raw.related_letter_ids.length) void loadLettersForUpload().catch(() => {});
+  };
+
   const toggleSelectAll = () => setSelectedIds((current) => {
     const next = new Set(current);
     visibleIds.forEach((id) => { if (allVisibleSelected) next.delete(id); else next.add(id); });
@@ -797,6 +805,7 @@ export default function FinancialWorksheetPage() {
   useEffect(() => {
     setPage(0);
     setSelectedIds(new Set());
+    setDetailRow(null);
   }, [contractId, projectId, tab]);
 
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
@@ -1889,8 +1898,8 @@ export default function FinancialWorksheetPage() {
                                 <TD>{toFaDigits(formatMoney(sumReceiptForeignAmount))}</TD>
                               </TR>
                               {pageRows.map((row, idx) => (
-                                <TR key={row.id} className={`text-center transition-colors hover:bg-black/[0.06] dark:hover:bg-white/15 ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
-                                  <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
+                                <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
+                                  <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                                   <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
                                   <TD>{toFaDigits(startIndex + idx + 1)}</TD>
                                   <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
@@ -1914,8 +1923,8 @@ export default function FinancialWorksheetPage() {
                               <TD>—</TD>
                             </TR>
                             {pageRows.map((row, idx) => (
-                              <TR key={row.id} className={`text-center transition-colors hover:bg-black/[0.06] dark:hover:bg-white/15 ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
-                                <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
+                              <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
+                                <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                                 <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
                                 <TD>{toFaDigits(startIndex + idx + 1)}</TD>
                                 <TD>{row.number ? toFaDigits(row.number) : "—"}</TD>
@@ -1965,6 +1974,18 @@ export default function FinancialWorksheetPage() {
         </div>
         </div>
       </Card>
+
+      {detailRow && <FinancialWorksheetDetailModal
+        row={detailRow}
+        kind={tab}
+        project={selectedProject ? projectLabel(selectedProject) : ""}
+        contract={detailRow.raw?.contract_no || contractNoForRow(selectedContract)}
+        currency={readItemLabel(currencyById.get(String(detailRow.currencyId)))}
+        currencySource={readItemLabel(currencySourceById.get(String(detailRow.currencySourceId)))}
+        receiptTypeLabel={receiptTypeLabel}
+        letters={letters}
+        onClose={() => setDetailRow(null)}
+      />}
 
       {relatedDocumentsOpen && (
         <RelatedLettersPickerModal
