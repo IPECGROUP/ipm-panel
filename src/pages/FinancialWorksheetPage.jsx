@@ -700,7 +700,7 @@ export default function FinancialWorksheetPage() {
       currencySourceId: String(r?.currency_source_id ?? r?.currencySourceId ?? ""),
       description: String(r?.description ?? r?.desc ?? r?.notes ?? r?.note ?? ""),
       rialDescription: String(r?.rial_description ?? r?.rialDescription ?? r?.description_rial ?? ""),
-      receiptType: String(r?.receipt_type ?? r?.receiptType ?? r?.type ?? ""),
+      receiptType: String(r?.receipt_type ?? r?.receiptType ?? ""),
       receiptTypeOtherDescription: String(r?.receipt_type_other_description ?? r?.receiptTypeOtherDescription ?? r?.other_type_description ?? ""),
       currencySourceLabel: String(
         r?.currency_source_label ??
@@ -921,7 +921,7 @@ export default function FinancialWorksheetPage() {
       .map((title) => ({ value: title, label: title }));
     return configured.length ? configured : DEFAULT_RECEIPT_TYPE_OPTIONS;
   }, [receiptBasisItems]);
-  const receiptTypeLabel = (value) => receiptTypeOptions.find((item) => item.value === value)?.label || String(value || "");
+  const receiptTypeLabel = (value) => receiptTypeOptions.find((item) => item.value === value)?.label || DEFAULT_RECEIPT_TYPE_OPTIONS.find((item) => item.value === value)?.label || "—";
   const isStatementReceiptType = (value) => String(value) === "statement" || receiptTypeLabel(value) === "صورت وضعیت";
   const isOtherReceiptType = (value) => String(value) === "other" || receiptTypeLabel(value) === "سایر";
 
@@ -1752,7 +1752,7 @@ export default function FinancialWorksheetPage() {
                       type="button"
                       onClick={handleSaveReceipt}
                       disabled={saving}
-                      className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:cursor-wait disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                      className="mr-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:cursor-wait disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
                       aria-label="تایید و ثبت"
                       title="تایید و ثبت"
                     >
@@ -1882,7 +1882,7 @@ export default function FinancialWorksheetPage() {
                   type="button"
                   onClick={handleSaveStatement}
                   disabled={saving}
-                  className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:cursor-wait disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                  className="mr-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:cursor-wait disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
                   aria-label="تایید و ثبت"
                   title="تایید و ثبت"
                 >
@@ -2047,6 +2047,8 @@ export default function FinancialWorksheetPage() {
         receiptTypeLabel={receiptTypeLabel}
         isPayment={documentTypeForContract(contractById.get(String(detailRow.contractId))) === "sub"}
         letters={letters}
+        projects={projects}
+        api={api}
         onClose={() => setDetailRow(null)}
       />}
 

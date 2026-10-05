@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import DocumentPreviewModal from "./DocumentPreviewModal.jsx";
 
 const fa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 const first = (...values) => values.find((value) => value !== undefined && value !== null && String(value).trim() !== "");
@@ -10,7 +11,7 @@ function DetailField({ label, value }) {
   if (!present(value)) return null;
   return <div className="flex flex-col gap-1 border-b border-black/[0.07] py-3 last:border-0 dark:border-white/10 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
     <div className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">{label}</div>
-    <div className="break-words text-sm font-semibold leading-6 text-neutral-900 dark:text-white sm:text-left">{fa(value)}</div>
+    <div className="break-words text-sm font-semibold leading-6 text-neutral-900 dark:text-white sm:text-left">{React.isValidElement(value) ? value : fa(value)}</div>
   </div>;
 }
 
@@ -26,12 +27,13 @@ function Metric({ label, value, tone = "light" }) {
   return <div className={`min-w-0 rounded-2xl p-4 ${tone === "plain" ? "border border-black/[0.08] bg-transparent dark:border-white/10" : "bg-white ring-1 ring-black/[0.07] dark:bg-neutral-900 dark:ring-white/10"}`}><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-2 break-words text-lg font-bold text-neutral-900 dark:text-white sm:text-xl" dir="ltr">{fa(value)}</div></div>;
 }
 
-export default function FinancialWorksheetDetailModal({ row, kind, project, contract, currency, currencySource, receiptTypeLabel, isPayment = false, letters, onClose }) {
+export default function FinancialWorksheetDetailModal({ row, kind, project, contract, currency, currencySource, receiptTypeLabel, isPayment = false, letters, projects, api, onClose }) {
+  const [previewLetter, setPreviewLetter] = useState(null);
   useEffect(() => {
-    const onKeyDown = (event) => { if (event.key === "Escape") onClose(); };
+    const onKeyDown = (event) => { if (event.key === "Escape" && !previewLetter) onClose(); };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+  }, [onClose, previewLetter]);
 
   const source = row.raw || {};
   const receipt = kind === "receipts";
@@ -50,7 +52,7 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
   const amount = (value) => present(value) ? `\u2066${money(value)} ${currencyUnit}\u2069` : undefined;
   const percent = (value) => present(value) ? `\u2066${fa(value)}%\u2069` : undefined;
 
-  return createPortal(<div dir="rtl" className="fixed inset-0 z-[10002] flex items-center justify-center p-3 sm:p-6">
+  return createPortal(<><div dir="rtl" className="fixed inset-0 z-[10002] flex items-center justify-center p-3 sm:p-6">
     <div className="absolute inset-0 bg-black/60 backdrop-blur-[3px]" onClick={onClose} />
     <section role="dialog" aria-modal="true" aria-label={label} className="relative flex max-h-[min(90vh,860px)] w-[min(930px,calc(100vw-24px))] flex-col overflow-hidden rounded-[26px] border border-white/20 bg-[#f7f7f6] text-neutral-900 shadow-[0_30px_90px_rgba(0,0,0,.32)] dark:border-white/10 dark:bg-neutral-950 dark:text-white">
       <header className="shrink-0 border-b border-black/[0.08] bg-white px-5 py-4 dark:border-white/10 dark:bg-neutral-900 sm:px-6">
@@ -71,14 +73,14 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
         </DetailSection>
 
         {receipt ? <>
-          {typeRows.some((item) => present(item?.type) || present(item?.number) || present(item?.otherDescription) || present(item?.other_description)) && <DetailSection number="02" title="مبنای دریافت / پرداخت">
+          <DetailSection number="02" title="مبنای دریافت / پرداخت">
             {typeRows.map((item, index) => <div key={index} className="border-b border-black/[0.07] py-2 last:border-0 dark:border-white/10">
               {typeRows.length > 1 && <div className="pt-1 text-[11px] font-bold text-orange-600 dark:text-orange-300">مورد {fa(index + 1)}</div>}
-              <DetailField label={`بابت ${isPayment ? "پرداختی" : "دریافتی"}`} value={receiptTypeLabel(first(item?.type, row.receiptType))} />
+              <DetailField label={`بابت ${isPayment ? "پرداختی" : "دریافتی"}`} value={present(item?.type) ? receiptTypeLabel(item.type) : "—"} />
               {(item?.type === "statement" || receiptTypeLabel(item?.type) === "صورت وضعیت") && <DetailField label="شماره صورت وضعیت" value={item?.number} />}
               {(item?.type === "other" || receiptTypeLabel(item?.type) === "سایر") && <DetailField label="شرح سایر" value={first(item?.otherDescription, item?.other_description)} />}
             </div>)}
-          </DetailSection>}
+          </DetailSection>
           {present(first(source.description, row.description)) && <DetailSection number="03" title="توضیحات"><p className="py-4 text-sm leading-8">{fa(first(source.description, row.description))}</p></DetailSection>}
         </> : <>
           <DetailSection number="02" title="ریز محاسبات و کسورات">
@@ -99,7 +101,7 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
           </DetailSection>
           {present(first(source.description, row.description)) && <DetailSection number="04" title="شرح"><p className="py-4 text-sm leading-8">{fa(first(source.description, row.description))}</p></DetailSection>}
           {relatedIds.length > 0 && <DetailSection number="05" title="اسناد مرتبط">
-            {relatedIds.map((id) => { const letter = letterById.get(String(id)); return <DetailField key={String(id)} label={`سند ${fa(id)}`} value={letter ? first(letter.secretariatNo, letter.secretariat_no, letter.letterNo, letter.letter_no, letter.subject, letter.title) : id} />; })}
+            {relatedIds.map((id) => { const letter = letterById.get(String(id)); const number = letter ? first(letter.letterNo, letter.letter_no, letter.secretariatNo, letter.secretariat_no, id) : id; return <DetailField key={String(id)} label={`سند ${fa(id)}`} value={<button type="button" onClick={() => setPreviewLetter(letter || { id })} className="cursor-pointer underline decoration-neutral-300 underline-offset-4 transition hover:text-orange-600 dark:decoration-neutral-600 dark:hover:text-orange-300" title="پیش‌نمایش سند">{fa(number)}</button>} />; })}
           </DetailSection>}
           {files.length > 0 && <DetailSection number="06" title="فایل‌های پیوست">
             {files.map((file, index) => { const url = String(file?.url || file?.href || ""); const safeUrl = url.startsWith("/uploads/") || /^https?:\/\//i.test(url) ? url : ""; return <div key={index} className="border-b border-black/[0.07] py-3 text-sm last:border-0 dark:border-white/10">{safeUrl ? <a href={safeUrl} target="_blank" rel="noreferrer" className="font-semibold text-orange-700 underline underline-offset-4 dark:text-orange-300">{fa(file?.name || `فایل ${index + 1}`)}</a> : <span className="font-semibold">{fa(file?.name || `فایل ${index + 1}`)}</span>}</div>; })}
@@ -107,5 +109,5 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
         </>}
       </div>
     </section>
-  </div>, document.body);
+  </div>{previewLetter && <DocumentPreviewModal letter={previewLetter} api={api} projects={projects} letters={letters} zIndex={10003} onClose={() => setPreviewLetter(null)} />}</>, document.body);
 }
