@@ -53,6 +53,15 @@ function WorksheetReadingMenu({ selectedCount, canEdit, deleting, onEdit, onDele
     </div>, document.body)}
   </div>;
 }
+
+function SortableWorksheetHeader({ label, field, sort, onSort }) {
+  const active = sort.field === field;
+  const direction = active ? sort.direction : "asc";
+  const nextDirection = active && direction === "asc" ? "desc" : "asc";
+  return <button type="button" onClick={() => onSort(field)} className="mx-auto inline-flex items-center justify-center gap-1 transition hover:opacity-70" title={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-label={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-pressed={active}>
+    <span>{label}</span><img src={direction === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className={`h-3.5 w-3.5 dark:invert ${active ? "opacity-100" : "opacity-45"}`} />
+  </button>;
+}
 const DEFAULT_RECEIPT_TYPE_OPTIONS = [
   { value: "prepayment", label: "پیش پرداخت" },
   { value: "statement", label: "صورت وضعیت" },
@@ -491,6 +500,7 @@ export default function FinancialWorksheetPage() {
   const [deletingSelected, setDeletingSelected] = useState(false);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
+  const [rowSort, setRowSort] = useState({ field: "number", direction: "desc" });
 
   useEffect(() => {
     let stop = false;
@@ -746,11 +756,25 @@ export default function FinancialWorksheetPage() {
   const sumReceiptAmount = worksheetTotals.receipt;
   const sumReceiptForeignAmount = worksheetTotals.receiptForeign;
   const totalRows = worksheetRows.length;
+  const rowNumberById = useMemo(() => new Map(worksheetRows.map((row, index) => [String(row.id), totalRows - index])), [worksheetRows, totalRows]);
+  const sortedRows = useMemo(() => [...worksheetRows].sort((a, b) => {
+    const ordinalDifference = (rowNumberById.get(String(a.id)) || 0) - (rowNumberById.get(String(b.id)) || 0);
+    if (rowSort.field === "number") return rowSort.direction === "asc" ? ordinalDifference : -ordinalDifference;
+    const aDate = toEnDigits(a.date || "").replace(/\D/g, "");
+    const bDate = toEnDigits(b.date || "").replace(/\D/g, "");
+    if (!aDate || !bDate) return aDate ? -1 : bDate ? 1 : -ordinalDifference;
+    const dateDifference = aDate.localeCompare(bDate, "en", { numeric: true });
+    return (rowSort.direction === "asc" ? dateDifference : -dateDifference) || -ordinalDifference;
+  }), [worksheetRows, rowNumberById, rowSort]);
+  const changeRowSort = (field) => {
+    setRowSort((current) => ({ field, direction: current.field === field && current.direction === "asc" ? "desc" : "asc" }));
+    setPage(0);
+  };
   const pageCount = Math.max(1, Math.ceil(totalRows / rowsPerPage));
   const safePage = Math.min(page, pageCount - 1);
   const startIndex = safePage * rowsPerPage;
   const endIndex = Math.min(totalRows, startIndex + rowsPerPage);
-  const pageRows = worksheetRows.slice(startIndex, endIndex);
+  const pageRows = sortedRows.slice(startIndex, endIndex);
   const visibleIds = pageRows.map((row) => String(row.id));
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
@@ -1860,8 +1884,8 @@ export default function FinancialWorksheetPage() {
                           <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
                             <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
                             <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
-                            <TH className={`w-14 ${tablePreset.th}`}>#</TH>
-                            <TH className={`w-36 ${tablePreset.th}`}>{receiptUi.date}</TH>
+                            <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="#" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
+                            <TH className={`w-36 ${tablePreset.th}`}><SortableWorksheetHeader label={receiptUi.date} field="date" sort={rowSort} onSort={changeRowSort} /></TH>
                             <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.amount}</TH>
                             <TH className={`relative w-44 !pl-10 ${tablePreset.th}`}>{receiptUi.foreignAmount}<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                           </tr>
@@ -1869,9 +1893,9 @@ export default function FinancialWorksheetPage() {
                           <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
                             <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
                             <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
-                            <TH className={`w-14 ${tablePreset.th}`}>#</TH>
+                            <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="#" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
                             <TH className={`w-32 ${tablePreset.th}`}>شماره صورت وضعیت</TH>
-                            <TH className={`w-32 ${tablePreset.th}`}>تاریخ</TH>
+                            <TH className={`w-32 ${tablePreset.th}`}><SortableWorksheetHeader label="تاریخ" field="date" sort={rowSort} onSort={changeRowSort} /></TH>
                             <TH className={`w-40 ${tablePreset.th}`}>مبلغ ناخالص</TH>
                             <TH className={`w-32 ${tablePreset.th}`}>VAT</TH>
                             <TH className={`relative w-32 !pl-10 ${tablePreset.th}`}>ارز منشا<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
@@ -1894,11 +1918,11 @@ export default function FinancialWorksheetPage() {
                                 <TD>{toFaDigits(formatMoney(sumReceiptAmount))}</TD>
                                 <TD>{toFaDigits(formatMoney(sumReceiptForeignAmount))}</TD>
                               </TR>
-                              {pageRows.map((row, idx) => (
+                              {pageRows.map((row) => (
                                 <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
                                   <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                                   <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
-                                  <TD>{toFaDigits(totalRows - startIndex - idx)}</TD>
+                                  <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD>
                                   <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptAmount || 0))}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptForeignAmount || 0))}</TD>
@@ -1919,11 +1943,11 @@ export default function FinancialWorksheetPage() {
                               <TD>{toFaDigits(formatMoney(sumVat))}</TD>
                               <TD>—</TD>
                             </TR>
-                            {pageRows.map((row, idx) => (
+                            {pageRows.map((row) => (
                               <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
                                 <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                                 <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
-                                <TD>{toFaDigits(totalRows - startIndex - idx)}</TD>
+                                <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD>
                                 <TD>{row.number ? toFaDigits(row.number) : "—"}</TD>
                                 <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                 <TD>{toFaDigits(formatMoney(row.grossAmount || 0))}</TD>
