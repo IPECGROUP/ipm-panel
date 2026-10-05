@@ -431,8 +431,9 @@ function BaseCurrenciesPage({ embedded = false }) {
       });
     };
 
+    const Wrap = embedded ? React.Fragment : TableWrap;
     return (
-      <TableWrap>
+      <Wrap>
         <div className={tablePreset.outer}>
           <div className={tablePreset.innerPad}>
             <div className={tablePreset.frame}>
@@ -579,14 +580,13 @@ function BaseCurrenciesPage({ embedded = false }) {
             </div>
           </div>
         </div>
-      </TableWrap>
+      </Wrap>
     );
   };
 
   const Section = ({ title, form, table }) => (
     <div
-      className="rounded-2xl border border-black/10 bg-white overflow-hidden
-                 dark:bg-neutral-900 dark:border-neutral-800"
+      className={embedded ? "bg-transparent" : "rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800"}
       dir="rtl"
     >
       <div className="p-4">

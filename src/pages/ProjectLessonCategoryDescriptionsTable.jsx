@@ -166,7 +166,7 @@ export default function ProjectLessonCategoryDescriptionsTable() {
   };
 
   return (
-    <section className="-mx-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900" dir="rtl">
+    <section className="-mx-4 p-4" dir="rtl">
       <h2 className="mb-4 text-sm font-bold">دسته‌بندی درس‌آموخته</h2>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
         <form onSubmit={addCategory} className="grid grid-cols-[1fr_auto] items-center gap-3">

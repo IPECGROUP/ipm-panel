@@ -57,7 +57,7 @@ export default function BaseInformationPage() {
           </div>
         </div>
 
-        <section role="tabpanel" className="rounded-b-2xl rounded-t-none border border-black/10 p-4 dark:border-white/10">
+        <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
           {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : (
             <div>
               <div className="mb-5 flex justify-start">
