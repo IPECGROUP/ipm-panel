@@ -435,9 +435,13 @@ export default function FinancialWorksheetPage() {
       try {
         data = txt ? JSON.parse(txt) : {};
       } catch {
-        throw new Error("bad_json_response");
+        if (res.ok) throw new Error("bad_json_response");
       }
-      if (!res.ok) throw new Error(data?.error || data?.message || "request_failed");
+      if (!res.ok) {
+        const error = new Error(data?.error || data?.message || ([502, 503, 504].includes(res.status) ? `سرور هنگام ثبت پاسخ نداد (${res.status}). لطفاً دوباره تلاش کنید.` : `خطای سرور (${res.status})`));
+        error.status = res.status;
+        throw error;
+      }
       return data;
     },
     [API_BASE],
@@ -453,6 +457,7 @@ export default function FinancialWorksheetPage() {
   const [tab, setTab] = useState("statement");
   const [formOpen, setFormOpen] = useState(false);
   const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
   const [editingRowId, setEditingRowId] = useState("");
 
   const [statementNo, setStatementNo] = useState("");
@@ -1080,7 +1085,7 @@ export default function FinancialWorksheetPage() {
     [isSelectedSubContract],
   );
   const tabStripCls =
-    "mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
+    "flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
     [
       "relative z-10 h-10 min-w-[118px] flex-none rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
@@ -1217,7 +1222,21 @@ export default function FinancialWorksheetPage() {
     setFormOpen((open) => !open);
   };
 
+  const saveWorksheetPayload = async (payload) => {
+    // Reuse one id if the gateway drops a successful response, so a retry cannot duplicate the row.
+    const id = payload.id || (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const body = JSON.stringify({ ...payload, id });
+    try {
+      return await api("/financial-worksheet", { method: "POST", body });
+    } catch (error) {
+      if (![502, 503, 504].includes(error?.status)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      return api("/financial-worksheet", { method: "POST", body });
+    }
+  };
+
   const handleSaveStatement = async () => {
+    if (saving) return;
     setErr("");
     if (!projectId) {
       setErr("ابتدا پروژه را انتخاب کنید.");
@@ -1275,11 +1294,9 @@ export default function FinancialWorksheetPage() {
       })),
     };
 
+    setSaving(true);
     try {
-      const saved = await api("/financial-worksheet", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const saved = await saveWorksheetPayload(payload);
       const item = saved?.item || saved?.data || payload;
       const normalized = normalizeRows([item])[0];
       setWorksheetRows((prev) => editingRowId
@@ -1289,10 +1306,13 @@ export default function FinancialWorksheetPage() {
       setFormOpen(false);
     } catch (e) {
       setErr(e.message || "خطا در ثبت صورت وضعیت");
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleSaveReceipt = async () => {
+    if (saving) return;
     setErr("");
     if (!projectId) {
       setErr("ابتدا پروژه را انتخاب کنید.");
@@ -1349,11 +1369,9 @@ export default function FinancialWorksheetPage() {
       description: receiptDescription,
     };
 
+    setSaving(true);
     try {
-      const saved = await api("/financial-worksheet", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const saved = await saveWorksheetPayload(payload);
       const item = saved?.item || saved?.data || payload;
       const normalized = normalizeRows([item])[0];
       setWorksheetRows((prev) => editingRowId
@@ -1363,6 +1381,8 @@ export default function FinancialWorksheetPage() {
       setFormOpen(false);
     } catch (e) {
       setErr(e.message || `خطا در ثبت ${receiptUi.noun}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -1473,7 +1493,7 @@ export default function FinancialWorksheetPage() {
             </div>
           </div>
 
-          <div className="-mb-4 flex items-start gap-2">
+          <div className="!mb-0 flex items-start gap-2">
             <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
               {worksheetTabs.map((item, index) => (
                 <button
@@ -1491,7 +1511,7 @@ export default function FinancialWorksheetPage() {
           </div>
 
           {formOpen && (
-            <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
+            <div className="!mt-0 rounded-2xl rounded-t-none border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
               {(!projectId || !contractId) && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">{!projectId ? "برای ثبت، ابتدا پروژه را انتخاب کنید." : "برای ثبت در این پروژه، شماره قرارداد را انتخاب کنید."}</div>}
               {tab === "receipts" ? (
                 <>
@@ -1727,11 +1747,13 @@ export default function FinancialWorksheetPage() {
                     </div>
                   ) : null}
 
-                  <div className="flex justify-end border-t border-black/10 pt-3 dark:border-white/10">
+                  <div className="flex items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-white/10">
+                    {err && <span role="alert" className="text-xs text-red-600 dark:text-red-400">{err}</span>}
                     <button
                       type="button"
                       onClick={handleSaveReceipt}
-                      className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                      disabled={saving}
+                      className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:cursor-wait disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
                       aria-label="تایید و ثبت"
                       title="تایید و ثبت"
                     >
@@ -1855,11 +1877,13 @@ export default function FinancialWorksheetPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex justify-end border-t border-black/10 pt-3 dark:border-white/10">
+              <div className="flex items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-white/10">
+                {err && <span role="alert" className="text-xs text-red-600 dark:text-red-400">{err}</span>}
                 <button
                   type="button"
                   onClick={handleSaveStatement}
-                  className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
+                  disabled={saving}
+                  className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:cursor-wait disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-white/90"
                   aria-label="تایید و ثبت"
                   title="تایید و ثبت"
                 >
@@ -2009,7 +2033,7 @@ export default function FinancialWorksheetPage() {
           </TableWrap>
           </div>
 
-          {err ? <div className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
+          {!formOpen && err ? <div role="alert" className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
         </div>
       </Card>
