@@ -108,11 +108,8 @@ function pad2(n) {
 }
 
 function formatMoney(n) {
-  const s = String(n ?? "");
-  if (s === "") return "";
-  const sign = Number(n) < 0 ? "-" : "";
-  const digits = String(Math.abs(Number(n) || 0));
-  return sign + digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  if (n === "" || n == null) return "";
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(Number(n) || 0);
 }
 
 function cleanAmountInput(value) {
@@ -671,7 +668,7 @@ export default function FinancialWorksheetPage() {
       number: String(r?.statement_no ?? r?.statementNo ?? r?.receipt_no ?? r?.receiptNo ?? r?.no ?? ""),
       date: String(r?.jalali_date ?? r?.date_jalali ?? r?.date ?? ""),
       grossAmount: Number(r?.gross_amount ?? r?.grossAmount ?? r?.gross ?? 0) || 0,
-      vatAmount: Number(r?.vat_amount ?? r?.vatAmount ?? r?.vat ?? 0) || 0,
+      vatAmount: Number(r?.vat_amount ?? r?.vatAmount ?? 0) || 0,
       receiptAmount: Number(r?.received_amount ?? r?.receivedAmount ?? r?.receipt_amount ?? r?.receiptAmount ?? r?.amount ?? r?.gross_amount ?? r?.grossAmount ?? 0) || 0,
       receiptForeignAmount: Number(
         r?.received_amount_foreign ??
@@ -1901,7 +1898,7 @@ export default function FinancialWorksheetPage() {
                                 <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
                                   <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                                   <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
-                                  <TD>{toFaDigits(startIndex + idx + 1)}</TD>
+                                  <TD>{toFaDigits(totalRows - startIndex - idx)}</TD>
                                   <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptAmount || 0))}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptForeignAmount || 0))}</TD>
@@ -1926,7 +1923,7 @@ export default function FinancialWorksheetPage() {
                               <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
                                 <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                                 <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
-                                <TD>{toFaDigits(startIndex + idx + 1)}</TD>
+                                <TD>{toFaDigits(totalRows - startIndex - idx)}</TD>
                                 <TD>{row.number ? toFaDigits(row.number) : "—"}</TD>
                                 <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
                                 <TD>{toFaDigits(formatMoney(row.grossAmount || 0))}</TD>
