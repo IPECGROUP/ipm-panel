@@ -184,7 +184,7 @@ export default function ProjectLessonCategoryDescriptionsTable() {
       </div>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
-      <div className="-mx-4 mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="max-h-[55vh] overflow-auto" dir="ltr">
           <table dir="rtl" className="w-full min-w-[700px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
             <colgroup><col style={{ width: 48 }} /><col style={{ width: 80 }} /><col style={{ width: "40%" }} /><col /><col style={{ width: 96 }} /></colgroup>

@@ -434,7 +434,7 @@ function BaseCurrenciesPage({ embedded = false }) {
     return (
       <TableWrap>
         <div className={tablePreset.outer}>
-          <div className={embedded ? "" : tablePreset.innerPad}>
+          <div className={tablePreset.innerPad}>
             <div className={tablePreset.frame}>
               <div className="max-h-[55vh] overflow-auto">
               <table className={`${tablePreset.table} [&_th]:!py-2 [&_td]:!py-0 [&_tbody_tr]:h-9`} dir="rtl">

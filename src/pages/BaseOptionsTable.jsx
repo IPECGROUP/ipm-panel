@@ -133,7 +133,7 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
       </form>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
 
-      <div className="-mx-4 mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+      <div className="mt-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="relative max-h-[55vh] overflow-auto" dir="ltr">
           <table dir="rtl" className="w-full min-w-[620px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
             <colgroup><col style={{ width: 48 }} /><col style={{ width: 80 }} />{relatedOptionsEndpoint && <col style={{ width: "35%" }} />}<col /><col style={{ width: 96 }} /></colgroup>
