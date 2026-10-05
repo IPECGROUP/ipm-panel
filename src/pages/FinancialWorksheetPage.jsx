@@ -58,8 +58,8 @@ function SortableWorksheetHeader({ label, field, sort, onSort }) {
   const active = sort.field === field;
   const direction = active ? sort.direction : "asc";
   const nextDirection = active && direction === "asc" ? "desc" : "asc";
-  return <button type="button" onClick={() => onSort(field)} className="mx-auto inline-flex items-center justify-center gap-1 transition hover:opacity-70" title={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-label={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-pressed={active}>
-    <span>{label}</span><img src={direction === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className={`h-3.5 w-3.5 dark:invert ${active ? "opacity-100" : "opacity-45"}`} />
+  return <button type="button" onClick={() => onSort(field)} className="mx-auto inline-flex items-center gap-1 hover:opacity-90" title={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-label={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-pressed={active}>
+    <span>{label}</span><img src={direction === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="w-4 h-4 dark:invert" />
   </button>;
 }
 const DEFAULT_RECEIPT_TYPE_OPTIONS = [
@@ -501,6 +501,7 @@ export default function FinancialWorksheetPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [rowSort, setRowSort] = useState({ field: "number", direction: "desc" });
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     let stop = false;
@@ -713,7 +714,7 @@ export default function FinancialWorksheetPage() {
   useEffect(() => {
     let dead = false;
     (async () => {
-      if (!projectId || !contractId) {
+      if (!projectId) {
         setWorksheetRows([]);
         setRowsLoading(false);
         return;
@@ -722,12 +723,12 @@ export default function FinancialWorksheetPage() {
       try {
         const q = new URLSearchParams();
         q.set("project_id", String(projectId));
-        q.set("contract_id", String(contractId));
+        if (contractId) q.set("contract_id", String(contractId));
         q.set("kind", tab === "receipts" ? "receipts" : "statement");
         const r = await api("/financial-worksheet?" + q.toString());
         if (dead) return;
         const rows = r?.items || r?.data || r?.rows || [];
-        setWorksheetRows(normalizeRows(rows).filter((row) => !row.contractId || String(row.contractId) === String(contractId)));
+        setWorksheetRows(normalizeRows(rows).filter((row) => !contractId || !row.contractId || String(row.contractId) === String(contractId)));
       } catch {
         if (!dead) setWorksheetRows([]);
       } finally {
@@ -739,8 +740,14 @@ export default function FinancialWorksheetPage() {
     };
   }, [api, contractId, projectId, tab, normalizeRows]);
 
+  const filteredRows = useMemo(() => {
+    const normalizeSearch = (value) => toEnDigits(String(value ?? "")).toLowerCase().replace(/[٬,،\s]/g, "");
+    const query = normalizeSearch(searchQuery);
+    if (!query) return worksheetRows;
+    return worksheetRows.filter((row, index) => [worksheetRows.length - index, row.number, row.date, row.description, row.rialDescription, row.currencySourceLabel, row.raw?.contract_no, row.raw?.receipt_type, row.raw?.receipt_no, row.grossAmount, row.vatAmount, row.receiptAmount].some((value) => normalizeSearch(value).includes(query)));
+  }, [worksheetRows, searchQuery]);
   const worksheetTotals = useMemo(() => {
-    return (worksheetRows || []).reduce(
+    return filteredRows.reduce(
       (acc, row) => {
         acc.gross += Number(row.grossAmount || 0);
         acc.vat += Number(row.vatAmount || 0);
@@ -750,14 +757,14 @@ export default function FinancialWorksheetPage() {
       },
       { gross: 0, vat: 0, receipt: 0, receiptForeign: 0 },
     );
-  }, [worksheetRows]);
+  }, [filteredRows]);
   const sumGross = worksheetTotals.gross;
   const sumVat = worksheetTotals.vat;
   const sumReceiptAmount = worksheetTotals.receipt;
   const sumReceiptForeignAmount = worksheetTotals.receiptForeign;
-  const totalRows = worksheetRows.length;
-  const rowNumberById = useMemo(() => new Map(worksheetRows.map((row, index) => [String(row.id), totalRows - index])), [worksheetRows, totalRows]);
-  const sortedRows = useMemo(() => [...worksheetRows].sort((a, b) => {
+  const totalRows = filteredRows.length;
+  const rowNumberById = useMemo(() => new Map(worksheetRows.map((row, index) => [String(row.id), worksheetRows.length - index])), [worksheetRows]);
+  const sortedRows = useMemo(() => [...filteredRows].sort((a, b) => {
     const ordinalDifference = (rowNumberById.get(String(a.id)) || 0) - (rowNumberById.get(String(b.id)) || 0);
     if (rowSort.field === "number") return rowSort.direction === "asc" ? ordinalDifference : -ordinalDifference;
     const aDate = toEnDigits(a.date || "").replace(/\D/g, "");
@@ -765,7 +772,7 @@ export default function FinancialWorksheetPage() {
     if (!aDate || !bDate) return aDate ? -1 : bDate ? 1 : -ordinalDifference;
     const dateDifference = aDate.localeCompare(bDate, "en", { numeric: true });
     return (rowSort.direction === "asc" ? dateDifference : -dateDifference) || -ordinalDifference;
-  }), [worksheetRows, rowNumberById, rowSort]);
+  }), [filteredRows, rowNumberById, rowSort]);
   const changeRowSort = (field) => {
     setRowSort((current) => ({ field, direction: current.field === field && current.direction === "asc" ? "desc" : "asc" }));
     setPage(0);
@@ -829,11 +836,12 @@ export default function FinancialWorksheetPage() {
     setDetailRow(null);
   }, [contractId, projectId, tab]);
 
+  useEffect(() => { setSearchQuery(""); }, [projectId]);
+
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
   const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
   const selectedContractDocumentType = documentTypeForContract(selectedContract);
   const isSelectedSubContract = selectedContractDocumentType === "sub";
-  const canShowWorksheet = Boolean(projectId && contractId);
   const grossAmountNumber = useMemo(() => parseAmountInput(grossAmount), [grossAmount]);
   const prepaymentDepreciationNumber = useMemo(() => parseAmountInput(prepaymentDepreciation), [prepaymentDepreciation]);
   const otherDeductionsNumber = useMemo(
@@ -1105,6 +1113,11 @@ export default function FinancialWorksheetPage() {
 
   const handleEditRow = (row) => {
     const source = row?.raw && typeof row.raw === "object" ? row.raw : row || {};
+    if (row?.contractId && String(row.contractId) !== String(contractId)) {
+      const rowContract = contractById.get(String(row.contractId));
+      setContractKind(documentTypeForContract(rowContract) === "sub" ? "sub" : "main");
+      setContractId(String(row.contractId));
+    }
     setFormOpen(true);
     setErr("");
     setEditingRowId(String(row?.id || source?.id || ""));
@@ -1197,6 +1210,13 @@ export default function FinancialWorksheetPage() {
     setReceiptCurrencySourceId("");
     setReceiptRialDescription("");
     setReceiptDescription("");
+  };
+
+  const toggleAddForm = () => {
+    resetStatementForm();
+    resetReceiptForm();
+    setErr("");
+    setFormOpen((open) => !open);
   };
 
   const handleSaveStatement = async () => {
@@ -1366,6 +1386,9 @@ export default function FinancialWorksheetPage() {
                 <span className="block truncate text-base font-bold md:text-lg">کاربرگ مالی</span>
               </span>
             </div>
+            <button type="button" onClick={toggleAddForm} className="h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={formOpen ? "بستن" : "افزودن"} aria-label={formOpen ? "بستن" : "افزودن"}>
+              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="w-5 h-5 dark:invert" />
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -1378,6 +1401,9 @@ export default function FinancialWorksheetPage() {
                   setProjectId(e.target.value);
                   setContractId("");
                   setContractKind("main");
+                  setFormOpen(false);
+                  resetStatementForm();
+                  resetReceiptForm();
                 }}
                 disabled={projectsLoading}
                 className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
@@ -1443,8 +1469,11 @@ export default function FinancialWorksheetPage() {
             </div>
           </div>
 
-          {canShowWorksheet ? (
-            <>
+          <div className="rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
+            <label htmlFor="worksheet-search" className="block text-xs text-neutral-600 dark:text-white/60">جست و جو</label>
+            <input id="worksheet-search" type="search" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setPage(0); }} placeholder="جستجو در شماره، تاریخ، شرح، قرارداد یا مبلغ..." className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white" />
+          </div>
+
           <div className="-mb-4 flex items-start gap-2">
             <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
               {worksheetTabs.map((item, index) => (
@@ -1460,19 +1489,11 @@ export default function FinancialWorksheetPage() {
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={() => setFormOpen((v) => !v)}
-              className="h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-700 dark:hover:bg-white/10 shrink-0"
-              title={formOpen ? "بستن" : "افزودن"}
-              aria-label={formOpen ? "بستن" : "افزودن"}
-            >
-              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="w-5 h-5 dark:invert" />
-            </button>
           </div>
 
           {formOpen && (
             <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
+              {(!projectId || !contractId) && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">{!projectId ? "برای ثبت، ابتدا پروژه را انتخاب کنید." : "برای ثبت در این پروژه، شماره قرارداد را انتخاب کنید."}</div>}
               {tab === "receipts" ? (
                 <>
                   <div className="flex flex-wrap items-end gap-1">
@@ -1908,7 +1929,7 @@ export default function FinancialWorksheetPage() {
                           rowsLoading ? (
                             <TR><TD colSpan={6} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
                           ) : !pageRows.length ? (
-                            <TR><TD colSpan={6} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
+                            <TR><TD colSpan={6} className={tablePreset.emptyRow}>{!projectId ? "برای مشاهده یک پروژه را انتخاب کنید." : searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</TD></TR>
                           ) : (
                             <>
                               <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
@@ -1933,7 +1954,7 @@ export default function FinancialWorksheetPage() {
                         ) : rowsLoading ? (
                           <TR><TD colSpan={8} className={tablePreset.emptyRow}>در حال بارگذاری...</TD></TR>
                         ) : !pageRows.length ? (
-                          <TR><TD colSpan={8} className={tablePreset.emptyRow}>موردی برای نمایش وجود ندارد.</TD></TR>
+                          <TR><TD colSpan={8} className={tablePreset.emptyRow}>{!projectId ? "برای مشاهده یک پروژه را انتخاب کنید." : searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</TD></TR>
                         ) : (
                           <>
                             <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
@@ -1988,8 +2009,6 @@ export default function FinancialWorksheetPage() {
             </div>
           </TableWrap>
           </div>
-            </>
-          ) : null}
 
           {err ? <div className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
