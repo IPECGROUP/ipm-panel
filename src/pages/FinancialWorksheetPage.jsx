@@ -694,8 +694,6 @@ export default function FinancialWorksheetPage() {
           r?.receiptAmountForeign ??
           r?.amount_foreign ??
           r?.amountForeign ??
-          r?.vat_amount ??
-          r?.vatAmount ??
           0,
       ) || 0,
       currencyId: String(r?.currency_id ?? r?.currencyId ?? r?.currency_type_id ?? r?.currencyTypeId ?? ""),
@@ -954,10 +952,11 @@ export default function FinancialWorksheetPage() {
     [currencySourceById, receiptCurrencySourceId],
   );
   const isRialCurrency = useMemo(() => {
+    if (!receiptCurrencyId) return true;
     const id = readItemId(selectedReceiptCurrency).toLowerCase();
     const label = readItemLabel(selectedReceiptCurrency).toLowerCase();
     return label.includes("ریال") || label.includes("irr") || label.includes("rial") || id.includes("irr") || id.includes("rial");
-  }, [selectedReceiptCurrency]);
+  }, [selectedReceiptCurrency, receiptCurrencyId]);
   const receiptReceivedAmountNumber = useMemo(() => parseAmountInput(receiptReceivedAmount), [receiptReceivedAmount]);
   const addOtherDebtRow = () =>
     setOtherDebts((prev) => [...prev, { id: Date.now() + Math.random(), amount: "", description: "" }]);
@@ -2046,6 +2045,7 @@ export default function FinancialWorksheetPage() {
         currency={readItemLabel(currencyById.get(String(detailRow.currencyId)))}
         currencySource={readItemLabel(currencySourceById.get(String(detailRow.currencySourceId)))}
         receiptTypeLabel={receiptTypeLabel}
+        isPayment={documentTypeForContract(contractById.get(String(detailRow.contractId))) === "sub"}
         letters={letters}
         onClose={() => setDetailRow(null)}
       />}
