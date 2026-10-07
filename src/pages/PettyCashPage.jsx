@@ -303,7 +303,7 @@ function MyPettyCashTable() {
                     <span>{money(item.receivedAmount)}</span>
                     <Eye className="h-4 w-4 text-neutral-400 transition group-hover:text-sky-600 dark:group-hover:text-sky-300" aria-hidden="true" />
                   </button>
-                  <span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">
+                  <span className="mx-auto mt-1 block w-fit rounded-lg bg-[#EA9651] px-3 py-1 text-xs font-semibold text-neutral-950">
                     {money(BigInt(item.receivedAmount || "0") - BigInt(item.approvedExpenses || "0"))}
                   </span>
                 </td>
@@ -360,7 +360,7 @@ function MyPettyCashTable() {
             </div>
             <div className="grid grid-cols-1 gap-2 text-sm">
               <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} onView={() => setDetailsProject(item)} />
-              <SummaryAmount label="باقیمانده تنخواه" value={money(BigInt(item.receivedAmount || "0") - BigInt(item.approvedExpenses || "0"))} />
+              <SummaryAmount label="باقیمانده تنخواه" value={money(BigInt(item.receivedAmount || "0") - BigInt(item.approvedExpenses || "0"))} tone="balance" />
               <SummaryAmount label="مجموع هزینه‌های ثبت‌شده" value={money(item.registeredExpenses)} />
               <SummaryAmount label="باقی‌مانده هزینه‌های ثبت‌شده" value={money(item.registeredBalance)} />
               <SummaryAmount label="مجموع هزینه‌های تأییدشده" value={money(item.approvedExpenses)} tone="approved" />
@@ -388,6 +388,8 @@ function MyPettyCashTable() {
 function SummaryAmount({ label, value, tone = "", onView }) {
   const toneClass = tone === "approved"
     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200"
+    : tone === "balance"
+      ? "bg-[#EA9651] text-neutral-950"
     : tone === "unapproved"
       ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-200"
       : "bg-neutral-50 dark:bg-white/[.04]";
