@@ -260,7 +260,12 @@ function MyPettyCashTable() {
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
               <Header>ردیف</Header>
               <Header right>پروژه</Header>
-              <Header>مجموع تنخواه دریافت‌شده</Header>
+              <Header>
+                <span className="block">مجموع تنخواه دریافت‌شده</span>
+                <span className="mt-0.5 block text-[11px] font-normal text-neutral-600 dark:text-neutral-300">
+                  باقیمانده تنخواه
+                </span>
+              </Header>
               <Header>
                 <span className="block">مجموع هزینه‌های ثبت‌شده</span>
                 <span className="mt-0.5 block text-[11px] font-normal text-neutral-600 dark:text-neutral-300">
@@ -298,6 +303,9 @@ function MyPettyCashTable() {
                     <span>{money(item.receivedAmount)}</span>
                     <Eye className="h-4 w-4 text-neutral-400 transition group-hover:text-sky-600 dark:group-hover:text-sky-300" aria-hidden="true" />
                   </button>
+                  <span className="mt-1 block text-xs text-neutral-500 dark:text-neutral-400">
+                    {money(BigInt(item.receivedAmount || "0") - BigInt(item.approvedExpenses || "0"))}
+                  </span>
                 </td>
                 <td className="font-sans tabular-nums">
                   <span className="block font-semibold">
@@ -352,6 +360,7 @@ function MyPettyCashTable() {
             </div>
             <div className="grid grid-cols-1 gap-2 text-sm">
               <SummaryAmount label="مجموع تنخواه دریافت‌شده" value={money(item.receivedAmount)} onView={() => setDetailsProject(item)} />
+              <SummaryAmount label="باقیمانده تنخواه" value={money(BigInt(item.receivedAmount || "0") - BigInt(item.approvedExpenses || "0"))} />
               <SummaryAmount label="مجموع هزینه‌های ثبت‌شده" value={money(item.registeredExpenses)} />
               <SummaryAmount label="باقی‌مانده هزینه‌های ثبت‌شده" value={money(item.registeredBalance)} />
               <SummaryAmount label="مجموع هزینه‌های تأییدشده" value={money(item.approvedExpenses)} tone="approved" />
