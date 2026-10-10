@@ -3,8 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
 import { format3 } from "../utils/format.js";
-import TenkhahPage from "./TenkhahPage.jsx";
-import { ExpenseRegistrationTab, PettyCashSettlementReportsTable } from "./PettyCashPageLegacy.jsx";
+import PettyCashExpenseTab from "./PettyCashExpenseTab.jsx";
 
 const tabs = ["تنخواه‌های من", "ثبت هزینه‌ها", "گزارش تسویه تنخواه"];
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
@@ -131,10 +130,8 @@ function MyPettyCashSummary() {
 
 export default function PettyCashPage() {
   const [searchParams] = useSearchParams();
-  const focusedRequestId = searchParams.get("notificationTarget") === "tenkhah" ? searchParams.get("request") || "" : "";
   const focusedExpenseId = searchParams.get("notificationTarget") === "petty_cash_expense" ? searchParams.get("request") || "" : "";
   const [activeTab, setActiveTab] = useState(() => focusedExpenseId ? 1 : 0);
-  if (focusedRequestId) return <TenkhahPage focusRequestId={focusedRequestId} />;
   return <div dir="rtl" className="mx-auto min-w-0 max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 sm:rounded-3xl sm:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
       <div className="p-2.5 sm:p-3 md:p-4">
@@ -153,8 +150,8 @@ export default function PettyCashPage() {
             className={`min-w-0 border-l border-neutral-200 px-2 py-3 text-xs font-bold transition last:border-l-0 sm:text-sm ${activeTab === index ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-50"}`}>{tab}</button>)}
         </nav>
         {activeTab === 0 && <MyPettyCashSummary />}
-        {activeTab === 1 && <ExpenseRegistrationTab focusExpenseId={focusedExpenseId} onReportCreated={() => setActiveTab(2)} />}
-        {activeTab === 2 && <PettyCashSettlementReportsTable />}
+        {activeTab === 1 && <PettyCashExpenseTab />}
+        {activeTab === 2 && <div className="min-h-80 rounded-b-2xl border border-t-0 border-neutral-200 bg-white" />}
       </div>
     </Card>
   </div>;
