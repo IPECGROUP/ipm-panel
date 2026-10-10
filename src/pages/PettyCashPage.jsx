@@ -108,7 +108,7 @@ function MyPettyCashSummary() {
       <div className="self-center space-y-4 text-sm sm:text-base">
         <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} />
         <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} />
-        <SummaryLine label="باقی‌مانده هزینه‌های ثبت‌شده" value={unregistered} />
+        <SummaryLine label="باقی‌مانده هزینه‌های ثبت نشده" value={unregistered} />
         <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} />
         <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} />
       </div>
@@ -276,7 +276,7 @@ export default function PettyCashPage() {
           {reportError && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[920px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
+              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[920px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
                 <colgroup><col className="w-16" /><col /><col className="w-32" /><col /><col className="w-60" /><col className="w-36" /></colgroup>
                 <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
                   <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
@@ -323,9 +323,13 @@ export default function PettyCashPage() {
               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? "بررسی و تصمیم‌گیری درخواست" : "تنخواه‌های من"}</h2>
                 {selectedReport && <p className="mt-1 text-xs text-neutral-500">اطلاعات درخواست و ثبت تصمیم‌گیری نهایی</p>}
               </div>
+              {selectedReport && <button type="button" aria-label="خروجی PDF" title="خروجی PDF"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white transition hover:bg-neutral-50">
+                <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />
+              </button>}
             </div>
             <button type="button" disabled={reviewBusy} onClick={closeDialog} aria-label="بستن پنجره"
-              className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white hover:bg-neutral-800"><X className="h-4 w-4" /></button>
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-black text-white hover:bg-neutral-800"><X className="h-4 w-4" /></button>
           </header>
           {selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
             onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
@@ -487,11 +491,11 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   return <>
     <div inert={managerOpen ? true : undefined} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <div className="mb-4 grid grid-cols-2 rounded-2xl border border-neutral-200 bg-neutral-50/60 xl:grid-cols-4">
-        {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-3 sm:gap-3 sm:px-4 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white sm:h-10 sm:w-10"><Icon className="h-4 w-4 stroke-[1.6] sm:h-5 sm:w-5" /></span>
-          <div className="min-w-0"><p className="text-[11px] text-neutral-500 sm:text-xs">{label}</p><p className="mt-1 break-words text-xs font-bold sm:text-sm">{value}</p>
-            {secondary && <p className="mt-1 text-[11px] text-neutral-500">{secondary}</p>}
+      <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 xl:grid-cols-4">
+        {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white"><Icon className="h-4 w-4 stroke-[1.6]" /></span>
+          <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
+            {secondary && <p className="mt-0.5 text-[10px] text-neutral-500">{secondary}</p>}
           </div>
         </div>)}
       </div>
@@ -510,8 +514,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
           <section className="min-w-0 overflow-hidden">
             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های درخواست</h3>
-            <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[280px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[320px] [scrollbar-gutter:stable]">
-              <table className="w-full min-w-[760px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
+            <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[280px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[320px]">
+              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[760px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
                 <colgroup><col className="w-11" /><col className="w-12" /><col className="w-28" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
@@ -528,7 +532,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
                       aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>
                     <td className="px-2">{toFa(index + 1)}</td><td className="px-2">{toFa(item.expenseDate)}</td>
-                    <td className="break-words px-3 py-3 text-right leading-6">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
+                    <td className="break-words px-3 py-3 text-center leading-6">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums">{money(item.amount)}</td>
                     <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
                   </tr>;
@@ -540,7 +544,6 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           <div className="border-t border-neutral-200 p-3">
             <label htmlFor="petty-cash-review-notes" className="mb-2 flex items-center gap-2 text-sm font-bold"><MessageSquare className="h-5 w-5 stroke-[1.6]" />توضیحات بررسی</label>
             <textarea readOnly={!canAct || saving} id="petty-cash-review-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500}
-              placeholder="نظر خود را در خصوص ردیف‌های انتخاب‌شده وارد کنید ..."
               className="h-24 w-full resize-none rounded-xl border border-neutral-200 bg-white p-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400" />
             <p className="mt-1 text-left text-[11px] text-neutral-500" dir="ltr">{toFa(notes.length)} / ۵۰۰</p>
           </div>
@@ -572,10 +575,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </aside>
       </div>
     </div>
-    <footer inert={managerOpen ? true : undefined} className="grid shrink-0 grid-cols-2 gap-2 border-t border-neutral-100 px-3 py-3 [&>button:last-child]:col-span-2 min-[480px]:grid-cols-3 min-[480px]:[&>button:last-child]:col-span-1 sm:flex sm:flex-wrap sm:justify-end sm:gap-3 sm:px-5 sm:py-4">
-      <button type="button" disabled={saving || (!canAct && !report.canRevise)} onClick={() => report.canRevise && !canAct ? onRevise() : submitDecision("approve")} className={`${actionClass} min-w-24 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" />تأیید</button>
-      <button type="button" disabled={!canAct || saving} onClick={() => submitDecision("reject")} className={`${actionClass} min-w-24 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" />رد</button>
-      <button type="button" disabled={!canAct || saving} onClick={() => submitDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" />درخواست اصلاح</button>
+    <footer inert={managerOpen ? true : undefined} className="flex shrink-0 justify-end gap-2 border-t border-neutral-100 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4">
+      <button type="button" aria-label="تأیید" title="تأیید" disabled={saving || (!canAct && !report.canRevise)} onClick={() => report.canRevise && !canAct ? onRevise() : submitDecision("approve")} className={`${actionClass} h-11 w-11 !p-0 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" /></button>
+      <button type="button" aria-label="رد" title="رد" disabled={!canAct || saving} onClick={() => submitDecision("reject")} className={`${actionClass} h-11 w-11 !p-0 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" /></button>
+      <button type="button" aria-label="درخواست اصلاح" title="درخواست اصلاح" disabled={!canAct || saving} onClick={() => submitDecision("revision")} className={`${actionClass} h-11 w-11 !p-0 border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" /></button>
     </footer>
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
@@ -915,7 +918,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
 
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] table-fixed text-center text-sm">
+        <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[760px] table-fixed text-center text-sm">
           <colgroup>
             <col className="w-12" /><col className="w-16" /><col className="w-32" />
             <col /><col className="w-36" /><col className="w-40" /><col className="w-28" />
