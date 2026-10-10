@@ -177,6 +177,9 @@ function PettyCashExpenseTab() {
   const [projectId, setProjectId] = useState("");
   const [budgetItems, setBudgetItems] = useState([]);
   const [items, setItems] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [form, setForm] = useState(emptyForm);
   const [attachment, setAttachment] = useState(null);
   const [budgetPickerOpen, setBudgetPickerOpen] = useState(false);
@@ -216,6 +219,8 @@ function PettyCashExpenseTab() {
 
   const selectProject = async (id) => {
     setProjectId(id);
+    setPage(0);
+    setSelectedIds(new Set());
     setForm(emptyForm());
     setAttachment(null);
     setBudgetItems([]);
@@ -264,7 +269,25 @@ function PettyCashExpenseTab() {
     }
   };
 
-  const selectedProject = projects.find((project) => String(project.id) === String(projectId));
+  const pageCount = Math.max(1, Math.ceil(items.length / rowsPerPage));
+  const safePage = Math.min(page, pageCount - 1);
+  const startIndex = safePage * rowsPerPage;
+  const endIndex = Math.min(items.length, startIndex + rowsPerPage);
+  const pageItems = items.slice(startIndex, endIndex);
+  const visibleIds = pageItems.map((item) => item.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
+  const toggleSelected = (id) => setSelectedIds((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+  const toggleVisible = () => setSelectedIds((current) => {
+    const next = new Set(current);
+    visibleIds.forEach((id) => { if (allVisibleSelected) next.delete(id); else next.add(id); });
+    return next;
+  });
   return <section className="rounded-b-2xl border border-t-0 border-neutral-200 bg-white p-3 sm:p-4">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <Field label="پروژه">
@@ -309,24 +332,61 @@ function PettyCashExpenseTab() {
       title="افزودن ردیف" aria-label="افزودن ردیف">+</button>
     {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
 
-    <div className="overflow-x-auto rounded-2xl border border-neutral-200">
-      <table className="w-full min-w-[620px] table-fixed text-center text-sm">
-        <thead className="bg-neutral-200 text-neutral-900">
-          <tr>{["ردیف", "شرح", "کد بودجه", "مبلغ", "پیوست"].map((label) => <th key={label} className="px-3 py-3 font-semibold">{label}</th>)}</tr>
-        </thead>
-        <tbody>
-          {items.map((item, index) => <tr key={item.id} className="border-t border-neutral-200 bg-neutral-50/70">
-            <td className="px-3 py-3">{toFa(index + 1)}</td>
-            <td className="break-words px-3 py-3 text-right">{item.description}</td>
-            <td className="px-3 py-3">{toFa(item.budgetCode)}</td>
-            <td className="px-3 py-3 tabular-nums">{toFa(format3(item.amount))}</td>
-            <td className="px-3 py-3">{item.fileUrl
-              ? <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sky-700 underline" title={item.fileName || "مشاهده پیوست"}>مشاهده</a>
-              : "—"}</td>
-          </tr>)}
-          {!items.length && <tr><td colSpan={5} className="px-3 py-8 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
-        </tbody>
-      </table>
+    <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] table-fixed text-center text-sm">
+          <colgroup>
+            <col className="w-12" /><col className="w-16" /><col className="w-32" />
+            <col /><col className="w-36" /><col className="w-40" /><col className="w-28" />
+          </colgroup>
+          <thead className="bg-neutral-200 text-neutral-900">
+            <tr className="h-12">
+              <th className="px-3">
+                <input type="checkbox" checked={allVisibleSelected}
+                  ref={(element) => { if (element) element.indeterminate = someVisibleSelected; }}
+                  onChange={toggleVisible} aria-label="انتخاب همه ردیف‌های این صفحه"
+                  className="h-4 w-4 accent-black" />
+              </th>
+              {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ", "پیوست"].map((label) =>
+                <th key={label} className="px-3 text-[14px] font-semibold md:text-[15px]">{label}</th>)}
+            </tr>
+          </thead>
+          <tbody className="text-[13px] text-neutral-900 [&>tr]:h-9 [&>tr>td]:!py-0">
+            {pageItems.map((item, index) => <tr key={item.id}
+              className={`border-t border-neutral-300 bg-black/[0.02] transition hover:bg-black/[0.04] ${selectedIds.has(item.id) ? "bg-neutral-100" : ""}`}>
+              <td className="px-3"><input type="checkbox" checked={selectedIds.has(item.id)}
+                onChange={() => toggleSelected(item.id)} aria-label={`انتخاب ردیف ${toFa(startIndex + index + 1)}`}
+                className="h-4 w-4 accent-black" /></td>
+              <td className="px-3">{toFa(startIndex + index + 1)}</td>
+              <td className="px-3">{toFa(item.expenseDate)}</td>
+              <td className="truncate px-3 text-right" title={item.description}>{item.description}</td>
+              <td className="px-3">{toFa(item.budgetCode)}</td>
+              <td className="px-3 tabular-nums">{toFa(format3(item.amount))}</td>
+              <td className="px-3">{item.fileUrl
+                ? <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sky-700 underline" title={item.fileName || "مشاهده پیوست"}>مشاهده</a>
+                : "—"}</td>
+            </tr>)}
+            {!pageItems.length && <tr><td colSpan={7} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-col gap-2 border-t border-neutral-300 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))}
+            disabled={safePage === 0} aria-label="صفحه قبل" className="grid h-9 w-9 place-items-center rounded-lg hover:bg-neutral-100 disabled:opacity-35">›</button>
+          <button type="button" onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+            disabled={safePage >= pageCount - 1} aria-label="صفحه بعد" className="grid h-9 w-9 place-items-center rounded-lg hover:bg-neutral-100 disabled:opacity-35">‹</button>
+          <span className="whitespace-nowrap text-neutral-600">{items.length ? `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(items.length)}` : "۰ از ۰"}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap text-neutral-600">تعداد در هر صفحه:</span>
+          <div className="inline-flex h-9 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+            {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }}
+              aria-pressed={rowsPerPage === count}
+              className={`min-w-10 px-3 font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"}`}>{toFa(count)}</button>)}
+          </div>
+        </div>
+      </div>
     </div>
     {budgetPickerOpen && <BudgetTreePickerModal
       items={budgetItems.map((item) => ({ code: item.budgetCode, value: item.budgetCode, center_desc: item.budgetName }))}
