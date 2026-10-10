@@ -607,8 +607,9 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
     [items, setItems] = useState([]),
     [viewer, setViewer] = useState({}),
     [projectId, setProjectId] = useState(""),
-    [formOpen, setFormOpen] = useState(false),
+    [formOpen, setFormOpen] = useState(true),
     [form, setForm] = useState(emptyExpense),
+    [attachment, setAttachment] = useState(null),
     [saving, setSaving] = useState(false),
     [error, setError] = useState(""),
     [managers, setManagers] = useState([]),
@@ -624,6 +625,7 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
     [beneficiaryBalance, setBeneficiaryBalance] = useState({ unregisteredBalance: "0", unsettledBalance: "0" });
   const tableMenuRef = useRef(null);
   const tableMenuPopoverRef = useRef(null);
+  const attachmentInputRef = useRef(null);
   const api = useCallback(
     async (path, options = {}) => {
       const response = await fetch(`/api${path}`, {
@@ -712,6 +714,8 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
   const selectProject = async (value) => {
     setProjectId(value);
     setForm(emptyExpense());
+    setAttachment(null);
+    if (attachmentInputRef.current) attachmentInputRef.current.value = "";
     setBudgetItems([]);
     setError("");
     if (!value) {
@@ -741,13 +745,32 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
     setSaving(true);
     setError("");
     try {
+      let file = editingExpense?.fileUrl
+        ? { name: editingExpense.fileName, url: editingExpense.fileUrl }
+        : null;
+      if (attachment) {
+        const payload = new FormData();
+        payload.append("file", attachment);
+        const response = await fetch("/api/petty-cash-expenses/upload", {
+          method: "POST",
+          credentials: "include",
+          headers: { "x-user-id": String(user?.id || "") },
+          body: payload,
+        });
+        const uploaded = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(uploaded.error || "بارگذاری پیوست انجام نشد.");
+        file = uploaded.file;
+      }
       await api("/petty-cash-expenses", {
         method: editingExpense ? "PATCH" : "POST",
-        body: JSON.stringify(editingExpense ? { action: "update", id: editingExpense.id, projectId, ...form } : { projectId, ...form }),
+        body: JSON.stringify(editingExpense
+          ? { action: "update", id: editingExpense.id, projectId, ...form, fileName: file?.name, fileUrl: file?.url }
+          : { projectId, ...form, fileName: file?.name, fileUrl: file?.url }),
       });
       setForm(emptyExpense());
+      setAttachment(null);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = "";
       setEditingExpense(null);
-      setFormOpen(false);
       await Promise.all([loadExpenses(projectId), loadBeneficiaryBalance()]);
     } catch (reason) {
       setError(reason.message);
@@ -894,6 +917,7 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
     const item = selectedItems[0];
     setProjectId(String(item.projectId));
     setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode, amount: format3(item.amount) });
+    setAttachment(null);
     setEditingExpense(item); setFormOpen(true); setTableMenuOpen(false);
   };
   const deleteSelectedExpenses = async () => {
@@ -927,7 +951,7 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
   };
   return (
     <section className="rounded-b-2xl border-x border-b border-black/10 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900 md:p-4">
-      <div className="mb-4 flex w-full items-end justify-between gap-4">
+      <div className="mb-4 flex w-full flex-wrap items-end justify-between gap-4">
         <Field label="پروژه" className="min-w-0 flex-1 sm:max-w-[22rem]">
           <select
             value={projectId}
@@ -942,7 +966,11 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
             ))}
           </select>
         </Field>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-x-6 gap-y-2 self-end pb-3 text-sm">
+        <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65" title="فراخوانی از اکسل به‌زودی فعال می‌شود">
+          فراخوانی از اکسل
+        </button>
+      </div>
+      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
           <div className="inline-flex items-center gap-1 whitespace-nowrap">
             <span className="font-medium text-neutral-600 dark:text-neutral-300">مانده تنخواه تسویه‌نشدهٔ ذی‌نفع:</span>
             <span dir="ltr" className="font-sans font-semibold tabular-nums text-neutral-900 dark:text-white">
@@ -955,34 +983,9 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
               {displayMoney(pendingExpenseWithDraft)}
             </span>
           </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={clearPettyCashPageData}
-            disabled={saving}
-            className="h-11 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-400/25 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-            title="حذف همه داده‌های تنخواه گردان"
-          >
-            حذف کلی
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setError("");
-              setFormOpen((open) => !open);
-            }}
-            className="relative grid h-11 w-11 place-items-center rounded-[13px] border border-neutral-300 bg-white text-neutral-500 shadow-sm transition hover:border-neutral-400 hover:bg-neutral-50 dark:border-white/20 dark:bg-white/5 dark:text-neutral-300"
-            title="افزودن هزینه"
-            aria-label="افزودن هزینه"
-          >
-            <span className="absolute h-px w-5 bg-current" />
-            <span className="absolute h-5 w-px bg-current" />
-          </button>
-        </div>
       </div>
       {formOpen && (
-        <div className="mb-4 grid grid-cols-1 items-end gap-3 rounded-2xl border border-black/10 bg-neutral-50/70 p-3 dark:border-white/10 dark:bg-white/[.03] md:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_44px]">
+        <div className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-black/10 bg-neutral-100 p-3 dark:border-white/10 dark:bg-white/[.08] md:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_140px]">
           <Field label="تاریخ">
             <JalaliPopupDatePicker
               value={form.expenseDate}
@@ -1021,17 +1024,19 @@ export function ExpenseRegistrationTab({ onReportCreated, focusExpenseId = "" })
               className={`${inputClass} text-left font-sans tabular-nums`}
             />
           </Field>
-          <button
-            type="button"
-            onClick={addExpense}
-            disabled={saving}
-            className="grid h-11 w-11 place-items-center rounded-xl bg-neutral-900 text-2xl leading-none text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
-            title="ثبت هزینه"
-          >
-            +
-          </button>
+          <Field label="پیوست">
+            <input ref={attachmentInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp,.heic,.heif" onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
+            <button type="button" onClick={() => attachmentInputRef.current?.click()} className="h-11 w-full truncate rounded-xl border border-neutral-300 bg-white px-3 text-sm text-neutral-800 hover:bg-neutral-50" title={attachment?.name || "انتخاب پیوست"}>
+              {attachment?.name || editingExpense?.fileName || "بارگذاری"}
+            </button>
+          </Field>
         </div>
       )}
+      <div className="mb-4">
+        <button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 place-items-center rounded-xl bg-neutral-900 text-2xl leading-none text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="افزودن ردیف به جدول" aria-label="افزودن ردیف به جدول">
+          +
+        </button>
+      </div>
       {error && (
         <div className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
           {error}
@@ -1151,10 +1156,16 @@ function ExpenseTable({
       <div className="overflow-x-auto" dir="ltr">
         <table
           dir="rtl"
-          className="w-full min-w-[1180px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"
+          className="w-full min-w-[980px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2"
         >
           <thead>
             <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
+              <Header className="w-12 !px-1">ردیف</Header>
+              <Header>تاریخ</Header>
+              <Header>کد بودجه</Header>
+              <Header>مبلغ (ریال)</Header>
+              <Header>پیوست</Header>
+              <Header right className="w-[22%]">شرح</Header>
               <Header className="w-11 !px-1">
                 <input
                   type="checkbox"
@@ -1165,12 +1176,6 @@ function ExpenseTable({
                   aria-label="انتخاب همه ردیف‌های تأییدشده"
                 />
               </Header>
-              <Header className="w-12 !px-1">ردیف</Header>
-              <Header>درخواست‌کننده</Header>
-              <Header>تاریخ</Header>
-              <Header right className="w-[22%]">شرح هزینه</Header>
-              <Header>کد بودجه</Header>
-              <Header>مبلغ (ریال)</Header>
               {showPlanningColumn && <Header>برنامه‌ریزی</Header>}
               {showManagerColumn && <Header>مدیر پروژه</Header>}
               <th className="bg-neutral-200 px-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]" dir="ltr">
@@ -1197,6 +1202,16 @@ function ExpenseTable({
                   key={item.id}
                   className={`bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10 ${item.stage === "rejected" ? "text-red-600 dark:text-red-400" : item.settlementReportId ? "text-neutral-500 dark:text-neutral-400" : ""}`}
                 >
+                  <Cell className="w-12 !px-1">{toFa(index + 1)}</Cell>
+                  <Cell>{toFa(item.expenseDate)}</Cell>
+                  <Cell dir="ltr">
+                    {toFa(displayBudgetCode(item.projectCode, item.budgetCode))}
+                  </Cell>
+                  <Cell dir="ltr" className="font-sans tabular-nums">
+                    {toFa(format3(item.amount))}
+                  </Cell>
+                  <Cell>{item.fileUrl ? <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sky-700 underline" title={item.fileName || "مشاهده پیوست"}>مشاهده</a> : "—"}</Cell>
+                  <Cell right>{item.description}</Cell>
                   <Cell className="w-11 !px-1">
                     {item.settlementReportId ? (
                       <LockIcon reportNumber={item.settlementReportNumber} />
@@ -1211,16 +1226,6 @@ function ExpenseTable({
                         title={isItemSelectable(item) ? "انتخاب برای گزارش تسویه" : "پس از تأیید مدیر پروژه قابل ارسال است"}
                       />
                     )}
-                  </Cell>
-                  <Cell className="w-12 !px-1">{toFa(index + 1)}</Cell>
-                  <Cell>{item.createdByName || item.createdByUsername || `کاربر #${toFa(item.createdById || "—")}`}</Cell>
-                  <Cell>{toFa(item.expenseDate)}</Cell>
-                  <Cell right>{item.description}</Cell>
-                  <Cell dir="ltr">
-                    {toFa(displayBudgetCode(item.projectCode, item.budgetCode))}
-                  </Cell>
-                  <Cell dir="ltr" className="font-sans tabular-nums">
-                    {toFa(format3(item.amount))}
                   </Cell>
                   {showPlanningColumn && (
                     <Cell>
