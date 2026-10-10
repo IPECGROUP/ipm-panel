@@ -575,14 +575,14 @@ async function compressExpensePhoto(source, image, turns, crop) {
     return { file: source, width: image.naturalWidth, height: image.naturalHeight };
   }
   const canvas = expensePhotoCanvas(image, turns, crop);
-  const candidates = [await encodeExpensePhoto(canvas, "image/webp", 0.9)];
+  const candidates = [await encodeExpensePhoto(canvas, "image/webp", 0.86)];
   // Keep transparent PNG/WebP images transparent; JPEG is also compared for photos.
   if (/\.jpe?g$/i.test(source.name) || source.type === "image/jpeg") {
-    candidates.push(await encodeExpensePhoto(canvas, "image/jpeg", 0.9));
+    candidates.push(await encodeExpensePhoto(canvas, "image/jpeg", 0.86));
   }
   let blob = candidates.reduce((smallest, candidate) => candidate.size < smallest.size ? candidate : smallest);
-  if (blob.size > 1500 * 1024) {
-    const lighter = await encodeExpensePhoto(canvas, "image/webp", 0.86);
+  if (blob.size > 1024 * 1024) {
+    const lighter = await encodeExpensePhoto(canvas, "image/webp", 0.82);
     if (lighter.size < blob.size) blob = lighter;
   }
   let file;
@@ -763,7 +763,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
         <header className="flex items-center justify-between gap-4 border-b border-neutral-100 px-5 py-4">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-neutral-100"><img src="/images/icons/upload.svg" alt="" className="h-6 w-6" /></span>
-            <div><h2 id="petty-cash-photo-title" className="font-bold">پیوست هزینه</h2><p className="mt-1 text-xs text-neutral-500">عکس رسید یا سند هزینه را آماده کنید</p></div>
+            <h2 id="petty-cash-photo-title" className="font-bold">پیوست هزینه</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
         </header>
@@ -814,7 +814,6 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
             </div>
             {image && <aside className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
               <h3 className="text-sm font-bold">نسخه کم‌حجم</h3>
-              <p className="mt-2 text-xs leading-6 text-neutral-500">فشرده‌سازی با کیفیت بالا برای حفظ خوانایی رسید و سند</p>
               <p className="mt-3 truncate text-xs text-neutral-600" title={source?.name}>{source?.name}</p>
               <div className="mt-4 space-y-3 text-xs">
                 <div className="flex justify-between gap-2"><span className="text-neutral-500">حجم اولیه</span><strong>{source && photoSize(source.size)}</strong></div>
@@ -828,8 +827,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
             </aside>}
           </div>
         </div>
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 px-5 py-4">
-          <p className="text-xs text-neutral-500">پیوست همراه با ثبت ردیف هزینه ذخیره می‌شود.</p>
+        <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-neutral-100 px-5 py-4">
           <button type="button" disabled={!processed || processing || loading || draggingCrop}
             onClick={() => onConfirm(processed.file)} className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"><Check className="h-4 w-4" />تأیید پیوست</button>
         </footer>
