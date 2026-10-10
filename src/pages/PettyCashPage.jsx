@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, UserRound, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -165,7 +165,7 @@ export default function PettyCashPage() {
     const handleKey = (event) => {
       if (event.key === "Escape") { event.preventDefault(); setSummaryOpen(false); setSelectedReport(null); }
       if (event.key !== "Tab") return;
-      const focusable = [...summaryDialogRef.current.querySelectorAll('button:not(:disabled), a[href], [tabindex="0"]')].filter((element) => element.getClientRects().length);
+      const focusable = [...summaryDialogRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')].filter((element) => element.getClientRects().length);
       const first = focusable[0], last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -201,6 +201,7 @@ export default function PettyCashPage() {
         <div hidden={!expenseFormOpen}>
         <PettyCashExpenseTab key={expenseFormKey} onBusyChange={setReportSaving} onSubmitted={(report) => {
           setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
+          setSearchQuery("");
           setExpenseFormOpen(false);
           setExpenseFormKey((current) => current + 1);
           loadReports().catch((reason) => setReportError(reason.message));
@@ -254,25 +255,19 @@ export default function PettyCashPage() {
       <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6"
         onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}>
         <div ref={summaryDialogRef} role="dialog" aria-modal="true" aria-labelledby="petty-cash-summary-title" dir="rtl"
-          className="flex max-h-[90dvh] w-full max-w-[1200px] flex-col overflow-hidden rounded-3xl bg-white text-neutral-900 shadow-2xl">
+          className={`flex flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl ${selectedReport ? "h-[86dvh] w-[92vw] max-w-[1680px]" : "max-h-[90dvh] w-full max-w-[1200px]"}`}>
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-5 py-4">
-            <h2 id="petty-cash-summary-title" className="font-bold">{selectedReport ? selectedReport.reportName : "تنخواه‌های من"}</h2>
+            <div className="flex min-w-0 items-center gap-3">
+              {selectedReport && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-neutral-50"><FileText className="h-5 w-5" /></span>}
+              <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? "بررسی و تصمیم‌گیری درخواست" : "تنخواه‌های من"}</h2>
+                {selectedReport && <p className="mt-1 text-xs text-neutral-500">اطلاعات درخواست و ثبت تصمیم‌گیری نهایی</p>}
+              </div>
+            </div>
             <button type="button" onClick={closeDialog} aria-label="بستن پنجره"
               className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
           </header>
-          <div className="min-h-0 overflow-y-auto p-3 sm:p-5">{selectedReport ? <>
-            <p className="mb-4 text-sm text-neutral-600">{selectedReport.projectCode} - {selectedReport.projectName}</p>
-            <div className="overflow-x-auto rounded-2xl border border-neutral-200">
-              <table className="w-full min-w-[700px] table-fixed text-center text-sm" aria-label="هزینه‌های گزارش">
-                <thead className="bg-neutral-200"><tr className="h-12">{["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ", "پیوست"].map((label) => <th key={label} scope="col" className={`px-3 ${label === "شرح" ? "w-[30%]" : ""}`}>{label}</th>)}</tr></thead>
-                <tbody className="text-[13px] [&>tr]:h-9">{selectedReport.items.map((item, index) => <tr key={item.id} className="border-t border-neutral-300 bg-black/[0.02]">
-                  <td className="px-3">{toFa(index + 1)}</td><td className="px-3">{toFa(item.expenseDate)}</td>
-                  <td className="px-3 py-2 text-right">{item.description}</td><td className="px-3">{toFa(item.budgetCode)}</td>
-                  <td className="px-3">{money(item.amount)}</td><td className="px-3"><ExpenseAttachmentLink item={item} /></td>
-                </tr>)}</tbody>
-              </table>
-            </div>
-          </> : <MyPettyCashSummary />}</div>
+          {selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport} />
+            : <div className="min-h-0 overflow-y-auto p-3 sm:p-5"><MyPettyCashSummary /></div>}
         </div>
       </div>, document.body
     )}
@@ -283,6 +278,155 @@ const inputClass = "h-11 w-full rounded-xl border border-neutral-200 bg-white px
 const emptyForm = () => ({ expenseDate: todayJalaliYmd().replaceAll("-", "/"), description: "", budgetCode: "", amount: "" });
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
 const english = (value) => toEnglishDigits(String(value ?? "")).replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
+
+function PettyCashReportReview({ report }) {
+  const entries = report.items || [];
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [decisions, setDecisions] = useState({});
+  const [notes, setNotes] = useState("");
+  const [attachmentIndex, setAttachmentIndex] = useState(0);
+  const [preview, setPreview] = useState({ loading: false, url: "", size: null, error: "" });
+  const attachments = entries.filter((item) => item.fileUrl);
+  const attachment = attachments[attachmentIndex];
+  const allSelected = entries.length > 0 && entries.every((item) => selectedIds.has(item.id));
+  const partlySelected = selectedIds.size > 0 && !allSelected;
+
+  useEffect(() => {
+    if (!attachment?.fileUrl) return;
+    const controller = new AbortController();
+    let active = true;
+    let objectUrl = "";
+    setPreview({ loading: true, url: "", size: null, error: "" });
+    fetch(attachment.fileUrl, { credentials: "include", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("پیوست قابل دریافت نیست.");
+        const blob = await response.blob();
+        if (!active) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPreview({ loading: false, url: objectUrl, size: blob.size, error: "" });
+      })
+      .catch((reason) => { if (active && reason.name !== "AbortError") setPreview({ loading: false, url: "", size: null, error: "پیش‌نمایش پیوست در دسترس نیست." }); });
+    return () => { active = false; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [attachment?.fileUrl]);
+
+  const toggleSelected = (id) => setSelectedIds((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const applyDecision = (decision) => {
+    if (!selectedIds.size) return;
+    setDecisions((current) => ({ ...current, ...Object.fromEntries([...selectedIds].map((id) => [id, decision])) }));
+  };
+  const rowStatus = (item) => decisions[item.id] || (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
+  const badges = {
+    approved: { label: "تأیید شده", className: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+    pending: { label: "در انتظار", className: "bg-sky-50 text-sky-700 border-sky-100" },
+    revision: { label: "درخواست اصلاح", className: "bg-amber-50 text-amber-700 border-amber-100" },
+    rejected: { label: "رد شده", className: "bg-red-50 text-red-700 border-red-100" },
+  };
+  const actionClass = "inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
+  const metadata = [
+    { label: "شماره گزارش", value: report.reportName, Icon: FileText },
+    { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
+    { label: "درخواست‌کننده", value: report.createdByName || report.createdByUsername || "—", Icon: UserRound },
+    { label: "تاریخ درخواست", value: reportDate(report.createdAt), Icon: CalendarDays },
+  ];
+
+  return <>
+    <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
+      <div className="mb-4 grid grid-cols-1 divide-y divide-neutral-200 rounded-2xl border border-neutral-200 bg-neutral-50/60 sm:grid-cols-2 sm:divide-y-0 xl:grid-cols-4">
+        {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-3 px-4 py-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white"><Icon className="h-5 w-5 stroke-[1.6]" /></span>
+          <div className="min-w-0"><p className="text-xs text-neutral-500">{label}</p><p className="mt-1 break-words text-sm font-bold">{value}</p>
+            {secondary && <p className="mt-1 text-[11px] text-neutral-500">{secondary}</p>}
+          </div>
+        </div>)}
+      </div>
+
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
+        <div className="min-w-0 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 px-3 py-2.5">
+            <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{toFa(selectedIds.size)} ردیف انتخاب شده</span>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={!selectedIds.size} onClick={() => applyDecision("approved")} className={`${actionClass} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-4 w-4" />تأیید منتخب‌ها</button>
+              <button type="button" disabled={!selectedIds.size} onClick={() => applyDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-4 w-4" />درخواست برای اصلاح</button>
+              <button type="button" disabled={!selectedIds.size} onClick={() => applyDecision("rejected")} className={`${actionClass} border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-4 w-4" />رد منتخب‌ها</button>
+              <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedIds(new Set())} className={`${actionClass} border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`}><X className="h-4 w-4" />لغو انتخاب</button>
+            </div>
+          </div>
+
+          <section className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
+            <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های درخواست</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
+                <colgroup><col className="w-12" /><col className="w-28" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /><col className="w-11" /></colgroup>
+                <thead className="bg-neutral-200/80"><tr className="h-11">
+                  {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className="px-2 font-semibold">{label}</th>)}
+                  <th scope="col" className="px-2"><input type="checkbox" checked={allSelected}
+                    ref={(element) => { if (element) element.indeterminate = partlySelected; }}
+                    onChange={() => setSelectedIds(allSelected ? new Set() : new Set(entries.map((item) => item.id)))}
+                    aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>
+                </tr></thead>
+                <tbody>{entries.map((item, index) => {
+                  const badge = badges[rowStatus(item)];
+                  return <tr key={item.id} tabIndex={0} onClick={() => { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); }}
+                    onKeyDown={(event) => { if (event.target === event.currentTarget && event.key === "Enter") { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); } }}
+                    className={`h-10 cursor-pointer border-t border-neutral-200 transition hover:bg-sky-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50" : "bg-neutral-50/40"}`}>
+                    <td className="px-2">{toFa(index + 1)}</td><td className="px-2">{toFa(item.expenseDate)}</td>
+                    <td className="px-2 py-2 text-right leading-5">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
+                    <td className="px-2 tabular-nums">{money(item.amount)}</td>
+                    <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
+                    <td className="px-2"><input type="checkbox" checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
+                      aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>
+                  </tr>;
+                })}</tbody>
+              </table>
+            </div>
+          </section>
+
+          <div className="rounded-2xl border border-neutral-200 p-3">
+            <label htmlFor="petty-cash-review-notes" className="mb-2 flex items-center gap-2 text-sm font-bold"><MessageSquare className="h-5 w-5 stroke-[1.6]" />توضیحات بررسی</label>
+            <textarea id="petty-cash-review-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500}
+              placeholder="نظر خود را در خصوص ردیف‌های انتخاب‌شده وارد کنید ..."
+              className="min-h-24 w-full resize-y rounded-xl border border-neutral-200 bg-white p-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400" />
+            <p className="mt-1 text-left text-[11px] text-neutral-500" dir="ltr">{toFa(notes.length)} / ۵۰۰</p>
+          </div>
+        </div>
+
+        <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
+          <h3 className="flex items-center gap-2 px-3 py-3 text-sm font-bold"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست</h3>
+          <div className="px-3">
+            <div className="relative grid h-[min(44vh,500px)] min-h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100">
+              {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
+                : preview.url ? <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
+                  onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="absolute inset-0 h-full w-full object-contain" />
+                : <p className="px-4 text-center text-xs text-neutral-500">{preview.error || "پیوستی برای نمایش وجود ندارد."}</p>}
+              {attachments.length > 1 && <div dir="ltr" className="pointer-events-none absolute inset-x-2 top-1/2 flex -translate-y-1/2 justify-between">
+                <button type="button" disabled={attachmentIndex === 0} onClick={() => setAttachmentIndex((current) => current - 1)} aria-label="پیوست قبلی"
+                  className="pointer-events-auto grid h-9 w-9 place-items-center rounded-full border border-neutral-200 bg-white/95 shadow-sm transition hover:bg-white disabled:opacity-35"><ChevronLeft className="h-5 w-5" /></button>
+                <button type="button" disabled={attachmentIndex >= attachments.length - 1} onClick={() => setAttachmentIndex((current) => current + 1)} aria-label="پیوست بعدی"
+                  className="pointer-events-auto grid h-9 w-9 place-items-center rounded-full border border-neutral-200 bg-white/95 shadow-sm transition hover:bg-white disabled:opacity-35"><ChevronRight className="h-5 w-5" /></button>
+              </div>}
+            </div>
+          </div>
+          <div className="flex min-w-0 items-center justify-between gap-3 px-3 py-3">
+            <div className="min-w-0"><p className="truncate text-sm font-medium" dir="auto" title={attachment?.fileName}>{attachment?.fileName || "—"}</p>
+              <p className="mt-1 text-xs text-neutral-500">{preview.size !== null ? photoSize(preview.size) : "—"}</p>
+            </div>
+            {attachment && <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg transition hover:bg-neutral-100"><ExternalLink className="h-5 w-5 stroke-[1.6]" /></a>}
+          </div>
+        </aside>
+      </div>
+    </div>
+    <footer className="flex shrink-0 flex-wrap justify-start gap-2 border-t border-neutral-100 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
+      <button type="button" className={`${actionClass} min-w-24 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" />تأیید</button>
+      <button type="button" className={`${actionClass} min-w-24 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" />رد</button>
+      <button type="button" className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" />درخواست اصلاح</button>
+    </footer>
+  </>;
+}
 
 function reportDate(value) {
   return value ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).format(new Date(value)) : "—";
@@ -448,7 +592,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange }) {
       }) });
       const project = projects.find((entry) => String(entry.id) === String(projectId));
       onSubmitted({ id: data.item.id, reportName: reportName.trim(), projectId, projectName: project?.name,
-        projectCode: project?.code, createdAt: new Date().toISOString(), items: prepared });
+        projectCode: project?.code, createdByName: user?.name, createdByUsername: user?.username, createdAt: new Date().toISOString(), items: prepared });
     } catch (reason) {
       const messages = { invalid_report: "پروژه و نام گزارش معتبر وارد کنید.", required_expense_fields: "همه فیلدها و پیوست هر ردیف باید معتبر باشند.",
         active_project_not_found: "پروژه فعال پیدا نشد.", budget_code_not_found: "کد بودجه در این پروژه معتبر نیست.", internal_error: "ثبت گزارش انجام نشد؛ دوباره تلاش کنید." };
@@ -643,7 +787,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange }) {
     <div className="flex justify-end">
       <button type="button" onClick={submitReport} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
         className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
-        {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/finishing-check.svg" alt="" className="h-6 w-6" />}
+        {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
       </button>
     </div>
     </fieldset>
