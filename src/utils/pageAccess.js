@@ -42,12 +42,27 @@ const PAGE_INDEX = {
   "داشبورد مدیریت دانش": 17,
 };
 
+const SETTINGS_USERS = new Set(["ali", "marandi", "nouri"]);
+
+export function canAccessSettings(user) {
+  return SETTINGS_USERS.has(String(user?.username || "").trim().toLowerCase());
+}
+
+function isSettingsRoute(path) {
+  return path === "/base" || path.startsWith("/base/") || path === "/centers/projects";
+}
+
 export function hasLimitedPageAccess(user) {
   return false;
 }
 
 export function canOpenPage(user, pathname) {
   const path = String(pathname || "/").replace(/\/+$/, "") || "/";
+  // Settings are intentionally limited to the three named accounts. This is
+  // checked before the general role/page-permission rules so administrators
+  // outside that list cannot open a settings URL directly.
+  if (isSettingsRoute(path) && !canAccessSettings(user)) return false;
+
   const isAdmin = String(user?.role || "").toLowerCase() === "admin";
   const matched = ROUTE_PERMISSION_PAGES.find(([route]) => path === route || path.startsWith(`${route}/`));
   if (matched && !isAdmin) {
