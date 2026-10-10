@@ -1858,7 +1858,7 @@ function statusBadgeClass(status, active = false) {
     : status === "tenkhah"
     ? ["border-[#EEE4FF] bg-[#EEE4FF] text-[#7042A6]", "border-[#7042A6] bg-[#7042A6] text-[#EEE4FF]"]
     : status === "awaiting_payment"
-    ? ["border-[#DDF4F2] bg-[#DDF4F2] text-[#08756D]", "border-[#08756D] bg-[#08756D] text-[#DDF4F2]"]
+    ? ["border-[#F3E9DC] bg-[#F3E9DC] text-[#115E59]", "border-[#115E59] bg-[#115E59] text-[#F3E9DC]"]
     : status === "pending" || status === "tenkhah_pending"
     ? ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499]", "border-[#036499] bg-[#036499] text-[#D5E6F1]"]
     : status === "rejected"
@@ -1882,7 +1882,7 @@ function WaitingUnitCell({ item }) {
   const unitName = isFinalPaymentWaiting ? "در انتظار پرداخت" : WAITING_UNIT_LABELS[roleKey];
 
   if (unitName) {
-    return <span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${isFinalPaymentWaiting ? "bg-[#F3E9DC] text-teal-800" : statusBadgeClass("pending")}`} title={unitName}>{unitName}</span>;
+    return <span className={`inline-flex max-w-full truncate rounded-full px-2.5 py-1 text-xs ${isFinalPaymentWaiting ? statusBadgeClass("awaiting_payment") : statusBadgeClass("pending")}`} title={unitName}>{unitName}</span>;
   }
 
   return <StatusBadge status={item?.displayStatus || item?.status} />;
