@@ -147,6 +147,10 @@ export default function PettyCashPage() {
             <h1 className="truncate text-base font-bold tracking-tight md:text-lg">تنخواه‌گردان</h1>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
           </span>
+          <button type="button" title="افزودن" aria-label="افزودن"
+            className="mr-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">
+            <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 dark:invert" />
+          </button>
         </header>
         <nav className="mx-auto grid w-fit max-w-full grid-cols-3 overflow-x-auto rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
           {tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)}
@@ -177,6 +181,7 @@ function PettyCashExpenseTab() {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
+  const [reportName, setReportName] = useState("");
   const [budgetItems, setBudgetItems] = useState([]);
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
@@ -350,12 +355,17 @@ function PettyCashExpenseTab() {
   };
   return <section className="rounded-b-2xl border border-neutral-200 bg-white p-3 sm:p-4">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <Field label="پروژه">
-        <select value={projectId} onChange={(event) => selectProject(event.target.value)} className={`${inputClass} min-w-64`}>
-          <option value="">انتخاب کنید</option>
-          {projects.map((project) => <option key={project.id} value={project.id}>{english(project.code)} - {project.name}</option>)}
-        </select>
-      </Field>
+      <div className="flex max-w-full flex-wrap items-end gap-3">
+        <Field label="پروژه">
+          <select value={projectId} onChange={(event) => selectProject(event.target.value)} className={`${inputClass} min-w-64`}>
+            <option value="">انتخاب کنید</option>
+            {projects.map((project) => <option key={project.id} value={project.id}>{english(project.code)} - {project.name}</option>)}
+          </select>
+        </Field>
+        <Field label="گزارش">
+          <input type="text" value={reportName} onChange={(event) => setReportName(event.target.value)} className={`${inputClass} sm:w-64`} />
+        </Field>
+      </div>
       <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
         فراخوانی از اکسل
       </button>
