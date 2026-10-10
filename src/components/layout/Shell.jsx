@@ -14,7 +14,8 @@ const notificationKey = (item) => {
   const latestHistoryAt = Array.isArray(item?.historyJson)
     ? item.historyJson[item.historyJson.length - 1]?.at
     : "";
-  const version = item?.updatedAt || item?.updated_at || latestHistoryAt || item?.workflowStatus || "initial";
+  const version = item?.notificationTarget === "petty_cash_report" ? item.version
+    : item?.updatedAt || item?.updated_at || latestHistoryAt || item?.workflowStatus || "initial";
   return `${notificationBaseKey(item)}:${String(version)}`;
 };
 
@@ -89,7 +90,7 @@ export default function Shell() {
             .filter((item) => item.canAct === true)
             .map((item) => ({ ...item, notificationTarget: "tenkhah" })) : [];
       const pettyCashItems = pettyCashResponse.ok && Array.isArray(pettyCashData?.items)
-        ? pettyCashData.items.map((item) => ({ ...item, notificationTarget: "petty_cash_expense" })) : [];
+        ? pettyCashData.items.map((item) => ({ ...item, notificationTarget: item.notificationTarget || "petty_cash_expense" })) : [];
       const readNotifications = new Set(
         JSON.parse(localStorage.getItem(notificationStorageKey(user.id)) || "[]")
       );
@@ -152,7 +153,7 @@ export default function Shell() {
 
   const openNotification = (item) => {
     setNotificationsOpen(false);
-    const target = item.notificationTarget === "tenkhah" || item.notificationTarget === "petty_cash_expense"
+    const target = ["tenkhah", "petty_cash_expense", "petty_cash_report"].includes(item.notificationTarget)
       ? "/finance/tenkhah"
       : item.notificationTarget === "payment_request"
         ? "/finance/payment-request"
@@ -338,10 +339,10 @@ export default function Shell() {
                       notifications.map((item) => (
                         <button key={notificationBaseKey(item)} type="button" onClick={() => openNotification(item)} className="group flex w-full gap-3 rounded-xl p-3 text-right transition hover:bg-black/[0.04] dark:hover:bg-white/[0.07]">
                           <span className="mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 dark:bg-amber-500/10">
-                            <img src={item.notificationTarget === "payment_request" ? "/images/icons/darkhast-pardakht.svg" : item.notificationTarget === "tenkhah" || item.notificationTarget === "petty_cash_expense" ? "/images/icons/tenkhah.svg" : "/images/icons/darkhast-tamin.svg"} alt="" className="h-5 w-5 dark:invert" />
+                            <img src={item.notificationTarget === "payment_request" ? "/images/icons/darkhast-pardakht.svg" : ["tenkhah", "petty_cash_expense", "petty_cash_report"].includes(item.notificationTarget) ? "/images/icons/tenkhah.svg" : "/images/icons/darkhast-tamin.svg"} alt="" className="h-5 w-5 dark:invert" />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : item.notificationTarget === "payment_request" ? "درخواست پرداخت جدید در انتظار بررسی" : item.notificationTarget === "tenkhah" ? "درخواست تنخواه جدید در انتظار بررسی" : item.notificationTarget === "petty_cash_expense" ? "هزینه تنخواه جدید در انتظار بررسی" : "درخواست تأمین جدید در انتظار بررسی"}</span>
+                            <span className="block text-xs font-semibold">{item.notificationTarget === "supply_actions" ? "کار جدید در انتظار انجام" : item.notificationTarget === "payment_request" ? "درخواست پرداخت جدید در انتظار بررسی" : item.notificationTarget === "tenkhah" ? "درخواست تنخواه جدید در انتظار بررسی" : item.notificationTarget === "petty_cash_report" ? "گزارش تنخواه در انتظار بررسی" : item.notificationTarget === "petty_cash_expense" ? "هزینه تنخواه جدید در انتظار بررسی" : "درخواست تأمین جدید در انتظار بررسی"}</span>
                             <span className="mt-1 block truncate text-xs text-neutral-600 dark:text-neutral-300">{notificationTitle(item) || "بدون موضوع"}</span>
                             <span className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-neutral-400">
                               <span dir="ltr" className="font-sans tabular-nums">{notificationSerial(item) || "—"}</span>
