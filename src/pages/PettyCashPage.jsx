@@ -131,19 +131,39 @@ function MyPettyCashSummary() {
 }
 
 export default function PettyCashPage() {
+  const { user } = useAuth();
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
+  const [expenseFormKey, setExpenseFormKey] = useState(0);
+  const [reportSaving, setReportSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [reports, setReports] = useState([]);
+  const [reportError, setReportError] = useState("");
+  const [selectedReport, setSelectedReport] = useState(null);
   const summaryDialogRef = useRef(null);
+  const loadReports = useCallback(async () => {
+    if (!user?.id) return;
+    const response = await fetch("/api/petty-cash-expenses?expenseReports=mine", { credentials: "include", headers: { "x-user-id": String(user.id) } });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error("دریافت گزارش‌ها انجام نشد.");
+    setReports(data.items || []);
+    setReportError("");
+  }, [user?.id]);
+  useEffect(() => { loadReports().catch((reason) => setReportError(reason.message)); }, [loadReports]);
+  const visibleReports = reports.filter((report) => english([
+    report.reportName, reportDate(report.createdAt), report.projectCode, report.projectName,
+    expenseReportState(report.items).waiting, expenseReportState(report.items).status,
+  ].join(" ")).toLowerCase().includes(english(searchQuery).trim().toLowerCase()));
+  const closeDialog = () => { setSummaryOpen(false); setSelectedReport(null); };
 
   useEffect(() => {
-    if (!summaryOpen) return;
+    if (!summaryOpen && !selectedReport) return;
     const previousFocus = document.activeElement;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     summaryDialogRef.current?.querySelector("button")?.focus();
     const handleKey = (event) => {
-      if (event.key === "Escape") { event.preventDefault(); setSummaryOpen(false); }
+      if (event.key === "Escape") { event.preventDefault(); setSummaryOpen(false); setSelectedReport(null); }
       if (event.key !== "Tab") return;
       const focusable = [...summaryDialogRef.current.querySelectorAll('button:not(:disabled), a[href], [tabindex="0"]')].filter((element) => element.getClientRects().length);
       const first = focusable[0], last = focusable[focusable.length - 1];
@@ -156,7 +176,7 @@ export default function PettyCashPage() {
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
-  }, [summaryOpen]);
+  }, [summaryOpen, selectedReport]);
   return <div dir="rtl" className="mx-auto min-w-0 max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 sm:rounded-3xl sm:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
       <div className="p-2.5 sm:p-3 md:p-4">
@@ -171,14 +191,22 @@ export default function PettyCashPage() {
           <div className="mr-auto flex shrink-0 items-center gap-3">
             <button type="button" onClick={() => setSummaryOpen(true)} aria-haspopup="dialog"
               className="h-10 rounded-xl px-3 text-sm font-semibold ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">تنخواه‌های من</button>
-            <button type="button" onClick={() => setExpenseFormOpen((current) => !current)}
+            <button type="button" disabled={reportSaving} onClick={() => setExpenseFormOpen((current) => !current)}
               title={expenseFormOpen ? "بستن" : "افزودن"} aria-label={expenseFormOpen ? "بستن فرم ثبت هزینه‌ها" : "افزودن"} aria-expanded={expenseFormOpen}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">
               <img src={expenseFormOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
             </button>
           </div>
         </header>
-        {expenseFormOpen ? <PettyCashExpenseTab /> : <>
+        <div hidden={!expenseFormOpen}>
+        <PettyCashExpenseTab key={expenseFormKey} onBusyChange={setReportSaving} onSubmitted={(report) => {
+          setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
+          setExpenseFormOpen(false);
+          setExpenseFormKey((current) => current + 1);
+          loadReports().catch((reason) => setReportError(reason.message));
+        }} />
+        </div>
+        {!expenseFormOpen && <>
           <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50 p-3 shadow-sm dark:border-white/10 dark:bg-white/5">
             <Field label="جست و جو">
               <input type="text" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
@@ -186,6 +214,7 @@ export default function PettyCashPage() {
                 className={`${inputClass} placeholder:text-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white`} />
             </Field>
           </div>
+          {reportError && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[680px] table-fixed border-collapse text-sm" aria-label="گزارش‌های تنخواه">
@@ -199,24 +228,51 @@ export default function PettyCashPage() {
                     <th scope="col" className="px-3 text-right font-bold">وضعیت</th>
                   </tr>
                 </thead>
-                <tbody />
+                <tbody className="text-[13px] [&>tr]:h-9">
+                  {visibleReports.map((report, index) => {
+                    const state = expenseReportState(report.items);
+                    return <tr key={report.id} tabIndex={0} onClick={() => setSelectedReport(report)}
+                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedReport(report); } }}
+                      aria-label={`مشاهده گزارش ${report.reportName}`}
+                      className="cursor-pointer border-t border-neutral-300 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
+                      <td className="px-3">{toFa(index + 1)}</td>
+                      <td className="truncate px-3" title={report.reportName}>{report.reportName}</td>
+                      <td className="px-3">{reportDate(report.createdAt)}</td>
+                      <td className="truncate px-3" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
+                      <td className="px-3">{state.waiting}</td>
+                      <td className="px-3">{state.status}</td>
+                    </tr>;
+                  })}
+                </tbody>
               </table>
             </div>
           </div>
         </>}
       </div>
     </Card>
-    {summaryOpen && createPortal(
+    {(summaryOpen || selectedReport) && createPortal(
       <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6"
-        onMouseDown={(event) => { if (event.target === event.currentTarget) setSummaryOpen(false); }}>
+        onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}>
         <div ref={summaryDialogRef} role="dialog" aria-modal="true" aria-labelledby="petty-cash-summary-title" dir="rtl"
           className="flex max-h-[90dvh] w-full max-w-[1200px] flex-col overflow-hidden rounded-3xl bg-white text-neutral-900 shadow-2xl">
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-5 py-4">
-            <h2 id="petty-cash-summary-title" className="font-bold">تنخواه‌های من</h2>
-            <button type="button" onClick={() => setSummaryOpen(false)} aria-label="بستن پنجره تنخواه‌های من"
+            <h2 id="petty-cash-summary-title" className="font-bold">{selectedReport ? selectedReport.reportName : "تنخواه‌های من"}</h2>
+            <button type="button" onClick={closeDialog} aria-label="بستن پنجره"
               className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
           </header>
-          <div className="min-h-0 overflow-y-auto p-3 sm:p-5"><MyPettyCashSummary /></div>
+          <div className="min-h-0 overflow-y-auto p-3 sm:p-5">{selectedReport ? <>
+            <p className="mb-4 text-sm text-neutral-600">{selectedReport.projectCode} - {selectedReport.projectName}</p>
+            <div className="overflow-x-auto rounded-2xl border border-neutral-200">
+              <table className="w-full min-w-[700px] table-fixed text-center text-sm" aria-label="هزینه‌های گزارش">
+                <thead className="bg-neutral-200"><tr className="h-12">{["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ", "پیوست"].map((label) => <th key={label} scope="col" className={`px-3 ${label === "شرح" ? "w-[30%]" : ""}`}>{label}</th>)}</tr></thead>
+                <tbody className="text-[13px] [&>tr]:h-9">{selectedReport.items.map((item, index) => <tr key={item.id} className="border-t border-neutral-300 bg-black/[0.02]">
+                  <td className="px-3">{toFa(index + 1)}</td><td className="px-3">{toFa(item.expenseDate)}</td>
+                  <td className="px-3 py-2 text-right">{item.description}</td><td className="px-3">{toFa(item.budgetCode)}</td>
+                  <td className="px-3">{money(item.amount)}</td><td className="px-3"><ExpenseAttachmentLink item={item} /></td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          </> : <MyPettyCashSummary />}</div>
         </div>
       </div>, document.body
     )}
@@ -228,14 +284,33 @@ const emptyForm = () => ({ expenseDate: todayJalaliYmd().replaceAll("-", "/"), d
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
 const english = (value) => toEnglishDigits(String(value ?? "")).replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
 
-function Field({ label, children }) {
+function reportDate(value) {
+  return value ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).format(new Date(value)) : "—";
+}
+
+function expenseReportState(items = []) {
+  const pending = items.filter((item) => ["planning", "project_manager"].includes(item.stage));
+  const waiting = [...new Set(pending.map((item) => item.stage === "planning" ? "برنامه‌ریزی" : item.projectManagerName || "مدیریت پروژه"))].join("، ") || "—";
+  const status = items.some((item) => item.stage === "rejected") ? "رد شده"
+    : items.length && items.every((item) => item.stage === "completed") ? "تأیید شده" : "در انتظار تأیید";
+  return { waiting, status };
+}
+
+function ExpenseAttachmentLink({ item }) {
+  return item.fileUrl ? <a href={item.fileUrl} target="_blank" rel="noreferrer" aria-label="نمایش پیوست" title={item.fileName || "نمایش پیوست"}
+    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-black/5">
+    <img src="/images/icons/namayesh.svg" alt="" className="h-5 w-5" />
+  </a> : "—";
+}
+
+function Field({ label, required = false, children }) {
   return <label className="block min-w-0">
-    <span className="mb-1 block text-xs font-medium text-neutral-600">{label}</span>
+    <span className="mb-1 block text-xs font-medium text-neutral-600">{label}{required && <span className="mr-1 text-red-500">*</span>}</span>
     {children}
   </label>;
 }
 
-function PettyCashExpenseTab() {
+function PettyCashExpenseTab({ onSubmitted, onBusyChange }) {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
@@ -257,6 +332,9 @@ function PettyCashExpenseTab() {
   const menuPopoverRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState(null);
   const [editingExpense, setEditingExpense] = useState(null);
+  const submissionKeyRef = useRef(crypto.randomUUID());
+  const previewUrlsRef = useRef(new Set());
+  useEffect(() => () => { previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
   useEffect(() => {
     if (!menuPosition) return;
@@ -293,16 +371,6 @@ function PettyCashExpenseTab() {
       .catch((reason) => setError(reason.message));
   }, [api, user?.id]);
 
-  const loadExpenses = useCallback(async (id) => {
-    if (!id || !user?.id) { setItems([]); return; }
-    const data = await api(`/petty-cash-expenses?projectId=${encodeURIComponent(id)}`);
-    setItems((data.items || []).filter((item) => Number(item.createdById) === Number(user.id)));
-  }, [api, user?.id]);
-
-  useEffect(() => {
-    loadExpenses(projectId).catch((reason) => setError(reason.message));
-  }, [loadExpenses, projectId]);
-
   const selectProject = async (id) => {
     setProjectId(id);
     setPage(0);
@@ -322,38 +390,72 @@ function PettyCashExpenseTab() {
     }
   };
 
-  const addExpense = async () => {
+  const addExpense = () => {
     if (!projectId) return setError("ابتدا پروژه را انتخاب کنید.");
-    if (!form.expenseDate || !form.description.trim() || !form.budgetCode || !toEnglishDigits(form.amount).replace(/[^\d]/g, "")) {
-      return setError("تاریخ، شرح، کد بودجه و مبلغ را تکمیل کنید.");
+    if (!reportName.trim()) return setError("نام گزارش را وارد کنید.");
+    if (!form.expenseDate || !form.description.trim() || !form.budgetCode || amount(toEnglishDigits(form.amount).replace(/[^\d]/g, "")) <= 0n) {
+      return setError("تاریخ، شرح، کد بودجه و مبلغ مثبت را تکمیل کنید.");
+    }
+    if (!attachment && !editingExpense?.fileUrl) return setError("پیوست عکس برای هر ردیف الزامی است.");
+    if (!editingExpense && items.length >= 500) return setError("هر گزارش حداکثر ۵۰۰ ردیف می‌تواند داشته باشد.");
+    const fileUrl = attachment ? URL.createObjectURL(attachment) : editingExpense.fileUrl;
+    if (attachment) previewUrlsRef.current.add(fileUrl);
+    const item = { ...form, description: form.description.trim(), amount: toEnglishDigits(form.amount).replace(/[^\d]/g, ""),
+      id: editingExpense?.id || crypto.randomUUID(), stage: "planning", fileUrl,
+      fileName: attachment?.name || editingExpense?.fileName,
+      attachmentFile: attachment || editingExpense?.attachmentFile,
+      uploadedFile: attachment ? null : editingExpense?.uploadedFile };
+    setItems((current) => editingExpense ? current.map((entry) => entry.id === item.id ? item : entry) : [...current, item]);
+    setForm(emptyForm());
+    setAttachment(null);
+    setEditingExpense(null);
+    setError("");
+  };
+
+  const submitReport = async () => {
+    if (!projectId || !reportName.trim()) return setError("پروژه و نام گزارش را تکمیل کنید.");
+    if (!items.length) return setError("حداقل یک ردیف هزینه به گزارش اضافه کنید.");
+    if (editingExpense || form.description.trim() || form.budgetCode || form.amount || attachment) {
+      return setError("ابتدا ردیف در حال ورود یا ویرایش را با دکمه افزودن ردیف ثبت کنید.");
+    }
+    if (items.some((item) => !item.expenseDate || !item.description.trim() || !item.budgetCode || amount(item.amount) <= 0n || !item.attachmentFile)) {
+      return setError("همه فیلدها و پیوست هر ردیف باید تکمیل باشند.");
     }
     setSaving(true);
+    onBusyChange(true);
     setError("");
     try {
-      let file = editingExpense?.fileUrl ? { name: editingExpense.fileName, url: editingExpense.fileUrl } : null;
-      if (attachment) {
-        const payload = new FormData();
-        payload.append("file", attachment);
-        const response = await fetch("/api/petty-cash-expenses/upload", {
-          method: "POST", credentials: "include", headers: { "x-user-id": String(user?.id || "") }, body: payload,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
-        file = data.file;
+      const prepared = [];
+      for (const item of items) {
+        let file = item.uploadedFile;
+        if (!file) {
+          const payload = new FormData();
+          payload.append("file", item.attachmentFile);
+          const response = await fetch("/api/petty-cash-expenses/upload", {
+            method: "POST", credentials: "include", headers: { "x-user-id": String(user?.id || "") }, body: payload,
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.file?.url) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
+          file = data.file;
+          // Retain completed uploads if a later upload or report request needs retrying.
+          setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, uploadedFile: file } : entry));
+        }
+        prepared.push({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode,
+          amount: item.amount, fileName: file.name, fileUrl: file.url, stage: "planning", id: item.id });
       }
-      await api("/petty-cash-expenses", {
-        method: editingExpense ? "PATCH" : "POST",
-        body: JSON.stringify({ projectId, ...form, fileName: file?.name, fileUrl: file?.url,
-          ...(editingExpense ? { action: "update", id: editingExpense.id } : {}) }),
-      });
-      await loadExpenses(projectId);
-      setForm(emptyForm());
-      setAttachment(null);
-      setEditingExpense(null);
+      const data = await api("/petty-cash-expenses", { method: "POST", body: JSON.stringify({
+        action: "create_expense_report", projectId, reportName: reportName.trim(), submissionKey: submissionKeyRef.current, items: prepared,
+      }) });
+      const project = projects.find((entry) => String(entry.id) === String(projectId));
+      onSubmitted({ id: data.item.id, reportName: reportName.trim(), projectId, projectName: project?.name,
+        projectCode: project?.code, createdAt: new Date().toISOString(), items: prepared });
     } catch (reason) {
-      setError(reason.message);
+      const messages = { invalid_report: "پروژه و نام گزارش معتبر وارد کنید.", required_expense_fields: "همه فیلدها و پیوست هر ردیف باید معتبر باشند.",
+        active_project_not_found: "پروژه فعال پیدا نشد.", budget_code_not_found: "کد بودجه در این پروژه معتبر نیست.", internal_error: "ثبت گزارش انجام نشد؛ دوباره تلاش کنید." };
+      setError(messages[reason.message] || reason.message);
     } finally {
       setSaving(false);
+      onBusyChange(false);
     }
   };
 
@@ -395,33 +497,26 @@ function PettyCashExpenseTab() {
     setAttachment(null);
     setError("");
   };
-  const deleteSelected = async () => {
+  const deleteSelected = () => {
     if (!canDelete || !window.confirm(`آیا ${toFa(selectedItems.length)} ردیف انتخاب‌شده حذف شود؟`)) return;
-    setSaving(true);
-    setError("");
+    setItems((current) => current.filter((item) => !selectedIds.has(item.id)));
+    if (editingExpense && selectedIds.has(editingExpense.id)) cancelEdit();
+    setSelectedIds(new Set());
     setMenuPosition(null);
-    try {
-      await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ ids: selectedItems.map((item) => item.id) }) });
-      if (editingExpense && selectedIds.has(editingExpense.id)) cancelEdit();
-      setSelectedIds(new Set());
-      await loadExpenses(projectId);
-    } catch (reason) {
-      setError(reason.message === "not_allowed" ? "این ردیف‌ها قابل حذف نیستند." : reason.message);
-    } finally {
-      setSaving(false);
-    }
+    setError("");
   };
-  return <section className="rounded-b-2xl border border-neutral-200 bg-white p-3 sm:p-4">
+  return <section className="rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4">
+    <fieldset disabled={saving} className="min-w-0">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div className="flex max-w-full flex-wrap items-end gap-3">
-        <Field label="پروژه">
-          <select value={projectId} onChange={(event) => selectProject(event.target.value)} className={`${inputClass} min-w-64`}>
+        <Field label="پروژه" required>
+          <select required disabled={items.length > 0} value={projectId} onChange={(event) => selectProject(event.target.value)} className={`${inputClass} min-w-64`}>
             <option value="">انتخاب کنید</option>
             {projects.map((project) => <option key={project.id} value={project.id}>{english(project.code)} - {project.name}</option>)}
           </select>
         </Field>
-        <Field label="گزارش">
-          <input type="text" value={reportName} onChange={(event) => setReportName(event.target.value)} className={`${inputClass} sm:w-64`} />
+        <Field label="گزارش" required>
+          <input type="text" required maxLength={180} value={reportName} onChange={(event) => setReportName(event.target.value)} className={`${inputClass} sm:w-64`} />
         </Field>
       </div>
       <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
@@ -430,26 +525,26 @@ function PettyCashExpenseTab() {
     </div>
 
     <div ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
-      <Field label="تاریخ">
+      <Field label="تاریخ" required>
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
       </Field>
-      <Field label="شرح">
-        <input value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} className={inputClass} />
+      <Field label="شرح" required>
+        <input required value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} className={inputClass} />
       </Field>
-      <Field label="کد بودجه">
+      <Field label="کد بودجه" required>
         <button type="button" disabled={!projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }}
           className={`${inputClass} flex items-center justify-between gap-2 text-right disabled:opacity-50`}>
           <span className="truncate">{form.budgetCode || "انتخاب کد بودجه"}</span><span>⌄</span>
         </button>
       </Field>
-      <Field label="مبلغ (ریال)">
-        <input dir="ltr" inputMode="numeric" value={toFa(form.amount)}
+      <Field label="مبلغ (ریال)" required>
+        <input required dir="ltr" inputMode="numeric" value={toFa(form.amount)}
           onChange={(event) => setForm((current) => ({ ...current, amount: format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")) }))}
           className={`${inputClass} text-left tabular-nums`} />
       </Field>
       <div className="flex items-end gap-3">
-        <Field label="پیوست">
+        <Field label="پیوست" required>
           <button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving}
             className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border bg-white outline-none focus:border-neutral-400 disabled:opacity-50 ${attachment ? "border-emerald-400 bg-emerald-50" : "border-neutral-200"}`} title={attachment?.name || editingExpense?.fileName || "بارگذاری"} aria-label="بارگذاری پیوست">
             <img src="/images/icons/upload.svg" alt="" className="h-5 w-5" />
@@ -509,9 +604,7 @@ function PettyCashExpenseTab() {
               <td className="truncate px-3 text-right" title={item.description}>{item.description}</td>
               <td className="px-3">{toFa(item.budgetCode)}</td>
               <td className="px-3 tabular-nums">{toFa(format3(item.amount))}</td>
-              <td className="px-3">{item.fileUrl
-                ? <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sky-700 underline" title={item.fileName || "مشاهده پیوست"}>مشاهده</a>
-                : "—"}</td>
+              <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
               <td />
             </tr>)}
             {!pageItems.length && <tr><td colSpan={8} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
@@ -546,6 +639,14 @@ function PettyCashExpenseTab() {
         </div>
       </div>
     </div>
+    <hr className="my-4 border-neutral-200" />
+    <div className="flex justify-end">
+      <button type="button" onClick={submitReport} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
+        className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
+        {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/finishing-check.svg" alt="" className="h-6 w-6" />}
+      </button>
+    </div>
+    </fieldset>
     {menuPosition && createPortal(
       <div ref={menuPopoverRef} dir="rtl" style={menuPosition}
         className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)]">
