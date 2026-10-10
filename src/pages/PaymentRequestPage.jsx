@@ -10,6 +10,7 @@ import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import TenkhahPage from "./TenkhahPage.jsx";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
+import { budgetPickerItems } from "../utils/budgetPickerItems.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 
 const DOC_OPTIONS = [
@@ -662,31 +663,10 @@ export default function PaymentRequestPage() {
     let cancelled = false;
     (async () => {
       const selectedProject = projects.find((item) => String(item.id) === String(form.projectId));
-      const projectCode = normalizeBudgetCode(selectedProject?.code);
       try {
         const costData = await api(`/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`).catch(() => ({ items: [] }));
         const costItems = Array.isArray(costData?.items) ? costData.items : [];
-        const byCode = new Map();
-
-        costItems.forEach((item) => {
-          const code = budgetCodeForProject(item?.budgetCode ?? item?.budget_code ?? item?.code, projectCode);
-          if (!code) return;
-          const previous = byCode.get(code) || { code, center_desc: "", last_amount: 0 };
-          byCode.set(code, {
-            ...previous,
-            center_desc: previous.center_desc || String(item?.budgetName ?? item?.budget_name ?? item?.name ?? ""),
-            last_amount: Number(item?.baseBudget ?? item?.base_budget ?? previous.last_amount ?? 0),
-          });
-        });
-
-        if (!byCode.size && selectedProject?.code) {
-          const code = normalizeBudgetCode(selectedProject.code);
-          byCode.set(code, { code, center_desc: selectedProject.name || "", last_amount: 0 });
-        }
-
-        const merged = Array.from(byCode.values()).sort((a, b) =>
-          normalizeBudgetCode(a.code).localeCompare(normalizeBudgetCode(b.code), "fa", { numeric: true, sensitivity: "base" })
-        );
+        const merged = budgetPickerItems(costItems, selectedProject);
         if (!cancelled) setBudgetItems(merged);
       } catch {
         if (!cancelled) setBudgetItems([]);

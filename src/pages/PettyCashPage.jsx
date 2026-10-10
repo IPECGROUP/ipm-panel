@@ -8,6 +8,7 @@ import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import Card from "../components/ui/Card.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
+import { budgetPickerItems } from "../utils/budgetPickerItems.js";
 
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
 const amount = (value) => { try { return BigInt(value || 0); } catch { return 0n; } };
@@ -140,6 +141,9 @@ export default function PettyCashPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [reportStatusFilter, setReportStatusFilter] = useState("");
   const [reportOwnershipFilter, setReportOwnershipFilter] = useState("");
+  const [reportPage, setReportPage] = useState(0);
+  const [reportsPerPage, setReportsPerPage] = useState(10);
+  useEffect(() => { setReportPage(0); }, [searchQuery, reportStatusFilter, reportOwnershipFilter]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [reports, setReports] = useState([]);
   const [reportError, setReportError] = useState("");
@@ -185,6 +189,12 @@ export default function PettyCashPage() {
     expenseReportState(report.items).waiting, expenseReportState(report.items).status,
   ].join(" ")).toLowerCase().includes(english(searchQuery).trim().toLowerCase());
   });
+  const reportPageCount = Math.max(1, Math.ceil(visibleReports.length / reportsPerPage));
+  const safeReportPage = Math.min(reportPage, reportPageCount - 1);
+  const reportStartIndex = safeReportPage * reportsPerPage;
+  const reportEndIndex = Math.min(reportStartIndex + reportsPerPage, visibleReports.length);
+  const pageReports = visibleReports.slice(reportStartIndex, reportEndIndex);
+  useEffect(() => { setReportPage((current) => Math.min(current, reportPageCount - 1)); }, [reportPageCount]);
   const closeDialog = () => { if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); } };
 
   useEffect(() => {
@@ -212,7 +222,7 @@ export default function PettyCashPage() {
   return <div dir="rtl" className="mx-auto min-w-0 max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 sm:rounded-3xl sm:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
       <div className="p-2.5 sm:p-3 md:p-4">
-        <header className="mb-4 flex min-w-0 flex-wrap items-center gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
+        <header className="mb-4 flex min-w-0 flex-wrap items-center gap-3 px-0.5 pb-3 sm:mb-5 sm:pb-4">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl">
             <img src="/images/icons/tenkhah.svg" alt="" className="h-5 w-5 dark:invert sm:h-6 sm:w-6" />
           </span>
@@ -236,6 +246,7 @@ export default function PettyCashPage() {
           setSearchQuery("");
           setReportStatusFilter("");
           setReportOwnershipFilter("");
+          setReportPage(0);
           setExpenseFormOpen(false);
           setEditingReport(null);
           setExpenseFormKey((current) => current + 1);
@@ -278,13 +289,13 @@ export default function PettyCashPage() {
                   </tr>
                 </thead>
                 <tbody className="text-[13px] [&>tr]:h-11">
-                  {visibleReports.map((report, index) => {
+                  {pageReports.map((report, index) => {
                     const state = expenseReportState(report.items);
                     return <tr key={report.id} tabIndex={0} onClick={() => setSelectedReport(report)}
                       onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedReport(report); } }}
                       aria-label={`مشاهده گزارش ${report.reportName}`}
                       className="cursor-pointer border-t border-neutral-200 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
-                      <td className="px-4 py-2">{toFa(index + 1)}</td>
+                      <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
                       <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
                       <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
@@ -295,6 +306,8 @@ export default function PettyCashPage() {
                 </tbody>
               </table>
             </div>
+            <TablePagination total={visibleReports.length} rowsPerPage={reportsPerPage} page={safeReportPage}
+              setPage={setReportPage} onRowsPerPageChange={(count) => { setReportsPerPage(count); setReportPage(0); }} />
           </div>
         </>}
       </div>
@@ -303,8 +316,8 @@ export default function PettyCashPage() {
       <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6"
         onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}>
         <div ref={summaryDialogRef} role="dialog" aria-modal="true" aria-labelledby="petty-cash-summary-title" dir="rtl"
-          className={`relative flex flex-col overflow-hidden rounded-3xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl ${selectedReport ? "h-[86dvh] w-[92vw] max-w-[1680px]" : "max-h-[90dvh] w-full max-w-[1200px]"}`}>
-          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-5 py-4">
+          className={`relative flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl sm:rounded-3xl ${selectedReport ? "h-[92dvh] w-full max-w-[1680px] sm:h-[86dvh] sm:w-[92vw]" : "max-h-[90dvh] w-full max-w-[1200px]"}`}>
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 items-center gap-3">
               {selectedReport && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-neutral-50"><FileText className="h-5 w-5" /></span>}
               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? "بررسی و تصمیم‌گیری درخواست" : "تنخواه‌های من"}</h2>
@@ -324,6 +337,41 @@ export default function PettyCashPage() {
       </div>, document.body
     )}
   </div>;
+}
+
+function TablePagination({ total, rowsPerPage, page, setPage, onRowsPerPageChange }) {
+  const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
+  const startIndex = page * rowsPerPage;
+  const endIndex = Math.min(startIndex + rowsPerPage, total);
+  return (
+      <div className="flex flex-col gap-2 border-t border-neutral-300 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))}
+            disabled={page === 0} aria-label="صفحه قبل" title="صفحه قبل"
+            className="grid h-9 w-9 place-items-center rounded-lg border-0 bg-transparent shadow-none transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+          <button type="button" onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
+            disabled={page >= pageCount - 1} aria-label="صفحه بعد" title="صفحه بعد"
+            className="grid h-9 w-9 place-items-center rounded-lg border-0 bg-transparent shadow-none transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+          <span className="whitespace-nowrap text-neutral-600">{total ? `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(total)}` : "۰ از ۰"}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap text-neutral-600">تعداد در هر صفحه:</span>
+          <div className="inline-flex h-9 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+            {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => onRowsPerPageChange(count)}
+              aria-pressed={rowsPerPage === count}
+              className={`min-w-10 px-3 font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"}`}>{toFa(count)}</button>)}
+          </div>
+        </div>
+      </div>
+  );
 }
 
 const inputClass = "h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-400";
@@ -428,7 +476,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     revision: { label: "درخواست اصلاح", className: "bg-amber-50 text-amber-700 border-amber-100" },
     rejected: { label: "رد شده", className: "bg-red-50 text-red-700 border-red-100" },
   };
-  const actionClass = "inline-flex min-h-10 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
+  const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
   const metadata = [
     { label: "شماره گزارش", value: report.reportName, Icon: FileText },
     { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
@@ -439,10 +487,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   return <>
     <div inert={managerOpen ? true : undefined} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <div className="mb-4 grid grid-cols-1 divide-y divide-neutral-200 rounded-2xl border border-neutral-200 bg-neutral-50/60 sm:grid-cols-2 sm:divide-y-0 xl:grid-cols-4">
-        {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-3 px-4 py-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white"><Icon className="h-5 w-5 stroke-[1.6]" /></span>
-          <div className="min-w-0"><p className="text-xs text-neutral-500">{label}</p><p className="mt-1 break-words text-sm font-bold">{value}</p>
+      <div className="mb-4 grid grid-cols-2 rounded-2xl border border-neutral-200 bg-neutral-50/60 xl:grid-cols-4">
+        {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-3 sm:gap-3 sm:px-4 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white sm:h-10 sm:w-10"><Icon className="h-4 w-4 stroke-[1.6] sm:h-5 sm:w-5" /></span>
+          <div className="min-w-0"><p className="text-[11px] text-neutral-500 sm:text-xs">{label}</p><p className="mt-1 break-words text-xs font-bold sm:text-sm">{value}</p>
             {secondary && <p className="mt-1 text-[11px] text-neutral-500">{secondary}</p>}
           </div>
         </div>)}
@@ -450,9 +498,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-3 py-2.5">
+          <div className="flex flex-col items-stretch gap-4 border-b border-neutral-200 p-3 sm:p-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
             <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{toFa(selectedIds.size)} ردیف انتخاب شده</span>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 gap-2.5 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button>svg]:shrink-0 sm:flex sm:flex-wrap sm:gap-3 sm:[&>button]:whitespace-nowrap">
               <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("approved")} className={`${actionClass} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-4 w-4" />تأیید منتخب‌ها</button>
               <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-4 w-4" />درخواست برای اصلاح</button>
               <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("rejected")} className={`${actionClass} border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-4 w-4" />رد منتخب‌ها</button>
@@ -462,10 +510,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
           <section className="min-w-0 overflow-hidden">
             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های درخواست</h3>
-            <div className="overflow-x-auto">
+            <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[280px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[320px] [scrollbar-gutter:stable]">
               <table className="w-full min-w-[760px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
                 <colgroup><col className="w-11" /><col className="w-12" /><col className="w-28" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
-                <thead className="bg-neutral-200/80"><tr className="h-11">
+                <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
                     ref={(element) => { if (element) element.indeterminate = partlySelected; }}
                     onChange={() => setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id)))}
@@ -476,11 +524,11 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                   const badge = badges[rowStatus(item)];
                   return <tr key={item.id} tabIndex={0} onClick={() => { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); }}
                     onKeyDown={(event) => { if (event.target === event.currentTarget && event.key === "Enter") { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); } }}
-                    className={`h-10 cursor-pointer border-t border-neutral-200 transition hover:bg-sky-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50" : "bg-neutral-50/40"}`}>
+                    className={`h-12 cursor-pointer border-t border-neutral-200 transition hover:bg-sky-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50" : "bg-neutral-50/40"}`}>
                     <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
                       aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>
                     <td className="px-2">{toFa(index + 1)}</td><td className="px-2">{toFa(item.expenseDate)}</td>
-                    <td className="px-2 py-2 text-right leading-5">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
+                    <td className="break-words px-3 py-3 text-right leading-6">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums">{money(item.amount)}</td>
                     <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
                   </tr>;
@@ -493,7 +541,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             <label htmlFor="petty-cash-review-notes" className="mb-2 flex items-center gap-2 text-sm font-bold"><MessageSquare className="h-5 w-5 stroke-[1.6]" />توضیحات بررسی</label>
             <textarea readOnly={!canAct || saving} id="petty-cash-review-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500}
               placeholder="نظر خود را در خصوص ردیف‌های انتخاب‌شده وارد کنید ..."
-              className="min-h-24 w-full resize-y rounded-xl border border-neutral-200 bg-white p-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400" />
+              className="h-24 w-full resize-none rounded-xl border border-neutral-200 bg-white p-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400" />
             <p className="mt-1 text-left text-[11px] text-neutral-500" dir="ltr">{toFa(notes.length)} / ۵۰۰</p>
           </div>
         </div>
@@ -501,7 +549,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <h3 className="flex items-center gap-2 px-3 py-3 text-sm font-bold"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست</h3>
           <div className="px-3">
-            <div className="relative grid h-[min(44vh,500px)] min-h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100">
+            <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-80 xl:h-[min(44vh,500px)]">
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
                 : preview.url ? <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
                   onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="absolute inset-0 h-full w-full object-contain" />
@@ -524,7 +572,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </aside>
       </div>
     </div>
-    <footer inert={managerOpen ? true : undefined} className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-neutral-100 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
+    <footer inert={managerOpen ? true : undefined} className="grid shrink-0 grid-cols-2 gap-2 border-t border-neutral-100 px-3 py-3 [&>button:last-child]:col-span-2 min-[480px]:grid-cols-3 min-[480px]:[&>button:last-child]:col-span-1 sm:flex sm:flex-wrap sm:justify-end sm:gap-3 sm:px-5 sm:py-4">
       <button type="button" disabled={saving || (!canAct && !report.canRevise)} onClick={() => report.canRevise && !canAct ? onRevise() : submitDecision("approve")} className={`${actionClass} min-w-24 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" />تأیید</button>
       <button type="button" disabled={!canAct || saving} onClick={() => submitDecision("reject")} className={`${actionClass} min-w-24 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" />رد</button>
       <button type="button" disabled={!canAct || saving} onClick={() => submitDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" />درخواست اصلاح</button>
@@ -836,8 +884,8 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
         <button type="button" disabled={!projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }}
           className={`${inputClass} flex items-center justify-between gap-2 text-right disabled:opacity-50`}>
           <span className={`min-w-0 truncate ${form.budgetCode ? "" : "text-neutral-400"}`}>{form.budgetCode ? (() => {
-            const item = budgetItems.find((row) => String(row.budgetCode) === String(form.budgetCode));
-            return `${toFa(form.budgetCode)}${item?.budgetName ? ` - ${item.budgetName}` : ""}`;
+            const item = budgetPickerItems(budgetItems, projects.find((project) => String(project.id) === String(projectId)), true).find((row) => String(row.value) === String(form.budgetCode));
+            return `${toFa(item?.code || form.budgetCode)}${item?.center_desc ? ` - ${item.center_desc}` : ""}`;
           })() : (projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0">⌄</span>
         </button>
       </Field>
@@ -914,33 +962,8 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
           </tbody>
         </table>
       </div>
-      <div className="flex flex-col gap-2 border-t border-neutral-300 px-3 py-2 text-sm md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))}
-            disabled={safePage === 0} aria-label="صفحه قبل" title="صفحه قبل"
-            className="grid h-9 w-9 place-items-center rounded-lg border-0 bg-transparent shadow-none transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
-          <button type="button" onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))}
-            disabled={safePage >= pageCount - 1} aria-label="صفحه بعد" title="صفحه بعد"
-            className="grid h-9 w-9 place-items-center rounded-lg border-0 bg-transparent shadow-none transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
-          <span className="whitespace-nowrap text-neutral-600">{items.length ? `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(items.length)}` : "۰ از ۰"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="whitespace-nowrap text-neutral-600">تعداد در هر صفحه:</span>
-          <div className="inline-flex h-9 overflow-hidden rounded-lg border border-neutral-200 bg-white">
-            {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }}
-              aria-pressed={rowsPerPage === count}
-              className={`min-w-10 px-3 font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"}`}>{toFa(count)}</button>)}
-          </div>
-        </div>
-      </div>
+      <TablePagination total={items.length} rowsPerPage={rowsPerPage} page={safePage} setPage={setPage}
+        onRowsPerPageChange={(count) => { setRowsPerPage(count); setPage(0); }} />
     </div>
     <hr className="my-4 border-neutral-200" />
     <div className="flex justify-end">
@@ -975,7 +998,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
       </div>, document.body
     )}
     {budgetPickerOpen && <BudgetTreePickerModal
-      items={budgetItems.map((item) => ({ code: item.budgetCode, value: item.budgetCode, center_desc: item.budgetName }))}
+      items={budgetPickerItems(budgetItems, projects.find((project) => String(project.id) === String(projectId)), true)}
       selectedCode={form.budgetCode} query={budgetPickerQuery} onQueryChange={setBudgetPickerQuery}
       onSelect={(budgetCode) => { setForm((current) => ({ ...current, budgetCode })); setBudgetPickerOpen(false); }}
       onClose={() => setBudgetPickerOpen(false)} />}
@@ -1280,7 +1303,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
                       className={`absolute z-10 h-5 w-5 rounded-sm border-2 border-white bg-sky-500 ${handle.includes("n") ? "-top-2" : "-bottom-2"} ${handle.includes("w") ? "-left-2" : "-right-2"} ${handle === "nw" || handle === "se" ? "cursor-nwse-resize" : "cursor-nesw-resize"}`} />)}
                   </div>}
                 </div>
-                <p className="mt-3 text-center text-xs leading-5 text-neutral-500">{cropping ? "گوشه‌های کادر را بکشید؛ برای جابه‌جایی، داخل کادر را بکشید." : "پیش‌نمایش عکس آماده‌شده"}</p>
+                {cropping && <p className="mt-3 text-center text-xs leading-5 text-neutral-500">گوشه‌های کادر را بکشید؛ برای جابه‌جایی، داخل کادر را بکشید.</p>}
               </>}
               {dropActive && <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-sky-50/95 text-sm font-bold text-sky-700">عکس جدید را رها کنید</div>}
             </div>
