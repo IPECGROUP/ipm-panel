@@ -399,6 +399,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const inFlightRef = useRef(false);
   const managerDialogRef = useRef(null);
   const [attachmentIndex, setAttachmentIndex] = useState(0);
+  const [viewedRowIds, setViewedRowIds] = useState(() => new Set());
   const [preview, setPreview] = useState({ loading: false, url: "", size: null, error: "" });
   const attachments = entries.filter((item) => item.fileUrl);
   const attachment = attachments[attachmentIndex];
@@ -469,6 +470,11 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
+  const viewRow = (item) => {
+    setViewedRowIds((current) => current.has(item.id) ? current : new Set([...current, item.id]));
+    const fileIndex = attachments.findIndex((file) => file.id === item.id);
+    if (fileIndex >= 0) setAttachmentIndex(fileIndex);
+  };
   const applyDecision = (decision) => {
     if (!selectedIds.size || !canAct || saving) return;
     setDecisions((current) => ({ ...current, ...Object.fromEntries([...selectedIds].map((id) => [id, decision])) }));
@@ -526,9 +532,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
                   const badge = badges[rowStatus(item)];
-                  return <tr key={item.id} tabIndex={0} onClick={() => { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); }}
-                    onKeyDown={(event) => { if (event.target === event.currentTarget && event.key === "Enter") { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); } }}
-                    className={`h-12 cursor-pointer border-t border-neutral-200 transition hover:bg-sky-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50" : "bg-neutral-50/40"}`}>
+                  return <tr key={item.id} tabIndex={0} onClick={() => viewRow(item)}
+                    onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
+                    className={`h-12 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50 hover:bg-sky-100" : viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
                       aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>
                     <td className="px-2">{toFa(index + 1)}</td><td className="px-2">{toFa(item.expenseDate)}</td>
@@ -1311,7 +1317,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
               {dropActive && <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-sky-50/95 text-sm font-bold text-sky-700">عکس جدید را رها کنید</div>}
             </div>
             {image && <aside className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-              <h3 className="text-sm font-bold">نسخه کم‌حجم</h3>
+              <h3 className="text-sm font-bold">نسخه بهینه شده</h3>
               <p className="mt-3 truncate text-xs text-neutral-600" title={source?.name}>{source?.name}</p>
               <div className="mt-4 space-y-3 text-xs">
                 <div className="flex justify-between gap-2"><span className="text-neutral-500">حجم اولیه</span><strong>{source && photoSize(source.size)}</strong></div>
