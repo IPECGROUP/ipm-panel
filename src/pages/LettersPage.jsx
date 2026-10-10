@@ -1310,7 +1310,20 @@ const isConfidentialLetter = (l) => {
     return Number.NaN;
   };
 
+  const letterDateSortKeyOf = (l) => {
+    const match = toEnDigits(letterDateOf(l))
+      .trim()
+      .match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+
+    if (!match) return "";
+    return `${match[1]}${pad2(match[2])}${pad2(match[3])}`;
+  };
+
   const compareLettersByNewest = (a, b) => {
+    const ad = letterDateSortKeyOf(a);
+    const bd = letterDateSortKeyOf(b);
+    if (ad !== bd) return bd.localeCompare(ad);
+
     const at = createdAtMsOf(a);
     const bt = createdAtMsOf(b);
     if (Number.isFinite(at) && Number.isFinite(bt) && at !== bt) return bt - at;
