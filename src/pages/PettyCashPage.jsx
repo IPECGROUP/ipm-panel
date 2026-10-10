@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "react-router-dom";
 import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
@@ -9,7 +8,7 @@ import Card from "../components/ui/Card.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
 
-const tabs = ["تنخواه‌های من", "ثبت هزینه‌ها", "گزارش تسویه تنخواه"];
+const tabs = ["ثبت هزینه‌ها", "گزارش تسویه تنخواه"];
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
 const amount = (value) => { try { return BigInt(value || 0); } catch { return 0n; } };
 const money = (value) => {
@@ -133,13 +132,35 @@ function MyPettyCashSummary() {
 }
 
 export default function PettyCashPage() {
-  const [searchParams] = useSearchParams();
-  const focusedExpenseId = searchParams.get("notificationTarget") === "petty_cash_expense" ? searchParams.get("request") || "" : "";
-  const [activeTab, setActiveTab] = useState(() => focusedExpenseId ? 1 : 0);
+  const [activeTab, setActiveTab] = useState(0);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const summaryDialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!summaryOpen) return;
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    summaryDialogRef.current?.querySelector("button")?.focus();
+    const handleKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); setSummaryOpen(false); }
+      if (event.key !== "Tab") return;
+      const focusable = [...summaryDialogRef.current.querySelectorAll('button:not(:disabled), a[href], [tabindex="0"]')].filter((element) => element.getClientRects().length);
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [summaryOpen]);
   return <div dir="rtl" className="mx-auto min-w-0 max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 sm:rounded-3xl sm:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
       <div className="p-2.5 sm:p-3 md:p-4">
-        <header className="mb-4 flex min-w-0 items-center gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
+        <header className="mb-4 flex min-w-0 flex-wrap items-center gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl">
             <img src="/images/icons/tenkhah.svg" alt="" className="h-5 w-5 dark:invert sm:h-6 sm:w-6" />
           </span>
@@ -147,21 +168,38 @@ export default function PettyCashPage() {
             <h1 className="truncate text-base font-bold tracking-tight md:text-lg">تنخواه‌گردان</h1>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
           </span>
-          <button type="button" title="افزودن" aria-label="افزودن"
-            className="mr-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">
-            <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 dark:invert" />
-          </button>
+          <div className="mr-auto flex shrink-0 items-center gap-3">
+            <button type="button" onClick={() => setSummaryOpen(true)} aria-haspopup="dialog"
+              className="h-10 rounded-xl px-3 text-sm font-semibold ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">تنخواه‌های من</button>
+            <button type="button" title="افزودن" aria-label="افزودن"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">
+              <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 dark:invert" />
+            </button>
+          </div>
         </header>
-        <nav className="mx-auto grid w-fit max-w-full grid-cols-3 overflow-x-auto rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
+        <nav className="mx-auto grid w-fit max-w-full grid-cols-2 overflow-x-auto rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
           {tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)}
             aria-current={activeTab === index ? "page" : undefined}
             className={`shrink-0 whitespace-nowrap border-l border-neutral-200 px-4 py-3 text-sm font-bold transition last:border-l-0 sm:px-6 sm:text-base ${activeTab === index ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-50"}`}>{tab}</button>)}
         </nav>
-        {activeTab === 0 && <MyPettyCashSummary />}
-        {activeTab === 1 && <PettyCashExpenseTab />}
-        {activeTab === 2 && <div className="min-h-80 rounded-b-2xl border border-neutral-200 bg-white" />}
+        {activeTab === 0 && <PettyCashExpenseTab />}
+        {activeTab === 1 && <div className="min-h-80 rounded-b-2xl border border-neutral-200 bg-white" />}
       </div>
     </Card>
+    {summaryOpen && createPortal(
+      <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6"
+        onMouseDown={(event) => { if (event.target === event.currentTarget) setSummaryOpen(false); }}>
+        <div ref={summaryDialogRef} role="dialog" aria-modal="true" aria-labelledby="petty-cash-summary-title" dir="rtl"
+          className="flex max-h-[90dvh] w-full max-w-[1200px] flex-col overflow-hidden rounded-3xl bg-white text-neutral-900 shadow-2xl">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-5 py-4">
+            <h2 id="petty-cash-summary-title" className="font-bold">تنخواه‌های من</h2>
+            <button type="button" onClick={() => setSummaryOpen(false)} aria-label="بستن پنجره تنخواه‌های من"
+              className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
+          </header>
+          <div className="min-h-0 overflow-y-auto p-3 sm:p-5"><MyPettyCashSummary /></div>
+        </div>
+      </div>, document.body
+    )}
   </div>;
 }
 
