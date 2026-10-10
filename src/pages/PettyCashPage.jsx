@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -187,7 +188,7 @@ function PettyCashExpenseTab() {
   const [budgetPickerQuery, setBudgetPickerQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef(null);
+  const [attachmentEditorOpen, setAttachmentEditorOpen] = useState(false);
   const formRef = useRef(null);
   const menuButtonRef = useRef(null);
   const menuPopoverRef = useRef(null);
@@ -249,7 +250,6 @@ function PettyCashExpenseTab() {
     setAttachment(null);
     setBudgetItems([]);
     setError("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
     if (!id) return;
     try {
       const data = await api(`/cost-breakdown?project_id=${encodeURIComponent(id)}`);
@@ -287,7 +287,6 @@ function PettyCashExpenseTab() {
       setForm(emptyForm());
       setAttachment(null);
       setEditingExpense(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (reason) {
       setError(reason.message);
     } finally {
@@ -323,7 +322,6 @@ function PettyCashExpenseTab() {
     setEditingExpense(item);
     setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode, amount: format3(item.amount) });
     setAttachment(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
     setMenuPosition(null);
     setError("");
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -332,7 +330,6 @@ function PettyCashExpenseTab() {
     setEditingExpense(null);
     setForm(emptyForm());
     setAttachment(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
     setError("");
   };
   const deleteSelected = async () => {
@@ -385,10 +382,8 @@ function PettyCashExpenseTab() {
       </Field>
       <div className="flex items-end gap-3">
         <Field label="پیوست">
-          <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp,.heic,.heif"
-            onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
-          <button type="button" onClick={() => fileInputRef.current?.click()}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white outline-none focus:border-neutral-400" title={attachment?.name || editingExpense?.fileName || "بارگذاری"} aria-label={attachment?.name || "بارگذاری پیوست"}>
+          <button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving}
+            className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border bg-white outline-none focus:border-neutral-400 disabled:opacity-50 ${attachment ? "border-emerald-400 bg-emerald-50" : "border-neutral-200"}`} title={attachment?.name || editingExpense?.fileName || "بارگذاری"} aria-label="بارگذاری پیوست">
             <img src="/images/icons/upload.svg" alt="" className="h-5 w-5" />
           </button>
         </Field>
@@ -512,5 +507,333 @@ function PettyCashExpenseTab() {
       selectedCode={form.budgetCode} query={budgetPickerQuery} onQueryChange={setBudgetPickerQuery}
       onSelect={(budgetCode) => { setForm((current) => ({ ...current, budgetCode })); setBudgetPickerOpen(false); }}
       onClose={() => setBudgetPickerOpen(false)} />}
+    {attachmentEditorOpen && <PettyCashPhotoEditor
+      initialFile={attachment}
+      initialUrl={editingExpense?.fileUrl}
+      initialName={editingExpense?.fileName}
+      onClose={() => setAttachmentEditorOpen(false)}
+      onConfirm={(file) => { setAttachment(file); setAttachmentEditorOpen(false); }} />}
   </section>;
+}
+
+const fullPhotoCrop = () => ({ x: 0, y: 0, width: 1, height: 1 });
+const fullPhotoArea = fullPhotoCrop();
+const isFullPhotoCrop = (crop) => crop.x === 0 && crop.y === 0 && crop.width === 1 && crop.height === 1;
+const photoSize = (bytes) => bytes >= 1024 * 1024
+  ? `${toFa((bytes / (1024 * 1024)).toFixed(2))} مگابایت`
+  : `${toFa(Math.max(1, Math.round(bytes / 1024)))} کیلوبایت`;
+
+async function decodeExpensePhoto(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.decoding = "async";
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error("این عکس قابل نمایش نیست. عکس JPG، PNG یا WebP انتخاب کنید."));
+      image.src = url;
+    });
+    return image;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function expensePhotoCanvas(image, turns, crop, maxEdge = 3000) {
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+  const orientedWidth = turns % 2 ? height : width;
+  const orientedHeight = turns % 2 ? width : height;
+  const cropWidth = orientedWidth * crop.width;
+  const cropHeight = orientedHeight * crop.height;
+  const scale = Math.min(1, maxEdge / Math.max(cropWidth, cropHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(cropWidth * scale));
+  canvas.height = Math.max(1, Math.round(cropHeight * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("ویرایش عکس در این مرورگر در دسترس نیست.");
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.scale(scale, scale);
+  context.translate(-crop.x * orientedWidth, -crop.y * orientedHeight);
+  context.translate(orientedWidth / 2, orientedHeight / 2);
+  context.rotate(turns * Math.PI / 2);
+  context.drawImage(image, -width / 2, -height / 2);
+  return canvas;
+}
+
+function encodeExpensePhoto(canvas, type, quality) {
+  return new Promise((resolve, reject) => canvas.toBlob(
+    (blob) => blob ? resolve(blob) : reject(new Error("آماده‌سازی عکس انجام نشد. دوباره تلاش کنید.")), type, quality,
+  ));
+}
+
+async function compressExpensePhoto(source, image, turns, crop) {
+  const unchanged = turns === 0 && isFullPhotoCrop(crop);
+  const withinSize = Math.max(image.naturalWidth, image.naturalHeight) <= 3000;
+  if (unchanged && withinSize && source.pettyCashPhotoPrepared) {
+    return { file: source, width: image.naturalWidth, height: image.naturalHeight };
+  }
+  const canvas = expensePhotoCanvas(image, turns, crop);
+  const candidates = [await encodeExpensePhoto(canvas, "image/webp", 0.9)];
+  // Keep transparent PNG/WebP images transparent; JPEG is also compared for photos.
+  if (/\.jpe?g$/i.test(source.name) || source.type === "image/jpeg") {
+    candidates.push(await encodeExpensePhoto(canvas, "image/jpeg", 0.9));
+  }
+  let blob = candidates.reduce((smallest, candidate) => candidate.size < smallest.size ? candidate : smallest);
+  if (blob.size > 1500 * 1024) {
+    const lighter = await encodeExpensePhoto(canvas, "image/webp", 0.86);
+    if (lighter.size < blob.size) blob = lighter;
+  }
+  let file;
+  if (unchanged && withinSize && source.size <= blob.size) file = source;
+  else {
+    const extension = blob.type === "image/webp" ? "webp" : blob.type === "image/jpeg" ? "jpg" : "png";
+    file = new File([blob], `${source.name.replace(/\.[^.]+$/, "") || "receipt"}.${extension}`, { type: blob.type, lastModified: Date.now() });
+  }
+  file.pettyCashPhotoPrepared = true;
+  return { file, width: canvas.width, height: canvas.height };
+}
+
+function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm }) {
+  const [source, setSource] = useState(null);
+  const [image, setImage] = useState(null);
+  const [turns, setTurns] = useState(0);
+  const [crop, setCrop] = useState(fullPhotoCrop);
+  const [cropping, setCropping] = useState(false);
+  const [draggingCrop, setDraggingCrop] = useState(false);
+  const [dropActive, setDropActive] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [processed, setProcessed] = useState(null);
+  const [error, setError] = useState("");
+  const dialogRef = useRef(null);
+  const inputRef = useRef(null);
+  const canvasRef = useRef(null);
+  const cropDragRef = useRef(null);
+  const loadTokenRef = useRef(0);
+  const previewCrop = cropping ? fullPhotoArea : crop;
+
+  const choosePhoto = useCallback(async (file) => {
+    if (!file) return;
+    if (!/\.(jpe?g|png|webp)$/i.test(file.name)) {
+      setError("عکس با فرمت JPG، PNG یا WebP انتخاب کنید.");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      setError("حجم عکس اولیه باید کمتر از ۲۵ مگابایت باشد.");
+      return;
+    }
+    const token = ++loadTokenRef.current;
+    setLoading(true);
+    setError("");
+    try {
+      const decoded = await decodeExpensePhoto(file);
+      if (loadTokenRef.current !== token) return;
+      setSource(file);
+      setImage(decoded);
+      setTurns(0);
+      setCrop(fullPhotoCrop());
+      setCropping(false);
+      setProcessed(null);
+    } catch (reason) {
+      if (loadTokenRef.current === token) setError(reason.message);
+    } finally {
+      if (loadTokenRef.current === token) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    if (initialFile) choosePhoto(initialFile);
+    else if (initialUrl && /\.(jpe?g|png|webp)$/i.test(initialUrl)) {
+      setLoading(true);
+      fetch(initialUrl, { credentials: "include", signal: controller.signal })
+        .then(async (response) => {
+          if (!response.ok) throw new Error("دریافت عکس قبلی انجام نشد.");
+          const blob = await response.blob();
+          return choosePhoto(new File([blob], initialName || initialUrl.split("/").pop(), { type: blob.type }));
+        })
+        .catch((reason) => { if (reason.name !== "AbortError") { setError(reason.message); setLoading(false); } });
+    }
+    return () => { controller.abort(); loadTokenRef.current += 1; };
+  }, [initialFile, initialUrl, initialName, choosePhoto]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialogRef.current?.querySelector("button")?.focus();
+    const handleKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); onClose(); }
+      if (event.key !== "Tab") return;
+      const focusable = [...dialogRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), [tabindex="0"]')].filter((element) => element.getClientRects().length);
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!image || !canvasRef.current) return;
+    const preview = expensePhotoCanvas(image, turns, previewCrop, 1400);
+    const canvas = canvasRef.current;
+    canvas.width = preview.width;
+    canvas.height = preview.height;
+    canvas.getContext("2d").drawImage(preview, 0, 0);
+  }, [image, turns, previewCrop]);
+
+  useEffect(() => {
+    if (!image || !source || draggingCrop) return;
+    let active = true;
+    setProcessing(true);
+    setProcessed(null);
+    const timer = setTimeout(() => {
+      compressExpensePhoto(source, image, turns, crop)
+        .then((result) => { if (active) setProcessed({ ...result, url: URL.createObjectURL(result.file) }); })
+        .catch((reason) => { if (active) setError(reason.message); })
+        .finally(() => { if (active) setProcessing(false); });
+    }, 180);
+    return () => { active = false; clearTimeout(timer); };
+  }, [source, image, turns, crop, draggingCrop]);
+
+  useEffect(() => () => { if (processed?.url) URL.revokeObjectURL(processed.url); }, [processed]);
+
+  const rotate = (step) => {
+    setTurns((current) => (current + step + 4) % 4);
+    setCrop((current) => step > 0
+      ? { x: 1 - current.y - current.height, y: current.x, width: current.height, height: current.width }
+      : { x: current.y, y: 1 - current.x - current.width, width: current.height, height: current.width });
+  };
+  const pointerPoint = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)) };
+  };
+  const startCropDrag = (event) => {
+    if (!cropping || loading) return;
+    event.preventDefault();
+    const point = pointerPoint(event);
+    const handle = event.target.closest("[data-crop-handle]")?.dataset.cropHandle;
+    const inside = point.x >= crop.x && point.x <= crop.x + crop.width && point.y >= crop.y && point.y <= crop.y + crop.height;
+    cropDragRef.current = { start: point, rect: crop, mode: handle || (inside ? "move" : "draw") };
+    setDraggingCrop(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveCrop = (event) => {
+    const drag = cropDragRef.current;
+    if (!drag) return;
+    const point = pointerPoint(event);
+    if (drag.mode === "move") {
+      setCrop({ ...drag.rect,
+        x: Math.max(0, Math.min(1 - drag.rect.width, drag.rect.x + point.x - drag.start.x)),
+        y: Math.max(0, Math.min(1 - drag.rect.height, drag.rect.y + point.y - drag.start.y)) });
+      return;
+    }
+    const anchor = drag.mode === "draw" ? drag.start : {
+      x: drag.mode.includes("w") ? drag.rect.x + drag.rect.width : drag.rect.x,
+      y: drag.mode.includes("n") ? drag.rect.y + drag.rect.height : drag.rect.y,
+    };
+    setCrop({ x: Math.min(anchor.x, point.x), y: Math.min(anchor.y, point.y), width: Math.abs(point.x - anchor.x), height: Math.abs(point.y - anchor.y) });
+  };
+  const finishCropDrag = (event) => {
+    if (!cropDragRef.current) return;
+    const originalCrop = cropDragRef.current.rect;
+    if (event.type === "pointercancel") setCrop(originalCrop);
+    else setCrop((current) => current.width < 0.02 || current.height < 0.02 ? originalCrop : current);
+    cropDragRef.current = null;
+    setDraggingCrop(false);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+  const orientedWidth = image ? (turns % 2 ? image.naturalHeight : image.naturalWidth) * previewCrop.width : 1;
+  const orientedHeight = image ? (turns % 2 ? image.naturalWidth : image.naturalHeight) * previewCrop.height : 1;
+  const ratio = orientedWidth / Math.max(1, orientedHeight);
+  const reduction = processed && source ? Math.max(0, Math.round((1 - processed.file.size / source.size) * 100)) : 0;
+  const toolbarButton = "inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold transition hover:bg-neutral-50 disabled:opacity-40 sm:text-sm";
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="petty-cash-photo-title" dir="rtl"
+        className="flex max-h-[92dvh] w-full max-w-[1000px] flex-col overflow-hidden rounded-3xl border border-white/30 bg-white text-neutral-900 shadow-2xl">
+        <header className="flex items-center justify-between gap-4 border-b border-neutral-100 px-5 py-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-neutral-100"><img src="/images/icons/upload.svg" alt="" className="h-6 w-6" /></span>
+            <div><h2 id="petty-cash-photo-title" className="font-bold">پیوست هزینه</h2><p className="mt-1 text-xs text-neutral-500">عکس رسید یا سند هزینه را آماده کنید</p></div>
+          </div>
+          <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
+        </header>
+        <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
+          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+            onChange={(event) => { choosePhoto(event.target.files?.[0]); event.target.value = ""; }} />
+          {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+          {image && <div className="mb-4 flex flex-wrap gap-2">
+            <button type="button" disabled={loading || draggingCrop} onClick={() => rotate(-1)} className={toolbarButton} aria-label="چرخش عکس به چپ"><RotateCcw className="h-4 w-4" />چرخش به چپ</button>
+            <button type="button" disabled={loading || draggingCrop} onClick={() => rotate(1)} className={toolbarButton} aria-label="چرخش عکس به راست"><RotateCw className="h-4 w-4" />چرخش به راست</button>
+            <button type="button" disabled={loading || draggingCrop} onClick={() => {
+              if (!cropping && isFullPhotoCrop(crop)) setCrop({ x: 0.08, y: 0.08, width: 0.84, height: 0.84 });
+              setCropping((current) => !current);
+            }} className={`${toolbarButton} ${cropping ? "border-sky-300 bg-sky-50 text-sky-700" : ""}`}>
+              {cropping ? <Check className="h-4 w-4" /> : <Crop className="h-4 w-4" />}{cropping ? "اعمال برش" : "برش عکس"}
+            </button>
+            <button type="button" disabled={loading || draggingCrop} onClick={() => { setTurns(0); setCrop(fullPhotoCrop()); setCropping(false); }} className={toolbarButton}><RefreshCw className="h-4 w-4" />بازنشانی</button>
+            <button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className={`${toolbarButton} mr-auto`}><ImagePlus className="h-4 w-4" />انتخاب عکس دیگر</button>
+          </div>}
+          <div className={image ? "grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]" : ""}>
+            <div onDragOver={(event) => { event.preventDefault(); setDropActive(true); }}
+              onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setDropActive(false); }}
+              onDrop={(event) => { event.preventDefault(); setDropActive(false); choosePhoto(event.dataTransfer.files?.[0]); }}
+              className={`relative flex min-h-64 flex-col items-center justify-center overflow-hidden rounded-2xl border-2 ${dropActive ? "border-sky-400 bg-sky-50" : image ? "border-neutral-200 bg-neutral-100" : "border-dashed border-neutral-300 bg-neutral-50"} p-4`}>
+              {loading && <div role="status" className="absolute inset-0 z-20 grid place-items-center bg-white/80"><span className="flex items-center gap-2 text-sm"><LoaderCircle className="h-5 w-5 animate-spin" />در حال خواندن عکس...</span></div>}
+              {!image ? <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full flex-col items-center justify-center gap-4 py-9">
+                <span className="grid h-16 w-16 place-items-center rounded-2xl border border-neutral-200 bg-white shadow-sm"><img src="/images/icons/upload.svg" alt="" className="h-8 w-8" /></span>
+                <span className="text-sm font-bold sm:text-base">عکس را اینجا رها کنید یا برای انتخاب کلیک کنید</span>
+                <span className="text-xs text-neutral-500">JPG، PNG یا WebP</span>
+              </button> : <>
+                <div dir="ltr" className={`relative overflow-hidden ${cropping ? "cursor-crosshair touch-none" : ""}`}
+                  style={{ width: `min(100%, ${ratio * 44}vh)`, aspectRatio: ratio }}
+                  onPointerDown={startCropDrag} onPointerMove={moveCrop} onPointerUp={finishCropDrag} onPointerCancel={finishCropDrag}>
+                  <canvas ref={canvasRef} className="block h-full w-full" aria-label="پیش‌نمایش عکس و محدوده برش" />
+                  {cropping && <div className="absolute cursor-move border-2 border-white"
+                    style={{ left: `${crop.x * 100}%`, top: `${crop.y * 100}%`, width: `${crop.width * 100}%`, height: `${crop.height * 100}%`, boxShadow: "0 0 0 9999px rgba(0,0,0,0.45)" }}>
+                    {[1, 2].map((line) => <div key={line} className="pointer-events-none absolute inset-0">
+                      <span className="absolute inset-y-0 w-px bg-white/45" style={{ left: `${line * 100 / 3}%` }} />
+                      <span className="absolute inset-x-0 h-px bg-white/45" style={{ top: `${line * 100 / 3}%` }} />
+                    </div>)}
+                    {["nw", "ne", "sw", "se"].map((handle) => <span key={handle} data-crop-handle={handle}
+                      className={`absolute z-10 h-5 w-5 rounded-sm border-2 border-white bg-sky-500 ${handle.includes("n") ? "-top-2" : "-bottom-2"} ${handle.includes("w") ? "-left-2" : "-right-2"} ${handle === "nw" || handle === "se" ? "cursor-nwse-resize" : "cursor-nesw-resize"}`} />)}
+                  </div>}
+                </div>
+                <p className="mt-3 text-center text-xs leading-5 text-neutral-500">{cropping ? "گوشه‌های کادر را بکشید؛ برای جابه‌جایی، داخل کادر را بکشید." : "پیش‌نمایش عکس آماده‌شده"}</p>
+              </>}
+              {dropActive && <div className="pointer-events-none absolute inset-0 z-30 grid place-items-center bg-sky-50/95 text-sm font-bold text-sky-700">عکس جدید را رها کنید</div>}
+            </div>
+            {image && <aside className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+              <h3 className="text-sm font-bold">نسخه کم‌حجم</h3>
+              <p className="mt-2 text-xs leading-6 text-neutral-500">فشرده‌سازی با کیفیت بالا برای حفظ خوانایی رسید و سند</p>
+              <p className="mt-3 truncate text-xs text-neutral-600" title={source?.name}>{source?.name}</p>
+              <div className="mt-4 space-y-3 text-xs">
+                <div className="flex justify-between gap-2"><span className="text-neutral-500">حجم اولیه</span><strong>{source && photoSize(source.size)}</strong></div>
+                <div className="flex justify-between gap-2"><span className="text-neutral-500">حجم آماده ارسال</span><strong>{processed ? photoSize(processed.file.size) : "..."}</strong></div>
+              </div>
+              {processing || draggingCrop ? <p role="status" className="mt-4 flex items-center gap-2 text-xs text-neutral-500"><LoaderCircle className="h-4 w-4 animate-spin" />در حال آماده‌سازی عکس...</p> : processed && <>
+                <span className="mt-4 inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-2 py-1.5 text-xs font-semibold text-emerald-800"><Check className="h-3 w-3" />{reduction > 0 ? `${toFa(reduction)}٪ حجم کمتر` : "حجم بهینه"}</span>
+                <img src={processed.url} alt="پیش‌نمایش نسخه فشرده‌شده" className="mt-4 max-h-32 w-full rounded-lg border border-neutral-200 bg-white object-contain" />
+                <p className="mt-2 text-center text-[11px] text-neutral-500">{toFa(processed.width)} × {toFa(processed.height)} پیکسل</p>
+              </>}
+            </aside>}
+          </div>
+        </div>
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 px-5 py-4">
+          <p className="text-xs text-neutral-500">پیوست همراه با ثبت ردیف هزینه ذخیره می‌شود.</p>
+          <button type="button" disabled={!processed || processing || loading || draggingCrop}
+            onClick={() => onConfirm(processed.file)} className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"><Check className="h-4 w-4" />تأیید پیوست</button>
+        </footer>
+      </div>
+    </div>, document.body
+  );
 }
