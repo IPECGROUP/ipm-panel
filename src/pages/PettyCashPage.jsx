@@ -138,6 +138,8 @@ export default function PettyCashPage() {
   const [expenseFormKey, setExpenseFormKey] = useState(0);
   const [reportSaving, setReportSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [reportStatusFilter, setReportStatusFilter] = useState("");
+  const [reportOwnershipFilter, setReportOwnershipFilter] = useState("");
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [reports, setReports] = useState([]);
   const [reportError, setReportError] = useState("");
@@ -173,10 +175,16 @@ export default function PettyCashPage() {
     next.delete("notificationTarget"); next.delete("request");
     setSearchParams(next, { replace: true });
   }, [reportsLoaded, reports, searchParams, setSearchParams]);
-  const visibleReports = reports.filter((report) => english([
+  const visibleReports = reports.filter((report) => {
+    const state = expenseReportState(report.items);
+    if (reportStatusFilter && state.statusKey !== reportStatusFilter) return false;
+    if (reportOwnershipFilter === "mine" && String(report.createdById) !== String(user?.id)) return false;
+    if (reportOwnershipFilter === "incoming" && !report.canAct) return false;
+    return english([
     report.reportName, reportDate(report.createdAt), report.projectCode, report.projectName,
     expenseReportState(report.items).waiting, expenseReportState(report.items).status,
-  ].join(" ")).toLowerCase().includes(english(searchQuery).trim().toLowerCase()));
+  ].join(" ")).toLowerCase().includes(english(searchQuery).trim().toLowerCase());
+  });
   const closeDialog = () => { if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); } };
 
   useEffect(() => {
@@ -226,6 +234,8 @@ export default function PettyCashPage() {
         <PettyCashExpenseTab key={expenseFormKey} initialReport={editingReport} onBusyChange={setReportSaving} onSubmitted={(report) => {
           setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
           setSearchQuery("");
+          setReportStatusFilter("");
+          setReportOwnershipFilter("");
           setExpenseFormOpen(false);
           setEditingReport(null);
           setExpenseFormKey((current) => current + 1);
@@ -240,34 +250,46 @@ export default function PettyCashPage() {
                 placeholder="جستجو در شماره گزارش، تاریخ، پروژه، در انتظار و وضعیت ..."
                 className={`${inputClass} placeholder:text-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white`} />
             </Field>
+            <div className="mt-3">
+              <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[["mine", "گزارش‌های من"], ["incoming", "موارد ارسال‌شده به من"]].map(([key, label]) => <button key={key} type="button"
+                  aria-pressed={reportOwnershipFilter === key} onClick={() => setReportOwnershipFilter(reportOwnershipFilter === key ? "" : key)}
+                  className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${reportOwnershipFilter === key ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-900 ring-black/10 hover:bg-neutral-50 dark:bg-white/5 dark:text-white dark:ring-white/15"}`}>{label}</button>)}
+                {Object.entries(REPORT_STATUS_LABELS).map(([key, label]) => <button key={key} type="button"
+                  aria-pressed={reportStatusFilter === key} onClick={() => setReportStatusFilter(reportStatusFilter === key ? "" : key)}
+                  className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${reportStatusBadgeClass(key, reportStatusFilter === key)}`}>{label}</button>)}
+              </div>
+            </div>
           </div>
           {reportError && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] table-fixed border-collapse text-sm" aria-label="گزارش‌های تنخواه">
+              <table className="w-full min-w-[920px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
+                <colgroup><col className="w-16" /><col /><col className="w-32" /><col /><col className="w-60" /><col className="w-36" /></colgroup>
                 <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
                   <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
-                    <th scope="col" className="w-16 px-3 text-right font-bold">ردیف</th>
-                    <th scope="col" className="px-3 text-right font-bold">شماره گزارش</th>
-                    <th scope="col" className="px-3 text-right font-bold">تاریخ</th>
-                    <th scope="col" className="px-3 text-right font-bold">پروژه</th>
-                    <th scope="col" className="px-3 text-right font-bold">در انتظار</th>
-                    <th scope="col" className="px-3 text-right font-bold">وضعیت</th>
+                    <th scope="col" className="w-16 px-4 text-center font-bold">ردیف</th>
+                    <th scope="col" className="px-4 text-center font-bold">شماره گزارش</th>
+                    <th scope="col" className="px-4 text-center font-bold">تاریخ</th>
+                    <th scope="col" className="px-4 text-center font-bold">پروژه</th>
+                    <th scope="col" className="px-4 text-center font-bold">در انتظار</th>
+                    <th scope="col" className="px-4 text-center font-bold">وضعیت</th>
                   </tr>
                 </thead>
-                <tbody className="text-[13px] [&>tr]:h-9">
+                <tbody className="text-[13px] [&>tr]:h-11">
                   {visibleReports.map((report, index) => {
                     const state = expenseReportState(report.items);
                     return <tr key={report.id} tabIndex={0} onClick={() => setSelectedReport(report)}
                       onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedReport(report); } }}
                       aria-label={`مشاهده گزارش ${report.reportName}`}
-                      className="cursor-pointer border-t border-neutral-300 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
-                      <td className="px-3">{toFa(index + 1)}</td>
-                      <td className="truncate px-3" title={report.reportName}>{report.reportName}</td>
-                      <td className="px-3">{reportDate(report.createdAt)}</td>
-                      <td className="truncate px-3" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
-                      <td className="px-3">{state.waiting}</td>
-                      <td className="px-3">{state.status}</td>
+                      className="cursor-pointer border-t border-neutral-200 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
+                      <td className="px-4 py-2">{toFa(index + 1)}</td>
+                      <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
+                      <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
+                      <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
+                      <td className="px-4 py-2">{state.waiting}</td>
+                      <td className="px-3 py-2"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${reportStatusBadgeClass(state.statusKey)}`}>{state.status}</span></td>
                     </tr>;
                   })}
                 </tbody>
@@ -290,7 +312,7 @@ export default function PettyCashPage() {
               </div>
             </div>
             <button type="button" disabled={reviewBusy} onClick={closeDialog} aria-label="بستن پنجره"
-              className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
+              className="grid h-9 w-9 place-items-center rounded-xl bg-black text-white hover:bg-neutral-800"><X className="h-4 w-4" /></button>
           </header>
           {selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
             onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
@@ -427,8 +449,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       </div>
 
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
-        <div className="min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 px-3 py-2.5">
+        <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 px-3 py-2.5">
             <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{toFa(selectedIds.size)} ردیف انتخاب شده</span>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("approved")} className={`${actionClass} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-4 w-4" />تأیید منتخب‌ها</button>
@@ -438,36 +460,36 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             </div>
           </div>
 
-          <section className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
+          <section className="min-w-0 overflow-hidden">
             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های درخواست</h3>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
-                <colgroup><col className="w-12" /><col className="w-28" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /><col className="w-11" /></colgroup>
+                <colgroup><col className="w-11" /><col className="w-12" /><col className="w-28" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
                 <thead className="bg-neutral-200/80"><tr className="h-11">
-                  {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className="px-2 font-semibold">{label}</th>)}
                   <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
                     ref={(element) => { if (element) element.indeterminate = partlySelected; }}
                     onChange={() => setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id)))}
                     aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>
+                  {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className="px-2 font-semibold">{label}</th>)}
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
                   const badge = badges[rowStatus(item)];
                   return <tr key={item.id} tabIndex={0} onClick={() => { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); }}
                     onKeyDown={(event) => { if (event.target === event.currentTarget && event.key === "Enter") { const fileIndex = attachments.findIndex((file) => file.id === item.id); if (fileIndex >= 0) setAttachmentIndex(fileIndex); } }}
                     className={`h-10 cursor-pointer border-t border-neutral-200 transition hover:bg-sky-50/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50" : "bg-neutral-50/40"}`}>
+                    <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
+                      aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>
                     <td className="px-2">{toFa(index + 1)}</td><td className="px-2">{toFa(item.expenseDate)}</td>
                     <td className="px-2 py-2 text-right leading-5">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums">{money(item.amount)}</td>
                     <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
-                    <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
-                      aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>
                   </tr>;
                 })}</tbody>
               </table>
             </div>
           </section>
 
-          <div className="rounded-2xl border border-neutral-200 p-3">
+          <div className="border-t border-neutral-200 p-3">
             <label htmlFor="petty-cash-review-notes" className="mb-2 flex items-center gap-2 text-sm font-bold"><MessageSquare className="h-5 w-5 stroke-[1.6]" />توضیحات بررسی</label>
             <textarea readOnly={!canAct || saving} id="petty-cash-review-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500}
               placeholder="نظر خود را در خصوص ردیف‌های انتخاب‌شده وارد کنید ..."
@@ -502,7 +524,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </aside>
       </div>
     </div>
-    <footer inert={managerOpen ? true : undefined} className="flex shrink-0 flex-wrap justify-start gap-2 border-t border-neutral-100 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
+    <footer inert={managerOpen ? true : undefined} className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-neutral-100 px-4 py-3 sm:gap-3 sm:px-5 sm:py-4">
       <button type="button" disabled={saving || (!canAct && !report.canRevise)} onClick={() => report.canRevise && !canAct ? onRevise() : submitDecision("approve")} className={`${actionClass} min-w-24 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" />تأیید</button>
       <button type="button" disabled={!canAct || saving} onClick={() => submitDecision("reject")} className={`${actionClass} min-w-24 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" />رد</button>
       <button type="button" disabled={!canAct || saving} onClick={() => submitDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" />درخواست اصلاح</button>
@@ -542,13 +564,26 @@ function reportDate(value) {
   return value ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).format(new Date(value)) : "—";
 }
 
+const REPORT_STATUS_LABELS = { pending: "در انتظار تأیید", approved: "تأیید شد", returned: "درخواست اصلاح", rejected: "رد شده" };
+
+function reportStatusBadgeClass(status, active = false) {
+  const colors = {
+    pending: ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499]", "border-[#036499] bg-[#036499] text-[#D5E6F1]"],
+    approved: ["border-[#DDF6E8] bg-[#DDF6E8] text-[#247A4D]", "border-[#247A4D] bg-[#247A4D] text-[#DDF6E8]"],
+    returned: ["border-[#FFF0D8] bg-[#FFF0D8] text-[#A65D00]", "border-[#A65D00] bg-[#A65D00] text-[#FFF0D8]"],
+    rejected: ["border-[#FCE2E5] bg-[#FCE2E5] text-[#B4233C]", "border-[#B4233C] bg-[#B4233C] text-[#FCE2E5]"],
+  };
+  return `border shadow-sm ${(colors[status] || colors.pending)[active ? 1 : 0]}`;
+}
+
 function expenseReportState(items = []) {
   const pending = items.filter((item) => ["planning", "project_manager", "finance", "management", "revision"].includes(item.stage));
   const waiting = [...new Set(pending.map((item) => item.stage === "planning" ? "برنامه‌ریزی و کنترل پروژه" : item.stage === "finance" ? "مالی"
-    : item.stage === "management" ? "مدیریت" : item.stage === "revision" ? "درخواست‌کننده" : item.projectManagerName || "مدیریت پروژه‌ها"))].join("، ") || "—";
+    : item.stage === "management" ? "مدیریت" : item.stage === "revision" ? "—" : "مدیریت پروژه‌ها"))].filter((name) => name !== "—").join("، ") || "—";
   const status = items.some((item) => item.stage === "revision") ? "درخواست اصلاح" : pending.length ? "در انتظار تأیید"
     : items.length && items.every((item) => item.stage === "completed") ? "تأیید شد" : "رد شده";
-  return { waiting, status };
+  const statusKey = status === "درخواست اصلاح" ? "returned" : status === "در انتظار تأیید" ? "pending" : status === "تأیید شد" ? "approved" : "rejected";
+  return { waiting, status, statusKey };
 }
 
 function ExpenseAttachmentLink({ item }) {
@@ -800,7 +835,10 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
       <Field label="کد بودجه" required>
         <button type="button" disabled={!projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }}
           className={`${inputClass} flex items-center justify-between gap-2 text-right disabled:opacity-50`}>
-          <span className="truncate">{form.budgetCode || "انتخاب کد بودجه"}</span><span>⌄</span>
+          <span className={`min-w-0 truncate ${form.budgetCode ? "" : "text-neutral-400"}`}>{form.budgetCode ? (() => {
+            const item = budgetItems.find((row) => String(row.budgetCode) === String(form.budgetCode));
+            return `${toFa(form.budgetCode)}${item?.budgetName ? ` - ${item.budgetName}` : ""}`;
+          })() : (projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0">⌄</span>
         </button>
       </Field>
       <Field label="مبلغ (ریال)" required>
