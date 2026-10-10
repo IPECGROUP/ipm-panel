@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
@@ -146,7 +147,7 @@ export default function PettyCashPage() {
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
           </span>
         </header>
-        <nav className="flex w-fit max-w-full overflow-x-auto rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
+        <nav className="mx-auto grid w-fit max-w-full grid-cols-3 overflow-x-auto rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
           {tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)}
             aria-current={activeTab === index ? "page" : undefined}
             className={`shrink-0 whitespace-nowrap border-l border-neutral-200 px-4 py-3 text-sm font-bold transition last:border-l-0 sm:px-6 sm:text-base ${activeTab === index ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-50"}`}>{tab}</button>)}
@@ -187,6 +188,27 @@ function PettyCashExpenseTab() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const fileInputRef = useRef(null);
+  const formRef = useRef(null);
+  const menuButtonRef = useRef(null);
+  const menuPopoverRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState(null);
+  const [editingExpense, setEditingExpense] = useState(null);
+
+  useEffect(() => {
+    if (!menuPosition) return;
+    const closeOutside = (event) => {
+      if (!menuButtonRef.current?.contains(event.target) && !menuPopoverRef.current?.contains(event.target)) setMenuPosition(null);
+    };
+    const close = () => setMenuPosition(null);
+    document.addEventListener("mousedown", closeOutside);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      document.removeEventListener("mousedown", closeOutside);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [menuPosition]);
 
   const api = useCallback(async (path, options = {}) => {
     const response = await fetch(`/api${path}`, {
@@ -221,6 +243,8 @@ function PettyCashExpenseTab() {
     setProjectId(id);
     setPage(0);
     setSelectedIds(new Set());
+    setEditingExpense(null);
+    setMenuPosition(null);
     setForm(emptyForm());
     setAttachment(null);
     setBudgetItems([]);
@@ -243,7 +267,7 @@ function PettyCashExpenseTab() {
     setSaving(true);
     setError("");
     try {
-      let file = null;
+      let file = editingExpense?.fileUrl ? { name: editingExpense.fileName, url: editingExpense.fileUrl } : null;
       if (attachment) {
         const payload = new FormData();
         payload.append("file", attachment);
@@ -255,12 +279,14 @@ function PettyCashExpenseTab() {
         file = data.file;
       }
       await api("/petty-cash-expenses", {
-        method: "POST",
-        body: JSON.stringify({ projectId, ...form, fileName: file?.name, fileUrl: file?.url }),
+        method: editingExpense ? "PATCH" : "POST",
+        body: JSON.stringify({ projectId, ...form, fileName: file?.name, fileUrl: file?.url,
+          ...(editingExpense ? { action: "update", id: editingExpense.id } : {}) }),
       });
       await loadExpenses(projectId);
       setForm(emptyForm());
       setAttachment(null);
+      setEditingExpense(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (reason) {
       setError(reason.message);
@@ -288,6 +314,43 @@ function PettyCashExpenseTab() {
     visibleIds.forEach((id) => { if (allVisibleSelected) next.delete(id); else next.add(id); });
     return next;
   });
+  const selectedItems = items.filter((item) => selectedIds.has(item.id));
+  const canEdit = selectedItems.length === 1 && selectedItems[0].stage === "planning" && !selectedItems[0].settlementReportId;
+  const canDelete = selectedItems.length > 0 && selectedItems.every((item) => item.stage === "planning" && !item.settlementReportId);
+  const editSelected = () => {
+    if (!canEdit) return;
+    const item = selectedItems[0];
+    setEditingExpense(item);
+    setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode, amount: format3(item.amount) });
+    setAttachment(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setMenuPosition(null);
+    setError("");
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  const cancelEdit = () => {
+    setEditingExpense(null);
+    setForm(emptyForm());
+    setAttachment(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setError("");
+  };
+  const deleteSelected = async () => {
+    if (!canDelete || !window.confirm(`آیا ${toFa(selectedItems.length)} ردیف انتخاب‌شده حذف شود؟`)) return;
+    setSaving(true);
+    setError("");
+    setMenuPosition(null);
+    try {
+      await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ ids: selectedItems.map((item) => item.id) }) });
+      if (editingExpense && selectedIds.has(editingExpense.id)) cancelEdit();
+      setSelectedIds(new Set());
+      await loadExpenses(projectId);
+    } catch (reason) {
+      setError(reason.message === "not_allowed" ? "این ردیف‌ها قابل حذف نیستند." : reason.message);
+    } finally {
+      setSaving(false);
+    }
+  };
   return <section className="rounded-b-2xl border border-neutral-200 bg-white p-3 sm:p-4">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <Field label="پروژه">
@@ -301,7 +364,7 @@ function PettyCashExpenseTab() {
       </button>
     </div>
 
-    <div className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_100px]">
+    <div ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
       <Field label="تاریخ">
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
@@ -325,12 +388,18 @@ function PettyCashExpenseTab() {
           <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp,.heic,.heif"
             onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
           <button type="button" onClick={() => fileInputRef.current?.click()}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white outline-none focus:border-neutral-400" title={attachment?.name || "بارگذاری"} aria-label={attachment?.name || "بارگذاری پیوست"}>
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white outline-none focus:border-neutral-400" title={attachment?.name || editingExpense?.fileName || "بارگذاری"} aria-label={attachment?.name || "بارگذاری پیوست"}>
             <img src="/images/icons/upload.svg" alt="" className="h-5 w-5" />
           </button>
         </Field>
         <button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-black text-2xl text-white disabled:opacity-50"
-          title="افزودن ردیف" aria-label="افزودن ردیف">+</button>
+          title={editingExpense ? "ذخیره ویرایش" : "افزودن ردیف"} aria-label={editingExpense ? "ذخیره ویرایش" : "افزودن ردیف"}>
+          {editingExpense ? <img src="/images/icons/finishing-check.svg" alt="" className="h-5 w-5" /> : "+"}
+        </button>
+        {editingExpense && <button type="button" onClick={cancelEdit} disabled={saving} title="انصراف از ویرایش" aria-label="انصراف از ویرایش"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white disabled:opacity-50">
+          <img src="/images/icons/bastan.svg" alt="" className="h-4 w-4" />
+        </button>}
       </div>
     </div>
     {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -341,6 +410,7 @@ function PettyCashExpenseTab() {
           <colgroup>
             <col className="w-12" /><col className="w-16" /><col className="w-32" />
             <col /><col className="w-36" /><col className="w-40" /><col className="w-28" />
+            <col className="w-12" />
           </colgroup>
           <thead className="bg-neutral-200 text-neutral-900">
             <tr className="h-12">
@@ -352,6 +422,17 @@ function PettyCashExpenseTab() {
               </th>
               {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ", "پیوست"].map((label) =>
                 <th key={label} className="px-3 text-[14px] font-semibold md:text-[15px]">{label}</th>)}
+              <th className="p-0">
+                <button ref={menuButtonRef} type="button" aria-label="مدیریت ردیف‌ها" title="مدیریت ردیف‌ها"
+                  aria-expanded={Boolean(menuPosition)} onClick={() => {
+                    if (menuPosition) return setMenuPosition(null);
+                    const rect = menuButtonRef.current.getBoundingClientRect();
+                    setMenuPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 160)) });
+                  }}
+                  className="mx-auto grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08]">
+                  <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${menuPosition ? "scale-110" : ""}`} />
+                </button>
+              </th>
             </tr>
           </thead>
           <tbody className="text-[13px] text-neutral-900 [&>tr]:h-9 [&>tr>td]:!py-0">
@@ -368,8 +449,9 @@ function PettyCashExpenseTab() {
               <td className="px-3">{item.fileUrl
                 ? <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-sky-700 underline" title={item.fileName || "مشاهده پیوست"}>مشاهده</a>
                 : "—"}</td>
+              <td />
             </tr>)}
-            {!pageItems.length && <tr><td colSpan={7} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
+            {!pageItems.length && <tr><td colSpan={8} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -401,6 +483,30 @@ function PettyCashExpenseTab() {
         </div>
       </div>
     </div>
+    {menuPosition && createPortal(
+      <div ref={menuPopoverRef} dir="rtl" style={menuPosition}
+        className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)]">
+        <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500">
+          {selectedItems.length ? `${toFa(selectedItems.length)} مورد انتخاب شده` : "ابتدا یک ردیف را انتخاب کنید"}
+        </div>
+        <button type="button" disabled={!canEdit || saving} onClick={editSelected}
+          title={selectedItems.length === 1 && !canEdit ? "این ردیف از مرحله ثبت اولیه عبور کرده است." : "ویرایش ردیف"}
+          className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105">
+            <img src="/images/icons/pencil.svg" alt="" className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش ردیف</span>
+        </button>
+        <button type="button" disabled={!canDelete || saving} onClick={deleteSelected}
+          title={selectedItems.length && !canDelete ? "فقط ردیف‌های مرحله ثبت اولیه قابل حذف‌اند." : "حذف ردیف‌های انتخاب‌شده"}
+          className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105">
+            <img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1 text-sm font-semibold">حذف ردیف‌های انتخاب‌شده</span>
+        </button>
+      </div>, document.body
+    )}
     {budgetPickerOpen && <BudgetTreePickerModal
       items={budgetItems.map((item) => ({ code: item.budgetCode, value: item.budgetCode, center_desc: item.budgetName }))}
       selectedCode={form.budgetCode} query={budgetPickerQuery} onQueryChange={setBudgetPickerQuery}
