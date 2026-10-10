@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
+import Card from "../components/ui/Card.jsx";
 import { format3 } from "../utils/format.js";
 import TenkhahPage from "./TenkhahPage.jsx";
 import { ExpenseRegistrationTab, PettyCashSettlementReportsTable } from "./PettyCashPageLegacy.jsx";
@@ -134,14 +135,27 @@ export default function PettyCashPage() {
   const focusedExpenseId = searchParams.get("notificationTarget") === "petty_cash_expense" ? searchParams.get("request") || "" : "";
   const [activeTab, setActiveTab] = useState(() => focusedExpenseId ? 1 : 0);
   if (focusedRequestId) return <TenkhahPage focusRequestId={focusedRequestId} />;
-  return <div dir="rtl" className="mx-auto max-w-[1400px]">
-    <nav className="grid grid-cols-3 overflow-hidden rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
-      {tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)}
-        aria-current={activeTab === index ? "page" : undefined}
-        className={`min-w-0 border-l border-neutral-200 px-2 py-3 text-xs font-bold transition last:border-l-0 sm:text-sm ${activeTab === index ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-50"}`}>{tab}</button>)}
-    </nav>
-    {activeTab === 0 && <MyPettyCashSummary />}
-    {activeTab === 1 && <ExpenseRegistrationTab focusExpenseId={focusedExpenseId} onReportCreated={() => setActiveTab(2)} />}
-    {activeTab === 2 && <PettyCashSettlementReportsTable />}
+  return <div dir="rtl" className="mx-auto min-w-0 max-w-[1400px]">
+    <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 sm:rounded-3xl sm:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+      <div className="p-2.5 sm:p-3 md:p-4">
+        <header className="mb-4 flex min-w-0 items-center gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl">
+            <img src="/images/icons/tenkhah.svg" alt="" className="h-5 w-5 dark:invert sm:h-6 sm:w-6" />
+          </span>
+          <span className="min-w-0">
+            <h1 className="truncate text-base font-bold tracking-tight md:text-lg">تنخواه‌گردان</h1>
+            <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
+          </span>
+        </header>
+        <nav className="grid grid-cols-3 overflow-hidden rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
+          {tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)}
+            aria-current={activeTab === index ? "page" : undefined}
+            className={`min-w-0 border-l border-neutral-200 px-2 py-3 text-xs font-bold transition last:border-l-0 sm:text-sm ${activeTab === index ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-50"}`}>{tab}</button>)}
+        </nav>
+        {activeTab === 0 && <MyPettyCashSummary />}
+        {activeTab === 1 && <ExpenseRegistrationTab focusExpenseId={focusedExpenseId} onReportCreated={() => setActiveTab(2)} />}
+        {activeTab === 2 && <PettyCashSettlementReportsTable />}
+      </div>
+    </Card>
   </div>;
 }
