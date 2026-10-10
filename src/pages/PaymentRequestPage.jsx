@@ -1614,7 +1614,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
       <div className="-mx-1 flex flex-nowrap items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
         <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "mine")}`}>درخواست‌های من</button>
         <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
-        {[['pending', 'در انتظار تأیید'], ['awaiting_payment', 'در انتظار پرداخت'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key)} ${status === key ? "ring-2 ring-black/20 dark:ring-white/25" : "hover:brightness-95"}`}>{label}</button>)}
+        {[['pending', 'در انتظار تأیید'], ['awaiting_payment', 'در انتظار پرداخت'], ['approved', 'پرداخت شد'], ['returned', 'برگشت خورد'], ['rejected', 'رد شد'], ['tenkhah', 'تنخواه']].map(([key, label]) => <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${statusBadgeClass(key, status === key)}`}>{label}</button>)}
         {QUICK_FILTERS.map(([key, label]) => (
           <button key={key} type="button" onClick={() => setQuick(quick === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(quick === key)}`}>{label}</button>
         ))}
@@ -1835,12 +1835,12 @@ function ReadField({ label, value, ltr }) { return <Field label={label}><div dir
 function MoneyInput({ value, onChange, className = "", disabled = false, decimals = 0 }) { return <input dir="ltr" inputMode={decimals ? "decimal" : "numeric"} disabled={disabled} className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(decimals ? decimalMoney(e.target.value) : money(e.target.value))} placeholder="۰" />; }
 function paymentRequestTagClass(tag, active) {
   const palettes = [
-    ["border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-300", "border-sky-600 bg-sky-600 text-white dark:border-sky-400 dark:bg-sky-400 dark:text-slate-950"],
-    ["border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300", "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-400 dark:bg-emerald-400 dark:text-slate-950"],
-    ["border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-300", "border-violet-600 bg-violet-600 text-white dark:border-violet-400 dark:bg-violet-400 dark:text-slate-950"],
-    ["border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-300", "border-amber-600 bg-amber-600 text-white dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950"],
-    ["border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-300", "border-rose-600 bg-rose-600 text-white dark:border-rose-400 dark:bg-rose-400 dark:text-slate-950"],
-    ["border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 dark:border-teal-400/30 dark:bg-teal-500/10 dark:text-teal-300", "border-teal-600 bg-teal-600 text-white dark:border-teal-400 dark:bg-teal-400 dark:text-slate-950"],
+    ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499] hover:brightness-95", "border-[#036499] bg-[#036499] text-[#D5E6F1]"],
+    ["border-[#DDF6E8] bg-[#DDF6E8] text-[#247A4D] hover:brightness-95", "border-[#247A4D] bg-[#247A4D] text-[#DDF6E8]"],
+    ["border-[#EEE4FF] bg-[#EEE4FF] text-[#7042A6] hover:brightness-95", "border-[#7042A6] bg-[#7042A6] text-[#EEE4FF]"],
+    ["border-[#FFF0D8] bg-[#FFF0D8] text-[#A65D00] hover:brightness-95", "border-[#A65D00] bg-[#A65D00] text-[#FFF0D8]"],
+    ["border-[#FCE2E5] bg-[#FCE2E5] text-[#B4233C] hover:brightness-95", "border-[#B4233C] bg-[#B4233C] text-[#FCE2E5]"],
+    ["border-[#DDF4F2] bg-[#DDF4F2] text-[#08756D] hover:brightness-95", "border-[#08756D] bg-[#08756D] text-[#DDF4F2]"],
   ];
   const id = String(tag?.id ?? tagLabelOf(tag));
   const hash = [...id].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 0);
@@ -1848,12 +1848,25 @@ function paymentRequestTagClass(tag, active) {
 }
 function paymentTagClass(active) {
   return active
-    ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white"
-    : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10";
+    ? "bg-[#036499] text-[#D5E6F1] ring-[#036499]"
+    : "bg-[#D5E6F1] text-[#036499] ring-[#D5E6F1] hover:brightness-95";
 }
 
-function statusBadgeClass(status) {
-  return status === "approved" || status === "tenkhah_charged" ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300" : status === "tenkhah" ? "border border-violet-200/90 bg-violet-100 text-violet-700 shadow-sm dark:border-violet-400/20 dark:bg-violet-500/15 dark:text-violet-300" : status === "awaiting_payment" ? "border border-teal-200/90 bg-[#F3E9DC] text-teal-800 shadow-sm dark:border-teal-400/20 dark:bg-teal-500/15 dark:text-teal-200" : status === "pending" || status === "tenkhah_pending" ? "border border-sky-200/90 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300" : status === "rejected" ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300" : status === "returned" ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300" : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200";
+function statusBadgeClass(status, active = false) {
+  const palette = status === "approved" || status === "tenkhah_charged"
+    ? ["border-[#DDF6E8] bg-[#DDF6E8] text-[#247A4D]", "border-[#247A4D] bg-[#247A4D] text-[#DDF6E8]"]
+    : status === "tenkhah"
+    ? ["border-[#EEE4FF] bg-[#EEE4FF] text-[#7042A6]", "border-[#7042A6] bg-[#7042A6] text-[#EEE4FF]"]
+    : status === "awaiting_payment"
+    ? ["border-[#DDF4F2] bg-[#DDF4F2] text-[#08756D]", "border-[#08756D] bg-[#08756D] text-[#DDF4F2]"]
+    : status === "pending" || status === "tenkhah_pending"
+    ? ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499]", "border-[#036499] bg-[#036499] text-[#D5E6F1]"]
+    : status === "rejected"
+    ? ["border-[#FCE2E5] bg-[#FCE2E5] text-[#B4233C]", "border-[#B4233C] bg-[#B4233C] text-[#FCE2E5]"]
+    : status === "returned"
+    ? ["border-[#FFF0D8] bg-[#FFF0D8] text-[#A65D00]", "border-[#A65D00] bg-[#A65D00] text-[#FFF0D8]"]
+    : ["border-neutral-200 bg-neutral-100 text-neutral-700", "border-neutral-700 bg-neutral-700 text-neutral-100"];
+  return `border shadow-sm ${palette[active ? 1 : 0]}`;
 }
 
 function StatusBadge({ status }) {
