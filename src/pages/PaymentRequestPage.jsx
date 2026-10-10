@@ -1621,7 +1621,7 @@ function RequestFilterBar({ query, setQuery, quick, setQuick, ownership, setOwne
         {visibleTags.map((tag) => {
           const id = String(tag?.id ?? "");
           const isActive = active.has(id);
-          return <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentTagClass(isActive)}`}>{tagLabelOf(tag)}</button>;
+          return <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${paymentRequestTagClass(tag, isActive)}`}>{tagLabelOf(tag)}</button>;
         })}
       </div>
     </div>
@@ -1824,7 +1824,7 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
       <div className="flex h-[min(70vh,620px)] w-[min(760px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-black/10 p-4 dark:border-white/10"><b className="text-sm">انتخاب برچسب</b><button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 dark:border-white/10"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" /></button></div>
         <div className="p-4"><input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="جستجو در برچسب‌ها..." /></div>
-        <div className="flex-1 overflow-auto px-4 pb-4"><div className="flex flex-wrap gap-2">{list.map((tag) => { const id = String(tag?.id ?? ""); const active = selected.has(id); return <button key={id} type="button" onClick={() => onToggle(id)} className={`h-10 rounded-full border px-4 text-sm transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 hover:bg-black/[0.03] dark:border-white/15 dark:hover:bg-white/10"}`}>{tagLabelOf(tag)}</button>; })}</div></div>
+        <div className="flex-1 overflow-auto px-4 pb-4"><div className="flex flex-wrap gap-2">{list.map((tag) => { const id = String(tag?.id ?? ""); const active = selected.has(id); return <button key={id} type="button" onClick={() => onToggle(id)} className={`h-10 rounded-full border px-4 text-sm shadow-sm transition ${paymentRequestTagClass(tag, active)}`}>{tagLabelOf(tag)}</button>; })}</div></div>
       </div>
     </div>
   </div>, document.body);
@@ -1833,6 +1833,19 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
 function Field({ label, required, children, className = "" }) { return <label className={`block text-xs text-neutral-600 dark:text-neutral-300 ${className}`}>{label}{required && <span className="mr-1 text-red-500">*</span>}<div className="mt-1">{children}</div></label>; }
 function ReadField({ label, value, ltr }) { return <Field label={label}><div dir={ltr ? "ltr" : "rtl"} className={`${inputClass} flex items-center ${ltr ? "justify-end" : ""}`}>{value || "—"}</div></Field>; }
 function MoneyInput({ value, onChange, className = "", disabled = false, decimals = 0 }) { return <input dir="ltr" inputMode={decimals ? "decimal" : "numeric"} disabled={disabled} className={`${inputClass} ${className}`} value={toFa(value)} onChange={(e) => onChange(decimals ? decimalMoney(e.target.value) : money(e.target.value))} placeholder="۰" />; }
+function paymentRequestTagClass(tag, active) {
+  const palettes = [
+    ["border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-300", "border-sky-600 bg-sky-600 text-white dark:border-sky-400 dark:bg-sky-400 dark:text-slate-950"],
+    ["border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-300", "border-emerald-600 bg-emerald-600 text-white dark:border-emerald-400 dark:bg-emerald-400 dark:text-slate-950"],
+    ["border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-300", "border-violet-600 bg-violet-600 text-white dark:border-violet-400 dark:bg-violet-400 dark:text-slate-950"],
+    ["border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-300", "border-amber-600 bg-amber-600 text-white dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950"],
+    ["border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-300", "border-rose-600 bg-rose-600 text-white dark:border-rose-400 dark:bg-rose-400 dark:text-slate-950"],
+    ["border-teal-200 bg-teal-50 text-teal-700 hover:bg-teal-100 dark:border-teal-400/30 dark:bg-teal-500/10 dark:text-teal-300", "border-teal-600 bg-teal-600 text-white dark:border-teal-400 dark:bg-teal-400 dark:text-slate-950"],
+  ];
+  const id = String(tag?.id ?? tagLabelOf(tag));
+  const hash = [...id].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 0);
+  return palettes[hash % palettes.length][active ? 1 : 0];
+}
 function paymentTagClass(active) {
   return active
     ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white"
