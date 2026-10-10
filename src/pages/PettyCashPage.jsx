@@ -19,8 +19,8 @@ const percent = (part, total) => total > 0n
   : 0;
 
 function ProgressColumn({ label, filled, total, full = false }) {
-  return <div className="flex min-w-0 flex-col items-center gap-3">
-    <div className="relative h-52 w-full max-w-20 overflow-hidden rounded-t-lg border border-neutral-300 bg-neutral-200 sm:h-60"
+  return <div className="flex w-16 shrink-0 flex-col items-center gap-3 sm:w-20">
+    <div className="relative h-52 w-full overflow-hidden border border-neutral-300 bg-neutral-200 sm:h-60"
       role="img" aria-label={`${label}: ${money(filled)} از ${money(total)} ریال`}>
       <div className="absolute inset-x-0 bottom-0 bg-white transition-all duration-500" style={{ height: full ? "100%" : `${percent(filled, total)}%` }} />
     </div>
@@ -38,6 +38,7 @@ function SummaryLine({ label, value }) {
 function MyPettyCashSummary() {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
+  const [balances, setBalances] = useState({ receivedAmount: "0", unregisteredBalance: "0", unsettledBalance: "0" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -46,27 +47,40 @@ function MyPettyCashSummary() {
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    fetch("/api/petty-cash-expenses?summary=mine", {
+    const options = {
       credentials: "include",
       headers: { "x-user-id": String(user.id) },
       signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || "دریافت اطلاعات تنخواه انجام نشد.");
-        return data;
+    };
+    const read = async (path) => {
+      const response = await fetch(path, options);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "دریافت اطلاعات تنخواه انجام نشد.");
+      return data;
+    };
+    Promise.all([
+      read("/api/petty-cash-expenses?summary=mine"),
+      read(`/api/tenkhah?beneficiaryId=${encodeURIComponent(user.id)}`),
+    ])
+      .then(([summary, balance]) => {
+        setItems(Array.isArray(summary.items) ? summary.items : []);
+        setBalances(balance);
       })
-      .then((data) => setItems(Array.isArray(data.items) ? data.items : []))
       .catch((reason) => { if (reason.name !== "AbortError") setError(reason.message); })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [user?.id]);
 
-  const totals = useMemo(() => items.reduce((sum, item) => ({
-    received: sum.received + amount(item.receivedAmount),
-    registered: sum.registered + amount(item.registeredExpenses),
-    approved: sum.approved + amount(item.approvedExpenses),
-  }), { received: 0n, registered: 0n, approved: 0n }), [items]);
+  // The payment-request petty-cash form reads these beneficiary balances from
+  // /api/tenkhah. They include both legacy settlement entries and newer expenses.
+  const received = amount(balances.receivedAmount);
+  const unregistered = amount(balances.unregisteredBalance);
+  const unsettled = amount(balances.unsettledBalance);
+  const totals = {
+    received,
+    registered: received - unregistered,
+    approved: received - unsettled,
+  };
   const projects = useMemo(() => items.filter((item) => amount(item.receivedAmount) > 0n), [items]);
   let angle = 0;
   const sectors = projects.map((project, index) => {
@@ -82,7 +96,7 @@ function MyPettyCashSummary() {
     {error && <p role="alert" className="mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {loading && <p role="status" className="mb-6 text-sm text-neutral-500">در حال دریافت اطلاعات...</p>}
     <div className="grid gap-9 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
-      <div className="flex items-end justify-center gap-5 sm:gap-8" aria-label="مقایسه تنخواه دریافت‌شده، هزینه ثبت‌شده و هزینه تأییدشده">
+      <div className="flex items-end justify-center gap-0" aria-label="مقایسه تنخواه دریافت‌شده، هزینه ثبت‌شده و هزینه تأییدشده">
         <ProgressColumn label="تأییدشده" filled={totals.approved} total={totals.received} />
         <ProgressColumn label="ثبت‌شده" filled={totals.registered} total={totals.received} />
         <ProgressColumn label="کل تنخواه‌ها" filled={totals.received} total={totals.received} full />
@@ -90,9 +104,9 @@ function MyPettyCashSummary() {
       <div className="self-center space-y-4 text-sm sm:text-base">
         <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} />
         <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} />
-        <SummaryLine label="باقی‌مانده هزینه‌های ثبت‌شده" value={totals.received - totals.registered} />
+        <SummaryLine label="باقی‌مانده هزینه‌های ثبت‌شده" value={unregistered} />
         <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} />
-        <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={totals.received - totals.approved} />
+        <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} />
       </div>
     </div>
     <hr className="my-9 border-neutral-200" />
