@@ -94,7 +94,7 @@ function MyPettyCashSummary() {
     ? `conic-gradient(${sectors.join(", ")}${angle < 100 ? `, #e5e7eb ${angle}% 100%` : ""})`
     : "#e5e7eb";
 
-  return <section className="rounded-2xl border border-neutral-200 bg-white px-4 py-7 text-neutral-900 sm:px-7 lg:px-10">
+  return <section className="rounded-b-2xl border border-neutral-200 bg-white px-4 py-7 text-neutral-900 sm:px-7 lg:px-10">
     {error && <p role="alert" className="mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {loading && <p role="status" className="mb-6 text-sm text-neutral-500">در حال دریافت اطلاعات...</p>}
     <div className="grid gap-9 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
@@ -146,14 +146,14 @@ export default function PettyCashPage() {
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
           </span>
         </header>
-        <nav className="mb-3 inline-flex max-w-full overflow-x-auto rounded-xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
+        <nav className="flex w-fit max-w-full overflow-x-auto rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
           {tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)}
             aria-current={activeTab === index ? "page" : undefined}
             className={`shrink-0 whitespace-nowrap border-l border-neutral-200 px-4 py-3 text-sm font-bold transition last:border-l-0 sm:px-6 sm:text-base ${activeTab === index ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-50"}`}>{tab}</button>)}
         </nav>
         {activeTab === 0 && <MyPettyCashSummary />}
         {activeTab === 1 && <PettyCashExpenseTab />}
-        {activeTab === 2 && <div className="min-h-80 rounded-2xl border border-neutral-200 bg-white" />}
+        {activeTab === 2 && <div className="min-h-80 rounded-b-2xl border border-neutral-200 bg-white" />}
       </div>
     </Card>
   </div>;
@@ -288,7 +288,7 @@ function PettyCashExpenseTab() {
     visibleIds.forEach((id) => { if (allVisibleSelected) next.delete(id); else next.add(id); });
     return next;
   });
-  return <section className="rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4">
+  return <section className="rounded-b-2xl border border-neutral-200 bg-white p-3 sm:p-4">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <Field label="پروژه">
         <select value={projectId} onChange={(event) => selectProject(event.target.value)} className={`${inputClass} min-w-64`}>
@@ -301,7 +301,7 @@ function PettyCashExpenseTab() {
       </button>
     </div>
 
-    <div className="mb-3 grid grid-cols-1 items-start gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_140px]">
+    <div className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_100px]">
       <Field label="تاریخ">
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
@@ -320,16 +320,16 @@ function PettyCashExpenseTab() {
           onChange={(event) => setForm((current) => ({ ...current, amount: format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")) }))}
           className={`${inputClass} text-left tabular-nums`} />
       </Field>
-      <div className="flex flex-col gap-3">
+      <div className="flex items-end gap-3">
         <Field label="پیوست">
           <input ref={fileInputRef} type="file" className="hidden" accept=".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp,.heic,.heif"
             onChange={(event) => setAttachment(event.target.files?.[0] || null)} />
           <button type="button" onClick={() => fileInputRef.current?.click()}
-            className={`${inputClass} grid place-items-center`} title={attachment?.name || "بارگذاری"} aria-label={attachment?.name || "بارگذاری پیوست"}>
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white outline-none focus:border-neutral-400" title={attachment?.name || "بارگذاری"} aria-label={attachment?.name || "بارگذاری پیوست"}>
             <img src="/images/icons/upload.svg" alt="" className="h-5 w-5" />
           </button>
         </Field>
-        <button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-2xl text-white disabled:opacity-50"
+        <button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-black text-2xl text-white disabled:opacity-50"
           title="افزودن ردیف" aria-label="افزودن ردیف">+</button>
       </div>
     </div>
