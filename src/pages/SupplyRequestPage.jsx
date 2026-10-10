@@ -237,20 +237,37 @@ function clientRegistrationInfo() {
   };
 }
 
-function statusBadgeClass(status) {
-  return (
-    status === "done" || status === "completed"
-      ? "border border-emerald-200/90 bg-emerald-100 text-emerald-700 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-500/15 dark:text-emerald-300"
-      : status === "canceled" || status === "cancelled" || status === "rejected"
-        ? "border border-red-200/90 bg-red-100 text-red-700 shadow-sm dark:border-red-400/20 dark:bg-red-500/15 dark:text-red-300"
-    : status === "in_progress"
-    ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300"
+function statusBadgeClass(status, active = false) {
+  const palette = status === "done" || status === "completed"
+    ? ["border-[#DDF6E8] bg-[#DDF6E8] text-[#247A4D]", "border-[#247A4D] bg-[#247A4D] text-[#DDF6E8]"]
+    : status === "canceled" || status === "cancelled" || status === "rejected"
+    ? ["border-[#FCE2E5] bg-[#FCE2E5] text-[#B4233C]", "border-[#B4233C] bg-[#B4233C] text-[#FCE2E5]"]
+    : status === "in_progress" || status === "returned"
+    ? ["border-[#FFF0D8] bg-[#FFF0D8] text-[#A65D00]", "border-[#A65D00] bg-[#A65D00] text-[#FFF0D8]"]
     : status === "pending" || status === "final_approval" || status === "approved"
-    ? "border border-sky-200/90 bg-sky-100 text-sky-700 shadow-sm dark:border-sky-400/20 dark:bg-sky-500/15 dark:text-sky-300"
-            : status === "returned"
-          ? "border border-amber-200/90 bg-amber-100 text-amber-700 shadow-sm dark:border-amber-400/20 dark:bg-amber-500/15 dark:text-amber-300"
-          : "border border-neutral-200 bg-neutral-100 text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/10 dark:text-neutral-200"
-  );
+    ? ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499]", "border-[#036499] bg-[#036499] text-[#D5E6F1]"]
+    : ["border-neutral-200 bg-neutral-100 text-neutral-700", "border-neutral-700 bg-neutral-700 text-neutral-100"];
+  return `border shadow-sm ${palette[active ? 1 : 0]}`;
+}
+
+function plainFilterTagClass(active) {
+  return active
+    ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white"
+    : "bg-white text-neutral-900 ring-black/10 hover:bg-neutral-50 dark:bg-white/5 dark:text-white dark:ring-white/15 dark:hover:bg-white/10";
+}
+
+function supplyRequestTagClass(tag, active) {
+  const palettes = [
+    ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499] hover:brightness-95", "border-[#036499] bg-[#036499] text-[#D5E6F1]"],
+    ["border-[#DDF6E8] bg-[#DDF6E8] text-[#247A4D] hover:brightness-95", "border-[#247A4D] bg-[#247A4D] text-[#DDF6E8]"],
+    ["border-[#EEE4FF] bg-[#EEE4FF] text-[#7042A6] hover:brightness-95", "border-[#7042A6] bg-[#7042A6] text-[#EEE4FF]"],
+    ["border-[#FFF0D8] bg-[#FFF0D8] text-[#A65D00] hover:brightness-95", "border-[#A65D00] bg-[#A65D00] text-[#FFF0D8]"],
+    ["border-[#FCE2E5] bg-[#FCE2E5] text-[#B4233C] hover:brightness-95", "border-[#B4233C] bg-[#B4233C] text-[#FCE2E5]"],
+    ["border-[#DDF4F2] bg-[#DDF4F2] text-[#08756D] hover:brightness-95", "border-[#08756D] bg-[#08756D] text-[#DDF4F2]"],
+  ];
+  const id = String(tag?.id ?? tagLabelOf(tag));
+  const hash = [...id].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 0);
+  return palettes[hash % palettes.length][active ? 1 : 0];
 }
 
 function StatusBadge({ status }) {
@@ -2408,11 +2425,11 @@ function RequestFilterBar({
       <div>
         <div className={labelCls}>برچسب ها</div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${ownership === "mine" ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>درخواست‌های من</button>
-          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${ownership === "incoming" ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>موارد ارسال‌شده به من</button>
-          <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${unread ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}>خوانده نشده</button>
+          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${plainFilterTagClass(ownership === "mine")}`}>درخواست‌های من</button>
+          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${plainFilterTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
+          <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${plainFilterTagClass(unread)}`}>خوانده نشده</button>
           {STATUS_FILTERS.map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${status === key ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : statusBadgeClass(key)} `}>
+            <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${statusBadgeClass(key, status === key)} `}>
               {label}
             </button>
           ))}
@@ -2420,7 +2437,7 @@ function RequestFilterBar({
             const id = String(tag?.id ?? "");
             const isActive = active.has(id);
             return (
-              <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`h-9 rounded-full border px-4 text-xs transition ${isActive ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>
+              <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`h-9 rounded-full border px-4 text-xs shadow-sm transition ${supplyRequestTagClass(tag, isActive)} `}>
                 {tagLabelOf(tag)}
               </button>
             );
@@ -2456,7 +2473,7 @@ function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
                 const id = String(tag?.id ?? "");
                 const active = selected.has(id);
                 return (
-                  <button key={id} type="button" onClick={() => onToggle(id)} className={`h-10 rounded-full border px-4 text-sm transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 hover:bg-black/[0.03] dark:border-white/15 dark:hover:bg-white/10"}`}>
+                  <button key={id} type="button" onClick={() => onToggle(id)} className={`h-10 rounded-full border px-4 text-sm shadow-sm transition ${supplyRequestTagClass(tag, active)} `}>
                     {tagLabelOf(tag)}
                   </button>
                 );

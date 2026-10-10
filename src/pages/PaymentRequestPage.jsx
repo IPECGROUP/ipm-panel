@@ -1848,8 +1848,8 @@ function paymentRequestTagClass(tag, active) {
 }
 function paymentTagClass(active) {
   return active
-    ? "bg-[#036499] text-[#D5E6F1] ring-[#036499]"
-    : "bg-[#D5E6F1] text-[#036499] ring-[#D5E6F1] hover:brightness-95";
+    ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900 dark:ring-white"
+    : "bg-white text-neutral-900 ring-black/10 hover:bg-neutral-50 dark:bg-white/5 dark:text-white dark:ring-white/15 dark:hover:bg-white/10";
 }
 
 function statusBadgeClass(status, active = false) {
