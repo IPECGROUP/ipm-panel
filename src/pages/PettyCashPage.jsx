@@ -8,7 +8,6 @@ import Card from "../components/ui/Card.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
 
-const tabs = ["ثبت هزینه‌ها", "گزارش تسویه تنخواه"];
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
 const amount = (value) => { try { return BigInt(value || 0); } catch { return 0n; } };
 const money = (value) => {
@@ -132,7 +131,8 @@ function MyPettyCashSummary() {
 }
 
 export default function PettyCashPage() {
-  const [activeTab, setActiveTab] = useState(0);
+  const [expenseFormOpen, setExpenseFormOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [summaryOpen, setSummaryOpen] = useState(false);
   const summaryDialogRef = useRef(null);
 
@@ -171,19 +171,39 @@ export default function PettyCashPage() {
           <div className="mr-auto flex shrink-0 items-center gap-3">
             <button type="button" onClick={() => setSummaryOpen(true)} aria-haspopup="dialog"
               className="h-10 rounded-xl px-3 text-sm font-semibold ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">تنخواه‌های من</button>
-            <button type="button" title="افزودن" aria-label="افزودن"
+            <button type="button" onClick={() => setExpenseFormOpen((current) => !current)}
+              title={expenseFormOpen ? "بستن" : "افزودن"} aria-label={expenseFormOpen ? "بستن فرم ثبت هزینه‌ها" : "افزودن"} aria-expanded={expenseFormOpen}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">
-              <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 dark:invert" />
+              <img src={expenseFormOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
             </button>
           </div>
         </header>
-        <nav className="mx-auto grid w-fit max-w-full grid-cols-2 overflow-x-auto rounded-t-2xl border border-neutral-200 bg-white" aria-label="بخش‌های تنخواه‌گردان">
-          {tabs.map((tab, index) => <button key={tab} type="button" onClick={() => setActiveTab(index)}
-            aria-current={activeTab === index ? "page" : undefined}
-            className={`shrink-0 whitespace-nowrap border-l border-neutral-200 px-4 py-3 text-sm font-bold transition last:border-l-0 sm:px-6 sm:text-base ${activeTab === index ? "bg-black text-white" : "bg-white text-black hover:bg-neutral-50"}`}>{tab}</button>)}
-        </nav>
-        {activeTab === 0 && <PettyCashExpenseTab />}
-        {activeTab === 1 && <div className="min-h-80 rounded-b-2xl border border-neutral-200 bg-white" />}
+        {expenseFormOpen ? <PettyCashExpenseTab /> : <>
+          <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50 p-3 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <Field label="جست و جو">
+              <input type="text" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="جستجو در شماره گزارش، تاریخ، پروژه، در انتظار و وضعیت ..."
+                className={`${inputClass} placeholder:text-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white`} />
+            </Field>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[680px] table-fixed border-collapse text-sm" aria-label="گزارش‌های تنخواه">
+                <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
+                  <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
+                    <th scope="col" className="w-16 px-3 text-right font-bold">ردیف</th>
+                    <th scope="col" className="px-3 text-right font-bold">شماره گزارش</th>
+                    <th scope="col" className="px-3 text-right font-bold">تاریخ</th>
+                    <th scope="col" className="px-3 text-right font-bold">پروژه</th>
+                    <th scope="col" className="px-3 text-right font-bold">در انتظار</th>
+                    <th scope="col" className="px-3 text-right font-bold">وضعیت</th>
+                  </tr>
+                </thead>
+                <tbody />
+              </table>
+            </div>
+          </div>
+        </>}
       </div>
     </Card>
     {summaryOpen && createPortal(
