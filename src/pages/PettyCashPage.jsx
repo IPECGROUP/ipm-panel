@@ -24,8 +24,8 @@ const percent = (part, total) => total > 0n
   ? Math.max(0, Math.min(100, Number((part * 1000n) / total) / 10))
   : 0;
 
-function SummaryLine({ label, value }) {
-  return <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 border-b border-neutral-100 pb-3 last:border-b-0">
+function SummaryLine({ label, value, color }) {
+  return <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 border-b border-neutral-100 pb-3 last:border-b-0" style={color ? { color } : undefined}>
     <span>{label}:</span>
     <strong className="whitespace-nowrap font-semibold tabular-nums">{money(value)} ریال</strong>
   </div>;
@@ -94,11 +94,11 @@ function MyPettyCashSummary() {
     <div className="grid gap-9 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
       <PettyCashBarChart totals={totals} />
       <div className="self-center space-y-4 text-sm sm:text-base">
-        <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} />
-        <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} />
+        <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} color="#6366F1" />
+        <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} color="#38BDF8" />
         <SummaryLine label="باقی‌مانده هزینه‌های ثبت نشده" value={unregistered} />
-        <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} />
-        <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} />
+        <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} color="#10B981" />
+        <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} color="#6B7280" />
       </div>
     </div>
     <hr className="my-9 border-neutral-200" />
@@ -584,7 +584,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
       <div className="flex w-full flex-wrap items-end justify-start gap-4">
         {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} ml-auto border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-        {canAct && <div className="grid w-full grid-cols-3 gap-2 sm:w-auto sm:grid-cols-[repeat(3,8rem)] sm:gap-3">
+        {canAct && <div className="mr-auto grid w-full max-w-[19rem] grid-cols-3 gap-1">
           <div className="flex min-w-0 flex-col items-center gap-1.5"><span className="text-center text-[11px] font-semibold text-neutral-600">تأیید گروهی</span><button type="button" aria-label="تأیید گروهی" title="تأیید گروهی" disabled={saving} onClick={() => applyGroupDecision("approved")} className={`${actionClass} mt-auto h-11 w-11 !p-0 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" /></button></div>
           <div className="flex min-w-0 flex-col items-center gap-1.5"><span className="text-center text-[11px] font-semibold text-neutral-600">رد گروهی</span><button type="button" aria-label="رد گروهی" title="رد گروهی" disabled={saving} onClick={() => applyGroupDecision("rejected")} className={`${actionClass} mt-auto h-11 w-11 !p-0 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" /></button></div>
           <div className="flex min-w-0 flex-col items-center gap-1.5"><span className="text-center text-[11px] font-semibold text-neutral-600">درخواست اصلاح گروهی</span><button type="button" aria-label="درخواست اصلاح گروهی" title="درخواست اصلاح گروهی" disabled={saving} onClick={() => applyGroupDecision("revision")} className={`${actionClass} mt-auto h-11 w-11 !p-0 border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" /></button></div>
