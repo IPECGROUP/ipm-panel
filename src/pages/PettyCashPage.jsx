@@ -148,6 +148,13 @@ async function fetchExpenseReports(userId) {
   return data.items || [];
 }
 
+async function fetchPettyCashBalance(userId) {
+  const response = await fetch(`/api/tenkhah?beneficiaryId=${encodeURIComponent(userId)}`, { credentials: "include", headers: { "x-user-id": String(userId) } });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error("دریافت مانده تنخواه انجام نشد.");
+  return { received: amount(data.receivedAmount), available: amount(data.unregisteredBalance) };
+}
+
 export default function PettyCashPage() {
   const { user } = useAuth();
   const userId = user?.id;
@@ -155,6 +162,7 @@ export default function PettyCashPage() {
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [expenseFormKey, setExpenseFormKey] = useState(0);
   const [reportSaving, setReportSaving] = useState(false);
+  const [expenseAccess, setExpenseAccess] = useState({ loading: true, received: 0n, available: 0n, error: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [reportStatusFilter, setReportStatusFilter] = useState("");
   const [reportOwnershipFilter, setReportOwnershipFilter] = useState("");
@@ -177,14 +185,28 @@ export default function PettyCashPage() {
     setReportError("");
     return nextReports;
   }, [userId]);
+  const loadExpenseAccess = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const balance = await fetchPettyCashBalance(userId);
+      setExpenseAccess({ loading: false, ...balance, error: "" });
+      if (balance.available <= 0n) setExpenseFormOpen(false);
+    } catch (reason) {
+      setExpenseAccess({ loading: false, received: 0n, available: 0n, error: reason.message });
+      setExpenseFormOpen(false);
+    }
+  }, [userId]);
   useEffect(() => {
-    const refresh = () => loadReports().catch((reason) => setReportError(reason.message));
+    const refresh = () => {
+      loadReports().catch((reason) => setReportError(reason.message));
+      loadExpenseAccess();
+    };
     refresh();
     const timer = setInterval(refresh, 30000);
     window.addEventListener("focus", refresh);
     window.addEventListener("tenkhah-notifications-refresh", refresh);
     return () => { clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("tenkhah-notifications-refresh", refresh); };
-  }, [loadReports]);
+  }, [loadReports, loadExpenseAccess]);
   useEffect(() => {
     const target = searchParams.get("notificationTarget");
     if (!["petty_cash_report", "petty_cash_expense"].includes(target)) {
@@ -268,15 +290,19 @@ export default function PettyCashPage() {
           <div className="mr-auto flex shrink-0 items-center gap-3">
             <button type="button" onClick={() => setSummaryOpen(true)} aria-haspopup="dialog"
               className="h-10 rounded-xl px-3 text-sm font-semibold ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">تنخواه‌های من</button>
-            <button type="button" disabled={reportSaving} onClick={() => setExpenseFormOpen((current) => !current)}
-              title={expenseFormOpen ? "بستن" : "افزودن"} aria-label={expenseFormOpen ? "بستن فرم ثبت هزینه‌ها" : "افزودن"} aria-expanded={expenseFormOpen}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">
+            <button type="button" disabled={reportSaving || expenseAccess.loading || expenseAccess.available <= 0n} onClick={() => setExpenseFormOpen((current) => !current)}
+              title={expenseFormOpen ? "بستن" : expenseAccess.loading ? "در حال دریافت مانده تنخواه" : expenseAccess.available <= 0n ? "مانده‌ای برای ثبت هزینه وجود ندارد" : "افزودن"}
+              aria-label={expenseFormOpen ? "بستن فرم ثبت هزینه‌ها" : expenseAccess.available <= 0n ? "ثبت هزینه غیرفعال؛ مانده تنخواه صفر است" : "افزودن"} aria-expanded={expenseFormOpen}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:ring-neutral-800 dark:hover:bg-white/10">
               <img src={expenseFormOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
             </button>
           </div>
         </header>
+        {!expenseAccess.loading && expenseAccess.available <= 0n && <p role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+          {expenseAccess.error || (expenseAccess.received <= 0n ? "برای ثبت هزینه، ابتدا باید تنخواه دریافت کنید." : "تمام تنخواه دریافتی ثبت شده و مانده‌ای برای ثبت هزینه جدید وجود ندارد.")}
+        </p>}
         <div hidden={!expenseFormOpen}>
-        <PettyCashExpenseTab key={expenseFormKey} onBusyChange={setReportSaving} onSubmitted={(report) => {
+        <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onSubmitted={(report) => {
           setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
           setSearchQuery("");
           setReportStatusFilter("");
@@ -286,6 +312,7 @@ export default function PettyCashPage() {
           setEditingReport(null);
           setExpenseFormKey((current) => current + 1);
           loadReports().catch((reason) => setReportError(reason.message));
+          loadExpenseAccess();
           window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
         }} />
         </div>
@@ -778,7 +805,7 @@ function Field({ label, required = false, children }) {
   </label>;
 }
 
-function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
+function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availableBalance = null }) {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(initialReport ? String(initialReport.projectId) : "");
@@ -868,8 +895,13 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
   const addExpense = () => {
     if (!projectId) return setError("ابتدا پروژه را انتخاب کنید.");
     if (!reportName.trim()) return setError("نام گزارش را وارد کنید.");
-    if (!form.expenseDate || !form.description.trim() || !form.budgetCode || amount(toEnglishDigits(form.amount).replace(/[^\d]/g, "")) <= 0n) {
+    const rowAmount = amount(toEnglishDigits(form.amount).replace(/[^\d]/g, ""));
+    if (!form.expenseDate || !form.description.trim() || !form.budgetCode || rowAmount <= 0n) {
       return setError("تاریخ، شرح، کد بودجه و مبلغ مثبت را تکمیل کنید.");
+    }
+    const otherRowsAmount = items.reduce((sum, item) => item.id === editingExpense?.id ? sum : sum + amount(item.amount), 0n);
+    if (!initialReport && availableBalance !== null && (availableBalance <= 0n || otherRowsAmount + rowAmount > availableBalance)) {
+      return setError(availableBalance <= 0n ? "مانده‌ای برای ثبت هزینه وجود ندارد." : `مجموع هزینه‌ها نمی‌تواند از مانده تنخواه (${money(availableBalance)} ریال) بیشتر باشد.`);
     }
     if (!attachment && !editingExpense?.fileUrl) return setError("پیوست عکس برای هر ردیف الزامی است.");
     if (!editingExpense && items.length >= 500) return setError("هر گزارش حداکثر ۵۰۰ ردیف می‌تواند داشته باشد.");
@@ -890,6 +922,9 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
   const reportValidationError = () => {
     if (!projectId || !reportName.trim()) return "پروژه و نام گزارش را تکمیل کنید.";
     if (!items.length) return "حداقل یک ردیف هزینه به گزارش اضافه کنید.";
+    const reportAmount = items.reduce((sum, item) => sum + amount(item.amount), 0n);
+    if (!initialReport && availableBalance !== null && availableBalance <= 0n) return "مانده‌ای برای ثبت هزینه وجود ندارد.";
+    if (!initialReport && availableBalance !== null && reportAmount > availableBalance) return `مجموع هزینه‌ها نمی‌تواند از مانده تنخواه (${money(availableBalance)} ریال) بیشتر باشد.`;
     if (editingExpense || form.description.trim() || form.budgetCode || form.amount || attachment) {
       return "ابتدا ردیف در حال ورود یا ویرایش را با دکمه افزودن ردیف ثبت کنید.";
     }
@@ -942,6 +977,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
     } catch (reason) {
       const messages = { invalid_report: "پروژه و نام گزارش معتبر وارد کنید.", required_expense_fields: "همه فیلدها و پیوست هر ردیف باید معتبر باشند.",
         active_project_not_found: "پروژه فعال پیدا نشد.", budget_code_not_found: "کد بودجه در این پروژه معتبر نیست.",
+        petty_cash_balance_unavailable: "مانده‌ای برای ثبت هزینه وجود ندارد.", petty_cash_balance_exceeded: "مجموع هزینه‌ها از مانده تنخواه بیشتر است.",
         workflow_recipients_missing: "هیچ عضو فعالی در واحد گیرنده تعریف نشده است.", workflow_changed: "گردش کار گزارش تغییر کرده است؛ گزارش را دوباره باز کنید.",
         not_allowed: "ویرایش این ردیف‌ها در مرحله فعلی مجاز نیست.", internal_error: "ثبت گزارش انجام نشد؛ دوباره تلاش کنید." };
       setError(messages[reason.message] || reason.message);
