@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, UserRound, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
@@ -20,10 +21,6 @@ const money = (value) => {
   const formatted = format3(absolute.toString()).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
   return number < 0n ? `(${formatted})` : formatted;
 };
-const percent = (part, total) => total > 0n
-  ? Math.max(0, Math.min(100, Number((part * 1000n) / total) / 10))
-  : 0;
-
 function SummaryLine({ label, value, color }) {
   return <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 border-b border-neutral-100 pb-3 last:border-b-0" style={color ? { color } : undefined}>
     <span>{label}:</span>
@@ -78,15 +75,15 @@ function MyPettyCashSummary() {
     approved: received - unsettled,
   };
   const projects = useMemo(() => items.filter((item) => amount(item.receivedAmount) > 0n), [items]);
-  let angle = 0;
-  const sectors = projects.map((project, index) => {
-    const start = angle;
-    angle += percent(amount(project.receivedAmount), totals.received);
-    return `${colors[index % colors.length]} ${start}% ${angle}%`;
-  });
-  const pieBackground = sectors.length
-    ? `conic-gradient(${sectors.join(", ")}${angle < 100 ? `, #e5e7eb ${angle}% 100%` : ""})`
-    : "#e5e7eb";
+  const projectChartData = projects.map((project, index) => ({
+    id: project.projectId,
+    name: project.projectName || project.projectCode || `پروژه ${index + 1}`,
+    amount: amount(project.receivedAmount).toString(),
+    value: Number(amount(project.receivedAmount)),
+    color: colors[index % colors.length],
+  }));
+  const unassigned = totals.received - projects.reduce((sum, project) => sum + amount(project.receivedAmount), 0n);
+  if (projects.length && unassigned > 0n) projectChartData.push({ id: "unassigned", name: "سایر تنخواه‌ها", amount: unassigned.toString(), value: Number(unassigned), color: "#CBD5E1" });
 
   return <section className="rounded-b-2xl border border-neutral-200 bg-white px-4 py-7 text-neutral-900 sm:px-7 lg:px-10">
     {error && <p role="alert" className="mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
@@ -103,8 +100,32 @@ function MyPettyCashSummary() {
     </div>
     <hr className="my-9 border-neutral-200" />
     <div className="grid items-center gap-8 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
-      <div className="mx-auto aspect-square w-52 rounded-full border border-neutral-200 sm:w-64"
-        style={{ background: pieBackground }} role="img" aria-label="سهم هر پروژه از مجموع تنخواه‌های دریافت‌شده" />
+      <div className="min-w-0 rounded-2xl border border-neutral-200 bg-gradient-to-b from-slate-50 to-white p-4 shadow-sm sm:p-5">
+        <h3 className="text-sm font-bold text-slate-800">سهم پروژه‌ها</h3>
+        <p className="mt-1 text-xs text-slate-500">از مجموع تنخواه دریافتی</p>
+        <div role="img" aria-label="سهم هر پروژه از مجموع تنخواه‌های دریافت‌شده" className="relative mx-auto mt-3 h-56 w-full max-w-72 select-none sm:h-64 [&_.recharts-wrapper:focus:not(:focus-visible)]:outline-none">
+          {projectChartData.length ? <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <PieChart>
+              <Pie data={projectChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="61%" outerRadius="84%" paddingAngle={projectChartData.length > 1 ? 2 : 0} cornerRadius={5} stroke="#fff" strokeWidth={2}>
+                {projectChartData.map((project) => <Cell key={project.id} fill={project.color} />)}
+              </Pie>
+              <Tooltip offset={14} isAnimationActive animationDuration={120} animationEasing="ease-out" wrapperStyle={{ pointerEvents: "none", transition: "transform 120ms ease-out" }} content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const project = payload[0].payload;
+                return <div dir="rtl" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-right text-xs shadow-lg">
+                  <div className="font-semibold" style={{ color: project.color }}>{project.name}</div>
+                  <div className="mt-1 font-bold tabular-nums text-slate-900">{money(project.amount)} ریال</div>
+                </div>;
+              }} />
+            </PieChart>
+          </ResponsiveContainer> : <div className="absolute inset-0 m-auto h-44 w-44 rounded-full border-[22px] border-slate-200 sm:h-52 sm:w-52" />}
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+            <span className="text-[11px] text-slate-500">کل تنخواه‌ها</span>
+            <strong className="mt-1 text-xs font-bold tabular-nums text-slate-800 sm:text-sm">{money(totals.received)}</strong>
+            <span className="text-[10px] text-slate-500">ریال</span>
+          </div>
+        </div>
+      </div>
       <div>
         <h2 className="mb-5 text-base font-bold">تنخواه دریافت‌شده به تفکیک پروژه</h2>
         {projects.length ? <ul className="space-y-3">{projects.map((project, index) =>

@@ -27,7 +27,7 @@ export default function PettyCashBarChart({ totals }) {
       <h3 className="text-sm font-bold text-slate-800">نمای کلی تنخواه</h3>
       <p className="mt-1 text-xs text-slate-500">مقایسه مبلغ‌ها نسبت به کل تنخواه دریافتی</p>
     </div>
-    <div role="img" aria-label={chartData.map((item) => `${item.label}: ${money(item.value)} ریال، ${Math.round(item.height).toLocaleString("fa-IR")}٪`).join("، ")} className="h-64 w-full min-w-0 sm:h-72" dir="ltr">
+    <div role="img" aria-label={chartData.map((item) => `${item.label}: ${money(item.value)} ریال، ${Math.round(item.height).toLocaleString("fa-IR")}٪`).join("، ")} className="h-64 w-full min-w-0 select-none sm:h-72 [&_.recharts-wrapper:focus:not(:focus-visible)]:outline-none" dir="ltr">
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <BarChart data={plotData} margin={{ top: 12, right: 8, left: 8, bottom: 4 }} barCategoryGap="28%" accessibilityLayer>
           <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="4 4" />
@@ -37,12 +37,13 @@ export default function PettyCashBarChart({ totals }) {
               {item?.label} {Math.round(item?.height || 0).toLocaleString("fa-IR")}٪
             </text>;
           }} />
-          <Tooltip cursor={{ fill: "#e2e8f0", fillOpacity: 0.45 }} content={({ active, payload }) => {
+          <Tooltip cursor={{ fill: "#e2e8f0", fillOpacity: 0.45 }} offset={14} isAnimationActive animationDuration={120} animationEasing="ease-out" wrapperStyle={{ pointerEvents: "none", transition: "transform 120ms ease-out" }} content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const item = payload[0].payload;
             return <div dir="rtl" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-right text-xs shadow-lg">
               <div className="mb-1 font-semibold text-slate-600">{item.label}</div>
-              <div className="font-bold tabular-nums text-slate-900">{money(item.value)} ریال</div>
+              <div className="flex items-center justify-between gap-4 font-bold tabular-nums" style={{ color: item.color }}><span>{item.label}</span><span>{money(item.value)} ریال</span></div>
+              {item.remainder > 0 && <div className="mt-1 flex items-center justify-between gap-4 font-semibold tabular-nums" style={{ color: remainderColor }}><span>باقی‌مانده تأییدنشده ({Math.round(item.remainder).toLocaleString("fa-IR")}٪)</span><span>{money(totals.received - totals.approved)} ریال</span></div>}
             </div>;
           }} />
           <Bar dataKey="height" stackId="total" maxBarSize={70}>
