@@ -340,7 +340,7 @@ export default function PettyCashPage() {
               </button>}
             </div>
             <button type="button" disabled={reviewBusy} onClick={closeDialog} aria-label="بستن پنجره"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-black text-white hover:bg-neutral-800"><X className="h-4 w-4" /></button>
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black text-white hover:bg-neutral-800"><X className="h-4 w-4" /></button>
           </header>
           {selectedReport && editingReport?.id === selectedReport.id ? <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
             <PettyCashExpenseTab key={selectedReport.id} initialReport={selectedReport}
@@ -625,7 +625,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         }}>
         <header className="mb-4 flex items-center justify-between gap-2"><h3 id="petty-cash-manager-title" className="text-sm font-bold">انتخاب عضو مدیریت پروژه‌ها</h3>
-          <button type="button" disabled={saving} onClick={() => setManagerOpen(false)} aria-label="بستن انتخاب مدیر پروژه" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-neutral-100"><X className="h-4 w-4" /></button>
+          <button type="button" disabled={saving} onClick={() => setManagerOpen(false)} aria-label="بستن انتخاب مدیر پروژه" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-neutral-100"><X className="h-4 w-4" /></button>
         </header>
         {error && <p role="alert" className="mb-3 text-xs text-red-700">{error}</p>}
         <label className="block text-xs text-neutral-600">ارسال به
@@ -1339,7 +1339,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-neutral-100"><img src="/images/icons/upload.svg" alt="" className="h-6 w-6" /></span>
             <h2 id="petty-cash-photo-title" className="font-bold">پیوست هزینه</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-9 w-9 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
         </header>
         <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
           <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
