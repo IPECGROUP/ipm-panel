@@ -398,7 +398,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const canAct = actionable.length > 0 && !outdated;
   const allSelected = actionable.length > 0 && actionable.every((item) => selectedIds.has(item.id));
   const partlySelected = selectedIds.size > 0 && !allSelected;
-  const readyToSubmit = canAct && actionable.every((item) => selectedIds.has(item.id) && decisions[item.id]);
+  const readyToSubmit = canAct && Object.keys(decisions).length > 0;
 
   useEffect(() => {
     if (!managerOpen) return;
@@ -415,13 +415,13 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
   const submitDecision = async (recipientId = "") => {
     if (inFlightRef.current || !readyToSubmit) return;
-    if (!recipientId && actionable.some((item) => item.stage === "planning" && decisions[item.id] === "approved")) {
+    if (!recipientId && actionable.some((item) => item.stage === "planning" && !["rejected", "revision"].includes(decisions[item.id]))) {
       setError(""); setManagerId(""); setManagerOpen(true); return;
     }
     inFlightRef.current = true;
     setSaving(true); onBusyChange(true); setError("");
     try {
-      const rowDecisions = Object.fromEntries(actionable.map((item) => [item.id, decisions[item.id] === "approved" ? "approve" : decisions[item.id] === "rejected" ? "reject" : "revision"]));
+      const rowDecisions = Object.fromEntries(Object.entries(decisions).map(([id, value]) => [id, value === "approved" ? "approve" : value === "rejected" ? "reject" : "revision"]));
       const response = await fetch("/api/petty-cash-expenses", {
         method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(user?.id || "") },
         body: JSON.stringify({ action: "review_report", reportId: report.id, expectedVersion: report.version, decision: "approve", rowDecisions, note: notes, projectManagerId: recipientId || undefined }),
@@ -457,28 +457,24 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     return () => { active = false; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [attachment?.fileUrl]);
 
-  const toggleSelected = (id) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-    setDecisions((current) => { const next = { ...current }; delete next[id]; return next; });
-  };
+  const toggleSelected = (id) => setSelectedIds((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
   const viewRow = (item) => {
     setViewedRowIds((current) => current.has(item.id) ? current : new Set([...current, item.id]));
     const fileIndex = attachments.findIndex((file) => file.id === item.id);
     if (fileIndex >= 0) setAttachmentIndex(fileIndex);
   };
   const applyDecision = (decision) => {
+    if (!selectedIds.size || !canAct || saving) return;
+    setDecisions((current) => ({ ...current, ...Object.fromEntries([...selectedIds].map((id) => [id, decision])) }));
+  };
+  const applyGroupDecision = (decision) => {
     if (!canAct || saving) return;
     setSelectedIds(new Set(actionable.map((item) => item.id)));
     setDecisions(Object.fromEntries(actionable.map((item) => [item.id, decision])));
-  };
-  const clearDecisions = () => { setSelectedIds(new Set()); setDecisions({}); };
-  const setRowDecision = (id, decision) => {
-    setSelectedIds((current) => { const next = new Set(current); if (decision) next.add(id); else next.delete(id); return next; });
-    setDecisions((current) => { const next = { ...current }; if (decision) next[id] = decision; else delete next[id]; return next; });
   };
   const rowStatus = (item) => decisions[item.id] || (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
   const badges = {
@@ -486,11 +482,6 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     pending: { label: "در انتظار", className: "bg-sky-50 text-sky-700 border-sky-100" },
     revision: { label: "درخواست اصلاح", className: "bg-amber-50 text-amber-700 border-amber-100" },
     rejected: { label: "رد شده", className: "bg-red-50 text-red-700 border-red-100" },
-  };
-  const stagedBadges = {
-    approved: { ...badges.approved, label: "آمادهٔ تأیید" },
-    rejected: { ...badges.rejected, label: "آمادهٔ رد" },
-    revision: { ...badges.revision, label: "آمادهٔ اصلاح" },
   };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
   const metadata = [
@@ -514,16 +505,13 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
-          <div className="border-b border-neutral-200 p-3 sm:p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div><h3 className="text-sm font-bold">تصمیم‌گیری گروهی</h3><p className="mt-1 text-xs text-neutral-500">انتخاب هر گزینه، تصمیم همهٔ ردیف‌های قابل بررسی را آماده می‌کند. ثبت نهایی با دکمهٔ «تأیید و ثبت» انجام می‌شود.</p></div>
-              <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold text-neutral-600">{toFa(selectedIds.size)} از {toFa(actionable.length)} ردیف انتخاب شده</span>
-            </div>
-            <div className="flex flex-wrap gap-2.5">
-              <button type="button" disabled={saving || !canAct} onClick={() => applyDecision("approved")} className={`${actionClass} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-4 w-4" />تأیید گروهی</button>
-              <button type="button" disabled={saving || !canAct} onClick={() => applyDecision("rejected")} className={`${actionClass} border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-4 w-4" />رد گروهی</button>
-              <button type="button" disabled={saving || !canAct} onClick={() => applyDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-4 w-4" />درخواست اصلاح گروهی</button>
-              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={clearDecisions} className={`${actionClass} border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`}><X className="h-4 w-4" />پاک کردن تصمیم‌ها</button>
+          <div className="flex flex-col items-stretch gap-4 border-b border-neutral-200 p-3 sm:p-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+            <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{toFa(selectedIds.size)} ردیف انتخاب شده</span>
+            <div className="grid grid-cols-2 gap-2.5 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button>svg]:shrink-0 sm:flex sm:flex-wrap sm:gap-3 sm:[&>button]:whitespace-nowrap">
+              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("approved")} className={`${actionClass} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-4 w-4" />تأیید منتخب‌ها</button>
+              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-4 w-4" />درخواست برای اصلاح</button>
+              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("rejected")} className={`${actionClass} border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-4 w-4" />رد منتخب‌ها</button>
+              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => setSelectedIds(new Set())} className={`${actionClass} border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`}><X className="h-4 w-4" />لغو انتخاب</button>
             </div>
           </div>
 
@@ -535,12 +523,12 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
                     ref={(element) => { if (element) element.indeterminate = partlySelected; }}
-                    onChange={() => { if (allSelected) clearDecisions(); else setSelectedIds(new Set(actionable.map((item) => item.id))); }}
+                    onChange={() => setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id)))}
                     aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>
                   {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className="px-2 font-semibold">{label}</th>)}
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
-                  const badge = decisions[item.id] ? stagedBadges[decisions[item.id]] : badges[rowStatus(item)];
+                  const badge = badges[rowStatus(item)];
                   return <tr key={item.id} tabIndex={0} onClick={() => viewRow(item)}
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
                     className={`h-12 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50 hover:bg-sky-100" : viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
@@ -549,9 +537,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     <td className="px-2">{toFa(index + 1)}</td><td className="px-2">{toFa(item.expenseDate)}</td>
                     <td className="break-words px-3 py-3 text-center leading-6">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums">{money(item.amount)}</td>
-                    <td className="px-2">{item.canAct && !outdated ? <select value={decisions[item.id] || ""} disabled={saving} onClick={(event) => event.stopPropagation()} onChange={(event) => setRowDecision(item.id, event.target.value)} aria-label={`تصمیم ردیف ${toFa(index + 1)}`} className={`w-full rounded-lg border px-1 py-1 text-[11px] font-semibold outline-none ${badge.className}`}>
-                      <option value="">انتخاب تصمیم</option><option value="approved">تأیید</option><option value="rejected">رد</option><option value="revision">درخواست اصلاح</option>
-                    </select> : <span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span>}</td>
+                    <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
                   </tr>;
                 })}</tbody>
               </table>
@@ -592,9 +578,16 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </aside>
       </div>
     </div>
-    <footer inert={managerOpen ? true : undefined} className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t-2 border-neutral-200 px-3 py-3 sm:px-5 sm:py-4">
-      {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-      {canAct && <button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} className={`${actionClass} mr-auto border-black bg-black px-5 text-white hover:bg-neutral-800`}><Check className="h-5 w-5" />تأیید و ثبت</button>}
+    <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
+      <div className="flex flex-wrap items-end gap-4">
+        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
+        {canAct && <div dir="ltr" className="mr-auto flex items-end gap-3">
+          <div className="flex flex-col items-center gap-1.5"><span className="text-[11px] font-semibold text-neutral-600">تأیید گروهی</span><button type="button" aria-label="تأیید گروهی" title="تأیید گروهی" disabled={saving} onClick={() => applyGroupDecision("approved")} className={`${actionClass} h-11 w-11 !p-0 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" /></button></div>
+          <div className="flex flex-col items-center gap-1.5"><span className="text-[11px] font-semibold text-neutral-600">رد گروهی</span><button type="button" aria-label="رد گروهی" title="رد گروهی" disabled={saving} onClick={() => applyGroupDecision("rejected")} className={`${actionClass} h-11 w-11 !p-0 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" /></button></div>
+          <div className="flex flex-col items-center gap-1.5"><span className="text-[11px] font-semibold text-neutral-600">درخواست اصلاح گروهی</span><button type="button" aria-label="درخواست اصلاح گروهی" title="درخواست اصلاح گروهی" disabled={saving} onClick={() => applyGroupDecision("revision")} className={`${actionClass} h-11 w-11 !p-0 border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" /></button></div>
+        </div>}
+      </div>
+      {canAct && <div className="mt-4 flex justify-end border-t border-neutral-200 pt-3"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}><Check className="h-5 w-5" />تأیید و ثبت</button></div>}
     </footer>
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
