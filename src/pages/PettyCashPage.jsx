@@ -10,6 +10,7 @@ import PettyCashBarChart from "../components/PettyCashBarChart.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
 import { budgetPickerItems } from "../utils/budgetPickerItems.js";
+import { openPettyCashReportPdf } from "../utils/pettyCashReportPdf.js";
 
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
 const amount = (value) => { try { return BigInt(value || 0); } catch { return 0n; } };
@@ -310,8 +311,10 @@ export default function PettyCashPage() {
               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "بررسی و تصمیم‌گیری درخواست" : "تنخواه‌های من"}</h2>
                 {selectedReport && <p className="mt-1 text-xs text-neutral-500">اطلاعات درخواست و ثبت تصمیم‌گیری نهایی</p>}
               </div>
-              {selectedReport && <button type="button" aria-label="خروجی PDF" title="خروجی PDF"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white transition hover:bg-neutral-50">
+              {selectedReport && <button type="button" aria-label="خروجی PDF" title={selectedReport.items?.length && selectedReport.items.every((item) => item.stage === "completed") ? "مشاهده خروجی PDF" : "خروجی PDF پس از تأیید نهایی فعال می‌شود"}
+                disabled={!selectedReport.items?.length || !selectedReport.items.every((item) => item.stage === "completed")}
+                onClick={() => openPettyCashReportPdf(selectedReport)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
                 <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />
               </button>}
             </div>
@@ -473,7 +476,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   };
   const applyGroupDecision = (decision) => {
     if (!canAct || saving) return;
-    setSelectedIds(new Set(actionable.map((item) => item.id)));
+    setSelectedIds(new Set());
     setDecisions(Object.fromEntries(actionable.map((item) => [item.id, decision])));
   };
   const rowStatus = (item) => decisions[item.id] || (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
@@ -579,9 +582,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       </div>
     </div>
     <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
-      <div className="flex flex-wrap items-end gap-4">
-        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-        {canAct && <div dir="ltr" className="mr-auto flex items-end gap-3">
+      <div className="flex w-full flex-wrap items-end justify-between gap-4">
+        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} ml-auto border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
+        {canAct && <div dir="ltr" className="flex max-w-full flex-wrap items-end gap-3">
           <div className="flex flex-col items-center gap-1.5"><span className="text-[11px] font-semibold text-neutral-600">تأیید گروهی</span><button type="button" aria-label="تأیید گروهی" title="تأیید گروهی" disabled={saving} onClick={() => applyGroupDecision("approved")} className={`${actionClass} h-11 w-11 !p-0 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" /></button></div>
           <div className="flex flex-col items-center gap-1.5"><span className="text-[11px] font-semibold text-neutral-600">رد گروهی</span><button type="button" aria-label="رد گروهی" title="رد گروهی" disabled={saving} onClick={() => applyGroupDecision("rejected")} className={`${actionClass} h-11 w-11 !p-0 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" /></button></div>
           <div className="flex flex-col items-center gap-1.5"><span className="text-[11px] font-semibold text-neutral-600">درخواست اصلاح گروهی</span><button type="button" aria-label="درخواست اصلاح گروهی" title="درخواست اصلاح گروهی" disabled={saving} onClick={() => applyGroupDecision("revision")} className={`${actionClass} h-11 w-11 !p-0 border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" /></button></div>
