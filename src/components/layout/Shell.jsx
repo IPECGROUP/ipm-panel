@@ -6,6 +6,12 @@ import { useAuth } from "../AuthProvider.jsx";
 import { canOpenPage } from "../../utils/pageAccess.js";
 
 const notificationStorageKey = (userId) => `ipm-read-notifications:${userId}`;
+const readNotificationKeys = (userId) => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(notificationStorageKey(userId)) || "[]");
+    return new Set(Array.isArray(stored) ? stored : []);
+  } catch { return new Set(); }
+};
 const notificationBaseKey = (item) => `${item.notificationTarget}:${item.id}`;
 // A request can return to an earlier actor more than once.  Read state must
 // therefore belong to the current workflow version, rather than permanently
@@ -14,7 +20,7 @@ const notificationKey = (item) => {
   const latestHistoryAt = Array.isArray(item?.historyJson)
     ? item.historyJson[item.historyJson.length - 1]?.at
     : "";
-  const version = item?.notificationTarget === "petty_cash_report" ? item.version
+  const version = item?.notificationTarget === "petty_cash_report" ? item.notificationVersion ?? item.version
     : item?.updatedAt || item?.updated_at || latestHistoryAt || item?.workflowStatus || "initial";
   return `${notificationBaseKey(item)}:${String(version)}`;
 };
@@ -32,6 +38,8 @@ export default function Shell() {
   const navigate = useNavigate();
   const notificationsRef = React.useRef(null);
   const notificationsStateRef = React.useRef([]);
+  const notificationsUserRef = React.useRef(null);
+  const notificationRequestRef = React.useRef(0);
   const [notifications, setNotifications] = React.useState([]);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [notificationsLoading, setNotificationsLoading] = React.useState(false);
@@ -50,28 +58,36 @@ export default function Shell() {
 
   const loadNotifications = React.useCallback(async ({ quiet = false } = {}) => {
     if (authLoading || !user?.id) return;
+    if (notificationsUserRef.current !== user.id) {
+      notificationsUserRef.current = user.id;
+      notificationsStateRef.current = [];
+      setNotifications([]);
+    }
+    const requestId = ++notificationRequestRef.current;
     if (!quiet) setNotificationsLoading(true);
     try {
       const requestOptions = { credentials: "include", headers: { "x-user-id": String(user.id) } };
       const canReadSupplyCartable = canOpenPage(user, "/supply/request");
+      const fetchOptional = (path) => fetch(path, requestOptions).catch(() => null);
       const [cartableResponse, actionsResponse, paymentResponse, tenkhahResponse, pettyCashResponse] = await Promise.all([
-        canReadSupplyCartable ? fetch("/api/supply-requests?cartable=1", requestOptions) : Promise.resolve(null),
-        fetch("/api/supply-actions", requestOptions),
-        fetch("/api/requests?view=inbox", requestOptions),
-        fetch("/api/tenkhah?inbox=1", requestOptions),
-        fetch("/api/petty-cash-expenses?inbox=1", requestOptions),
+        canReadSupplyCartable ? fetchOptional("/api/supply-requests?cartable=1") : Promise.resolve(null),
+        fetchOptional("/api/supply-actions"),
+        fetchOptional("/api/requests?view=inbox"),
+        fetchOptional("/api/tenkhah?inbox=1"),
+        fetchOptional("/api/petty-cash-expenses?inbox=1"),
       ]);
+      const readResponse = (response) => response?.json().catch(() => ({})) || Promise.resolve({});
       const [cartableData, actionsData, paymentData, tenkhahData, pettyCashData] = await Promise.all([
-        cartableResponse ? cartableResponse.json().catch(() => ({})) : Promise.resolve({}),
-        actionsResponse.json().catch(() => ({})),
-        paymentResponse.json().catch(() => ({})),
-        tenkhahResponse.json().catch(() => ({})),
-        pettyCashResponse.json().catch(() => ({})),
+        readResponse(cartableResponse),
+        readResponse(actionsResponse),
+        readResponse(paymentResponse),
+        readResponse(tenkhahResponse),
+        readResponse(pettyCashResponse),
       ]);
       const dashboardItems = cartableResponse?.ok && Array.isArray(cartableData?.items)
         ? cartableData.items.map((item) => ({ ...item, notificationTarget: "supply_request" }))
         : [];
-      const actionItems = actionsResponse.ok && Array.isArray(actionsData?.items)
+      const actionItems = actionsResponse?.ok && Array.isArray(actionsData?.items)
         ? actionsData.items
             .filter((item) => Number(item.currentAssigneeUserId) === Number(user.id) && item.workflowStatus === "in_progress")
             .map((item) => ({ ...item, notificationTarget: "supply_actions" }))
@@ -80,27 +96,37 @@ export default function Shell() {
       // has acted before, so the payment cartable can show its history. Those
       // rows are not pending work and must never recreate a header
       // notification after the user has completed an action.
-      const paymentItems = paymentResponse.ok && Array.isArray(paymentData?.items)
+      const paymentItems = paymentResponse?.ok && Array.isArray(paymentData?.items)
         ? paymentData.items
             .filter((item) => item.canAct)
             .map((item) => ({ ...item, notificationTarget: "payment_request" }))
         : [];
-      const tenkhahItems = tenkhahResponse.ok && Array.isArray(tenkhahData?.items)
+      const tenkhahItems = tenkhahResponse?.ok && Array.isArray(tenkhahData?.items)
         ? tenkhahData.items
             .filter((item) => item.canAct === true)
             .map((item) => ({ ...item, notificationTarget: "tenkhah" })) : [];
-      const pettyCashItems = pettyCashResponse.ok && Array.isArray(pettyCashData?.items)
+      const pettyCashItems = pettyCashResponse?.ok && Array.isArray(pettyCashData?.items)
         ? pettyCashData.items.map((item) => ({ ...item, notificationTarget: item.notificationTarget || "petty_cash_expense" })) : [];
-      const readNotifications = new Set(
-        JSON.parse(localStorage.getItem(notificationStorageKey(user.id)) || "[]")
-      );
-      setNotifications(
-        [...dashboardItems, ...actionItems, ...paymentItems, ...tenkhahItems, ...pettyCashItems].filter((item) => !readNotifications.has(notificationKey(item)))
-      );
+      if (requestId !== notificationRequestRef.current) return;
+      const previous = notificationsUserRef.current === user.id ? notificationsStateRef.current : [];
+      const sourceFailed = (response, data) => !response || response.status >= 500 ||
+        (response.ok && !Array.isArray(data?.items));
+      const retained = previous.filter((item) =>
+        (item.notificationTarget === "supply_request" && canReadSupplyCartable && sourceFailed(cartableResponse, cartableData)) ||
+        (item.notificationTarget === "supply_actions" && sourceFailed(actionsResponse, actionsData)) ||
+        (item.notificationTarget === "payment_request" && sourceFailed(paymentResponse, paymentData)) ||
+        (item.notificationTarget === "tenkhah" && sourceFailed(tenkhahResponse, tenkhahData)) ||
+        (["petty_cash_report", "petty_cash_expense"].includes(item.notificationTarget) && sourceFailed(pettyCashResponse, pettyCashData)));
+      const readNotifications = readNotificationKeys(user.id);
+      const nextNotifications = [...dashboardItems, ...actionItems, ...paymentItems, ...tenkhahItems, ...pettyCashItems, ...retained]
+        .filter((item) => !readNotifications.has(notificationKey(item)));
+      notificationsUserRef.current = user.id;
+      notificationsStateRef.current = nextNotifications;
+      setNotifications(nextNotifications);
     } catch {
-      setNotifications([]);
+      // Keep the last known notifications if this refresh fails.
     } finally {
-      if (!quiet) setNotificationsLoading(false);
+      if (requestId === notificationRequestRef.current) setNotificationsLoading(false);
     }
   }, [authLoading, user]);
 
@@ -121,11 +147,13 @@ export default function Shell() {
         .map(notificationKey);
       try {
         const storageKey = notificationStorageKey(user.id);
-        const readNotifications = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+        const readNotifications = readNotificationKeys(user.id);
         completedKeys.forEach((key) => readNotifications.add(key));
         localStorage.setItem(storageKey, JSON.stringify([...readNotifications]));
-      } catch {}
+      } catch { /* The in-memory notification still closes when storage is unavailable. */ }
 
+      notificationRequestRef.current += 1;
+      notificationsStateRef.current = notificationsStateRef.current.filter((notification) => notificationBaseKey(notification) !== baseKey);
       setNotifications((current) => current.filter((notification) => notificationBaseKey(notification) !== baseKey));
       loadNotifications({ quiet: true });
     };
@@ -140,7 +168,7 @@ export default function Shell() {
       window.removeEventListener("tenkhah-notifications-refresh", refresh);
       window.removeEventListener("request-notification-completed", completeNotification);
     };
-  }, [loadNotifications]);
+  }, [loadNotifications, user?.id]);
 
   React.useEffect(() => {
     if (!notificationsOpen) return undefined;
@@ -153,6 +181,16 @@ export default function Shell() {
 
   const openNotification = (item) => {
     setNotificationsOpen(false);
+    if (item.notificationTarget === "petty_cash_report" && !item.canAct && item.creatorDecision === "rejected") {
+      try {
+        const readNotifications = readNotificationKeys(user.id);
+        readNotifications.add(notificationKey(item));
+        localStorage.setItem(notificationStorageKey(user.id), JSON.stringify([...readNotifications]));
+      } catch { /* The in-memory notification still closes when storage is unavailable. */ }
+      notificationRequestRef.current += 1;
+      notificationsStateRef.current = notificationsStateRef.current.filter((notification) => notificationBaseKey(notification) !== notificationBaseKey(item));
+      setNotifications((current) => current.filter((notification) => notificationBaseKey(notification) !== notificationBaseKey(item)));
+    }
     const target = ["tenkhah", "petty_cash_expense", "petty_cash_report"].includes(item.notificationTarget)
       ? "/finance/tenkhah"
       : item.notificationTarget === "payment_request"
@@ -168,9 +206,11 @@ export default function Shell() {
   const markAllNotificationsAsRead = () => {
     if (!user?.id || !notifications.length) return;
     const storageKey = notificationStorageKey(user.id);
-    const readNotifications = new Set(JSON.parse(localStorage.getItem(storageKey) || "[]"));
+    const readNotifications = readNotificationKeys(user.id);
     notifications.forEach((item) => readNotifications.add(notificationKey(item)));
-    localStorage.setItem(storageKey, JSON.stringify([...readNotifications]));
+    try { localStorage.setItem(storageKey, JSON.stringify([...readNotifications])); } catch { /* Keep the in-memory read state. */ }
+    notificationRequestRef.current += 1;
+    notificationsStateRef.current = [];
     setNotifications([]);
     setNotificationsOpen(false);
   };

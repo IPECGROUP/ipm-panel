@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
@@ -141,8 +141,16 @@ function MyPettyCashSummary() {
   </section>;
 }
 
+async function fetchExpenseReports(userId) {
+  const response = await fetch("/api/petty-cash-expenses?expenseReports=mine", { credentials: "include", headers: { "x-user-id": String(userId) } });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error("دریافت گزارش‌ها انجام نشد.");
+  return data.items || [];
+}
+
 export default function PettyCashPage() {
   const { user } = useAuth();
+  const userId = user?.id;
   const [searchParams, setSearchParams] = useSearchParams();
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [expenseFormKey, setExpenseFormKey] = useState(0);
@@ -152,25 +160,23 @@ export default function PettyCashPage() {
   const [reportOwnershipFilter, setReportOwnershipFilter] = useState("");
   const [reportPage, setReportPage] = useState(0);
   const [reportsPerPage, setReportsPerPage] = useState(10);
-  useEffect(() => { setReportPage(0); }, [searchQuery, reportStatusFilter, reportOwnershipFilter]);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [reports, setReports] = useState([]);
   const [reportError, setReportError] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedLegacyExpense, setSelectedLegacyExpense] = useState(null);
   const [editingReport, setEditingReport] = useState(null);
   const [reviewBusy, setReviewBusy] = useState(false);
   const reviewBusyRef = useRef(false);
-  const [reportsLoaded, setReportsLoaded] = useState(false);
+  const openingNotificationRef = useRef("");
   const summaryDialogRef = useRef(null);
   const loadReports = useCallback(async () => {
-    if (!user?.id) return;
-    const response = await fetch("/api/petty-cash-expenses?expenseReports=mine", { credentials: "include", headers: { "x-user-id": String(user.id) } });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error("دریافت گزارش‌ها انجام نشد.");
-    setReports(data.items || []);
-    setReportsLoaded(true);
+    if (!userId) return [];
+    const nextReports = await fetchExpenseReports(userId);
+    setReports(nextReports);
     setReportError("");
-  }, [user?.id]);
+    return nextReports;
+  }, [userId]);
   useEffect(() => {
     const refresh = () => loadReports().catch((reason) => setReportError(reason.message));
     refresh();
@@ -180,14 +186,35 @@ export default function PettyCashPage() {
     return () => { clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("tenkhah-notifications-refresh", refresh); };
   }, [loadReports]);
   useEffect(() => {
-    if (!reportsLoaded || searchParams.get("notificationTarget") !== "petty_cash_report") return;
-    const report = reports.find((item) => Number(item.id) === Number(searchParams.get("request")));
-    if (report) setSelectedReport(report);
-    else setReportError("این گزارش دیگر در کارتابل شما نیست.");
-    const next = new URLSearchParams(searchParams);
-    next.delete("notificationTarget"); next.delete("request");
-    setSearchParams(next, { replace: true });
-  }, [reportsLoaded, reports, searchParams, setSearchParams]);
+    const target = searchParams.get("notificationTarget");
+    if (!["petty_cash_report", "petty_cash_expense"].includes(target)) {
+      openingNotificationRef.current = "";
+      return;
+    }
+    if (!userId) return;
+    const id = Number(searchParams.get("request"));
+    const key = `${userId}:${target}:${id}`;
+    if (openingNotificationRef.current === key) return;
+    openingNotificationRef.current = key;
+    const finish = (item) => {
+      if (openingNotificationRef.current !== key) return;
+      if (item && target === "petty_cash_report") setSelectedReport(item);
+      else if (item) setSelectedLegacyExpense(item);
+      else setReportError("این مورد دیگر در کارتابل شما نیست.");
+      const next = new URLSearchParams(searchParams);
+      next.delete("notificationTarget"); next.delete("request");
+      setSearchParams(next, { replace: true });
+    };
+    if (target === "petty_cash_expense") {
+      fetch(`/api/petty-cash-expenses?inbox=1&expenseId=${id}`, { credentials: "include", headers: { "x-user-id": String(userId || "") } })
+        .then(async (response) => { if (!response.ok) throw new Error(); return response.json(); })
+        .then((data) => finish(data.items?.find((item) => item.notificationTarget !== "petty_cash_report" && Number(item.id) === id)))
+        .catch(() => { if (openingNotificationRef.current === key) { openingNotificationRef.current = ""; setReportError("دریافت هزینه اعلان‌شده انجام نشد. دوباره تلاش کنید."); } });
+      return;
+    }
+    fetchExpenseReports(userId).then((freshReports) => { setReports(freshReports); finish(freshReports.find((item) => Number(item.id) === id)); })
+      .catch(() => { if (openingNotificationRef.current === key) { openingNotificationRef.current = ""; setReportError("دریافت گزارش اعلان‌شده انجام نشد. دوباره تلاش کنید."); } });
+  }, [searchParams, setSearchParams, userId]);
   const visibleReports = reports.filter((report) => {
     const state = expenseReportState(report.items);
     if (reportStatusFilter && state.statusKey !== reportStatusFilter) return false;
@@ -203,18 +230,17 @@ export default function PettyCashPage() {
   const reportStartIndex = safeReportPage * reportsPerPage;
   const reportEndIndex = Math.min(reportStartIndex + reportsPerPage, visibleReports.length);
   const pageReports = visibleReports.slice(reportStartIndex, reportEndIndex);
-  useEffect(() => { setReportPage((current) => Math.min(current, reportPageCount - 1)); }, [reportPageCount]);
-  const closeDialog = () => { if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); setEditingReport(null); } };
+  const closeDialog = () => { if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); setSelectedLegacyExpense(null); setEditingReport(null); } };
 
   useEffect(() => {
-    if (!summaryOpen && !selectedReport) return;
+    if (!summaryOpen && !selectedReport && !selectedLegacyExpense) return;
     const previousFocus = document.activeElement;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     summaryDialogRef.current?.querySelector("button")?.focus();
     const handleKey = (event) => {
       if (summaryDialogRef.current?.querySelector('[data-manager-dialog="true"]')) return;
-      if (event.key === "Escape") { event.preventDefault(); if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); } }
+      if (event.key === "Escape") { event.preventDefault(); if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); setSelectedLegacyExpense(null); } }
       if (event.key !== "Tab") return;
       const focusable = [...summaryDialogRef.current.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')].filter((element) => element.getClientRects().length);
       const first = focusable[0], last = focusable[focusable.length - 1];
@@ -227,7 +253,7 @@ export default function PettyCashPage() {
       document.body.style.overflow = previousOverflow;
       previousFocus?.focus();
     };
-  }, [summaryOpen, selectedReport]);
+  }, [summaryOpen, selectedReport, selectedLegacyExpense]);
   return <div dir="rtl" className="mx-auto min-w-0 max-w-[1400px]">
     <Card className="overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 sm:rounded-3xl sm:shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
       <div className="p-2.5 sm:p-3 md:p-4">
@@ -266,7 +292,7 @@ export default function PettyCashPage() {
         {!expenseFormOpen && <>
           <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50 p-3 shadow-sm dark:border-white/10 dark:bg-white/5">
             <Field label="جست و جو">
-              <input type="text" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
+              <input type="text" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setReportPage(0); }}
                 placeholder="جستجو در شماره گزارش، تاریخ، پروژه، در انتظار و وضعیت ..."
                 className={`${inputClass} placeholder:text-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white`} />
             </Field>
@@ -274,10 +300,10 @@ export default function PettyCashPage() {
               <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
               <div className="flex flex-wrap items-center gap-2">
                 {[["mine", "گزارش‌های من"], ["incoming", "موارد ارسال‌شده به من"]].map(([key, label]) => <button key={key} type="button"
-                  aria-pressed={reportOwnershipFilter === key} onClick={() => setReportOwnershipFilter(reportOwnershipFilter === key ? "" : key)}
+                  aria-pressed={reportOwnershipFilter === key} onClick={() => { setReportOwnershipFilter(reportOwnershipFilter === key ? "" : key); setReportPage(0); }}
                   className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${reportOwnershipFilter === key ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-900 ring-black/10 hover:bg-neutral-50 dark:bg-white/5 dark:text-white dark:ring-white/15"}`}>{label}</button>)}
                 {Object.entries(REPORT_STATUS_LABELS).map(([key, label]) => <button key={key} type="button"
-                  aria-pressed={reportStatusFilter === key} onClick={() => setReportStatusFilter(reportStatusFilter === key ? "" : key)}
+                  aria-pressed={reportStatusFilter === key} onClick={() => { setReportStatusFilter(reportStatusFilter === key ? "" : key); setReportPage(0); }}
                   className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${reportStatusBadgeClass(key, reportStatusFilter === key)}`}>{label}</button>)}
               </div>
             </div>
@@ -321,15 +347,15 @@ export default function PettyCashPage() {
         </>}
       </div>
     </Card>
-    {(summaryOpen || selectedReport) && createPortal(
+    {(summaryOpen || selectedReport || selectedLegacyExpense) && createPortal(
       <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6"
         onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}>
         <div ref={summaryDialogRef} role="dialog" aria-modal="true" aria-labelledby="petty-cash-summary-title" dir="rtl"
-          className={`relative flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl sm:rounded-3xl ${selectedReport ? "h-[92dvh] w-full max-w-[1680px] sm:h-[86dvh] sm:w-[92vw]" : "max-h-[90dvh] w-full max-w-[1200px]"}`}>
+          className={`relative flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 shadow-2xl sm:rounded-3xl ${selectedReport ? "h-[92dvh] w-full max-w-[1680px] sm:h-[86dvh] sm:w-[92vw]" : selectedLegacyExpense ? "max-h-[90dvh] w-full max-w-2xl" : "max-h-[90dvh] w-full max-w-[1200px]"}`}>
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 items-center gap-3">
               {selectedReport && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-neutral-50"><FileText className="h-5 w-5" /></span>}
-              <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "بررسی و تصمیم‌گیری درخواست" : "تنخواه‌های من"}</h2>
+              <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "بررسی و تصمیم‌گیری درخواست" : selectedLegacyExpense ? "بررسی هزینه تنخواه" : "تنخواه‌های من"}</h2>
                 {selectedReport && <p className="mt-1 text-xs text-neutral-500">اطلاعات درخواست و ثبت تصمیم‌گیری نهایی</p>}
               </div>
               {selectedReport && <button type="button" aria-label="خروجی PDF" title={selectedReport.items?.length && selectedReport.items.every((item) => item.stage === "completed") ? "مشاهده خروجی PDF" : "خروجی PDF پس از تأیید نهایی فعال می‌شود"}
@@ -345,16 +371,84 @@ export default function PettyCashPage() {
           {selectedReport && editingReport?.id === selectedReport.id ? <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
             <PettyCashExpenseTab key={selectedReport.id} initialReport={selectedReport}
               onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
-              onSubmitted={() => { setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
+              onSubmitted={() => { window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
           </div> : selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
             onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
             onRefresh={() => loadReports().catch((reason) => setReportError(reason.message))}
             onReviewed={() => { setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); }}
             onRevise={() => setEditingReport(selectedReport)} />
+            : selectedLegacyExpense ? <LegacyExpenseReview key={selectedLegacyExpense.id} item={selectedLegacyExpense}
+              onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
+              onReviewed={() => { setSelectedLegacyExpense(null); loadReports().catch((reason) => setReportError(reason.message)); }} />
             : <div className="min-h-0 overflow-y-auto p-3 sm:p-5"><MyPettyCashSummary /></div>}
         </div>
       </div>, document.body
     )}
+  </div>;
+}
+
+function LegacyExpenseReview({ item, onBusyChange, onReviewed }) {
+  const { user } = useAuth();
+  const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40";
+  const [decision, setDecision] = useState("");
+  const [managerId, setManagerId] = useState("");
+  const [managers, setManagers] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (item.stage !== "planning") return;
+    const controller = new AbortController();
+    fetch("/api/petty-cash-expenses?recipients=project_manager", {
+      credentials: "include", headers: { "x-user-id": String(user?.id || "") }, signal: controller.signal,
+    }).then(async (response) => { if (!response.ok) throw new Error(); return response.json(); })
+      .then((data) => setManagers(data.users || []))
+      .catch((reason) => { if (reason.name !== "AbortError") setError("دریافت اعضای مدیریت پروژه‌ها انجام نشد."); });
+    return () => controller.abort();
+  }, [item.stage, user?.id]);
+
+  const submit = async () => {
+    if (!decision || saving || (decision === "approve" && item.stage === "planning" && !managerId)) return;
+    setSaving(true); onBusyChange(true); setError("");
+    try {
+      const response = await fetch("/api/petty-cash-expenses", {
+        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(user?.id || "") },
+        body: JSON.stringify({ id: item.id, decision, projectManagerId: managerId || undefined }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "internal_error");
+      window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_expense", id: item.id } }));
+      window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
+      onReviewed();
+    } catch (reason) {
+      setError(reason.message === "invalid_project_manager" ? "یکی از اعضای مدیریت پروژه‌ها را انتخاب کنید." : reason.message === "already_processed" ? "این هزینه قبلاً بررسی شده است." : "ثبت تصمیم انجام نشد. دوباره تلاش کنید.");
+    } finally { setSaving(false); onBusyChange(false); }
+  };
+
+  return <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
+    {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm sm:grid-cols-2">
+      <div><span className="text-neutral-500">پروژه</span><p className="mt-1 font-semibold">{item.projectName || item.projectCode || "—"}</p></div>
+      <div><span className="text-neutral-500">تاریخ</span><p className="mt-1 font-semibold">{toFa(item.expenseDate || "—")}</p></div>
+      <div><span className="text-neutral-500">کد بودجه</span><p className="mt-1 font-semibold">{toFa(item.budgetCode || "—")}</p></div>
+      <div><span className="text-neutral-500">مبلغ</span><p className="mt-1 font-semibold">{money(item.amount)} ریال</p></div>
+      <div className="sm:col-span-2"><span className="text-neutral-500">شرح</span><p className="mt-1 break-words font-semibold">{item.description || "—"}</p></div>
+      <div className="sm:col-span-2"><span className="text-neutral-500">پیوست</span><p className="mt-1"><ExpenseAttachmentLink item={item} /></p></div>
+    </div>
+    <div className="mt-5 flex flex-wrap gap-2">
+      <button type="button" disabled={saving} onClick={() => setDecision("approve")} className={`${actionClass} ${decision === "approve" ? "border-emerald-600 bg-emerald-600 text-white" : "border-emerald-200 bg-white text-emerald-700"}`}><Check className="h-4 w-4" />تأیید</button>
+      <button type="button" disabled={saving} onClick={() => setDecision("reject")} className={`${actionClass} ${decision === "reject" ? "border-red-600 bg-red-600 text-white" : "border-red-200 bg-white text-red-700"}`}><X className="h-4 w-4" />رد</button>
+    </div>
+    {decision === "approve" && item.stage === "planning" && <label className="mt-4 block text-sm">ارسال به مدیریت پروژه‌ها
+      <select value={managerId} onChange={(event) => setManagerId(event.target.value)} disabled={saving} className={`${inputClass} mt-2`}>
+        <option value="">انتخاب کنید</option>
+        {managers.map((manager) => <option key={manager.id} value={manager.id}>{manager.name || manager.username}</option>)}
+      </select>
+    </label>}
+    <div className="mt-5 border-t border-neutral-200 pt-4">
+      <button type="button" disabled={!decision || saving || (decision === "approve" && item.stage === "planning" && !managerId)} onClick={submit}
+        className={`${actionClass} border-black bg-black text-white hover:bg-neutral-800`}><Check className="h-4 w-4" />تأیید و ثبت</button>
+    </div>
   </div>;
 }
 
@@ -520,7 +614,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 xl:grid-cols-4">
         {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white"><Icon className="h-4 w-4 stroke-[1.6]" /></span>
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
           <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
             {secondary && <p className="mt-0.5 text-[10px] text-neutral-500">{secondary}</p>}
           </div>
@@ -1339,7 +1433,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-neutral-100"><img src="/images/icons/upload.svg" alt="" className="h-6 w-6" /></span>
             <h2 id="petty-cash-photo-title" className="font-bold">پیوست هزینه</h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-100 hover:bg-neutral-200"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800"><X className="h-4 w-4" /></button>
         </header>
         <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
           <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
