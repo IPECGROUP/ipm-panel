@@ -93,7 +93,7 @@ function MyPettyCashSummary() {
       <div className="self-center space-y-4 text-sm sm:text-base">
         <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} color="#6366F1" />
         <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} color="#38BDF8" />
-        <SummaryLine label="باقی‌مانده هزینه‌های ثبت نشده" value={unregistered} />
+        <SummaryLine label="باقی‌مانده هزینه‌های ثبت نشده" value={unregistered} color="#6B7280" />
         <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} color="#10B981" />
         <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} color="#6B7280" />
       </div>
@@ -106,7 +106,7 @@ function MyPettyCashSummary() {
         <div role="img" aria-label="سهم هر پروژه از مجموع تنخواه‌های دریافت‌شده" className="relative mx-auto mt-3 h-56 w-full max-w-72 select-none sm:h-64 [&_.recharts-wrapper:focus:not(:focus-visible)]:outline-none">
           {projectChartData.length ? <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
-              <Pie data={projectChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="61%" outerRadius="84%" paddingAngle={projectChartData.length > 1 ? 2 : 0} cornerRadius={projectChartData.length > 1 ? 5 : 0} stroke={projectChartData.length > 1 ? "#fff" : "none"} strokeWidth={projectChartData.length > 1 ? 2 : 0}>
+              <Pie data={projectChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="61%" outerRadius="84%" paddingAngle={projectChartData.length > 1 ? 2 : 0} cornerRadius={projectChartData.length > 1 ? 5 : 0} stroke={projectChartData.length > 1 ? "#fff" : "none"} strokeWidth={projectChartData.length > 1 ? 2 : 0} animationDuration={1000}>
                 {projectChartData.map((project) => <Cell key={project.id} fill={project.color} />)}
               </Pie>
               <Tooltip offset={14} isAnimationActive animationDuration={120} animationEasing="ease-out" wrapperStyle={{ pointerEvents: "none", transition: "transform 120ms ease-out" }} content={({ active, payload }) => {

@@ -18,7 +18,14 @@ export default function PettyCashBarChart({ totals }) {
     { label: "کل تنخواه‌ها", value: totals.received },
   ].map((item, index) => {
     const height = percent(item.value, totals.received);
-    return { ...item, height, remainder: index === 0 && totals.received > 0n ? 100 - height : 0, color: colors[index] };
+    return {
+      ...item,
+      height,
+      remainder: index < 2 && totals.received > 0n ? 100 - height : 0,
+      remainderLabel: index === 0 ? "باقی‌مانده تنخواه تسویه‌نشده" : index === 1 ? "باقی‌مانده هزینه‌های ثبت نشده" : "",
+      remainderValue: totals.received - item.value,
+      color: colors[index],
+    };
   });
   const plotData = [...chartData].reverse();
 
@@ -43,7 +50,7 @@ export default function PettyCashBarChart({ totals }) {
             return <div dir="rtl" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-right text-xs shadow-lg">
               <div className="mb-1 font-semibold text-slate-600">{item.label}</div>
               <div className="flex items-center justify-between gap-4 font-bold tabular-nums" style={{ color: item.color }}><span>{item.label}</span><span>{money(item.value)} ریال</span></div>
-              {item.remainder > 0 && <div className="mt-1 flex items-center justify-between gap-4 font-semibold tabular-nums" style={{ color: remainderColor }}><span>باقی‌مانده تأییدنشده ({Math.round(item.remainder).toLocaleString("fa-IR")}٪)</span><span>{money(totals.received - totals.approved)} ریال</span></div>}
+              {item.remainderLabel && <div className="mt-1 flex items-center justify-between gap-4 font-semibold tabular-nums" style={{ color: remainderColor }}><span>{item.remainderLabel} ({Math.round(item.remainder).toLocaleString("fa-IR")}٪)</span><span>{money(item.remainderValue)} ریال</span></div>}
             </div>;
           }} />
           <Bar dataKey="height" stackId="total" maxBarSize={70}>
