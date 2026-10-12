@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, UserRound, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, UserRound, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import Card from "../components/ui/Card.jsx";
+import PettyCashBarChart from "../components/PettyCashBarChart.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
 import { budgetPickerItems } from "../utils/budgetPickerItems.js";
@@ -21,16 +22,6 @@ const money = (value) => {
 const percent = (part, total) => total > 0n
   ? Math.max(0, Math.min(100, Number((part * 1000n) / total) / 10))
   : 0;
-
-function ProgressColumn({ label, filled, total, full = false }) {
-  return <div className="flex w-16 shrink-0 flex-col items-center gap-3 sm:w-20">
-    <div className="relative h-52 w-full overflow-hidden border border-neutral-300 bg-neutral-200 sm:h-60"
-      role="img" aria-label={`${label}: ${money(filled)} از ${money(total)} ریال`}>
-      <div className="absolute inset-x-0 bottom-0 bg-white transition-all duration-500" style={{ height: full ? "100%" : `${percent(filled, total)}%` }} />
-    </div>
-    <span className="text-center text-xs font-semibold text-neutral-700 sm:text-sm">{label}</span>
-  </div>;
-}
 
 function SummaryLine({ label, value }) {
   return <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 border-b border-neutral-100 pb-3 last:border-b-0">
@@ -100,11 +91,7 @@ function MyPettyCashSummary() {
     {error && <p role="alert" className="mb-6 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {loading && <p role="status" className="mb-6 text-sm text-neutral-500">در حال دریافت اطلاعات...</p>}
     <div className="grid gap-9 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
-      <div className="flex items-end justify-center gap-0" aria-label="مقایسه تنخواه دریافت‌شده، هزینه ثبت‌شده و هزینه تأییدشده">
-        <ProgressColumn label="تأییدشده" filled={totals.approved} total={totals.received} />
-        <ProgressColumn label="ثبت‌شده" filled={totals.registered} total={totals.received} />
-        <ProgressColumn label="کل تنخواه‌ها" filled={totals.received} total={totals.received} full />
-      </div>
+      <PettyCashBarChart totals={totals} />
       <div className="self-center space-y-4 text-sm sm:text-base">
         <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} />
         <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} />
@@ -195,7 +182,7 @@ export default function PettyCashPage() {
   const reportEndIndex = Math.min(reportStartIndex + reportsPerPage, visibleReports.length);
   const pageReports = visibleReports.slice(reportStartIndex, reportEndIndex);
   useEffect(() => { setReportPage((current) => Math.min(current, reportPageCount - 1)); }, [reportPageCount]);
-  const closeDialog = () => { if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); } };
+  const closeDialog = () => { if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); setEditingReport(null); } };
 
   useEffect(() => {
     if (!summaryOpen && !selectedReport) return;
@@ -241,7 +228,7 @@ export default function PettyCashPage() {
           </div>
         </header>
         <div hidden={!expenseFormOpen}>
-        <PettyCashExpenseTab key={expenseFormKey} initialReport={editingReport} onBusyChange={setReportSaving} onSubmitted={(report) => {
+        <PettyCashExpenseTab key={expenseFormKey} onBusyChange={setReportSaving} onSubmitted={(report) => {
           setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
           setSearchQuery("");
           setReportStatusFilter("");
@@ -320,9 +307,10 @@ export default function PettyCashPage() {
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 items-center gap-3">
               {selectedReport && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-neutral-50"><FileText className="h-5 w-5" /></span>}
-              <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? "بررسی و تصمیم‌گیری درخواست" : "تنخواه‌های من"}</h2>
+              <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "بررسی و تصمیم‌گیری درخواست" : "تنخواه‌های من"}</h2>
                 {selectedReport && <p className="mt-1 text-xs text-neutral-500">اطلاعات درخواست و ثبت تصمیم‌گیری نهایی</p>}
               </div>
+              {selectedReport && editingReport?.id === selectedReport.id && <button type="button" disabled={reviewBusy} onClick={() => setEditingReport(null)} className="rounded-lg px-2 py-1 text-xs font-semibold text-neutral-600 hover:bg-neutral-100">بازگشت به بررسی</button>}
               {selectedReport && <button type="button" aria-label="خروجی PDF" title="خروجی PDF"
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white transition hover:bg-neutral-50">
                 <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />
@@ -331,11 +319,15 @@ export default function PettyCashPage() {
             <button type="button" disabled={reviewBusy} onClick={closeDialog} aria-label="بستن پنجره"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-black text-white hover:bg-neutral-800"><X className="h-4 w-4" /></button>
           </header>
-          {selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
+          {selectedReport && editingReport?.id === selectedReport.id ? <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+            <PettyCashExpenseTab key={selectedReport.id} initialReport={selectedReport}
+              onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
+              onSubmitted={() => { setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
+          </div> : selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
             onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
             onRefresh={() => loadReports().catch((reason) => setReportError(reason.message))}
             onReviewed={() => { setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); }}
-            onRevise={() => { setEditingReport(selectedReport); setExpenseFormKey((current) => current + 1); setExpenseFormOpen(true); setSelectedReport(null); }} />
+            onRevise={() => setEditingReport(selectedReport)} />
             : <div className="min-h-0 overflow-y-auto p-3 sm:p-5"><MyPettyCashSummary /></div>}
         </div>
       </div>, document.body
@@ -582,7 +574,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       </div>
     </div>
     <footer inert={managerOpen ? true : undefined} className="flex shrink-0 justify-end gap-2 border-t border-neutral-100 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4">
-      <button type="button" aria-label="تأیید" title="تأیید" disabled={saving || (!canAct && !report.canRevise)} onClick={() => report.canRevise && !canAct ? onRevise() : submitDecision("approve")} className={`${actionClass} h-11 w-11 !p-0 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" /></button>
+      {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
+      <button type="button" aria-label="تأیید" title="تأیید" disabled={saving || !canAct} onClick={() => submitDecision("approve")} className={`${actionClass} h-11 w-11 !p-0 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" /></button>
       <button type="button" aria-label="رد" title="رد" disabled={!canAct || saving} onClick={() => submitDecision("reject")} className={`${actionClass} h-11 w-11 !p-0 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" /></button>
       <button type="button" aria-label="درخواست اصلاح" title="درخواست اصلاح" disabled={!canAct || saving} onClick={() => submitDecision("revision")} className={`${actionClass} h-11 w-11 !p-0 border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" /></button>
     </footer>
@@ -673,6 +666,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
   const [budgetPickerQuery, setBudgetPickerQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [attachmentEditorOpen, setAttachmentEditorOpen] = useState(false);
   const formRef = useRef(null);
   const menuButtonRef = useRef(null);
@@ -765,15 +759,28 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
     setError("");
   };
 
-  const submitReport = async () => {
-    if (!projectId || !reportName.trim()) return setError("پروژه و نام گزارش را تکمیل کنید.");
-    if (!items.length) return setError("حداقل یک ردیف هزینه به گزارش اضافه کنید.");
+  const reportValidationError = () => {
+    if (!projectId || !reportName.trim()) return "پروژه و نام گزارش را تکمیل کنید.";
+    if (!items.length) return "حداقل یک ردیف هزینه به گزارش اضافه کنید.";
     if (editingExpense || form.description.trim() || form.budgetCode || form.amount || attachment) {
-      return setError("ابتدا ردیف در حال ورود یا ویرایش را با دکمه افزودن ردیف ثبت کنید.");
+      return "ابتدا ردیف در حال ورود یا ویرایش را با دکمه افزودن ردیف ثبت کنید.";
     }
     if (items.some((item) => !item.expenseDate || !item.description.trim() || !item.budgetCode || amount(item.amount) <= 0n || (!item.attachmentFile && !item.uploadedFile))) {
-      return setError("همه فیلدها و پیوست هر ردیف باید تکمیل باشند.");
+      return "همه فیلدها و پیوست هر ردیف باید تکمیل باشند.";
     }
+    return "";
+  };
+  const requestSubmit = () => {
+    const validationError = reportValidationError();
+    if (validationError) return setError(validationError);
+    setError("");
+    setConfirmOpen(true);
+  };
+  const submitReport = async () => {
+    if (saving) return;
+    const validationError = reportValidationError();
+    if (validationError) { setConfirmOpen(false); return setError(validationError); }
+    setConfirmOpen(false);
     setSaving(true);
     onBusyChange(true);
     setError("");
@@ -838,16 +845,16 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
   const selectedItems = items.filter((item) => selectedIds.has(item.id));
   const canEdit = selectedItems.length === 1 && (!initialReport || selectedItems[0].stage === "revision" || !Number.isInteger(Number(selectedItems[0].id)));
   const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || !Number.isInteger(Number(item.id)));
-  const editSelected = () => {
-    if (!canEdit) return;
-    const item = selectedItems[0];
+  const beginEdit = (item) => {
     setEditingExpense(item);
+    setSelectedIds(new Set([item.id]));
     setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode, amount: format3(item.amount) });
     setAttachment(null);
     setMenuPosition(null);
     setError("");
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
+  const editSelected = () => { if (canEdit) beginEdit(selectedItems[0]); };
   const cancelEdit = () => {
     setEditingExpense(null);
     setForm(emptyForm());
@@ -921,6 +928,10 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
       </div>
     </div>
     {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+    {initialReport?.canRevise && <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-900">
+      ردیف‌های برگشتی را با دکمهٔ «ویرایش برگشتی» اصلاح کنید و سپس گزارش را دوباره تأیید کنید.
+      {initialReport.reviewNotes && <p className="mt-1 font-semibold">توضیح بررسی: {initialReport.reviewNotes}</p>}
+    </div>}
 
     <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
       <div className="overflow-x-auto">
@@ -928,6 +939,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
           <colgroup>
             <col className="w-12" /><col className="w-16" /><col className="w-32" />
             <col /><col className="w-36" /><col className="w-40" /><col className="w-28" />
+            {initialReport && <col className="w-32" />}
             <col className="w-12" />
           </colgroup>
           <thead className="bg-neutral-200 text-neutral-900">
@@ -940,6 +952,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
               </th>
               {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ", "پیوست"].map((label) =>
                 <th key={label} className="px-3 text-[14px] font-semibold md:text-[15px]">{label}</th>)}
+              {initialReport && <th className="px-3 text-sm font-semibold">وضعیت</th>}
               <th className="p-0">
                 <button ref={menuButtonRef} type="button" aria-label="مدیریت ردیف‌ها" title="مدیریت ردیف‌ها"
                   aria-expanded={Boolean(menuPosition)} onClick={() => {
@@ -965,9 +978,10 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
               <td className="px-3">{toFa(item.budgetCode)}</td>
               <td className="px-3 tabular-nums">{toFa(format3(item.amount))}</td>
               <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
+              {initialReport && <td className="px-2">{item.stage === "revision" ? <span className="inline-flex flex-col items-center gap-1"><button type="button" onClick={() => beginEdit(item)} className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"><Pencil className="h-3 w-3" />ویرایش برگشتی</button>{item.reviewNote && <span className="max-w-28 truncate text-[10px] text-amber-800" title={item.reviewNote}>{item.reviewNote}</span>}</span> : <span className="text-xs text-neutral-500">{item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span>}</td>}
               <td />
             </tr>)}
-            {!pageItems.length && <tr><td colSpan={8} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
+            {!pageItems.length && <tr><td colSpan={initialReport ? 9 : 8} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -976,12 +990,34 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport }) {
     </div>
     <hr className="my-4 border-neutral-200" />
     <div className="flex justify-end">
-      <button type="button" onClick={submitReport} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
+      <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
         className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
         {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
       </button>
     </div>
     </fieldset>
+    {confirmOpen && createPortal(
+      <div className="fixed inset-0 z-[1700] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setConfirmOpen(false); }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="petty-cash-confirm-title" aria-describedby="petty-cash-confirm-description" dir="rtl"
+          className="w-full max-w-md overflow-hidden rounded-3xl border border-white/70 bg-white p-6 text-neutral-900 shadow-[0_30px_90px_rgba(15,23,42,0.3)] sm:p-7"
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === "Escape" && !saving) setConfirmOpen(false);
+            if (event.key !== "Tab") return;
+            const controls = [...event.currentTarget.querySelectorAll('button:not(:disabled)')];
+            if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls.at(-1)?.focus(); }
+            else if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
+          }}>
+          <span className="mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"><Check className="h-7 w-7" /></span>
+          <h3 id="petty-cash-confirm-title" className="text-lg font-bold">تأیید گزارش تنخواه</h3>
+          <p id="petty-cash-confirm-description" className="mt-3 text-sm leading-7 text-neutral-600">شما <strong className="font-bold text-neutral-900">{toFa(items.length)} ردیف</strong> ثبت کرده‌اید. از تأیید گزارش مطمئن هستید؟</p>
+          <div className="mt-7 flex gap-3">
+            <button type="button" autoFocus disabled={saving} onClick={() => setConfirmOpen(false)} className="h-11 flex-1 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 disabled:opacity-50">بازگشت و بررسی</button>
+            <button type="button" disabled={saving} onClick={submitReport} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-50"><Check className="h-4 w-4" />تأیید گزارش</button>
+          </div>
+        </div>
+      </div>, document.body
+    )}
     {menuPosition && createPortal(
       <div ref={menuPopoverRef} dir="rtl" style={menuPosition}
         className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)]">
