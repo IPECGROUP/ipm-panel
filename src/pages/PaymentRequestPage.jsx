@@ -12,6 +12,7 @@ import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import { budgetPickerItems } from "../utils/budgetPickerItems.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const DOC_OPTIONS = [
   ["pre_invoice", "پیش فاکتور"], ["invoice", "فاکتور"],
@@ -325,6 +326,56 @@ function attachmentViewUrl(file) {
   if (!isHeicAttachment(file) || !rawUrl) return rawUrl;
   const name = rawUrl.split(/[?#]/, 1)[0].split("/").pop();
   return name ? `/api/upload/payment-doc/preview?name=${encodeURIComponent(name)}` : rawUrl;
+}
+
+function isImageAttachment(file) {
+  const type = String(file?.type || file?.mimeType || "").toLowerCase();
+  const name = String(file?.name || file?.originalName || file?.filename || file?.url || file?.path || "");
+  return type.startsWith("image/") || /\.(?:avif|bmp|gif|hei[cf]|jpe?g|png|svg|webp)(?:[?#]|$)/i.test(name);
+}
+
+function printImageAttachment(file) {
+  const url = attachmentViewUrl(file);
+  if (!url) return;
+  const printWindow = window.open("", "_blank", "width=1000,height=800");
+  if (!printWindow) return;
+  const doc = printWindow.document;
+  doc.title = file?.name || "پیوست تصویری";
+  const style = doc.createElement("style");
+  style.textContent = "@page{margin:10mm}body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center}img{display:block;max-width:100%;max-height:100vh;object-fit:contain;break-inside:avoid}";
+  doc.head.appendChild(style);
+  const image = doc.createElement("img");
+  image.alt = file?.name || "پیوست تصویری";
+  image.onload = () => { printWindow.focus(); printWindow.print(); };
+  image.onerror = () => { doc.body.textContent = "بارگذاری تصویر برای چاپ ممکن نشد."; };
+  doc.body.appendChild(image);
+  image.src = new URL(url, window.location.href).href;
+}
+
+function ImageAttachmentViewer({ file, onClose }) {
+  const [zoom, setZoom] = useState(1);
+  const previewUrl = attachmentViewUrl(file);
+  const originalUrl = String(file?.url || file?.path || "").trim();
+  const name = file?.name || file?.originalName || "پیوست تصویری";
+  useEffect(() => {
+    const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+  return createPortal(<div className="fixed inset-0 z-[10001] flex flex-col bg-neutral-950 text-white" dir="rtl" role="dialog" aria-modal="true" aria-label={`نمایش ${name}`}>
+    <div className="flex min-h-14 flex-wrap items-center gap-2 border-b border-white/15 px-3 py-2 sm:px-5">
+      <strong className="min-w-0 flex-1 truncate text-sm" title={name}>{name}</strong>
+      <button type="button" onClick={() => setZoom((value) => Math.max(0.25, Math.round((value - 0.25) * 100) / 100))} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm" aria-label="کوچک‌نمایی">−</button>
+      <button type="button" onClick={() => setZoom(1)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm" title="اندازه اصلی">{Math.round(zoom * 100)}٪</button>
+      <button type="button" onClick={() => setZoom((value) => Math.min(4, Math.round((value + 0.25) * 100) / 100))} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm" aria-label="بزرگ‌نمایی">+</button>
+      {originalUrl && <a href={originalUrl} download={name} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10">دانلود</a>}
+      <button type="button" onClick={() => printImageAttachment(file)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10">چاپ</button>
+      <button type="button" onClick={onClose} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm hover:bg-white/10" aria-label="بستن نمایش تصویر">×</button>
+    </div>
+    <div className="min-h-0 flex-1 overflow-auto p-3 text-center sm:p-5">
+      <img src={previewUrl} alt={name} className="mx-auto h-auto max-w-none" style={{ width: `${zoom * 100}%` }} />
+    </div>
+  </div>, document.body);
 }
 
 function registrationMessage(info) {
@@ -2125,6 +2176,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const showCurrencyDecimals = currency ? currencyOptionKey(currency) !== "rial" : Boolean(item.currencyTypeId);
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || String(item.docId || "").trim() || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
+  const [imageAttachment, setImageAttachment] = useState(null);
   const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
   const embeddedRelatedLetters = useMemo(() => Array.isArray(item.relatedLetters) ? item.relatedLetters : [], [item.relatedLetters]);
   const [relatedLetterDetails, setRelatedLetterDetails] = useState({});
@@ -2690,46 +2742,86 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
       const closeButton = pdfWindow.document.getElementById("close-preview");
       if (printButton && printButton.dataset.bound !== "true") {
         printButton.dataset.bound = "true";
-        printButton.addEventListener("click", (event) => {
+        printButton.addEventListener("click", async (event) => {
           event.preventDefault();
           const mainSheet = pdfWindow.document.querySelector("article.sheet:not(.attachment-preview-page)");
           if (!mainSheet) return;
+          printButton.disabled = true;
+          printButton.textContent = "آماده‌سازی پیوست‌ها...";
+          try {
+            const sheets = [mainSheet.outerHTML];
+            const attachmentSheets = [...pdfWindow.document.querySelectorAll("article.attachment-preview-page")];
+            let pdfjs;
+            for (const [index, file] of attachments.entries()) {
+              const sheet = attachmentSheets[index];
+              if (!sheet) continue;
+              const rawUrl = String(file?.url || file?.path || "").trim();
+              const type = String(file?.type || file?.mimeType || "").toLowerCase();
+              const name = String(file?.name || file?.originalName || file?.filename || "");
+              const isPdf = type.includes("pdf") || /\.pdf(?:[?#]|$)/i.test(rawUrl) || /\.pdf$/i.test(name);
+              if (!isPdf || !rawUrl) {
+                sheets.push(sheet.outerHTML);
+                continue;
+              }
+              if (!pdfjs) {
+                pdfjs = await import("pdfjs-dist");
+                pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+              }
+              const pdf = await pdfjs.getDocument({ url: new URL(rawUrl, window.location.href).href }).promise;
+              try {
+                for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+                  const page = await pdf.getPage(pageNumber);
+                  const viewport = page.getViewport({ scale: 2 });
+                  const canvas = pdfWindow.document.createElement("canvas");
+                  canvas.width = Math.ceil(viewport.width);
+                  canvas.height = Math.ceil(viewport.height);
+                  await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+                  const printableSheet = sheet.cloneNode(true);
+                  printableSheet.querySelector(".attachment-preview-header span").textContent = `پیوست ${toFa(index + 1)}، صفحه ${toFa(pageNumber)} از ${toFa(pdf.numPages)}`;
+                  const previewBody = printableSheet.querySelector(".attachment-preview-body");
+                  const image = pdfWindow.document.createElement("img");
+                  image.className = "attachment-image";
+                  image.alt = `${name}، صفحه ${pageNumber}`;
+                  image.src = canvas.toDataURL("image/png");
+                  previewBody.replaceChildren(image);
+                  sheets.push(printableSheet.outerHTML);
+                  canvas.width = 0;
+                  canvas.height = 0;
+                  page.cleanup();
+                }
+              } finally {
+                await pdf.destroy();
+              }
+            }
 
-          const oldPrintFrame = pdfWindow.document.getElementById("payment-request-print-frame");
-          oldPrintFrame?.remove();
-
-          const printFrame = pdfWindow.document.createElement("iframe");
-          printFrame.id = "payment-request-print-frame";
-          printFrame.setAttribute("title", "چاپ درخواست پرداخت");
-          printFrame.style.position = "fixed";
-          printFrame.style.width = "1px";
-          printFrame.style.height = "1px";
-          printFrame.style.left = "-10000px";
-          printFrame.style.top = "0";
-          printFrame.style.border = "0";
-          pdfWindow.document.body.appendChild(printFrame);
-
-          const frameDocument = printFrame.contentDocument;
-          const frameWindow = printFrame.contentWindow;
-          if (!frameDocument || !frameWindow) {
-            printFrame.remove();
-            return;
+            const oldPrintFrame = pdfWindow.document.getElementById("payment-request-print-frame");
+            oldPrintFrame?.remove();
+            const printFrame = pdfWindow.document.createElement("iframe");
+            printFrame.id = "payment-request-print-frame";
+            printFrame.setAttribute("title", "چاپ درخواست پرداخت و پیوست‌ها");
+            printFrame.style.cssText = "position:fixed;width:1px;height:1px;left:-10000px;top:0;border:0";
+            pdfWindow.document.body.appendChild(printFrame);
+            const frameDocument = printFrame.contentDocument;
+            const frameWindow = printFrame.contentWindow;
+            if (!frameDocument || !frameWindow) throw new Error("print_frame_unavailable");
+            frameWindow.addEventListener("afterprint", () => window.setTimeout(() => printFrame.remove(), 500), { once: true });
+            frameDocument.open();
+            frameDocument.write(`<!doctype html><html lang="fa" dir="rtl"><head>${pdfWindow.document.head.innerHTML}</head><body>${sheets.join("")}</body></html>`);
+            frameDocument.close();
+            await Promise.all([
+              frameDocument.fonts?.ready,
+              ...[...frameDocument.querySelectorAll(".attachment-preview-body img")].map((image) => image.decode()),
+            ]);
+            frameWindow.focus();
+            frameWindow.print();
+          } catch (error) {
+            console.error("Unable to prepare payment attachments for printing", error);
+            pdfWindow.document.getElementById("payment-request-print-frame")?.remove();
+            pdfWindow.alert("آماده‌سازی پیوست‌ها برای چاپ ممکن نشد. لطفاً فایل پیوست را بررسی کنید و دوباره تلاش کنید.");
+          } finally {
+            printButton.disabled = false;
+            printButton.textContent = "چاپ / ذخیره PDF";
           }
-
-          const cleanup = () => window.setTimeout(() => printFrame.remove(), 500);
-          frameWindow.addEventListener("afterprint", cleanup, { once: true });
-          printFrame.addEventListener("load", () => {
-            const runPrint = () => {
-              frameWindow.focus();
-              frameWindow.print();
-            };
-            if (frameDocument.fonts?.ready) frameDocument.fonts.ready.then(runPrint, runPrint);
-            else runPrint();
-          }, { once: true });
-
-          frameDocument.open();
-          frameDocument.write(`<!doctype html><html lang="fa" dir="rtl"><head>${pdfWindow.document.head.innerHTML}</head><body>${mainSheet.outerHTML}</body></html>`);
-          frameDocument.close();
         });
       }
       if (closeButton && closeButton.dataset.bound !== "true") {
@@ -2821,7 +2913,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="پیوست‌ها" value={canEditRequest ? (
                   <div className="flex flex-wrap justify-end gap-2">
                     {editAttachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
-                      <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
+                      <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
                       <button type="button" onClick={() => removeEditAttachment(index)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" aria-label="حذف پیوست" title="حذف پیوست">×</button>
                     </span>)}
                     <label className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editUploading ? "در حال آپلود" : "بارگذاری"} aria-label={editUploading ? "در حال آپلود" : "بارگذاری"}>
@@ -2829,7 +2921,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                       <input type="file" multiple accept="image/*,.heic,.heif,.pdf" className="hidden" onChange={(event) => uploadEditFiles(event.target.files)} />
                     </label>
                   </div>
-                ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
+                ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
                   <PreviewRow compact editing={canEditRelatedDocuments} colon leader={!canEditRelatedDocuments} label="اسناد مرتبط" value={canEditRelatedDocuments ? <div className="flex flex-wrap items-center justify-end gap-2">
                     <button type="button" onClick={() => { setEditLetterPickerQuery(""); setEditLetterPickerOpen(true); }} className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط">
                       <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-4 w-4 dark:invert" />
@@ -2887,6 +2979,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             </div>
           </main>
           {relatedLetterPreview && <DocumentPreviewModal letter={relatedLetterPreview} api={api} onClose={() => setRelatedLetterPreview(null)} />}
+          {imageAttachment && <ImageAttachmentViewer file={imageAttachment} onClose={() => setImageAttachment(null)} />}
           {editLetterPickerOpen && <RelatedLettersPickerModal
             api={api}
             query={editLetterPickerQuery}
