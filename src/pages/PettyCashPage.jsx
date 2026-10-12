@@ -152,7 +152,7 @@ async function fetchPettyCashBalance(userId) {
   const response = await fetch(`/api/tenkhah?beneficiaryId=${encodeURIComponent(userId)}`, { credentials: "include", headers: { "x-user-id": String(userId) } });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error("دریافت مانده تنخواه انجام نشد.");
-  return { received: amount(data.receivedAmount), available: amount(data.unregisteredBalance) };
+  return { received: amount(data.receivedAmount), available: amount(data.unsettledBalance) };
 }
 
 export default function PettyCashPage() {
@@ -299,7 +299,7 @@ export default function PettyCashPage() {
           </div>
         </header>
         {!expenseAccess.loading && expenseAccess.available <= 0n && <p role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-          {expenseAccess.error || (expenseAccess.received <= 0n ? "برای ثبت هزینه، ابتدا باید تنخواه دریافت کنید." : "تمام تنخواه دریافتی ثبت شده و مانده‌ای برای ثبت هزینه جدید وجود ندارد.")}
+          {expenseAccess.error || (expenseAccess.received <= 0n ? "برای ثبت هزینه، ابتدا باید تنخواه دریافت کنید." : "مانده تنخواه تسویه‌نشده‌ای برای ثبت هزینه جدید وجود ندارد.")}
         </p>}
         <div hidden={!expenseFormOpen}>
         <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onSubmitted={(report) => {
