@@ -840,7 +840,8 @@ export default function RoznegarPgae() {
     setSelectedDate(today);
     setGroupSelectionMode(false);
     setGroupSelectedDates([]);
-    setCursor(dayjs(today, { jalali: true }).calendar("jalali").startOf("month"));
+    const { jy, jm } = parseJalaliYmd(today);
+    setCursor({ jy, jm });
   }, [projectId]);
 
   const fetchRoznegarEntries = useCallback(
