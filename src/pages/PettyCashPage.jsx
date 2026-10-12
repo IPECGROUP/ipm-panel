@@ -106,7 +106,7 @@ function MyPettyCashSummary() {
         <div role="img" aria-label="سهم هر پروژه از مجموع تنخواه‌های دریافت‌شده" className="relative mx-auto mt-3 h-56 w-full max-w-72 select-none sm:h-64 [&_.recharts-wrapper:focus:not(:focus-visible)]:outline-none">
           {projectChartData.length ? <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <PieChart>
-              <Pie data={projectChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="61%" outerRadius="84%" paddingAngle={projectChartData.length > 1 ? 2 : 0} cornerRadius={5} stroke="#fff" strokeWidth={2}>
+              <Pie data={projectChartData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius="61%" outerRadius="84%" paddingAngle={projectChartData.length > 1 ? 2 : 0} cornerRadius={projectChartData.length > 1 ? 5 : 0} stroke={projectChartData.length > 1 ? "#fff" : "none"} strokeWidth={projectChartData.length > 1 ? 2 : 0}>
                 {projectChartData.map((project) => <Cell key={project.id} fill={project.color} />)}
               </Pie>
               <Tooltip offset={14} isAnimationActive animationDuration={120} animationEasing="ease-out" wrapperStyle={{ pointerEvents: "none", transition: "transform 120ms ease-out" }} content={({ active, payload }) => {
