@@ -978,6 +978,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
   const menuPopoverRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState(null);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [manualEntryOpen, setManualEntryOpen] = useState(false);
   const submissionKeyRef = useRef(crypto.randomUUID());
   const previewUrlsRef = useRef(new Set());
   useEffect(() => () => { previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
@@ -1160,13 +1161,14 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
   const canEdit = selectedItems.length === 1 && (!initialReport || selectedItems[0].stage === "revision" || !Number.isInteger(Number(selectedItems[0].id)));
   const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || !Number.isInteger(Number(item.id)));
   const beginEdit = (item) => {
+    setManualEntryOpen(true);
     setEditingExpense(item);
     setSelectedIds(new Set([item.id]));
     setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode, amount: format3(item.amount) });
     setAttachment(null);
     setMenuPosition(null);
     setError("");
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
   };
   const editSelected = () => { if (canEdit) beginEdit(selectedItems[0]); };
   const cancelEdit = () => {
@@ -1198,16 +1200,17 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
         </Field>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
-          ثبت گروهی (اکسل)
+        <button type="button" onClick={() => setManualEntryOpen((current) => !current)} aria-expanded={manualEntryOpen}
+          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
+          ثبت موردی
         </button>
         <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
-          ثبت موردی
+          ثبت گروهی (اکسل)
         </button>
       </div>
     </div>
 
-    <div ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
+    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
       <Field label="تاریخ" required>
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
@@ -1245,7 +1248,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
           <img src="/images/icons/bastan.svg" alt="" className="h-4 w-4" />
         </button>}
       </div>
-    </div>
+    </div>}
     {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {initialReport?.canRevise && <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-900">
       ردیف‌های برگشتی را با دکمهٔ «ویرایش برگشتی» اصلاح کنید و سپس گزارش را دوباره تأیید کنید.
