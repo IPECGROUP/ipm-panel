@@ -21,6 +21,29 @@ const money = (value) => {
   const formatted = format3(absolute.toString()).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
   return number < 0n ? `(${formatted})` : formatted;
 };
+const currencyLabel = (item) => item?.title || item?.name || item?.label || item?.code || `#${item?.id}`;
+const isRialCurrency = (item) => /ریال|rial|﷼|(^|\s)irr(\s|$)/i.test(currencyLabel(item).replace(/ي/g, "ی").replace(/ك/g, "ک"));
+const decimalAmount = (value) => {
+  const cleaned = toEnglishDigits(String(value ?? "")).replace(/٫/g, ".").replace(/[٬,\s]/g, "").replace(/[^\d.]/g, "");
+  if (!cleaned) return "";
+  const [whole, ...fraction] = cleaned.split(".");
+  const formatted = format3(whole || "0");
+  return fraction.length ? `${formatted}.${fraction.join("").slice(0, 2)}` : formatted;
+};
+const decimalMinor = (value) => {
+  const normalized = decimalAmount(value).replace(/,/g, "");
+  const match = normalized.match(/^(\d+)(?:\.(\d{0,2}))?$/);
+  return match ? BigInt(match[1]) * 100n + BigInt((match[2] || "").padEnd(2, "0")) : 0n;
+};
+const foreignAmount = (value) => {
+  const minor = decimalMinor(value);
+  return `${minor / 100n}.${String(minor % 100n).padStart(2, "0")}`;
+};
+const rialEquivalent = (value, currencyTypeId, exchangeRate) => currencyTypeId
+  ? (decimalMinor(value) * amount(toEnglishDigits(exchangeRate).replace(/[^\d]/g, "")) + 50n) / 100n
+  : amount(toEnglishDigits(value).replace(/[^\d]/g, ""));
+const expenseAmountLabel = (item) => item.currencyTypeId
+  ? `${toFa(decimalAmount(item.currencyAmount))} ${item.currencyName || "ارز"}` : `${money(item.amount)} ریال`;
 function SummaryLine({ label, value, color, action }) {
   return <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 border-b border-neutral-100 pb-3 last:border-b-0" style={color ? { color } : undefined}>
     <span className="inline-flex items-center gap-2">{action}{label}:</span>
@@ -511,7 +534,7 @@ export default function PettyCashPage() {
                       <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
                       <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
                       <td className="truncate px-4 py-2" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
-                      <td className="px-4 py-2">{state.waiting === "—" ? state.status : `در انتظار ${state.waiting}`}</td>
+                      <td className="px-4 py-2"><span className={`inline-flex max-w-full items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusBadgeClass(state.statusKey)}`}>{state.statusKey === "pending" && state.waiting !== "—" ? state.waiting : state.status}</span></td>
                     </tr>;
                   })}
                 </tbody>
@@ -657,7 +680,7 @@ function TablePagination({ total, rowsPerPage, page, setPage, onRowsPerPageChang
 }
 
 const inputClass = "h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-400";
-const emptyForm = () => ({ expenseDate: todayJalaliYmd().replaceAll("-", "/"), description: "", budgetCode: "", amount: "" });
+const emptyForm = () => ({ expenseDate: todayJalaliYmd().replaceAll("-", "/"), description: "", budgetCode: "", amount: "", currencyTypeId: "", exchangeRate: "" });
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
 const english = (value) => toEnglishDigits(String(value ?? "")).replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
 
@@ -822,7 +845,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     ref={(element) => { if (element) element.indeterminate = partlySelected; }}
                     onChange={() => { if (reportReturn) { setReportReturn(false); setDecisions({}); } setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id))); }}
                     aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>}
-                  {["ردیف", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
+                  {["ردیف", "شرح", "کد بودجه", "مبلغ", "وضعیت"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
                   const badge = badges[rowStatus(item)];
@@ -833,7 +856,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                       aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>}
                     <td className="px-2">{toFa(index + 1)}</td>
                     <td className="break-words px-3 py-3 text-right leading-6"><span className="block text-xs text-neutral-500">{toFa(item.expenseDate)}</span>{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
-                    <td className="px-2 tabular-nums">{money(item.amount)}</td>
+                    <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
                     <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
                   </tr>;
                 })}</tbody>
@@ -848,6 +871,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           <div className="px-3">
             <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-64 xl:h-[min(34vh,400px)]">
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
+                : preview.url && /\.pdf(?:$|[?#])/i.test(attachment?.fileUrl || "") ? <iframe src={preview.url} title="پیش‌نمایش PDF پیوست" className="absolute inset-0 h-full w-full border-0" />
                 : preview.url ? <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست" className="absolute inset-0 cursor-zoom-in">
                   <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
                     onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="h-full w-full object-contain" />
@@ -862,7 +886,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             </div>
           </div>
           <div className="flex min-w-0 items-center justify-between gap-3 px-3 py-3">
-            <div className="min-w-0"><p className="truncate text-sm font-medium" dir="auto" title={attachment?.fileName}>{attachment?.fileName || "—"}</p>
+            <div className="min-w-0"><p className="truncate text-sm font-medium" dir="auto" title={attachment?.fileName}>{attachment?.fileUrl ? <a href={attachment.fileUrl} target="_blank" rel="noreferrer" className="hover:underline">{attachment.fileName || "مشاهده پیوست"}</a> : "—"}</p>
               <p className="mt-1 text-xs text-neutral-500">{preview.size !== null ? photoSize(preview.size) : "—"}</p>
             </div>
           </div>
@@ -1037,6 +1061,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
   const [projectId, setProjectId] = useState(initialReport ? String(initialReport.projectId) : "");
   const [reportName, setReportName] = useState(initialReport?.reportName || "");
   const [budgetItems, setBudgetItems] = useState([]);
+  const [currencyTypes, setCurrencyTypes] = useState([]);
   const [items, setItems] = useState(() => (initialReport?.items || []).map((item) => ({ ...item, uploadedFile: { name: item.fileName, url: item.fileUrl } })));
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(0);
@@ -1094,6 +1119,11 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
       .catch((reason) => setError(reason.message));
   }, [api, user?.id]);
   useEffect(() => {
+    if (!user?.id) return;
+    api("/base/currencies/types").then((data) => setCurrencyTypes((data.items || []).filter((item) => !isRialCurrency(item))))
+      .catch(() => setError("دریافت فهرست ارزها انجام نشد."));
+  }, [api, user?.id]);
+  useEffect(() => {
     if (!initialReport?.projectId) return;
     api(`/cost-breakdown?project_id=${encodeURIComponent(initialReport.projectId)}`)
       .then((data) => setBudgetItems(data.items || []))
@@ -1122,7 +1152,10 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
   const addExpense = () => {
     if (!projectId) return setError("ابتدا پروژه را انتخاب کنید.");
     if (!reportName.trim()) return setError("نام گزارش را وارد کنید.");
-    const rowAmount = amount(toEnglishDigits(form.amount).replace(/[^\d]/g, ""));
+    const selectedCurrency = currencyTypes.find((entry) => String(entry.id) === String(form.currencyTypeId));
+    if (form.currencyTypeId && !selectedCurrency) return setError("ارز انتخاب‌شده معتبر نیست. فهرست ارزها را دوباره دریافت کنید.");
+    const rowAmount = rialEquivalent(form.amount, form.currencyTypeId, form.exchangeRate);
+    if (form.currencyTypeId && amount(toEnglishDigits(form.exchangeRate).replace(/[^\d]/g, "")) <= 0n) return setError("نرخ تبدیل به ریال را وارد کنید.");
     if (!form.expenseDate || !form.description.trim() || !form.budgetCode || rowAmount <= 0n) {
       return setError("تاریخ، شرح، کد بودجه و مبلغ مثبت را تکمیل کنید.");
     }
@@ -1130,11 +1163,14 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
     if (!initialReport && availableBalance !== null && (availableBalance <= 0n || otherRowsAmount + rowAmount > availableBalance)) {
       return setError(availableBalance <= 0n ? "مانده‌ای برای ثبت هزینه وجود ندارد." : `مجموع هزینه‌ها نمی‌تواند از مانده تنخواه (${money(availableBalance)} ریال) بیشتر باشد.`);
     }
-    if (!attachment && !editingExpense?.fileUrl) return setError("پیوست عکس برای هر ردیف الزامی است.");
+    if (!attachment && !editingExpense?.fileUrl) return setError("پیوست هر ردیف الزامی است.");
     if (!editingExpense && items.length >= 500) return setError("هر گزارش حداکثر ۵۰۰ ردیف می‌تواند داشته باشد.");
     const fileUrl = attachment ? URL.createObjectURL(attachment) : editingExpense.fileUrl;
     if (attachment) previewUrlsRef.current.add(fileUrl);
-    const item = { ...form, description: form.description.trim(), amount: toEnglishDigits(form.amount).replace(/[^\d]/g, ""),
+    const item = { ...form, description: form.description.trim(), amount: rowAmount.toString(),
+      currencyTypeId: form.currencyTypeId || null, currencyName: selectedCurrency ? currencyLabel(selectedCurrency) : "ریال",
+      currencyAmount: form.currencyTypeId ? foreignAmount(form.amount) : rowAmount.toString(),
+      exchangeRate: form.currencyTypeId ? toEnglishDigits(form.exchangeRate).replace(/[^\d]/g, "") : "1",
       id: editingExpense?.id || crypto.randomUUID(), stage: editingExpense?.stage || "planning", fileUrl,
       fileName: attachment?.name || editingExpense?.fileName,
       attachmentFile: attachment || editingExpense?.attachmentFile,
@@ -1191,7 +1227,8 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
           setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, uploadedFile: file } : entry));
         }
         prepared.push({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode,
-          amount: item.amount, fileName: file.name, fileUrl: file.url, stage: item.stage, id: item.id });
+          amount: item.amount, currencyTypeId: item.currencyTypeId || null, currencyName: item.currencyName || "ریال", currencyAmount: item.currencyAmount || item.amount,
+          exchangeRate: item.exchangeRate || "1", fileName: file.name, fileUrl: file.url, stage: item.stage, id: item.id });
       }
       const data = await api("/petty-cash-expenses", { method: initialReport ? "PATCH" : "POST", body: JSON.stringify({
         action: initialReport ? "resubmit_report" : "create_expense_report", reportId: initialReport?.id, expectedVersion: initialReport?.version,
@@ -1240,7 +1277,9 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
     setManualEntryOpen(true);
     setEditingExpense(item);
     setSelectedIds(new Set([item.id]));
-    setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode, amount: format3(item.amount) });
+    setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode,
+      amount: item.currencyTypeId ? decimalAmount(item.currencyAmount) : format3(item.amount),
+      currencyTypeId: item.currencyTypeId ? String(item.currencyTypeId) : "", exchangeRate: item.currencyTypeId ? format3(item.exchangeRate) : "" });
     setAttachment(null);
     setMenuPosition(null);
     setError("");
@@ -1286,7 +1325,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
       </div>
     </div>
 
-    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
+    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className={`mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 ${form.currencyTypeId ? "xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_130px_auto]" : "xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]"}`}>
       <Field label="تاریخ" required>
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
@@ -1303,11 +1342,25 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
           })() : (projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0">⌄</span>
         </button>
       </Field>
-      <Field label="مبلغ (ریال)" required>
-        <input required dir="ltr" inputMode="numeric" value={toFa(form.amount)}
-          onChange={(event) => setForm((current) => ({ ...current, amount: format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")) }))}
-          className={`${inputClass} text-left tabular-nums`} />
+      <Field label="مبلغ" required>
+        <div className="relative min-w-0">
+          <input required dir="ltr" inputMode={form.currencyTypeId ? "decimal" : "numeric"} value={toFa(form.amount)}
+            onChange={(event) => setForm((current) => ({ ...current, amount: current.currencyTypeId ? decimalAmount(event.target.value) : format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")) }))}
+            className={`${inputClass} pl-[72px] text-left tabular-nums`} />
+          <select aria-label="ارز مبلغ هزینه" title="انتخاب ارز" value={form.currencyTypeId}
+            onChange={(event) => setForm((current) => ({ ...current, currencyTypeId: event.target.value,
+              amount: event.target.value ? decimalAmount(current.amount) : format3(toEnglishDigits(current.amount).split(".")[0].replace(/[^\d]/g, "")), exchangeRate: event.target.value ? current.exchangeRate : "" }))}
+            className="absolute left-1 top-1 h-9 w-[64px] cursor-pointer rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700">
+            <option value="">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id}>{currencyLabel(item)}</option>)}
+          </select>
+        </div>
       </Field>
+      {form.currencyTypeId && <Field label="نرخ تبدیل (ریال)" required>
+        <input required dir="ltr" inputMode="numeric" value={toFa(form.exchangeRate)}
+          onChange={(event) => setForm((current) => ({ ...current, exchangeRate: format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")) }))}
+          className={`${inputClass} text-left tabular-nums`} />
+        <span className="mt-1 block text-[11px] text-neutral-500">معادل: {money(rialEquivalent(form.amount, form.currencyTypeId, form.exchangeRate))} ریال</span>
+      </Field>}
       <div className="flex items-end gap-3">
         <Field label="پیوست" required>
           <button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving}
@@ -1374,7 +1427,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
               <td className="px-3">{toFa(item.expenseDate)}</td>
               <td className="truncate px-3 text-right" title={item.description}>{item.description}</td>
               <td className="px-3">{toFa(item.budgetCode)}</td>
-              <td className="px-3 tabular-nums">{toFa(format3(item.amount))}</td>
+              <td className="px-3 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
               <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
               {initialReport && <td className="px-2">{item.stage === "revision" ? <span className="inline-flex flex-col items-center gap-1"><button type="button" onClick={() => beginEdit(item)} className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"><Pencil className="h-3 w-3" />ویرایش برگشتی</button>{item.reviewNote && <span className="max-w-28 truncate text-[10px] text-amber-800" title={item.reviewNote}>{item.reviewNote}</span>}</span> : <span className="text-xs text-neutral-500">{item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span>}</td>}
               <td />
@@ -1536,6 +1589,8 @@ async function compressExpensePhoto(source, image, turns, crop) {
 function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm }) {
   const [source, setSource] = useState(null);
   const [image, setImage] = useState(null);
+  const [documentFile, setDocumentFile] = useState(null);
+  const [documentUrl, setDocumentUrl] = useState("");
   const [turns, setTurns] = useState(0);
   const [crop, setCrop] = useState(fullPhotoCrop);
   const [cropping, setCropping] = useState(false);
@@ -1554,12 +1609,19 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
 
   const choosePhoto = useCallback(async (file) => {
     if (!file) return;
-    if (!/\.(jpe?g|png|webp)$/i.test(file.name)) {
-      setError("عکس با فرمت JPG، PNG یا WebP انتخاب کنید.");
+    if (!/\.(jpe?g|png|webp|pdf)$/i.test(file.name)) {
+      setError("فایل PDF، JPG، PNG یا WebP انتخاب کنید.");
       return;
     }
     if (file.size > 25 * 1024 * 1024) {
-      setError("حجم عکس اولیه باید کمتر از ۲۵ مگابایت باشد.");
+      setError("حجم پیوست باید کمتر از ۲۵ مگابایت باشد.");
+      return;
+    }
+    if (/\.pdf$/i.test(file.name)) {
+      const header = new TextDecoder().decode(await file.slice(0, 5).arrayBuffer());
+      if (header !== "%PDF-") return setError("محتوای فایل PDF معتبر نیست.");
+      loadTokenRef.current += 1;
+      setDocumentFile(file); setSource(null); setImage(null); setProcessed(null); setLoading(false); setError("");
       return;
     }
     const token = ++loadTokenRef.current;
@@ -1570,6 +1632,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
       if (loadTokenRef.current !== token) return;
       setSource(file);
       setImage(decoded);
+      setDocumentFile(null);
       setTurns(0);
       setCrop(fullPhotoCrop());
       setCropping(false);
@@ -1584,7 +1647,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
   useEffect(() => {
     const controller = new AbortController();
     if (initialFile) choosePhoto(initialFile);
-    else if (initialUrl && /\.(jpe?g|png|webp)$/i.test(initialUrl)) {
+    else if (initialUrl && /\.(jpe?g|png|webp|pdf)$/i.test(initialUrl)) {
       setLoading(true);
       fetch(initialUrl, { credentials: "include", signal: controller.signal })
         .then(async (response) => {
@@ -1596,6 +1659,13 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
     }
     return () => { controller.abort(); loadTokenRef.current += 1; };
   }, [initialFile, initialUrl, initialName, choosePhoto]);
+
+  useEffect(() => {
+    if (!documentFile) { setDocumentUrl(""); return; }
+    const url = URL.createObjectURL(documentFile);
+    setDocumentUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [documentFile]);
 
   useEffect(() => {
     const previousFocus = document.activeElement;
@@ -1706,7 +1776,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
           <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800"><X className="h-4 w-4" /></button>
         </header>
         <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
-          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
+          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" className="hidden"
             onChange={(event) => { choosePhoto(event.target.files?.[0]); event.target.value = ""; }} />
           {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {image && <div className="mb-4 flex flex-wrap gap-2">
@@ -1721,7 +1791,12 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
             <button type="button" disabled={loading || draggingCrop} onClick={() => { setTurns(0); setCrop(fullPhotoCrop()); setCropping(false); }} className={toolbarButton}><RefreshCw className="h-4 w-4" />بازنشانی</button>
             <button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className={`${toolbarButton} mr-auto`}><ImagePlus className="h-4 w-4" />انتخاب عکس دیگر</button>
           </div>}
-          <div className={image ? "grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]" : ""}>
+          {documentFile && <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold" title={documentFile.name}>{documentFile.name}</p><p className="mt-1 text-xs text-neutral-500">PDF، {photoSize(documentFile.size)}</p></div>
+              <button type="button" onClick={() => inputRef.current?.click()} className={toolbarButton}>انتخاب فایل دیگر</button></div>
+            {documentUrl && <iframe src={documentUrl} title="پیش‌نمایش PDF پیوست هزینه" className="mt-4 h-[min(50vh,500px)] w-full rounded-xl border border-neutral-200 bg-white" />}
+          </div>}
+          {!documentFile && <div className={image ? "grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]" : ""}>
             <div onDragOver={(event) => { event.preventDefault(); setDropActive(true); }}
               onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setDropActive(false); }}
               onDrop={(event) => { event.preventDefault(); setDropActive(false); choosePhoto(event.dataTransfer.files?.[0]); }}
@@ -1729,8 +1804,8 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
               {loading && <div role="status" className="absolute inset-0 z-20 grid place-items-center bg-white/80"><span className="flex items-center gap-2 text-sm"><LoaderCircle className="h-5 w-5 animate-spin" />در حال خواندن عکس...</span></div>}
               {!image ? <button type="button" onClick={() => inputRef.current?.click()} className="flex w-full flex-col items-center justify-center gap-4 py-9">
                 <span className="grid h-16 w-16 place-items-center rounded-2xl border border-neutral-200 bg-white shadow-sm"><img src="/images/icons/upload.svg" alt="" className="h-8 w-8" /></span>
-                <span className="text-sm font-bold sm:text-base">عکس را اینجا رها کنید یا برای انتخاب کلیک کنید</span>
-                <span className="text-xs text-neutral-500">JPG، PNG یا WebP</span>
+                <span className="text-sm font-bold sm:text-base">پیوست را اینجا رها کنید یا برای انتخاب کلیک کنید</span>
+                <span className="text-xs text-neutral-500">PDF، JPG، PNG یا WebP</span>
               </button> : <>
                 <div dir="ltr" className={`relative overflow-hidden ${cropping ? "cursor-crosshair touch-none" : ""}`}
                   style={{ width: `min(100%, ${ratio * 44}vh)`, aspectRatio: ratio }}
@@ -1763,11 +1838,11 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
                 <p className="mt-2 text-center text-[11px] text-neutral-500">{toFa(processed.width)} × {toFa(processed.height)} پیکسل</p>
               </>}
             </aside>}
-          </div>
+          </div>}
         </div>
         <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-neutral-100 px-5 py-4">
-          <button type="button" disabled={!processed || processing || loading || draggingCrop}
-            onClick={() => onConfirm(processed.file)} className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"><Check className="h-4 w-4" />تأیید پیوست</button>
+          <button type="button" disabled={(!processed && !documentFile) || processing || loading || draggingCrop}
+            onClick={() => onConfirm(documentFile || processed.file)} className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"><Check className="h-4 w-4" />تأیید پیوست</button>
         </footer>
       </div>
     </div>, document.body

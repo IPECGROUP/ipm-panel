@@ -36,14 +36,15 @@ export function openPettyCashReportPdf(report) {
   const info = (label, value) => `<div class="info-card"><div class="label">${escapeHtml(label)}</div><div class="value">${text(value)}</div></div>`;
   const itemRows = rows.map((item, index) => `<tr>
     <td>${text(index + 1)}</td><td>${text(item.expenseDate)}</td><td>${text(item.description)}</td>
-    <td>${text(item.budgetCode)}</td><td class="amount">${escapeHtml(amount(item.amount))}</td>
+    <td>${text(item.budgetCode)}</td><td class="amount">${item.currencyTypeId ? `${text(item.currencyAmount)} ${text(item.currencyName)}<br><small>${escapeHtml(amount(item.amount))} ریال</small>` : `${escapeHtml(amount(item.amount))} ریال`}</td>
     <td><span class="status">تأیید شده</span></td><td>${text(item.fileName)}</td>
   </tr>`).join("");
   const attachmentPages = rows.map((item, index) => {
     const url = attachmentUrl(item.fileUrl);
+    const isPdf = /\.pdf(?:$|[?#])/i.test(item.fileUrl || "");
     return `<article class="sheet attachment-page">
       <div class="attachment-heading"><span>پیوست ردیف ${text(index + 1)}</span><strong>${text(item.fileName)}</strong></div>
-      <div class="attachment-body">${url ? `<img src="${escapeHtml(url)}" alt="پیوست ردیف ${text(index + 1)}" />` : "پیش‌نمایش پیوست در دسترس نیست."}</div>
+      <div class="attachment-body">${url ? isPdf ? `<a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">مشاهده فایل PDF پیوست</a>` : `<img src="${escapeHtml(url)}" alt="پیوست ردیف ${text(index + 1)}" />` : "پیش‌نمایش پیوست در دسترس نیست."}</div>
       <footer class="page-footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>پیوست ${text(index + 1)} از ${text(rows.length)}</span></footer>
     </article>`;
   }).join("");
@@ -105,7 +106,7 @@ export function openPettyCashReportPdf(report) {
       ${info("تاریخ ثبت", date(report.createdAt))}
     </div></section>
     <section><h2 class="section-title">جزئیات ردیف‌های گزارش</h2><div class="table-wrap"><table>
-      <thead><tr><th>ردیف</th><th>تاریخ هزینه</th><th>شرح</th><th>کد بودجه</th><th>مبلغ (ریال)</th><th>وضعیت</th><th>پیوست</th></tr></thead>
+      <thead><tr><th>ردیف</th><th>تاریخ هزینه</th><th>شرح</th><th>کد بودجه</th><th>مبلغ</th><th>وضعیت</th><th>پیوست</th></tr></thead>
       <tbody>${itemRows}</tbody>
     </table></div></section>
     <section><h2 class="section-title">پیوست‌های گزارش</h2><div class="value">${text(rows.length)} پیوست</div></section>
