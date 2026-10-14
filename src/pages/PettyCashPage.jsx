@@ -39,6 +39,7 @@ function MyPettyCashSummary() {
   const [detailsTotal, setDetailsTotal] = useState("0");
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState("");
+  const [registeredOpen, setRegisteredOpen] = useState(false);
   const detailsDialogRef = useRef(null);
   const receivedProjectIds = useMemo(() => items.filter((item) => amount(item.receivedAmount) > 0n).map((item) => item.projectId), [items]);
 
@@ -136,7 +137,7 @@ function MyPettyCashSummary() {
       <PettyCashBarChart totals={totals} />
       <div className="self-center space-y-4 text-sm sm:text-base">
         <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} color="#6366F1" action={<button type="button" onClick={() => setDetailsOpen(true)} aria-label="مشاهده ریز تنخواه‌های دریافت‌شده" title="مشاهده ریز تنخواه‌های دریافت‌شده" className="inline-grid h-8 w-8 place-items-center rounded-lg transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"><Eye className="h-4 w-4" /></button>} />
-        <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} color="#38BDF8" />
+        <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} color="#38BDF8" action={<button type="button" onClick={() => setRegisteredOpen(true)} aria-label="مشاهده ریز هزینه‌های ثبت‌شده" title="مشاهده ریز هزینه‌های ثبت‌شده" className="inline-grid h-8 w-8 place-items-center rounded-lg transition hover:bg-sky-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><Eye className="h-4 w-4" /></button>} />
         <SummaryLine label="باقی‌مانده هزینه‌های ثبت نشده" value={unregistered} color="#6B7280" />
         <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} color="#10B981" />
         <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} color="#6B7280" />
@@ -197,7 +198,76 @@ function MyPettyCashSummary() {
         {!detailsLoading && !detailsError && <footer className="flex shrink-0 justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-bold sm:px-6"><span>مجموع تنخواه‌های دریافت‌شده</span><span className="tabular-nums">{money(detailsTotal)} ریال</span></footer>}
       </div>
     </div>, document.body)}
+    {registeredOpen && <RegisteredExpenseDetailsDialog userId={user?.id} onClose={() => setRegisteredOpen(false)} />}
   </section>;
+}
+
+function RegisteredExpenseDetailsDialog({ userId, onClose }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const dialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    const controller = new AbortController();
+    const read = async (path) => {
+      const response = await fetch(path, { credentials: "include", headers: { "x-user-id": String(userId) }, signal: controller.signal });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "دریافت ریز هزینه‌ها انجام نشد.");
+      return data;
+    };
+    Promise.all([read("/api/petty-cash-expenses"), read("/api/tenkhah")])
+      .then(([expenses, tenkhah]) => {
+        const currentExpenses = (expenses.items || []).filter((item) => Number(item.createdById) === Number(userId)).map((item) => ({
+          key: `expense-${item.id}`, date: item.expenseDate, projectName: item.projectName || item.projectCode,
+          description: item.description, budgetCode: item.budgetCode, amount: item.amount, source: "گزارش هزینه",
+        }));
+        const legacyEntries = (tenkhah.items || []).filter((request) => Number(request.beneficiaryUserId) === Number(userId))
+          .flatMap((request) => (request.settlements || []).filter((settlement) => Number(settlement.createdById) === Number(userId))
+            .flatMap((settlement) => (settlement.entries || []).map((entry) => ({
+              key: `settlement-${settlement.id}-${entry.id}`, date: entry.expenseDate,
+              projectName: request.projectName || request.projectCode, description: entry.description,
+              budgetCode: entry.budgetCode, amount: entry.amount, source: "تسویه تنخواه",
+            }))));
+        setRows([...currentExpenses, ...legacyEntries].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))));
+      })
+      .catch((reason) => { if (reason.name !== "AbortError") setError("دریافت ریز هزینه‌ها انجام نشد. دوباره تلاش کنید."); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [userId]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement;
+    dialogRef.current?.querySelector("button")?.focus();
+    const handleKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); onClose(); }
+      if (event.key !== "Tab") return;
+      const focusable = [...dialogRef.current.querySelectorAll('button:not(:disabled), a[href]')];
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => { document.removeEventListener("keydown", handleKey); previousFocus?.focus(); };
+  }, [onClose]);
+
+  const total = rows.reduce((sum, row) => sum + amount(row.amount), 0n);
+  return createPortal(<div className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/60 p-3 sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div ref={dialogRef} data-registered-details-dialog="true" role="dialog" aria-modal="true" aria-labelledby="registered-details-title" dir="rtl" className="flex max-h-[85dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 p-4 sm:px-6">
+        <div><h3 id="registered-details-title" className="text-base font-bold sm:text-lg">ریز هزینه‌های ثبت‌شده</h3><p className="mt-1 text-xs text-neutral-500">تمام هزینه‌ها و تسویه‌های ثبت‌شده توسط شما</p></div>
+        <button type="button" onClick={onClose} aria-label="بستن ریز هزینه‌ها" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-neutral-900 text-white"><X className="h-4 w-4" /></button>
+      </header>
+      <div className="min-h-0 overflow-auto p-4 sm:p-6">
+        {loading ? <p role="status" className="text-sm text-neutral-500">در حال دریافت اطلاعات...</p> : error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : rows.length ? <div className="overflow-x-auto rounded-xl border border-neutral-200"><table className="w-full min-w-[760px] text-right text-sm">
+          <thead className="bg-neutral-50 text-neutral-700"><tr><th className="px-3 py-3">ردیف</th><th className="px-3 py-3">تاریخ هزینه</th><th className="px-3 py-3">پروژه</th><th className="px-3 py-3">شرح</th><th className="px-3 py-3">کد بودجه</th><th className="px-3 py-3">نوع ثبت</th><th className="px-3 py-3 text-left">مبلغ (ریال)</th></tr></thead>
+          <tbody>{rows.map((row, index) => <tr key={row.key} className="border-t border-neutral-200"><td className="px-3 py-3">{toFa(index + 1)}</td><td className="px-3 py-3">{toFa(row.date || "—")}</td><td className="px-3 py-3">{row.projectName || "—"}</td><td className="max-w-64 break-words px-3 py-3">{row.description || "—"}</td><td className="px-3 py-3">{toFa(row.budgetCode || "—")}</td><td className="px-3 py-3">{row.source}</td><td className="whitespace-nowrap px-3 py-3 text-left font-semibold tabular-nums">{money(row.amount)}</td></tr>)}</tbody>
+        </table></div> : <p className="text-sm text-neutral-500">هنوز هزینه‌ای ثبت نشده است.</p>}
+      </div>
+      {!loading && !error && <footer className="flex shrink-0 justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-bold sm:px-6"><span>مجموع هزینه‌های ثبت‌شده</span><span className="tabular-nums">{money(total)} ریال</span></footer>}
+    </div>
+  </div>, document.body);
 }
 
 async function fetchExpenseReports(userId) {
@@ -320,7 +390,7 @@ export default function PettyCashPage() {
     document.body.style.overflow = "hidden";
     summaryDialogRef.current?.querySelector("button")?.focus();
     const handleKey = (event) => {
-      if (document.querySelector('[data-received-details-dialog="true"]')) return;
+      if (document.querySelector('[data-received-details-dialog="true"], [data-registered-details-dialog="true"]')) return;
       if (summaryDialogRef.current?.querySelector('[data-manager-dialog="true"]')) return;
       if (event.key === "Escape") { event.preventDefault(); if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); setSelectedLegacyExpense(null); } }
       if (event.key !== "Tab") return;
