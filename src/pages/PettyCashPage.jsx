@@ -2,7 +2,7 @@ import { createElement, useCallback, useEffect, useMemo, useRef, useState } from
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, UserRound, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Pencil, Eye } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -531,15 +531,8 @@ export default function PettyCashPage() {
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 items-center gap-3">
               {selectedReport && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-neutral-50"><FileText className="h-5 w-5" /></span>}
-               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : String(selectedReport.createdById) === String(userId) ? "اقدامات تنخواه گردان" : "بررسی و تصمیم‌گیری درخواست" : selectedLegacyExpense ? "بررسی هزینه تنخواه" : "تنخواه‌های من"}</h2>
-                 {selectedReport && String(selectedReport.createdById) !== String(userId) && <p className="mt-1 text-xs text-neutral-500">اطلاعات درخواست و ثبت تصمیم‌گیری نهایی</p>}
+               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "اقدامات تنخواه گردان" : selectedLegacyExpense ? "بررسی هزینه تنخواه" : "تنخواه‌های من"}</h2>
               </div>
-               {selectedReport && String(selectedReport.createdById) !== String(userId) && <button type="button" aria-label="خروجی PDF" title={selectedReport.items?.length && selectedReport.items.every((item) => item.stage === "completed") ? "مشاهده خروجی PDF" : "خروجی PDF پس از تأیید نهایی فعال می‌شود"}
-                disabled={!selectedReport.items?.length || !selectedReport.items.every((item) => item.stage === "completed")}
-                onClick={() => openPettyCashReportPdf(selectedReport)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
-                <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />
-              </button>}
             </div>
             <button type="button" disabled={reviewBusy} onClick={closeDialog} aria-label="بستن پنجره"
               className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black text-white hover:bg-neutral-800"><X className="h-4 w-4" /></button>
@@ -766,11 +759,6 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     if (!selectedIds.size || !canAct || saving) return;
     setDecisions((current) => ({ ...current, ...Object.fromEntries([...selectedIds].map((id) => [id, decision])) }));
   };
-  const applyGroupDecision = (decision) => {
-    if (!canAct || saving) return;
-    setSelectedIds(new Set());
-    setDecisions(Object.fromEntries(actionable.map((item) => [item.id, decision])));
-  };
   const rowStatus = (item) => decisions[item.id] || (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
   const badges = {
     approved: { label: "تأیید شده", className: "bg-emerald-50 text-emerald-700 border-emerald-100" },
@@ -779,25 +767,19 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     rejected: { label: "رد شده", className: "bg-red-50 text-red-700 border-red-100" },
   };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
-  const metadata = isCreatorView ? [
+  const metadata = [
     { label: "شماره گزارش", value: toFa(report.id), Icon: FileText },
     { label: "تاریخ", value: reportDate(report.createdAt), Icon: CalendarDays },
     { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
     { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
     { label: "مبلغ", value: `${money(entries.reduce((sum, item) => sum + amount(item.amount), 0n))} ریال`, Icon: FileText },
-  ] : [
-    { label: "شماره گزارش", value: toFa(report.id), Icon: FileText },
-    { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
-    { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
-    { label: "درخواست‌کننده", value: report.createdByName || report.createdByUsername || "—", Icon: UserRound },
-    { label: "تاریخ درخواست", value: reportDate(report.createdAt), Icon: CalendarDays },
   ];
 
   return <>
     <div inert={managerOpen ? true : undefined} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {isCreatorView && <h3 className="mb-2 text-sm font-bold">جزئیات گزارش تنخواه</h3>}
-      <div className={`mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 ${isCreatorView ? "md:grid-cols-3 xl:grid-cols-5" : "xl:grid-cols-4"}`}>
+      <h3 className="mb-2 text-sm font-bold">جزئیات گزارش تنخواه</h3>
+      <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 md:grid-cols-3 xl:grid-cols-5">
         {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
           <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
@@ -806,8 +788,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </div>)}
       </div>
 
-      <div className={`grid min-w-0 items-start gap-4 ${isCreatorView ? "xl:grid-cols-[270px_minmax(0,1fr)_340px]" : "xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]"}`}>
-        {isCreatorView && <PettyCashSettlementTimeline report={report} />}
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_340px]">
+        <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           {!isCreatorView && <div className="flex flex-col items-stretch gap-4 border-b border-neutral-200 p-3 sm:p-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
             <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{toFa(selectedIds.size)} ردیف انتخاب شده</span>
@@ -820,26 +802,26 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           </div>}
 
           <section className="min-w-0 overflow-hidden">
-             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />{isCreatorView ? "جزئیات ردیف‌های گزارش تنخواه" : "جزئیات ردیف‌های درخواست"}</h3>
+             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[280px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[320px]">
-              <table className={`w-full table-fixed text-center text-[13px] ${isCreatorView ? "min-w-[650px]" : "min-w-[760px] [&_td]:!text-center [&_th]:!text-center"}`} aria-label="هزینه‌های گزارش">
-                <colgroup>{!isCreatorView && <col className="w-11" />}<col className="w-12" />{!isCreatorView && <col className="w-28" />}<col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
+              <table className={`w-full table-fixed text-center text-[13px] ${isCreatorView ? "min-w-[650px]" : "min-w-[700px]"}`} aria-label="هزینه‌های گزارش">
+                <colgroup>{!isCreatorView && <col className="w-11" />}<col className="w-12" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   {!isCreatorView && <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
                     ref={(element) => { if (element) element.indeterminate = partlySelected; }}
                     onChange={() => setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id)))}
                     aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>}
-                  {(isCreatorView ? ["ردیف", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"] : ["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"]).map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${isCreatorView && label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
+                  {["ردیف", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
                   const badge = badges[rowStatus(item)];
                   return <tr key={item.id} tabIndex={0} onClick={() => viewRow(item)}
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
-                    className={`${isCreatorView ? "h-16" : "h-12"} cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50 hover:bg-sky-100" : viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
+                    className={`h-16 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50 hover:bg-sky-100" : viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     {!isCreatorView && <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
                       aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>}
-                    <td className="px-2">{toFa(index + 1)}</td>{!isCreatorView && <td className="px-2">{toFa(item.expenseDate)}</td>}
-                    <td className={`break-words px-3 py-3 leading-6 ${isCreatorView ? "text-right" : "text-center"}`}>{isCreatorView && <span className="block text-xs text-neutral-500">{toFa(item.expenseDate)}</span>}{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
+                    <td className="px-2">{toFa(index + 1)}</td>
+                    <td className="break-words px-3 py-3 text-right leading-6"><span className="block text-xs text-neutral-500">{toFa(item.expenseDate)}</span>{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums">{money(item.amount)}</td>
                     <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
                   </tr>;
@@ -859,14 +841,12 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <h3 className="flex items-center gap-2 px-3 py-3 text-sm font-bold"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست</h3>
           <div className="px-3">
-            <div className={`relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 ${isCreatorView ? "sm:h-64 xl:h-[min(34vh,400px)]" : "sm:h-80 xl:h-[min(44vh,500px)]"}`}>
+            <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-64 xl:h-[min(34vh,400px)]">
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
-                : preview.url && isCreatorView ? <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست" className="absolute inset-0 cursor-zoom-in">
+                : preview.url ? <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست" className="absolute inset-0 cursor-zoom-in">
                   <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
                     onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="h-full w-full object-contain" />
                 </a>
-                : preview.url ? <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
-                  onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="absolute inset-0 h-full w-full object-contain" />
                 : <p className="px-4 text-center text-xs text-neutral-500">{preview.error || "پیوستی برای نمایش وجود ندارد."}</p>}
               {attachments.length > 1 && <div dir="ltr" className="pointer-events-none absolute inset-x-2 top-1/2 flex -translate-y-1/2 justify-between">
                 <button type="button" disabled={attachmentIndex === 0} onClick={() => setAttachmentIndex((current) => current - 1)} aria-label="پیوست قبلی"
@@ -880,29 +860,20 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             <div className="min-w-0"><p className="truncate text-sm font-medium" dir="auto" title={attachment?.fileName}>{attachment?.fileName || "—"}</p>
               <p className="mt-1 text-xs text-neutral-500">{preview.size !== null ? photoSize(preview.size) : "—"}</p>
             </div>
-            {!isCreatorView && attachment && <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg transition hover:bg-neutral-100"><ExternalLink className="h-5 w-5 stroke-[1.6]" /></a>}
           </div>
-          {isCreatorView && <div className="border-t border-neutral-200 p-3"><button type="button"
+          <div className="border-t border-neutral-200 p-3"><button type="button"
             disabled={!entries.length || !entries.every((item) => item.stage === "completed")}
             onClick={() => openPettyCashReportPdf(report)}
             title={entries.length && entries.every((item) => item.stage === "completed") ? "مشاهده گزارش تنخواه" : "گزارش تنخواه پس از تأیید نهایی فعال می‌شود"}
             className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
             <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />گزارش تنخواه
-          </button></div>}
+          </button></div>
         </aside>
       </div>
     </div>
-    {(!isCreatorView || report.canRevise) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
-      <div className="flex w-full flex-wrap items-end justify-start gap-4">
-        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} ml-auto border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-        {!isCreatorView && canAct && <div className="mr-auto grid w-full max-w-[19rem] grid-cols-3 gap-1">
-          <div className="flex min-w-0 flex-col items-center gap-1.5"><span className="text-center text-[11px] font-semibold text-neutral-600">تأیید گروهی</span><button type="button" aria-label="تأیید گروهی" title="تأیید گروهی" disabled={saving} onClick={() => applyGroupDecision("approved")} className={`${actionClass} mt-auto h-11 w-11 !p-0 border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-5 w-5" /></button></div>
-          <div className="flex min-w-0 flex-col items-center gap-1.5"><span className="text-center text-[11px] font-semibold text-neutral-600">رد گروهی</span><button type="button" aria-label="رد گروهی" title="رد گروهی" disabled={saving} onClick={() => applyGroupDecision("rejected")} className={`${actionClass} mt-auto h-11 w-11 !p-0 border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-5 w-5" /></button></div>
-          <div className="flex min-w-0 flex-col items-center gap-1.5"><span className="text-center text-[11px] font-semibold text-neutral-600">درخواست اصلاح گروهی</span><button type="button" aria-label="درخواست اصلاح گروهی" title="درخواست اصلاح گروهی" disabled={saving} onClick={() => applyGroupDecision("revision")} className={`${actionClass} mt-auto h-11 w-11 !p-0 border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-5 w-5" /></button></div>
-        </div>}
-      </div>
-      {!isCreatorView && canAct && <div className="mt-4 flex justify-end border-t border-neutral-200 pt-3"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}><Check className="h-5 w-5" />تأیید و ثبت</button></div>}
+    {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
+      {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
+      {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}><Check className="h-5 w-5" />تأیید و ثبت</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
