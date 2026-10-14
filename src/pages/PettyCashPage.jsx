@@ -214,7 +214,7 @@ function MyPettyCashSummary() {
         </header>
         <div className="min-h-0 overflow-auto p-4 sm:p-6">
           {detailsLoading ? <p role="status" className="text-sm text-indigo-500">در حال دریافت اطلاعات...</p> : detailsError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{detailsError}</p> : receivedDetails.length ? <div className="overflow-x-auto rounded-xl border border-indigo-100"><table className="w-full min-w-[700px] text-right text-sm">
-            <thead className="bg-indigo-50 text-indigo-700"><tr><th className="px-3 py-3">ردیف</th><th className="px-3 py-3">شماره درخواست</th><th className="px-3 py-3">تاریخ دریافت</th><th className="px-3 py-3">پروژه</th><th className="px-3 py-3">شرح</th><th className="px-3 py-3 text-left">مبلغ</th></tr></thead>
+            <thead className="bg-indigo-50 text-indigo-700"><tr><th className="px-3 py-3">ردیف</th><th className="px-3 py-3">شماره درخواست</th><th className="px-3 py-3">تاریخ</th><th className="px-3 py-3">پروژه</th><th className="px-3 py-3">شرح</th><th className="px-3 py-3 text-left">مبلغ</th></tr></thead>
             <tbody>{receivedDetails.map((item, index) => <tr key={item.id} className="border-t border-indigo-100 transition hover:bg-indigo-50/40"><td className="px-3 py-3">{toFa(index + 1)}</td><td className="px-3 py-3">{toFa(item.requestNumber || "—")}</td><td className="px-3 py-3">{toFa(item.chargedDate || item.requestDate || "—")}</td><td className="px-3 py-3">{item.projectName || item.projectCode || "—"}</td><td className="max-w-64 break-words px-3 py-3">{item.purpose || "—"}</td><td className="whitespace-nowrap px-3 py-3 text-left font-semibold tabular-nums text-indigo-700">{money(item.chargedAmount)} ریال</td></tr>)}</tbody>
           </table></div> : <p className="text-sm text-neutral-500">هنوز تنخواهی دریافت نشده است.</p>}
         </div>
@@ -688,10 +688,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const { user } = useAuth();
   const isCreatorView = String(report.createdById) === String(user?.id);
   const entries = report.items || [];
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
-  const [decisions, setDecisions] = useState({});
+  const [reportDecision, setReportDecision] = useState("");
   const [returnNote, setReturnNote] = useState("");
-  const [reportReturn, setReportReturn] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [outdated, setOutdated] = useState(false);
@@ -707,10 +705,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const attachments = entries.filter((item) => item.fileUrl);
   const attachment = attachments[attachmentIndex];
   const actionable = entries.filter((item) => item.canAct === true);
-  const canAct = actionable.length > 0 && !outdated;
-  const allSelected = actionable.length > 0 && actionable.every((item) => selectedIds.has(item.id));
-  const partlySelected = selectedIds.size > 0 && !allSelected;
-  const readyToSubmit = canAct && (reportReturn ? Boolean(returnNote.trim()) : actionable.every((item) => decisions[item.id] === "approved"));
+  const canAct = entries.length > 0 && actionable.length === entries.length && entries.every((item) => item.stage === entries[0].stage) && !outdated;
+  const readyToSubmit = canAct && (reportDecision === "revision" ? Boolean(returnNote.trim()) : reportDecision === "approve");
 
   useEffect(() => {
     if (!managerOpen) return;
@@ -727,18 +723,17 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
   const submitDecision = async (recipientId = "") => {
     if (inFlightRef.current || !readyToSubmit) return;
-    if (!reportReturn && !recipientId && actionable.some((item) => item.stage === "planning" && decisions[item.id] === "approved")) {
+    if (reportDecision === "approve" && !recipientId && actionable.some((item) => item.stage === "planning")) {
       setError(""); setManagerId(""); setManagerOpen(true); return;
     }
     inFlightRef.current = true;
     setSaving(true); onBusyChange(true); setError("");
     try {
-      const rowDecisions = reportReturn ? {} : Object.fromEntries(Object.entries(decisions).map(([id, value]) => [id, value === "approved" ? "approve" : value === "rejected" ? "reject" : "revision"]));
       const response = await fetch("/api/petty-cash-expenses", {
         method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(user?.id || "") },
         body: JSON.stringify({ action: "review_report", reportId: report.id, expectedVersion: report.version,
-          decision: reportReturn ? "revision" : "approve", reportWide: reportReturn, rowDecisions,
-          notesByDecision: reportReturn ? { revision: returnNote } : undefined, projectManagerId: recipientId || undefined }),
+          decision: reportDecision, reportWide: true,
+          note: reportDecision === "revision" ? returnNote.trim() : "", projectManagerId: recipientId || undefined }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "internal_error");
@@ -771,31 +766,12 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     return () => { active = false; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [attachment?.fileUrl]);
 
-  const toggleSelected = (id) => {
-    if (reportReturn) { setReportReturn(false); setDecisions({}); }
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
   const viewRow = (item) => {
     setViewedRowIds((current) => current.has(item.id) ? current : new Set([...current, item.id]));
     const fileIndex = attachments.findIndex((file) => file.id === item.id);
     if (fileIndex >= 0) setAttachmentIndex(fileIndex);
   };
-  const applyDecision = (decision) => {
-    if (!selectedIds.size || !canAct || saving) return;
-    if (reportReturn) setReportReturn(false);
-    setDecisions((current) => ({ ...current, ...Object.fromEntries([...selectedIds].map((id) => [id, decision])) }));
-  };
-  const returnWholeReport = () => {
-    if (!canAct || saving) return;
-    setReportReturn(true);
-    setSelectedIds(new Set());
-    setDecisions({});
-  };
-  const rowStatus = (item) => decisions[item.id] || (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
+  const rowStatus = (item) => (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
   const badges = {
     approved: { label: "تأیید شده", className: "bg-emerald-50 text-emerald-700 border-emerald-100" },
     pending: { label: "در انتظار", className: "bg-sky-50 text-sky-700 border-sky-100" },
@@ -804,7 +780,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
   const decisionCards = [
-    { decision: "approved", label: "تأیید", description: "تأیید و ارسال به مرحله بعد", icon: "/images/icons/finishing-check.svg", iconClass: "bg-emerald-100", selectedClass: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)]" },
+    { decision: "approve", label: "تأیید", description: "تأیید و ارسال به مرحله بعد", icon: "/images/icons/finishing-check.svg", iconClass: "bg-emerald-100", selectedClass: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)]" },
     { decision: "revision", label: "بازگشت", description: "بازگشت کل گزارش جهت اصلاح", icon: "/images/icons/bazgasht.svg", iconClass: "bg-amber-100", selectedClass: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)]" },
   ];
   const metadata = [
@@ -831,29 +807,19 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_340px]">
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
-          {!isCreatorView && <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 p-3 sm:p-4">
-            <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size || reportReturn ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{reportReturn ? "بازگشت کل گزارش" : `${toFa(selectedIds.size)} ردیف انتخاب شده`}</span>
-          </div>}
-
           <section className="min-w-0 overflow-hidden">
              <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[280px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[320px]">
-              <table className={`w-full table-fixed text-center text-[13px] ${isCreatorView ? "min-w-[650px]" : "min-w-[700px]"}`} aria-label="هزینه‌های گزارش">
-                <colgroup>{!isCreatorView && <col className="w-11" />}<col className="w-12" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
+              <table className="w-full min-w-[650px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
+                <colgroup><col className="w-12" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
-                  {!isCreatorView && <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
-                    ref={(element) => { if (element) element.indeterminate = partlySelected; }}
-                    onChange={() => { if (reportReturn) { setReportReturn(false); setDecisions({}); } setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id))); }}
-                    aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>}
                   {["ردیف", "شرح", "کد بودجه", "مبلغ", "وضعیت"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
                   const badge = badges[rowStatus(item)];
                   return <tr key={item.id} tabIndex={0} onClick={() => viewRow(item)}
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
-                    className={`h-16 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50 hover:bg-sky-100" : viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
-                    {!isCreatorView && <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
-                      aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>}
+                    className={`h-16 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2">{toFa(index + 1)}</td>
                     <td className="break-words px-3 py-3 text-right leading-6"><span className="block text-xs text-neutral-500">{toFa(item.expenseDate)}</span>{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
@@ -899,9 +865,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           </button></div>
           {!isCreatorView && canAct && <div className="grid gap-2 border-t border-neutral-200 p-3 sm:grid-cols-2 xl:grid-cols-1">
             {decisionCards.map(({ decision, label, description, icon, iconClass, selectedClass }) => {
-              const checked = decision === "revision" ? reportReturn : !reportReturn && selectedIds.size > 0 && [...selectedIds].every((id) => decisions[id] === decision);
+              const checked = reportDecision === decision;
               return <div key={decision} className={`min-w-0 rounded-2xl border p-3 text-center transition ${checked ? selectedClass : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm"}`}>
-                <button type="button" disabled={saving || (decision === "approved" && !selectedIds.size)} onClick={() => decision === "revision" ? returnWholeReport() : applyDecision(decision)} aria-pressed={checked}
+                <button type="button" disabled={saving} onClick={() => setReportDecision(decision)} aria-pressed={checked}
                   className="flex w-full flex-col items-center disabled:cursor-not-allowed disabled:opacity-45">
                   <span className={`grid h-10 w-10 place-items-center rounded-full ${iconClass}`}><img src={icon} alt="" className="h-5 w-5" /></span>
                   <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>
@@ -918,7 +884,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     </div>
     {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
       {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-      {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} title={!readyToSubmit ? reportReturn ? "دلیل بازگشت کل گزارش را وارد کنید" : "برای همه ردیف‌های قابل بررسی تأیید ثبت کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportReturn ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportReturn ? "ثبت بازگشت" : "تأیید و ثبت"}</button></div>}
+      {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" ? "ثبت بازگشت" : "تأیید و ثبت"}</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
@@ -966,7 +932,9 @@ function PettyCashSettlementTimeline({ report }) {
     }
     const changes = Array.isArray(entry.changes) ? entry.changes : [];
     if (entry.reportWide) {
-      addEvent(entry.stage || changes[0]?.fromStage, { ...entry, label: "بازگشت کل گزارش", actor: actor(entry), result: "revision" });
+      const labels = { approve: "تأیید کل گزارش", revision: "بازگشت کل گزارش", reject: "رد کل گزارش" };
+      addEvent(entry.stage || changes[0]?.fromStage, { ...entry, label: labels[entry.action] || entry.action,
+        actor: actor(entry), result: entry.action === "approve" ? "approved" : entry.action === "reject" ? "rejected" : "revision" });
       return;
     }
     [...new Set(changes.map((change) => change.fromStage).filter(Boolean))].forEach((stage) => {
@@ -1272,7 +1240,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
   });
   const selectedItems = items.filter((item) => selectedIds.has(item.id));
   const canEdit = selectedItems.length === 1 && (!initialReport || selectedItems[0].stage === "revision" || !Number.isInteger(Number(selectedItems[0].id)));
-  const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || !Number.isInteger(Number(item.id)));
+  const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || item.stage === "revision" || !Number.isInteger(Number(item.id)));
   const beginEdit = (item) => {
     setManualEntryOpen(true);
     setEditingExpense(item);
@@ -1325,7 +1293,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
       </div>
     </div>
 
-    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className={`mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 ${form.currencyTypeId ? "xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_130px_auto]" : "xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]"}`}>
+    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
       <Field label="تاریخ" required>
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
@@ -1349,18 +1317,14 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
             className={`${inputClass} pl-[72px] text-left tabular-nums`} />
           <select aria-label="ارز مبلغ هزینه" title="انتخاب ارز" value={form.currencyTypeId}
             onChange={(event) => setForm((current) => ({ ...current, currencyTypeId: event.target.value,
-              amount: event.target.value ? decimalAmount(current.amount) : format3(toEnglishDigits(current.amount).split(".")[0].replace(/[^\d]/g, "")), exchangeRate: event.target.value ? current.exchangeRate : "" }))}
+              amount: event.target.value ? decimalAmount(current.amount) : format3(toEnglishDigits(current.amount).split(".")[0].replace(/[^\d]/g, "")),
+              exchangeRate: event.target.value ? (event.target.value === current.currencyTypeId ? current.exchangeRate : "1") : "" }))}
             className="absolute left-1 top-1 h-9 w-[64px] cursor-pointer rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700">
             <option value="">ریال</option>{currencyTypes.map((item) => <option key={item.id} value={item.id}>{currencyLabel(item)}</option>)}
           </select>
         </div>
+        {form.currencyTypeId && form.exchangeRate === "1" && <span className="mt-1 block text-[11px] text-amber-700">محاسبه موقت با نرخ ۱ ریال</span>}
       </Field>
-      {form.currencyTypeId && <Field label="نرخ تبدیل (ریال)" required>
-        <input required dir="ltr" inputMode="numeric" value={toFa(form.exchangeRate)}
-          onChange={(event) => setForm((current) => ({ ...current, exchangeRate: format3(toEnglishDigits(event.target.value).replace(/[^\d]/g, "")) }))}
-          className={`${inputClass} text-left tabular-nums`} />
-        <span className="mt-1 block text-[11px] text-neutral-500">معادل: {money(rialEquivalent(form.amount, form.currencyTypeId, form.exchangeRate))} ریال</span>
-      </Field>}
       <div className="flex items-end gap-3">
         <Field label="پیوست" required>
           <button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving}
@@ -1380,7 +1344,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
     </div>}
     {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {initialReport?.canRevise && <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-900">
-      ردیف‌های برگشتی را با دکمهٔ «ویرایش برگشتی» اصلاح کنید و سپس گزارش را دوباره تأیید کنید.
+      ردیف موردنظر را انتخاب کنید و از «مدیریت ردیف‌ها» آن را ویرایش یا حذف کنید. سپس گزارش را دوباره تأیید کنید.
       {initialReport.reviewNotes && <p className="mt-1 font-semibold">توضیح بررسی: {initialReport.reviewNotes}</p>}
     </div>}
 
@@ -1429,7 +1393,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
               <td className="px-3">{toFa(item.budgetCode)}</td>
               <td className="px-3 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
               <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
-              {initialReport && <td className="px-2">{item.stage === "revision" ? <span className="inline-flex flex-col items-center gap-1"><button type="button" onClick={() => beginEdit(item)} className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"><Pencil className="h-3 w-3" />ویرایش برگشتی</button>{item.reviewNote && <span className="max-w-28 truncate text-[10px] text-amber-800" title={item.reviewNote}>{item.reviewNote}</span>}</span> : <span className="text-xs text-neutral-500">{item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span>}</td>}
+              {initialReport && <td className="px-2"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.stage === "revision" ? "bg-amber-50 text-amber-800" : item.stage === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>{item.stage === "revision" ? "درخواست اصلاح" : item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span></td>}
               <td />
             </tr>)}
             {!pageItems.length && <tr><td colSpan={initialReport ? 9 : 8} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
@@ -1484,7 +1448,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
           <span className="min-w-0 flex-1 text-sm font-semibold">ویرایش ردیف</span>
         </button>
         <button type="button" disabled={!canDelete || saving} onClick={deleteSelected}
-          title={selectedItems.length && !canDelete ? "فقط ردیف‌های مرحله ثبت اولیه قابل حذف‌اند." : "حذف ردیف‌های انتخاب‌شده"}
+          title={selectedItems.length && !canDelete ? "فقط ردیف‌های برگشتی یا تازه‌افزوده‌شده قابل حذف‌اند." : "حذف ردیف‌های انتخاب‌شده"}
           className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105">
             <img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" />
