@@ -23,7 +23,7 @@ const money = (value) => {
 };
 function SummaryLine({ label, value, color, action }) {
   return <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 border-b border-neutral-100 pb-3 last:border-b-0" style={color ? { color } : undefined}>
-    <span className="inline-flex items-center gap-2">{label}: {action}</span>
+    <span className="inline-flex items-center gap-2">{action}{label}:</span>
     <strong className="whitespace-nowrap font-semibold tabular-nums">{money(value)} ریال</strong>
   </div>;
 }
@@ -46,7 +46,7 @@ function MyPettyCashSummary() {
     const controller = new AbortController();
     setDetailsLoading(true);
     setDetailsError("");
-    fetch(`/api/tenkhah?beneficiaryId=${encodeURIComponent(user.id)}&receivedDetails=1`, {
+    fetch("/api/petty-cash-expenses?summary=received-details", {
       credentials: "include", headers: { "x-user-id": String(user.id) }, signal: controller.signal,
     }).then(async (response) => {
       const data = await response.json().catch(() => ({}));
