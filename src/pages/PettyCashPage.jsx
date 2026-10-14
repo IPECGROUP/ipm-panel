@@ -40,25 +40,28 @@ function MyPettyCashSummary() {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState("");
   const detailsDialogRef = useRef(null);
+  const receivedProjectIds = useMemo(() => items.filter((item) => amount(item.receivedAmount) > 0n).map((item) => item.projectId), [items]);
 
   useEffect(() => {
-    if (!detailsOpen || !user?.id) return;
+    if (!detailsOpen || !user?.id || loading) return;
     const controller = new AbortController();
     setDetailsLoading(true);
     setDetailsError("");
-    fetch("/api/petty-cash-expenses?summary=received-details", {
-      credentials: "include", headers: { "x-user-id": String(user.id) }, signal: controller.signal,
-    }).then(async (response) => {
+    Promise.all(receivedProjectIds.map(async (projectId) => {
+      const response = await fetch(`/api/petty-cash-expenses?summary=received-details&projectId=${encodeURIComponent(projectId)}`, {
+        credentials: "include", headers: { "x-user-id": String(user.id) }, signal: controller.signal,
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "دریافت ریز تنخواه‌ها انجام نشد.");
-      return data;
-    }).then((data) => {
-      setReceivedDetails(Array.isArray(data.items) ? data.items : []);
-      setDetailsTotal(data.total || "0");
+      return Array.isArray(data.items) ? data.items : [];
+    })).then((groups) => {
+      const details = groups.flat().sort((a, b) => String(b.chargedDate || b.requestDate || "").localeCompare(String(a.chargedDate || a.requestDate || "")));
+      setReceivedDetails(details);
+      setDetailsTotal(details.reduce((sum, item) => sum + amount(item.chargedAmount), 0n).toString());
     }).catch((reason) => { if (reason.name !== "AbortError") setDetailsError("دریافت ریز تنخواه‌ها انجام نشد. دوباره تلاش کنید."); })
       .finally(() => { if (!controller.signal.aborted) setDetailsLoading(false); });
     return () => controller.abort();
-  }, [detailsOpen, user?.id]);
+  }, [detailsOpen, user?.id, loading, receivedProjectIds]);
 
   useEffect(() => {
     if (!detailsOpen) return;
