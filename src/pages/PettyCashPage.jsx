@@ -1435,7 +1435,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
     )}
     {menuPosition && createPortal(
       <div ref={menuPopoverRef} dir="rtl" style={menuPosition}
-        className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)]">
+        className="table-menu-popover fixed z-[1800] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)]">
         <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500">
           {selectedItems.length ? `${toFa(selectedItems.length)} مورد انتخاب شده` : "ابتدا یک ردیف را انتخاب کنید"}
         </div>
