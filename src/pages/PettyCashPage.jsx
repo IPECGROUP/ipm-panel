@@ -2,7 +2,7 @@ import { createElement, useCallback, useEffect, useMemo, useRef, useState } from
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, UserRound, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, UserRound, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, ExternalLink, Pencil, Eye } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -21,9 +21,9 @@ const money = (value) => {
   const formatted = format3(absolute.toString()).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
   return number < 0n ? `(${formatted})` : formatted;
 };
-function SummaryLine({ label, value, color }) {
+function SummaryLine({ label, value, color, action }) {
   return <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 border-b border-neutral-100 pb-3 last:border-b-0" style={color ? { color } : undefined}>
-    <span>{label}:</span>
+    <span className="inline-flex items-center gap-2">{label}: {action}</span>
     <strong className="whitespace-nowrap font-semibold tabular-nums">{money(value)} ریال</strong>
   </div>;
 }
@@ -34,6 +34,47 @@ function MyPettyCashSummary() {
   const [balances, setBalances] = useState({ receivedAmount: "0", unregisteredBalance: "0", unsettledBalance: "0" });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [receivedDetails, setReceivedDetails] = useState([]);
+  const [detailsTotal, setDetailsTotal] = useState("0");
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState("");
+  const detailsDialogRef = useRef(null);
+
+  useEffect(() => {
+    if (!detailsOpen || !user?.id) return;
+    const controller = new AbortController();
+    setDetailsLoading(true);
+    setDetailsError("");
+    fetch(`/api/tenkhah?beneficiaryId=${encodeURIComponent(user.id)}&receivedDetails=1`, {
+      credentials: "include", headers: { "x-user-id": String(user.id) }, signal: controller.signal,
+    }).then(async (response) => {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "دریافت ریز تنخواه‌ها انجام نشد.");
+      return data;
+    }).then((data) => {
+      setReceivedDetails(Array.isArray(data.items) ? data.items : []);
+      setDetailsTotal(data.total || "0");
+    }).catch((reason) => { if (reason.name !== "AbortError") setDetailsError("دریافت ریز تنخواه‌ها انجام نشد. دوباره تلاش کنید."); })
+      .finally(() => { if (!controller.signal.aborted) setDetailsLoading(false); });
+    return () => controller.abort();
+  }, [detailsOpen, user?.id]);
+
+  useEffect(() => {
+    if (!detailsOpen) return;
+    const previousFocus = document.activeElement;
+    detailsDialogRef.current?.querySelector("button")?.focus();
+    const handleKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); setDetailsOpen(false); }
+      if (event.key !== "Tab") return;
+      const focusable = [...detailsDialogRef.current.querySelectorAll('button:not(:disabled), a[href]')];
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => { document.removeEventListener("keydown", handleKey); previousFocus?.focus(); };
+  }, [detailsOpen]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -91,7 +132,7 @@ function MyPettyCashSummary() {
     <div className="grid gap-9 lg:grid-cols-[minmax(260px,0.85fr)_minmax(0,1.15fr)] lg:gap-14">
       <PettyCashBarChart totals={totals} />
       <div className="self-center space-y-4 text-sm sm:text-base">
-        <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} color="#6366F1" />
+        <SummaryLine label="مجموع تنخواه‌های دریافت‌شده" value={totals.received} color="#6366F1" action={<button type="button" onClick={() => setDetailsOpen(true)} aria-label="مشاهده ریز تنخواه‌های دریافت‌شده" title="مشاهده ریز تنخواه‌های دریافت‌شده" className="inline-grid h-8 w-8 place-items-center rounded-lg transition hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"><Eye className="h-4 w-4" /></button>} />
         <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} color="#38BDF8" />
         <SummaryLine label="باقی‌مانده هزینه‌های ثبت نشده" value={unregistered} color="#6B7280" />
         <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} color="#10B981" />
@@ -138,6 +179,21 @@ function MyPettyCashSummary() {
           </li>)}</ul> : !loading && !error ? <p className="text-sm text-neutral-500">هنوز تنخواهی دریافت نشده است.</p> : null}
       </div>
     </div>
+    {detailsOpen && createPortal(<div className="fixed inset-0 z-[1600] flex items-center justify-center bg-black/60 p-3 sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailsOpen(false); }}>
+      <div ref={detailsDialogRef} data-received-details-dialog="true" role="dialog" aria-modal="true" aria-labelledby="received-details-title" dir="rtl" className="flex max-h-[85dvh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-200 p-4 sm:px-6">
+          <div><h3 id="received-details-title" className="text-base font-bold sm:text-lg">ریز تنخواه‌های دریافت‌شده</h3><p className="mt-1 text-xs text-neutral-500">تمام تنخواه‌های شارژشده برای شما</p></div>
+          <button type="button" onClick={() => setDetailsOpen(false)} aria-label="بستن ریز تنخواه‌ها" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-neutral-900 text-white"><X className="h-4 w-4" /></button>
+        </header>
+        <div className="min-h-0 overflow-auto p-4 sm:p-6">
+          {detailsLoading ? <p role="status" className="text-sm text-neutral-500">در حال دریافت اطلاعات...</p> : detailsError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{detailsError}</p> : receivedDetails.length ? <div className="overflow-x-auto rounded-xl border border-neutral-200"><table className="w-full min-w-[700px] text-right text-sm">
+            <thead className="bg-neutral-50 text-neutral-700"><tr><th className="px-3 py-3">ردیف</th><th className="px-3 py-3">شماره درخواست</th><th className="px-3 py-3">تاریخ دریافت</th><th className="px-3 py-3">پروژه</th><th className="px-3 py-3">شرح</th><th className="px-3 py-3 text-left">مبلغ (ریال)</th></tr></thead>
+            <tbody>{receivedDetails.map((item, index) => <tr key={item.id} className="border-t border-neutral-200"><td className="px-3 py-3">{toFa(index + 1)}</td><td className="px-3 py-3">{toFa(item.requestNumber || "—")}</td><td className="px-3 py-3">{toFa(item.chargedDate || item.requestDate || "—")}</td><td className="px-3 py-3">{item.projectName || item.projectCode || "—"}</td><td className="max-w-64 break-words px-3 py-3">{item.purpose || "—"}</td><td className="whitespace-nowrap px-3 py-3 text-left font-semibold tabular-nums">{money(item.chargedAmount)}</td></tr>)}</tbody>
+          </table></div> : <p className="text-sm text-neutral-500">هنوز تنخواهی دریافت نشده است.</p>}
+        </div>
+        {!detailsLoading && !detailsError && <footer className="flex shrink-0 justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-bold sm:px-6"><span>مجموع تنخواه‌های دریافت‌شده</span><span className="tabular-nums">{money(detailsTotal)} ریال</span></footer>}
+      </div>
+    </div>, document.body)}
   </section>;
 }
 
@@ -261,6 +317,7 @@ export default function PettyCashPage() {
     document.body.style.overflow = "hidden";
     summaryDialogRef.current?.querySelector("button")?.focus();
     const handleKey = (event) => {
+      if (document.querySelector('[data-received-details-dialog="true"]')) return;
       if (summaryDialogRef.current?.querySelector('[data-manager-dialog="true"]')) return;
       if (event.key === "Escape") { event.preventDefault(); if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); setSelectedLegacyExpense(null); } }
       if (event.key !== "Tab") return;
