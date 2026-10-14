@@ -2,7 +2,7 @@ import { createElement, useCallback, useEffect, useMemo, useRef, useState } from
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, MessageSquare, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -767,6 +767,11 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     rejected: { label: "رد شده", className: "bg-red-50 text-red-700 border-red-100" },
   };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
+  const decisionCards = [
+    { decision: "approved", label: "تأیید منتخب‌ها", description: "تأیید و ارسال به مرحله بعد", icon: "/images/icons/finishing-check.svg", iconClass: "bg-emerald-100", selectedClass: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)]" },
+    { decision: "revision", label: "درخواست برای اصلاح", description: "برگشت به درخواست‌کننده جهت اصلاح", icon: "/images/icons/bazgasht.svg", iconClass: "bg-amber-100", selectedClass: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)]" },
+    { decision: "rejected", label: "رد منتخب‌ها", description: "رد درخواست و پایان فرآیند", icon: "/images/icons/rad.svg", iconClass: "bg-rose-100", selectedClass: "border-rose-300 bg-rose-50/60 shadow-[0_0_0_2px_rgba(244,63,94,.12)]" },
+  ];
   const metadata = [
     { label: "شماره گزارش", value: toFa(report.id), Icon: FileText },
     { label: "تاریخ", value: reportDate(report.createdAt), Icon: CalendarDays },
@@ -791,14 +796,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_340px]">
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
-          {!isCreatorView && <div className="flex flex-col items-stretch gap-4 border-b border-neutral-200 p-3 sm:p-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+          {!isCreatorView && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 p-3 sm:p-4">
             <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{toFa(selectedIds.size)} ردیف انتخاب شده</span>
-            <div className="grid grid-cols-2 gap-2.5 [&>button]:min-w-0 [&>button]:whitespace-normal [&>button>svg]:shrink-0 sm:flex sm:flex-wrap sm:gap-3 sm:[&>button]:whitespace-nowrap">
-              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("approved")} className={`${actionClass} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}><Check className="h-4 w-4" />تأیید منتخب‌ها</button>
-              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("revision")} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><RefreshCw className="h-4 w-4" />درخواست برای اصلاح</button>
-              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => applyDecision("rejected")} className={`${actionClass} border-red-600 bg-red-600 text-white hover:bg-red-700`}><X className="h-4 w-4" />رد منتخب‌ها</button>
-              <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => setSelectedIds(new Set())} className={`${actionClass} border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`}><X className="h-4 w-4" />لغو انتخاب</button>
-            </div>
+            <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => setSelectedIds(new Set())} className={`${actionClass} border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`}><X className="h-4 w-4" />لغو انتخاب</button>
           </div>}
 
           <section className="min-w-0 overflow-hidden">
@@ -830,12 +830,6 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             </div>
           </section>
 
-          {!isCreatorView && <div className="border-t border-neutral-200 p-3">
-            <label htmlFor="petty-cash-review-notes" className="mb-2 flex items-center gap-2 text-sm font-bold"><MessageSquare className="h-5 w-5 stroke-[1.6]" />توضیحات بررسی</label>
-            <textarea readOnly={!canAct || saving} id="petty-cash-review-notes" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500}
-              className="h-24 w-full resize-none rounded-xl border border-neutral-200 bg-white p-3 text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400" />
-            <p className="mt-1 text-left text-[11px] text-neutral-500" dir="ltr">{toFa(notes.length)} / ۵۰۰</p>
-          </div>}
         </div>
 
         <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
@@ -868,6 +862,22 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
             <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />گزارش تنخواه
           </button></div>
+          {!isCreatorView && canAct && <div className="grid gap-2 border-t border-neutral-200 p-3 sm:grid-cols-3 xl:grid-cols-1">
+            {decisionCards.map(({ decision, label, description, icon, iconClass, selectedClass }) => {
+              const checked = selectedIds.size > 0 && [...selectedIds].every((id) => decisions[id] === decision);
+              return <div key={decision} className={`min-w-0 rounded-2xl border p-3 text-center transition ${checked ? selectedClass : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm"}`}>
+                <button type="button" disabled={!selectedIds.size || saving} onClick={() => applyDecision(decision)} aria-pressed={checked}
+                  className="flex w-full flex-col items-center disabled:cursor-not-allowed disabled:opacity-45">
+                  <span className={`grid h-10 w-10 place-items-center rounded-full ${iconClass}`}><img src={icon} alt="" className="h-5 w-5" /></span>
+                  <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>
+                  <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>
+                </button>
+                {checked && decision !== "approved" && <input type="text" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500}
+                  aria-label={decision === "revision" ? "دلیل درخواست اصلاح" : "دلیل رد"} placeholder={decision === "revision" ? "دلیل برگشت را وارد کنید..." : "دلیل رد را وارد کنید..."}
+                  className="mt-3 h-9 w-full rounded-xl border border-neutral-300 bg-white px-2 text-center text-xs outline-none focus:border-neutral-500" />}
+              </div>;
+            })}
+          </div>}
         </aside>
       </div>
     </div>
