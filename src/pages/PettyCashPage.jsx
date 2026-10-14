@@ -563,7 +563,8 @@ export default function PettyCashPage() {
           {selectedReport && editingReport?.id === selectedReport.id ? <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
             <PettyCashExpenseTab key={selectedReport.id} initialReport={selectedReport}
               onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
-              onSubmitted={() => { window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
+              onSubmitted={() => { window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }}
+              onDeleted={() => { window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setReports((current) => current.filter((report) => report.id !== selectedReport.id)); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); loadExpenseAccess(); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
           </div> : selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
             onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
             onRefresh={() => loadReports().catch((reason) => setReportError(reason.message))}
@@ -1023,7 +1024,7 @@ function Field({ label, required = false, children }) {
   </label>;
 }
 
-function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availableBalance = null }) {
+function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialReport, availableBalance = null }) {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(initialReport ? String(initialReport.projectId) : "");
@@ -1219,6 +1220,25 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
     }
   };
 
+  const deleteReport = async () => {
+    if (!initialReport?.canRevise || saving) return;
+    const originalAmount = (initialReport.items || []).reduce((sum, item) => sum + amount(item.amount), 0n);
+    if (!window.confirm(`گزارش «${initialReport.reportName}» و همه ردیف‌های آن حذف شود؟ مبلغ ${money(originalAmount)} ریال به باقی‌مانده هزینه‌های ثبت‌نشده برمی‌گردد.`)) return;
+    setSaving(true);
+    onBusyChange(true);
+    setError("");
+    try {
+      await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ action: "delete_report", reportId: initialReport.id, expectedVersion: initialReport.version }) });
+      onDeleted();
+    } catch (reason) {
+      const messages = { workflow_changed: "گزارش تغییر کرده است؛ آن را دوباره باز کنید.", not_allowed: "حذف این گزارش در مرحله فعلی مجاز نیست.", internal_error: "حذف گزارش انجام نشد؛ دوباره تلاش کنید." };
+      setError(messages[reason.message] || reason.message);
+    } finally {
+      setSaving(false);
+      onBusyChange(false);
+    }
+  };
+
   const pageCount = Math.max(1, Math.ceil(items.length / rowsPerPage));
   const safePage = Math.min(page, pageCount - 1);
   const startIndex = safePage * rowsPerPage;
@@ -1261,6 +1281,7 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
     setError("");
   };
   const deleteSelected = () => {
+    if (canDelete && initialReport && selectedItems.length === items.length) return deleteReport();
     if (!canDelete || !window.confirm(`آیا ${toFa(selectedItems.length)} ردیف انتخاب‌شده حذف شود؟`)) return;
     setItems((current) => current.filter((item) => !selectedIds.has(item.id)));
     if (editingExpense && selectedIds.has(editingExpense.id)) cancelEdit();
@@ -1404,11 +1425,13 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
         onRowsPerPageChange={(count) => { setRowsPerPage(count); setPage(0); }} />
     </div>
     <hr className="my-4 border-neutral-200" />
-    <div className="flex justify-end">
-      <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
+    <div className="flex items-center justify-between gap-3">
+      {initialReport?.canRevise && <button type="button" onClick={deleteReport} disabled={saving}
+        className="h-11 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50">حذف کامل گزارش</button>}
+      {(!initialReport || items.length > 0) && <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
         className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
         {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
-      </button>
+      </button>}
     </div>
     </fieldset>
     {confirmOpen && createPortal(
