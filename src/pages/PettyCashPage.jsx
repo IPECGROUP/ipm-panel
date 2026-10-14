@@ -292,7 +292,10 @@ export default function PettyCashPage() {
   const [expenseFormKey, setExpenseFormKey] = useState(0);
   const [reportSaving, setReportSaving] = useState(false);
   const [expenseAccess, setExpenseAccess] = useState({ loading: true, received: 0n, available: 0n, error: "" });
+  const [expenseStartError, setExpenseStartError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [reportFromDate, setReportFromDate] = useState("");
+  const [reportToDate, setReportToDate] = useState("");
   const [reportStatusFilter, setReportStatusFilter] = useState("");
   const [reportOwnershipFilter, setReportOwnershipFilter] = useState("");
   const [reportPage, setReportPage] = useState(0);
@@ -370,10 +373,14 @@ export default function PettyCashPage() {
     const state = expenseReportState(report.items);
     if (reportStatusFilter && state.statusKey !== reportStatusFilter) return false;
     if (reportOwnershipFilter === "mine" && String(report.createdById) !== String(user?.id)) return false;
-    if (reportOwnershipFilter === "incoming" && !report.canAct) return false;
+    if (reportOwnershipFilter === "incoming" && !report.canAct && !report.wasSentToMe) return false;
+    const date = english(reportDate(report.createdAt)).replaceAll("-", "/");
+    if (reportFromDate && date < english(reportFromDate).replaceAll("-", "/")) return false;
+    if (reportToDate && date > english(reportToDate).replaceAll("-", "/")) return false;
     return english([
-    report.reportName, reportDate(report.createdAt), report.projectCode, report.projectName,
-    expenseReportState(report.items).waiting, expenseReportState(report.items).status,
+    report.id, report.reportName, reportDate(report.createdAt), report.projectCode, report.projectName,
+    report.createdByName, report.createdByUsername, report.items?.reduce((sum, item) => sum + amount(item.amount), 0n).toString(),
+    state.waiting, state.status,
   ].join(" ")).toLowerCase().includes(english(searchQuery).trim().toLowerCase());
   });
   const reportPageCount = Math.max(1, Math.ceil(visibleReports.length / reportsPerPage));
@@ -420,17 +427,21 @@ export default function PettyCashPage() {
           <div className="mr-auto flex shrink-0 items-center gap-3">
             <button type="button" onClick={() => setSummaryOpen(true)} aria-haspopup="dialog"
               className="h-10 rounded-xl px-3 text-sm font-semibold ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">تنخواه‌های من</button>
-            <button type="button" disabled={reportSaving || expenseAccess.loading || expenseAccess.available <= 0n} onClick={() => setExpenseFormOpen((current) => !current)}
-              title={expenseFormOpen ? "بستن" : expenseAccess.loading ? "در حال دریافت مانده تنخواه" : expenseAccess.available <= 0n ? "مانده‌ای برای ثبت هزینه وجود ندارد" : "افزودن"}
-              aria-label={expenseFormOpen ? "بستن فرم ثبت هزینه‌ها" : expenseAccess.available <= 0n ? "ثبت هزینه غیرفعال؛ مانده تنخواه صفر است" : "افزودن"} aria-expanded={expenseFormOpen}
+            <button type="button" disabled={reportSaving} onClick={() => {
+              if (expenseFormOpen) { setExpenseFormOpen(false); setExpenseStartError(""); return; }
+              if (expenseAccess.loading) return setExpenseStartError("مانده تنخواه در حال دریافت است. دوباره تلاش کنید.");
+              if (expenseAccess.error) return setExpenseStartError(expenseAccess.error);
+              if (expenseAccess.available <= 0n) return setExpenseStartError(expenseAccess.received <= 0n ? "برای ثبت هزینه، ابتدا باید تنخواه دریافت کنید." : "مانده تنخواه تسویه‌نشده‌ای برای ثبت هزینه جدید وجود ندارد.");
+              setExpenseStartError(""); setExpenseFormOpen(true);
+            }}
+              title={expenseFormOpen ? "بستن" : "افزودن"}
+              aria-label={expenseFormOpen ? "بستن فرم ثبت هزینه‌ها" : "افزودن"} aria-expanded={expenseFormOpen}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:ring-neutral-800 dark:hover:bg-white/10">
               <img src={expenseFormOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
             </button>
           </div>
         </header>
-        {!expenseAccess.loading && expenseAccess.available <= 0n && <p role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-          {expenseAccess.error || (expenseAccess.received <= 0n ? "برای ثبت هزینه، ابتدا باید تنخواه دریافت کنید." : "مانده تنخواه تسویه‌نشده‌ای برای ثبت هزینه جدید وجود ندارد.")}
-        </p>}
+        {expenseStartError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{expenseStartError}</p>}
         <div hidden={!expenseFormOpen}>
         <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onSubmitted={(report) => {
           setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
@@ -448,11 +459,15 @@ export default function PettyCashPage() {
         </div>
         {!expenseFormOpen && <>
           <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50 p-3 shadow-sm dark:border-white/10 dark:bg-white/5">
-            <Field label="جست و جو">
-              <input type="text" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setReportPage(0); }}
-                placeholder="جستجو در شماره گزارش، تاریخ، پروژه، در انتظار و وضعیت ..."
-                className={`${inputClass} placeholder:text-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white`} />
-            </Field>
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="w-full min-w-0 md:min-w-[280px] md:flex-1"><Field label="جست و جو">
+                <input type="text" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setReportPage(0); }}
+                  placeholder="جستجو در شماره، نام گزارش، تاریخ، پروژه، مبلغ، درخواست‌کننده و وضعیت ..."
+                  className={`${inputClass} placeholder:text-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white`} />
+              </Field></div>
+              <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">از</div><JalaliPopupDatePicker value={reportFromDate} onChange={(value) => { setReportFromDate(value); setReportPage(0); }} /></div>
+              <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</div><JalaliPopupDatePicker value={reportToDate} onChange={(value) => { setReportToDate(value); setReportPage(0); }} /></div>
+            </div>
             <div className="mt-3">
               <div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">برچسب ها</div>
               <div className="flex flex-wrap items-center gap-2">
@@ -468,15 +483,17 @@ export default function PettyCashPage() {
           {reportError && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
-              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[920px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
-                <colgroup><col className="w-16" /><col /><col className="w-32" /><col /><col className="w-60" /><col className="w-36" /></colgroup>
+              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1200px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
+                <colgroup><col className="w-16" /><col className="w-28" /><col className="w-32" /><col className="w-52" /><col className="w-48" /><col className="w-44" /><col className="w-44" /><col className="w-52" /></colgroup>
                 <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
                   <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
                     <th scope="col" className="w-16 px-4 text-center font-bold">ردیف</th>
                     <th scope="col" className="px-4 text-center font-bold">شماره گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">تاریخ</th>
+                    <th scope="col" className="px-4 text-center font-bold">نام گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">پروژه</th>
-                    <th scope="col" className="px-4 text-center font-bold">در انتظار</th>
+                    <th scope="col" className="px-4 text-center font-bold">مبلغ</th>
+                    <th scope="col" className="px-4 text-center font-bold">درخواست‌کننده</th>
                     <th scope="col" className="px-4 text-center font-bold">وضعیت</th>
                   </tr>
                 </thead>
@@ -488,11 +505,13 @@ export default function PettyCashPage() {
                       aria-label={`مشاهده گزارش ${report.reportName}`}
                       className="cursor-pointer border-t border-neutral-200 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
                       <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
-                      <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
+                      <td className="px-4 py-2">{toFa(report.id)}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
+                      <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
                       <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
-                      <td className="px-4 py-2">{state.waiting}</td>
-                      <td className="px-3 py-2"><span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${reportStatusBadgeClass(state.statusKey)}`}>{state.status}</span></td>
+                      <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
+                      <td className="truncate px-4 py-2" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
+                      <td className="px-4 py-2">{state.waiting === "—" ? state.status : `در انتظار ${state.waiting}`}</td>
                     </tr>;
                   })}
                 </tbody>
@@ -760,7 +779,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
   const metadata = [
-    { label: "شماره گزارش", value: report.reportName, Icon: FileText },
+    { label: "شماره گزارش", value: toFa(report.id), Icon: FileText },
+    { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
     { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
     { label: "درخواست‌کننده", value: report.createdByName || report.createdByUsername || "—", Icon: UserRound },
     { label: "تاریخ درخواست", value: reportDate(report.createdAt), Icon: CalendarDays },
