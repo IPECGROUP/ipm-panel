@@ -806,7 +806,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </div>)}
       </div>
 
-      <div className={`grid min-w-0 items-start gap-4 ${isCreatorView ? "xl:grid-cols-[290px_minmax(0,1fr)_minmax(220px,0.8fr)]" : "xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]"}`}>
+      <div className={`grid min-w-0 items-start gap-4 ${isCreatorView ? "xl:grid-cols-[270px_minmax(0,1fr)_260px]" : "xl:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]"}`}>
         {isCreatorView && <PettyCashSettlementTimeline report={report} />}
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           {!isCreatorView && <div className="flex flex-col items-stretch gap-4 border-b border-neutral-200 p-3 sm:p-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
@@ -822,24 +822,24 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           <section className="min-w-0 overflow-hidden">
              <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />{isCreatorView ? "جزئیات ردیف‌های گزارش تنخواه" : "جزئیات ردیف‌های درخواست"}</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[280px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[320px]">
-              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[760px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
-                <colgroup>{!isCreatorView && <col className="w-11" />}<col className="w-12" /><col className="w-28" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
+              <table className={`[&_td]:!text-center [&_th]:!text-center w-full table-fixed text-center text-[13px] ${isCreatorView ? "min-w-[650px]" : "min-w-[760px]"}`} aria-label="هزینه‌های گزارش">
+                <colgroup>{!isCreatorView && <col className="w-11" />}<col className="w-12" />{!isCreatorView && <col className="w-28" />}<col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   {!isCreatorView && <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
                     ref={(element) => { if (element) element.indeterminate = partlySelected; }}
                     onChange={() => setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id)))}
                     aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>}
-                  {["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className="px-2 font-semibold">{label}</th>)}
+                  {(isCreatorView ? ["ردیف", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"] : ["ردیف", "تاریخ", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"]).map((label) => <th key={label} scope="col" className="px-2 font-semibold">{label}</th>)}
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
                   const badge = badges[rowStatus(item)];
                   return <tr key={item.id} tabIndex={0} onClick={() => viewRow(item)}
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
-                    className={`h-12 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50 hover:bg-sky-100" : viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
+                    className={`${isCreatorView ? "h-16" : "h-12"} cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${selectedIds.has(item.id) ? "bg-sky-50 hover:bg-sky-100" : viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     {!isCreatorView && <td className="px-2"><input type="checkbox" disabled={!item.canAct || saving || outdated} checked={selectedIds.has(item.id)} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)}
                       aria-label={`انتخاب ردیف ${toFa(index + 1)}`} className="h-4 w-4 rounded accent-sky-600" /></td>}
-                    <td className="px-2">{toFa(index + 1)}</td><td className="px-2">{toFa(item.expenseDate)}</td>
-                    <td className="break-words px-3 py-3 text-center leading-6">{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
+                    <td className="px-2">{toFa(index + 1)}</td>{!isCreatorView && <td className="px-2">{toFa(item.expenseDate)}</td>}
+                    <td className="break-words px-3 py-3 text-center leading-6">{isCreatorView && <span className="block text-xs text-neutral-500">{toFa(item.expenseDate)}</span>}{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums">{money(item.amount)}</td>
                     <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
                   </tr>;
@@ -859,8 +859,12 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <h3 className="flex items-center gap-2 px-3 py-3 text-sm font-bold"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست</h3>
           <div className="px-3">
-            <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-80 xl:h-[min(44vh,500px)]">
+            <div className={`relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 ${isCreatorView ? "sm:h-64 xl:h-[min(34vh,400px)]" : "sm:h-80 xl:h-[min(44vh,500px)]"}`}>
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
+                : preview.url && isCreatorView ? <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست" className="absolute inset-0 cursor-zoom-in">
+                  <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
+                    onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="h-full w-full object-contain" />
+                </a>
                 : preview.url ? <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
                   onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="absolute inset-0 h-full w-full object-contain" />
                 : <p className="px-4 text-center text-xs text-neutral-500">{preview.error || "پیوستی برای نمایش وجود ندارد."}</p>}
@@ -876,7 +880,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             <div className="min-w-0"><p className="truncate text-sm font-medium" dir="auto" title={attachment?.fileName}>{attachment?.fileName || "—"}</p>
               <p className="mt-1 text-xs text-neutral-500">{preview.size !== null ? photoSize(preview.size) : "—"}</p>
             </div>
-            {attachment && <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست"
+            {!isCreatorView && attachment && <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست"
               className="grid h-9 w-9 shrink-0 place-items-center rounded-lg transition hover:bg-neutral-100"><ExternalLink className="h-5 w-5 stroke-[1.6]" /></a>}
           </div>
         </aside>
@@ -928,8 +932,8 @@ function PettyCashSettlementTimeline({ report }) {
   const history = Array.isArray(report.historyJson) ? report.historyJson : [];
   const entries = report.items || [];
   const stages = report.initialStage === "management"
-    ? [["created", "ثبت درخواست"], ["management", "دستور پرداخت (مدیریت ارشد)"], ["completed", "ثبت پرداخت (واحد مالی)"]]
-    : [["created", "ثبت درخواست"], ["planning", "بررسی اولیه (واحد برنامه‌ریزی)"], ["project_manager", "تأیید نهایی (مدیریت پروژه)"], ["finance", "بررسی اسناد (واحد مالی)"], ["completed", "ثبت پرداخت (واحد مالی)"]];
+    ? [["created", "ثبت درخواست"], ["management", "دستور پرداخت (مدیریت ارشد)"]]
+    : [["created", "ثبت درخواست"], ["planning", "بررسی اولیه (واحد برنامه‌ریزی)"], ["project_manager", "تأیید نهایی (مدیریت پروژه)"], ["finance", "بررسی اسناد (واحد مالی)"]];
   const events = new Map(stages.map(([stage]) => [stage, []]));
   const addEvent = (stage, event) => { if (events.has(stage)) events.get(stage).push(event); };
   const actor = (entry) => entry.actorName || (entry.userId ? `کاربر ${toFa(entry.userId)}` : "—");
@@ -945,9 +949,6 @@ function PettyCashSettlementTimeline({ report }) {
         .map(([decision, label]) => { const count = decisions.filter((value) => value === decision).length; return count ? `${label} ${toFa(count)} ردیف` : ""; }).filter(Boolean);
       addEvent(stage, { ...entry, label: labels.join("، "), actor: actor(entry), result });
     });
-    if (changes.some((change) => change.toStage === "completed")) {
-      addEvent("completed", { ...entry, label: "تکمیل گزارش", actor: actor(entry), result: "approved" });
-    }
   });
   if (!events.get("created")?.length) addEvent("created", { at: report.createdAt, actor: report.createdByName || report.createdByUsername || "—", label: "ثبت گزارش", result: "approved" });
 
