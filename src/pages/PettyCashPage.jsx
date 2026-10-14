@@ -1197,9 +1197,14 @@ function PettyCashExpenseTab({ onSubmitted, onBusyChange, initialReport, availab
           <input type="text" required maxLength={180} value={reportName} onChange={(event) => setReportName(event.target.value)} className={`${inputClass} sm:w-64`} />
         </Field>
       </div>
-      <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
-        فراخوانی از اکسل
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
+          ثبت گروهی (اکسل)
+        </button>
+        <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
+          ثبت موردی
+        </button>
+      </div>
     </div>
 
     <div ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
