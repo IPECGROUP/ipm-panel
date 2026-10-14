@@ -97,7 +97,7 @@ export function openPettyCashReportPdf(report) {
     <article class="sheet"><header class="header">
       <div class="logo"><img src="${logoUrl}" alt="IPEC" /></div>
       <div class="title"><h1>فرم گزارش تنخواه</h1><p>گزارش رسمی ردیف‌ها و گردش تأیید</p></div>
-      <div class="document-meta"><div><span>شماره:</span><strong>${text(report.reportName)}</strong></div><div><span>تاریخ:</span><strong>${text(date(report.createdAt))}</strong></div></div>
+      <div class="document-meta"><div><span>شماره:</span><strong>${text(report.reportNumber || "—")}</strong></div><div><span>تاریخ:</span><strong>${text(date(report.createdAt))}</strong></div></div>
     </header>
     <section><h2 class="section-title">مشخصات گزارش</h2><div class="info-grid">
       ${info("درخواست‌کننده", report.createdByName || report.createdByUsername)}

@@ -402,7 +402,7 @@ export default function PettyCashPage() {
     if (reportFromDate && date < english(reportFromDate).replaceAll("-", "/")) return false;
     if (reportToDate && date > english(reportToDate).replaceAll("-", "/")) return false;
     return english([
-    report.id, report.reportName, reportDate(report.createdAt), report.projectCode, report.projectName,
+    report.id, report.reportNumber, report.reportName, reportDate(report.createdAt), report.projectCode, report.projectName,
     report.createdByName, report.createdByUsername, report.items?.reduce((sum, item) => sum + amount(item.amount), 0n).toString(),
     state.waiting, state.status,
   ].join(" ")).toLowerCase().includes(english(searchQuery).trim().toLowerCase());
@@ -529,7 +529,7 @@ export default function PettyCashPage() {
                       aria-label={`مشاهده گزارش ${report.reportName}`}
                       className="cursor-pointer border-t border-neutral-200 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
                       <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
-                      <td className="px-4 py-2">{toFa(report.id)}</td>
+                      <td className="px-4 py-2">{report.reportNumber ? toFa(report.reportNumber) : "—"}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
                       <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
                       <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
@@ -789,7 +789,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     { decision: "revision", label: "بازگشت تنخواه گردان", description: "بازگشت کل گزارش جهت اصلاح", icon: "/images/icons/bazgasht.svg", iconClass: "bg-amber-100", selectedClass: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)]" },
   ];
   const metadata = [
-    { label: "شماره گزارش", value: toFa(report.id), Icon: FileText },
+    { label: "شماره گزارش", value: report.reportNumber ? toFa(report.reportNumber) : "—", Icon: FileText },
     { label: "تاریخ", value: reportDate(report.createdAt), Icon: CalendarDays },
     { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
     { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
@@ -1289,7 +1289,8 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
       }) });
       await clearSavedDraft();
       const project = projects.find((entry) => String(entry.id) === String(projectId));
-      onSubmitted({ id: data.item.id, reportName: reportName.trim(), projectId, projectName: project?.name,
+      onSubmitted({ id: data.item.id, reportNumber: data.item.reportNumber || initialReport?.reportNumber,
+        documentType: data.item.documentType || initialReport?.documentType, reportName: reportName.trim(), projectId, projectName: project?.name,
         projectCode: project?.code || initialReport?.projectCode, createdByName: user?.name, createdByUsername: user?.username,
         createdAt: initialReport?.createdAt || new Date().toISOString(), items: prepared.map((item) => ({ ...item, stage: data.item.stage || item.stage })) });
     } catch (reason) {
