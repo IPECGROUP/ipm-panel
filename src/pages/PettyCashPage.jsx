@@ -667,7 +667,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const entries = report.items || [];
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [decisions, setDecisions] = useState({});
-  const [notes, setNotes] = useState(report.reviewNotes || "");
+  const [returnNote, setReturnNote] = useState("");
+  const [reportReturn, setReportReturn] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [outdated, setOutdated] = useState(false);
@@ -686,7 +687,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const canAct = actionable.length > 0 && !outdated;
   const allSelected = actionable.length > 0 && actionable.every((item) => selectedIds.has(item.id));
   const partlySelected = selectedIds.size > 0 && !allSelected;
-  const readyToSubmit = canAct && Object.keys(decisions).length > 0;
+  const readyToSubmit = canAct && (reportReturn ? Boolean(returnNote.trim()) : actionable.every((item) => decisions[item.id] === "approved"));
 
   useEffect(() => {
     if (!managerOpen) return;
@@ -703,16 +704,18 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
   const submitDecision = async (recipientId = "") => {
     if (inFlightRef.current || !readyToSubmit) return;
-    if (!recipientId && actionable.some((item) => item.stage === "planning" && !["rejected", "revision"].includes(decisions[item.id]))) {
+    if (!reportReturn && !recipientId && actionable.some((item) => item.stage === "planning" && decisions[item.id] === "approved")) {
       setError(""); setManagerId(""); setManagerOpen(true); return;
     }
     inFlightRef.current = true;
     setSaving(true); onBusyChange(true); setError("");
     try {
-      const rowDecisions = Object.fromEntries(Object.entries(decisions).map(([id, value]) => [id, value === "approved" ? "approve" : value === "rejected" ? "reject" : "revision"]));
+      const rowDecisions = reportReturn ? {} : Object.fromEntries(Object.entries(decisions).map(([id, value]) => [id, value === "approved" ? "approve" : value === "rejected" ? "reject" : "revision"]));
       const response = await fetch("/api/petty-cash-expenses", {
         method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(user?.id || "") },
-        body: JSON.stringify({ action: "review_report", reportId: report.id, expectedVersion: report.version, decision: "approve", rowDecisions, note: notes, projectManagerId: recipientId || undefined }),
+        body: JSON.stringify({ action: "review_report", reportId: report.id, expectedVersion: report.version,
+          decision: reportReturn ? "revision" : "approve", reportWide: reportReturn, rowDecisions,
+          notesByDecision: reportReturn ? { revision: returnNote } : undefined, projectManagerId: recipientId || undefined }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "internal_error");
@@ -745,11 +748,14 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     return () => { active = false; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [attachment?.fileUrl]);
 
-  const toggleSelected = (id) => setSelectedIds((current) => {
-    const next = new Set(current);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
+  const toggleSelected = (id) => {
+    if (reportReturn) { setReportReturn(false); setDecisions({}); }
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
   const viewRow = (item) => {
     setViewedRowIds((current) => current.has(item.id) ? current : new Set([...current, item.id]));
     const fileIndex = attachments.findIndex((file) => file.id === item.id);
@@ -757,7 +763,14 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   };
   const applyDecision = (decision) => {
     if (!selectedIds.size || !canAct || saving) return;
+    if (reportReturn) setReportReturn(false);
     setDecisions((current) => ({ ...current, ...Object.fromEntries([...selectedIds].map((id) => [id, decision])) }));
+  };
+  const returnWholeReport = () => {
+    if (!canAct || saving) return;
+    setReportReturn(true);
+    setSelectedIds(new Set());
+    setDecisions({});
   };
   const rowStatus = (item) => decisions[item.id] || (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
   const badges = {
@@ -768,9 +781,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
   const decisionCards = [
-    { decision: "approved", label: "تأیید منتخب‌ها", description: "تأیید و ارسال به مرحله بعد", icon: "/images/icons/finishing-check.svg", iconClass: "bg-emerald-100", selectedClass: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)]" },
-    { decision: "revision", label: "درخواست برای اصلاح", description: "برگشت به درخواست‌کننده جهت اصلاح", icon: "/images/icons/bazgasht.svg", iconClass: "bg-amber-100", selectedClass: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)]" },
-    { decision: "rejected", label: "رد منتخب‌ها", description: "رد درخواست و پایان فرآیند", icon: "/images/icons/rad.svg", iconClass: "bg-rose-100", selectedClass: "border-rose-300 bg-rose-50/60 shadow-[0_0_0_2px_rgba(244,63,94,.12)]" },
+    { decision: "approved", label: "تأیید", description: "تأیید و ارسال به مرحله بعد", icon: "/images/icons/finishing-check.svg", iconClass: "bg-emerald-100", selectedClass: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)]" },
+    { decision: "revision", label: "بازگشت", description: "بازگشت کل گزارش جهت اصلاح", icon: "/images/icons/bazgasht.svg", iconClass: "bg-amber-100", selectedClass: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)]" },
   ];
   const metadata = [
     { label: "شماره گزارش", value: toFa(report.id), Icon: FileText },
@@ -796,9 +808,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_340px]">
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
-          {!isCreatorView && <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 p-3 sm:p-4">
-            <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{toFa(selectedIds.size)} ردیف انتخاب شده</span>
-            <button type="button" disabled={!selectedIds.size || saving || !canAct} onClick={() => setSelectedIds(new Set())} className={`${actionClass} border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50`}><X className="h-4 w-4" />لغو انتخاب</button>
+          {!isCreatorView && <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 p-3 sm:p-4">
+            <span className="flex items-center gap-2 text-xs font-semibold sm:text-sm"><span className={`grid h-5 w-5 place-items-center rounded ${selectedIds.size || reportReturn ? "bg-emerald-600 text-white" : "bg-neutral-100 text-neutral-400"}`}><Check className="h-4 w-4" /></span>{reportReturn ? "بازگشت کل گزارش" : `${toFa(selectedIds.size)} ردیف انتخاب شده`}</span>
           </div>}
 
           <section className="min-w-0 overflow-hidden">
@@ -809,7 +820,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   {!isCreatorView && <th scope="col" className="px-2"><input type="checkbox" disabled={!canAct || saving} checked={allSelected}
                     ref={(element) => { if (element) element.indeterminate = partlySelected; }}
-                    onChange={() => setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id)))}
+                    onChange={() => { if (reportReturn) { setReportReturn(false); setDecisions({}); } setSelectedIds(allSelected ? new Set() : new Set(actionable.map((item) => item.id))); }}
                     aria-label="انتخاب همه ردیف‌های درخواست" className="h-4 w-4 rounded accent-sky-600" /></th>}
                   {["ردیف", "شرح", "کد بودجه", "مبلغ (ریال)", "وضعیت"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
                 </tr></thead>
@@ -862,18 +873,18 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
             <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />گزارش تنخواه
           </button></div>
-          {!isCreatorView && canAct && <div className="grid gap-2 border-t border-neutral-200 p-3 sm:grid-cols-3 xl:grid-cols-1">
+          {!isCreatorView && canAct && <div className="grid gap-2 border-t border-neutral-200 p-3 sm:grid-cols-2 xl:grid-cols-1">
             {decisionCards.map(({ decision, label, description, icon, iconClass, selectedClass }) => {
-              const checked = selectedIds.size > 0 && [...selectedIds].every((id) => decisions[id] === decision);
+              const checked = decision === "revision" ? reportReturn : !reportReturn && selectedIds.size > 0 && [...selectedIds].every((id) => decisions[id] === decision);
               return <div key={decision} className={`min-w-0 rounded-2xl border p-3 text-center transition ${checked ? selectedClass : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm"}`}>
-                <button type="button" disabled={!selectedIds.size || saving} onClick={() => applyDecision(decision)} aria-pressed={checked}
+                <button type="button" disabled={saving || (decision === "approved" && !selectedIds.size)} onClick={() => decision === "revision" ? returnWholeReport() : applyDecision(decision)} aria-pressed={checked}
                   className="flex w-full flex-col items-center disabled:cursor-not-allowed disabled:opacity-45">
                   <span className={`grid h-10 w-10 place-items-center rounded-full ${iconClass}`}><img src={icon} alt="" className="h-5 w-5" /></span>
                   <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>
                   <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>
                 </button>
-                {checked && decision !== "approved" && <input type="text" value={notes} onChange={(event) => setNotes(event.target.value)} maxLength={500}
-                  aria-label={decision === "revision" ? "دلیل درخواست اصلاح" : "دلیل رد"} placeholder={decision === "revision" ? "دلیل برگشت را وارد کنید..." : "دلیل رد را وارد کنید..."}
+                {checked && decision === "revision" && <input type="text" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} maxLength={500}
+                  aria-label="دلیل بازگشت کل گزارش" placeholder="دلیل بازگشت کل گزارش را وارد کنید..."
                   className="mt-3 h-9 w-full rounded-xl border border-neutral-300 bg-white px-2 text-center text-xs outline-none focus:border-neutral-500" />}
               </div>;
             })}
@@ -883,7 +894,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     </div>
     {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
       {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-      {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}><Check className="h-5 w-5" />تأیید و ثبت</button></div>}
+      {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} title={!readyToSubmit ? reportReturn ? "دلیل بازگشت کل گزارش را وارد کنید" : "برای همه ردیف‌های قابل بررسی تأیید ثبت کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportReturn ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportReturn ? "ثبت بازگشت" : "تأیید و ثبت"}</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
@@ -930,17 +941,27 @@ function PettyCashSettlementTimeline({ report }) {
       addEvent("created", { ...entry, label: entry.action === "submitted" ? "ثبت گزارش" : "اصلاح و ارسال مجدد", actor: actor(entry), result: "approved" });
     }
     const changes = Array.isArray(entry.changes) ? entry.changes : [];
+    if (entry.reportWide) {
+      addEvent(entry.stage || changes[0]?.fromStage, { ...entry, label: "بازگشت کل گزارش", actor: actor(entry), result: "revision" });
+      return;
+    }
     [...new Set(changes.map((change) => change.fromStage).filter(Boolean))].forEach((stage) => {
-      const decisions = changes.filter((change) => change.fromStage === stage).map((change) => change.decision);
-      const result = decisions.includes("reject") ? "rejected" : decisions.includes("revision") ? "revision" : "approved";
-      const labels = [["approve", "تأیید"], ["reject", "رد"], ["revision", "درخواست اصلاح"]]
-        .map(([decision, label]) => { const count = decisions.filter((value) => value === decision).length; return count ? `${label} ${toFa(count)} ردیف` : ""; }).filter(Boolean);
-      addEvent(stage, { ...entry, label: labels.join("، "), actor: actor(entry), result });
+      const groups = new Map();
+      changes.filter((change) => change.fromStage === stage).forEach((change) => {
+        const note = change.note ?? entry.note ?? "";
+        const key = JSON.stringify([change.decision, note]);
+        groups.set(key, { decision: change.decision, note, count: (groups.get(key)?.count || 0) + 1 });
+      });
+      const labels = { approve: "تأیید", reject: "رد", revision: "درخواست اصلاح" };
+      const priority = { approve: 0, revision: 1, reject: 2 };
+      [...groups.values()].sort((a, b) => priority[a.decision] - priority[b.decision]).forEach(({ decision, note, count }) => addEvent(stage, { ...entry, note,
+        label: `${labels[decision] || decision} ${toFa(count)} ردیف`, actor: actor(entry),
+        result: decision === "reject" ? "rejected" : decision === "revision" ? "revision" : "approved" }));
     });
   });
   if (!events.get("created")?.length) addEvent("created", { at: report.createdAt, actor: report.createdByName || report.createdByUsername || "—", label: "ثبت گزارش", result: "approved" });
 
-  return <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+  return <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white pb-4">
     <h3 className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-bold">فرآیند تسویه تنخواه</h3>
     <ol className="space-y-0 p-4">{stages.map(([stage, title], index) => {
       const stageEvents = events.get(stage) || [];
