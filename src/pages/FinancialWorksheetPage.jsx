@@ -453,6 +453,7 @@ export default function FinancialWorksheetPage() {
   const [contractRows, setContractRows] = useState([]);
   const [contractId, setContractId] = useState("");
   const [contractKind, setContractKind] = useState("main");
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const [tab, setTab] = useState("statement");
   const [formOpen, setFormOpen] = useState(false);
@@ -837,7 +838,7 @@ export default function FinancialWorksheetPage() {
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
   const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
   const selectedContractDocumentType = documentTypeForContract(selectedContract);
-  const isSelectedSubContract = selectedContractDocumentType === "sub";
+  const isSelectedSubContract = contractKind === "sub" || selectedContractDocumentType === "sub";
   const grossAmountNumber = useMemo(() => parseAmountInput(grossAmount), [grossAmount]);
   const prepaymentDepreciationNumber = useMemo(() => parseAmountInput(prepaymentDepreciation), [prepaymentDepreciation]);
   const otherDeductionsNumber = useMemo(
@@ -1080,6 +1081,66 @@ export default function FinancialWorksheetPage() {
           },
     [isSelectedSubContract],
   );
+  const worksheetExportData = () => {
+    const receipt = tab === "receipts";
+    const headers = receipt
+      ? ["#", receiptUi.date, receiptUi.amount, receiptUi.foreignAmount]
+      : ["#", "شماره صورت وضعیت", "تاریخ", "مبلغ ناخالص", "VAT", "ارز منشا"];
+    const rows = sortedRows.map((row) => receipt
+      ? [rowNumberById.get(String(row.id)), row.date || "", Number(row.receiptAmount || 0), Number(row.receiptForeignAmount || 0)]
+      : [rowNumberById.get(String(row.id)), row.number || "", row.date || "", Number(row.grossAmount || 0), Number(row.vatAmount || 0), row.currencySourceLabel || ""]);
+    const totals = receipt
+      ? ["", "جمع", sumReceiptAmount, sumReceiptForeignAmount]
+      : ["", "", "جمع", sumGross, sumVat, ""];
+    return { headers, rows: [...rows, totals] };
+  };
+  const exportWorksheetExcel = async () => {
+    if (!projectId || exportingExcel) return;
+    setExportingExcel(true);
+    try {
+      const xlsxModule = await import("xlsx");
+      const XLSX = xlsxModule.default || xlsxModule;
+      const { headers, rows } = worksheetExportData();
+      const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      sheet["!cols"] = headers.map((header) => ({ wch: Math.max(18, header.length + 4) }));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, sheet, tab === "receipts" ? "Payments-Receipts" : "Statements");
+      XLSX.writeFile(workbook, `financial-worksheet-${projectId}-${tab}.xlsx`);
+    } catch (error) {
+      console.error("Financial worksheet Excel export failed", error);
+      window.alert("ساخت فایل اکسل انجام نشد. لطفاً دوباره تلاش کنید.");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+  const printWorksheet = () => {
+    if (!projectId) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    const { headers, rows } = worksheetExportData();
+    const doc = printWindow.document;
+    doc.title = `کاربرگ مالی - ${worksheetTabs.find((item) => item.id === tab)?.label || ""}`;
+    const style = doc.createElement("style");
+    style.textContent = "body{font-family:Tahoma,Arial,sans-serif;direction:rtl;padding:24px;color:#111}h1{font-size:18px}p{font-size:13px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #aaa;padding:8px;text-align:center}th{background:#eee}tr:last-child{font-weight:bold;background:#f5f5f5}@page{size:landscape;margin:12mm}";
+    doc.head.appendChild(style);
+    const title = doc.createElement("h1");
+    title.textContent = doc.title;
+    doc.body.appendChild(title);
+    const context = doc.createElement("p");
+    context.textContent = `پروژه: ${selectedProject ? projectLabel(selectedProject) : ""}${contractId ? ` | قرارداد: ${contractNoForRow(selectedContract)}` : ""}`;
+    doc.body.appendChild(context);
+    const table = doc.createElement("table");
+    const addRow = (values, tag) => {
+      const tr = doc.createElement("tr");
+      values.forEach((value) => { const cell = doc.createElement(tag); cell.textContent = String(value ?? ""); tr.appendChild(cell); });
+      table.appendChild(tr);
+    };
+    addRow(headers, "th");
+    rows.forEach((row) => addRow(row, "td"));
+    doc.body.appendChild(table);
+    printWindow.focus();
+    printWindow.setTimeout(() => printWindow.print(), 150);
+  };
   const tabStripCls =
     "flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
@@ -1406,7 +1467,7 @@ export default function FinancialWorksheetPage() {
           </div>
 
           <div className="space-y-4">
-          <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(220px,.35fr)_minmax(0,1fr)] lg:items-end">
+          <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(220px,.35fr)_minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
@@ -1473,6 +1534,14 @@ export default function FinancialWorksheetPage() {
                 ))}
               </select>
               </div>
+            </div>
+            <div className="flex items-center gap-2 lg:pb-0" aria-label="خروجی کاربرگ مالی">
+              <button type="button" onClick={exportWorksheetExcel} disabled={!projectId || exportingExcel} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
+                <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" />
+              </button>
+              <button type="button" onClick={printWorksheet} disabled={!projectId} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="چاپ کاربرگ" aria-label="چاپ کاربرگ">
+                <img src="/images/icons/print.svg" alt="" className="h-5 w-5 dark:invert" />
+              </button>
             </div>
           </div>
 
@@ -1899,7 +1968,7 @@ export default function FinancialWorksheetPage() {
             </div>
           )}
 
-          <div className="!mt-0">
+          {projectId && <div className="!mt-0">
           <TableWrap>
             <div className={tablePreset.outer}>
               <div className={tablePreset.innerPad}>
@@ -2014,7 +2083,7 @@ export default function FinancialWorksheetPage() {
               </div>
             </div>
           </TableWrap>
-          </div>
+          </div>}
 
           {!formOpen && err ? <div role="alert" className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>

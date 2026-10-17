@@ -1,7 +1,7 @@
  // درخواست پرداخت
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BriefcaseBusiness, CalendarDays, FileText, UserRound } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, ExternalLink, FileText, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../components/AuthProvider";
@@ -1358,7 +1358,7 @@ export default function PaymentRequestPage() {
             <Field label="تاریخ سند"><JalaliPopupDatePicker value={form.docDateJalali} onChange={(value) => setField("docDateJalali", value)} /></Field>
             <Field label="بارگذاری">
               <div className="isolate flex items-center"><button type="button" onClick={() => setUploadOpen(true)} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
-                <img src="/images/icons/Uplod.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
+                <img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
               </button></div>
               {!!form.attachments.length && <div className="mt-1 text-[11px] text-neutral-500">{toFa(form.attachments.length)} فایل ضمیمه شده</div>}
             </Field>
@@ -1879,7 +1879,7 @@ function PaymentUploadModal({ files, uploading, onUpload, onRemove, onClose }) {
                     <div className="text-sm font-bold">فایل را اینجا رها کنید</div>
                     <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">هر نوع فایلی را می‌توانید انتخاب کنید</div>
                     <button type="button" onClick={() => inputRef.current?.click()} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-bold text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" disabled={uploading}>
-                      <img src="/images/icons/Uplod.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+                      <img src="/images/icons/upload.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
                       {uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
                     </button>
                     <input ref={inputRef} type="file" multiple accept="image/*,.heic,.heif,.pdf" className="hidden" onChange={(event) => { handleFiles(event.target.files); event.target.value = ""; }} />
@@ -2985,7 +2985,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                       <button type="button" onClick={() => removeEditAttachment(index)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" aria-label="حذف پیوست" title="حذف پیوست">×</button>
                     </span>)}
                     <label className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editUploading ? "در حال آپلود" : "بارگذاری"} aria-label={editUploading ? "در حال آپلود" : "بارگذاری"}>
-                      <img src="/images/icons/Uplod.svg" alt="" className={`h-4 w-4 dark:invert ${editUploading ? "animate-pulse opacity-60" : ""}`} />
+                      <img src="/images/icons/upload.svg" alt="" className={`h-4 w-4 dark:invert ${editUploading ? "animate-pulse opacity-60" : ""}`} />
                       <input type="file" multiple accept="image/*,.heic,.heif,.pdf" className="hidden" onChange={(event) => uploadEditFiles(event.target.files)} />
                     </label>
                   </div>
@@ -3101,7 +3101,7 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
           : isImageAttachment(file) ? <button type="button" onClick={() => onOpenImage(file)} className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={url} alt={name} className="max-h-full max-w-full object-contain" /></button>
           : <div className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</div>}
       </div>
-      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" className="shrink-0 rounded-lg border border-neutral-200 px-2 py-1 text-[11px] hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">باز کردن فایل</a>}</div>}
+      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
       {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(fileIndex + 1)}</button>)}</div>}
       </div>
     </aside>
