@@ -12,6 +12,7 @@ import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import { budgetPickerItems } from "../utils/budgetPickerItems.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const DOC_OPTIONS = [
@@ -1357,7 +1358,7 @@ export default function PaymentRequestPage() {
           </div>
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
         </form>}
-        {uploadOpen && <PaymentUploadModal files={form.attachments} uploading={uploading} onUpload={uploadFiles} onRemove={removeAttachment} onClose={() => setUploadOpen(false)} />}
+        {uploadOpen && <AdvancedFileUploadModal title="بارگذاری اسناد درخواست پرداخت" files={form.attachments} uploading={uploading} onUpload={uploadFiles} onRemove={removeAttachment} accept="image/*,.pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" allowedTypes="تصویر، PDF، Word و Excel" onClose={() => setUploadOpen(false)} />}
         {supplyPickerOpen && <RequestChoiceModal
           title="انتخاب درخواست تامین"
           query={supplyPickerQuery}

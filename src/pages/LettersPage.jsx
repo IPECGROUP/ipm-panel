@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
 import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAccess.js";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 
 const PAGE_ICON = "/images/icons/nameha.svg";
 
@@ -7262,7 +7263,17 @@ const rowBg = normalRowBg;
     document.body
   )}
 
-{uploadOpen &&
+{uploadOpen && <AdvancedFileUploadModal
+  title={`بارگذاری اسناد ${uploadFor === "incoming" ? "وارده" : uploadFor === "outgoing" ? "صادره" : "داخلی"}`}
+  files={docFiles}
+  uploading={docFiles.some((file) => file.status === "uploading")}
+  onUpload={(files) => addFilesToUpload(uploadFor, files)}
+  onRemove={(index) => removeDocFile(uploadFor, docFiles[index]?.id)}
+  accept={LETTER_UPLOAD_ACCEPT}
+  allowedTypes="PDF، تصویر، Word و Excel"
+  onClose={closeUpload}
+/>}
+{false && uploadOpen &&
   createPortal(
     <div className="fixed inset-0 z-[9999]">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />

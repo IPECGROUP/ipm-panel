@@ -7,6 +7,7 @@ import { dayjs, todayJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 
 const PERSIAN_MONTHS = [
   "فروردین",
@@ -677,7 +678,6 @@ export default function RoznegarPgae() {
   const [activityBulletMode] = useState(true);
   const [syncState, setSyncState] = useState({ type: "", text: "" });
   const [filePreview, setFilePreview] = useState({ open: false, file: null, url: "", isObjectUrl: false });
-  const uploadInputRef = useRef(null);
   const previousProjectIdRef = useRef(projectId);
 
   useEffect(() => {
@@ -1265,9 +1265,8 @@ export default function RoznegarPgae() {
     });
   };
 
-  const handlePickFiles = async (e) => {
-    const target = e?.target;
-    const incoming = Array.from(target?.files || []);
+  const handlePickFiles = async (fileList) => {
+    const incoming = Array.from(fileList?.target?.files || fileList || []);
     if (!incoming.length) return;
     setFilesUploading(true);
     try {
@@ -1326,7 +1325,6 @@ export default function RoznegarPgae() {
       setSyncState({ type: "error", text: mapRoznegarErrorText(err, "بارگذاری فایل روی سرور ناموفق بود.") });
     } finally {
       setFilesUploading(false);
-      if (target && "value" in target) target.value = "";
     }
   };
 
@@ -2574,7 +2572,9 @@ export default function RoznegarPgae() {
         )}
       */}
 
-      {uploadOpen &&
+      {uploadOpen && <AdvancedFileUploadModal title="بارگذاری فایل روزنگار پروژه" files={Array.isArray(activeEntry.files) ? activeEntry.files : []} uploading={filesUploading} onUpload={handlePickFiles} onRemove={(index) => updateActiveEntry((curr) => ({ ...curr, files: (curr.files || []).filter((_, itemIndex) => itemIndex !== index) }))} accept="image/*,application/pdf,.pdf" allowedTypes="تصویر و PDF" onClose={closeUpload} />}
+      {/* Legacy dialog retained below temporarily for reference while the shared uploader is adopted. */}
+      {false && uploadOpen &&
         createPortal(
           <div className="fixed inset-0 z-[9999]">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeUpload} />

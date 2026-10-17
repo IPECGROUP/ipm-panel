@@ -9,6 +9,7 @@ import { SupplyActionsPanel } from "./SupplyActionsPage.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 
 const PAGE_ICON = "/images/icons/darkhast-tamin.svg";
 const REQUEST_DOC_ID = "supply_request";
@@ -342,7 +343,6 @@ export default function SupplyRequestPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedRequestId = searchParams.get("request") || searchParams.get("supplyRequest") || "";
   const openedRequestRef = useRef("");
-  const fileRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [relatedDocsOpen, setRelatedDocsOpen] = useState(false);
@@ -1366,16 +1366,7 @@ export default function SupplyRequestPage() {
           }}
         />
       )}
-      {uploadOpen && (
-        <SupplyUploadModal
-          fileRef={fileRef}
-          files={form.attachments}
-          uploading={uploading}
-          onUpload={uploadFiles}
-          onRemove={(index) => setForm((prev) => ({ ...prev, attachments: (prev.attachments || []).filter((_, i) => i !== index) }))}
-          onClose={() => setUploadOpen(false)}
-        />
-      )}
+      {uploadOpen && <AdvancedFileUploadModal title="بارگذاری اسناد درخواست تأمین" files={form.attachments} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((prev) => ({ ...prev, attachments: (prev.attachments || []).filter((_, i) => i !== index) }))} accept="image/*,.pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" allowedTypes="تصویر، PDF، Word و Excel" onClose={() => setUploadOpen(false)} />}
     </div>
   );
 }

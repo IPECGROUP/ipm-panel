@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   BarChart3,
@@ -20,6 +20,7 @@ import { TagButton, TagPicker, UploadButton } from "../components/project-lesson
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { dayjs } from "../utils/date.js";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 
 const input =
   "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100";
@@ -134,7 +135,6 @@ function canDisplayLesson(item, canReview) {
 
 export default function ProjectLessonsLearnedPage() {
   const { user, loading: authLoading } = useAuth();
-  const fileRef = useRef(null);
 
   const [items, setItems] = useState([]);
   const [projects, setProjects] = useState([]);
@@ -753,21 +753,7 @@ export default function ProjectLessonsLearnedPage() {
           }}
         />
       )}
-      {uploadOpen && (
-        <LessonUploadModal
-          fileRef={fileRef}
-          files={form.files}
-          uploading={uploading}
-          onUpload={upload}
-          onRemove={(index) =>
-            setForm((old) => ({
-              ...old,
-              files: old.files.filter((_, position) => position !== index),
-            }))
-          }
-          onClose={() => setUploadOpen(false)}
-        />
-      )}
+      {uploadOpen && <AdvancedFileUploadModal title="بارگذاری فایل درس‌آموخته" files={form.files} uploading={uploading} onUpload={upload} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} allowedTypes="PDF، Word و Excel" onClose={() => setUploadOpen(false)} />}
       {viewItem &&
         (viewItem.status === "pending" && canReview ? (
           <LessonReviewModal
@@ -1060,140 +1046,6 @@ function DetailText({ title, text }) {
         {text || "—"}
       </p>
     </section>
-  );
-}
-function LessonUploadModal({
-  fileRef,
-  files,
-  uploading,
-  onUpload,
-  onRemove,
-  onClose,
-}) {
-  const drop = (event) => {
-    event.preventDefault();
-    if (event.dataTransfer?.files?.length) onUpload(event.dataTransfer.files);
-  };
-  return createPortal(
-    <div className="fixed inset-0 z-[9999]" dir="rtl">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="absolute inset-0 flex items-center justify-center p-3">
-        <div className="relative flex max-h-[calc(100dvh-24px)] w-[min(720px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
-          <header className="flex items-center justify-between gap-3 border-b border-black/10 p-4 dark:border-white/10">
-            <div className="text-sm font-bold">
-              بارگذاری فایل‌های درس‌آموخته
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"
-              aria-label="بستن"
-            >
-              <img
-                src="/images/icons/bastan.svg"
-                alt=""
-                className="h-4 w-4 invert dark:invert-0"
-              />
-            </button>
-          </header>
-          <div className="overflow-y-auto p-4">
-            <div className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">
-              فایل‌های انتخاب‌شده
-            </div>
-            <div className="space-y-2">
-              {files.length ? (
-                files.map((file, index) => (
-                  <div
-                    key={file.url || index}
-                    className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 dark:border-white/10"
-                  >
-                    <img
-                      src="/images/icons/Uplod.svg"
-                      alt=""
-                      className="h-5 w-5 dark:invert"
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                      {file.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(index)}
-                      className="grid h-8 w-8 place-items-center rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10"
-                      title="حذف"
-                    >
-                      <img
-                        src="/images/icons/hazf.svg"
-                        alt=""
-                        className="h-4 w-4"
-                      />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="py-5 text-center text-sm text-neutral-500">
-                  فایلی انتخاب نشده است.
-                </div>
-              )}
-            </div>
-            <div
-              onDrop={drop}
-              onDragOver={(event) => event.preventDefault()}
-              className="mt-3 rounded-2xl border border-dashed border-black/15 bg-black/[.01] px-4 py-8 text-center dark:border-white/15 dark:bg-white/[.03]"
-            >
-              <div className="text-sm font-semibold">
-                فایل را اینجا رها کنید
-              </div>
-              <div className="mt-1 text-xs text-neutral-500">
-                فایل‌های مجاز: PDF، Word و Excel
-              </div>
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"
-              >
-                <img
-                  src="/images/icons/upload.svg"
-                  alt=""
-                  className="h-5 w-5 invert dark:invert-0"
-                />
-                {uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.rtf"
-                className="hidden"
-                onChange={(event) => {
-                  onUpload(event.target.files);
-                  event.target.value = "";
-                }}
-              />
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={uploading}
-                className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white disabled:opacity-50 dark:bg-white dark:text-black"
-                title="تأیید"
-              >
-                <img
-                  src="/images/icons/check.svg"
-                  alt=""
-                  className="h-5 w-5 invert dark:invert-0"
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body,
   );
 }
 function AuthorPopover({ data, onClose }) {
