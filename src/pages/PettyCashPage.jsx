@@ -2,7 +2,7 @@ import { createElement, useCallback, useEffect, useMemo, useRef, useState } from
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -809,11 +809,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </div>)}
       </div>
 
-      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_340px]">
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_374px]">
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <section className="min-w-0 overflow-hidden">
-             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[280px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[320px]">
               <table className="w-full min-w-[650px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
                 <colgroup><col className="w-12" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
@@ -834,7 +833,22 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
               </table>
             </div>
           </section>
-
+          {!isCreatorView && canAct && <div className="grid gap-2 border-t border-neutral-200 p-3 sm:grid-cols-2">
+            {decisionCards.map(({ decision, label, description, icon, iconClass, selectedClass }) => {
+              const checked = reportDecision === decision;
+              return <div key={decision} className={`min-w-0 rounded-2xl border p-3 text-center transition ${checked ? selectedClass : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm"}`}>
+                <button type="button" disabled={saving} onClick={() => setReportDecision(decision)} aria-pressed={checked}
+                  className="flex w-full flex-col items-center disabled:cursor-not-allowed disabled:opacity-45">
+                  <span className={`grid h-10 w-10 place-items-center rounded-full ${iconClass}`}><img src={icon} alt="" className="h-5 w-5" /></span>
+                  <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>
+                  <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>
+                </button>
+                {checked && decision === "revision" && <input type="text" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} maxLength={500}
+                  aria-label="دلیل بازگشت کل گزارش" placeholder="دلیل بازگشت کل گزارش را وارد کنید..."
+                  className="mt-3 h-9 w-full rounded-xl border border-neutral-300 bg-white px-2 text-center text-xs outline-none focus:border-neutral-500" />}
+              </div>;
+            })}
+          </div>}
         </div>
 
         <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
@@ -843,12 +857,12 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-64 xl:h-[min(34vh,400px)]">
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
                 : preview.url && /\.pdf(?:$|[?#])/i.test(attachment?.fileUrl || "") ? <iframe src={preview.url} title="پیش‌نمایش PDF پیوست" className="absolute inset-0 h-full w-full border-0" />
-                : preview.url ? <a href={attachment.fileUrl} target="_blank" rel="noreferrer" aria-label="باز کردن پیوست" title="باز کردن پیوست" className="absolute inset-0 cursor-zoom-in">
+                : preview.url ? <>
                   <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
-                    onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="h-full w-full object-contain" />
-                </a>
+                    onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="h-full w-full object-contain" /></>
                 : <p className="px-4 text-center text-xs text-neutral-500">{preview.error || "پیوستی برای نمایش وجود ندارد."}</p>}
-              {attachments.length > 1 && <div dir="ltr" className="pointer-events-none absolute inset-x-2 top-1/2 flex -translate-y-1/2 justify-between">
+              {preview.url && attachment?.fileUrl && <a href={attachment.fileUrl} target="_blank" rel="noopener" aria-label="باز کردن پیوست در تب جدید" title="باز کردن پیوست در تب جدید" className="absolute inset-0 z-10 cursor-zoom-in" />}
+              {attachments.length > 1 && <div dir="ltr" className="pointer-events-none absolute inset-x-2 top-1/2 z-20 flex -translate-y-1/2 justify-between">
                 <button type="button" disabled={attachmentIndex === 0} onClick={() => setAttachmentIndex((current) => current - 1)} aria-label="پیوست قبلی"
                   className="pointer-events-auto grid h-9 w-9 place-items-center rounded-full border border-neutral-200 bg-white/95 shadow-sm transition hover:bg-white disabled:opacity-35"><ChevronLeft className="h-5 w-5" /></button>
                 <button type="button" disabled={attachmentIndex >= attachments.length - 1} onClick={() => setAttachmentIndex((current) => current + 1)} aria-label="پیوست بعدی"
@@ -868,22 +882,6 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
             <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />گزارش تنخواه
           </button></div>
-          {!isCreatorView && canAct && <div className="grid gap-2 border-t border-neutral-200 p-3 sm:grid-cols-2 xl:grid-cols-1">
-            {decisionCards.map(({ decision, label, description, icon, iconClass, selectedClass }) => {
-              const checked = reportDecision === decision;
-              return <div key={decision} className={`min-w-0 rounded-2xl border p-3 text-center transition ${checked ? selectedClass : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm"}`}>
-                <button type="button" disabled={saving} onClick={() => setReportDecision(decision)} aria-pressed={checked}
-                  className="flex w-full flex-col items-center disabled:cursor-not-allowed disabled:opacity-45">
-                  <span className={`grid h-10 w-10 place-items-center rounded-full ${iconClass}`}><img src={icon} alt="" className="h-5 w-5" /></span>
-                  <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>
-                  <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>
-                </button>
-                {checked && decision === "revision" && <input type="text" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} maxLength={500}
-                  aria-label="دلیل بازگشت کل گزارش" placeholder="دلیل بازگشت کل گزارش را وارد کنید..."
-                  className="mt-3 h-9 w-full rounded-xl border border-neutral-300 bg-white px-2 text-center text-xs outline-none focus:border-neutral-500" />}
-              </div>;
-            })}
-          </div>}
         </aside>
       </div>
     </div>
