@@ -1621,9 +1621,9 @@ function itemDateKey(item) {
 }
 
 function isAwaitingPayment(item) {
-  return item?.requestType !== "tenkhah"
-    && item?.status === "pending"
-    && (item?.currentStepRoleKey || item?.stage) === "accounting"
+  if (item?.status !== "pending") return false;
+  if (item?.requestType === "tenkhah") return item?.stage === "finance";
+  return (item?.currentStepRoleKey || item?.stage) === "accounting"
     && Number(item?.currentStepIndex) >= 5;
 }
 
@@ -1959,10 +1959,7 @@ function StatusBadge({ status }) {
 
 function WaitingUnitCell({ item }) {
   const roleKey = item?.currentStepRoleKey || item?.stage;
-  const isFinalPaymentWaiting = item?.requestType !== "tenkhah"
-    && roleKey === "accounting"
-    && Number(item?.currentStepIndex) >= 5
-    && item?.status === "pending";
+  const isFinalPaymentWaiting = isAwaitingPayment(item);
   const unitName = isFinalPaymentWaiting ? "در انتظار پرداخت" : WAITING_UNIT_LABELS[roleKey];
 
   if (unitName) {
@@ -3094,9 +3091,10 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
   const url = file ? attachmentViewUrl(file) : "";
   const name = file?.name || file?.originalName || `پیوست ${toFa(index + 1)}`;
   const isPdf = /\.pdf(?:[?#]|$)/i.test(file?.name || url || "") || /application\/pdf/i.test(file?.type || file?.mimeType || "");
-  return <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
-    <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
-    <div className="p-3">
+  return <div className="min-w-0 space-y-3">
+    <aside className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+      <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
+      <div className="p-3">
       <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 xl:h-[min(44vh,430px)]">
         {!url ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p>
           : isPdf ? <iframe key={url} src={url} title={`پیش‌نمایش ${name}`} className="h-full w-full border-0" />
@@ -3105,9 +3103,10 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
       </div>
       {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" className="shrink-0 rounded-lg border border-neutral-200 px-2 py-1 text-[11px] hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">باز کردن فایل</a>}</div>}
       {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(fileIndex + 1)}</button>)}</div>}
-      <button type="button" onClick={onOpenPdf} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" />مشاهده PDF</button>
-    </div>
-  </aside>;
+      </div>
+    </aside>
+    <button type="button" onClick={onOpenPdf} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" />گزارش درخواست پرداخت</button>
+  </div>;
 }
 
 function WorkflowPanel({
