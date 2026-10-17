@@ -834,8 +834,6 @@ export default function FinancialWorksheetPage() {
     setDetailRow(null);
   }, [contractId, projectId, tab]);
 
-  useEffect(() => { setSearchQuery(""); }, [projectId]);
-
   const selectedContract = useMemo(() => contractById.get(String(contractId || "")) || null, [contractById, contractId]);
   const selectedContractFinancial = selectedContract?.financial && typeof selectedContract.financial === "object" ? selectedContract.financial : {};
   const selectedContractDocumentType = documentTypeForContract(selectedContract);
