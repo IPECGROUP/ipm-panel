@@ -6,6 +6,7 @@ import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
 import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
+import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 
 const PAGE_ICON = "/images/icons/nameha.svg";
 
@@ -935,6 +936,7 @@ const getEffectiveLetterNoForKind = (kind) => {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFor, setUploadFor] = useState("incoming");
   const [uploadTargetLetterId, setUploadTargetLetterId] = useState("");
+  const [letterEditorFile, setLetterEditorFile] = useState(null);
 
   const closeUpload = () => {
     setUploadOpen(false);
@@ -2417,6 +2419,23 @@ const resetAllFilters = () => {
     setDocFilesFor(which, (prev) => {
       return prev.filter((x) => x.id !== id);
     });
+  };
+
+  const selectLetterUpload = (fileList) => {
+    const file = Array.from(fileList || [])[0];
+    if (!file) return;
+    if (/\.(?:jpe?g|png|webp|pdf)$/i.test(file.name)) {
+      setLetterEditorFile(file);
+      setUploadOpen(false);
+      return;
+    }
+    void addFilesToUpload(uploadFor, [file]);
+  };
+
+  const finishLetterEditor = async (file) => {
+    await addFilesToUpload(uploadFor, [file]);
+    setLetterEditorFile(null);
+    setUploadOpen(true);
   };
 
   const refetchLetters = async () => {
@@ -7267,12 +7286,13 @@ const rowBg = normalRowBg;
   title={`بارگذاری اسناد ${uploadFor === "incoming" ? "وارده" : uploadFor === "outgoing" ? "صادره" : "داخلی"}`}
   files={currentDocFiles}
   uploading={currentDocFiles.some((file) => file.status === "uploading")}
-  onUpload={(files) => addFilesToUpload(uploadFor, files)}
+  onSelectFiles={selectLetterUpload}
   onRemove={(index) => removeDocFile(uploadFor, currentDocFiles[index]?.id)}
   accept={LETTER_UPLOAD_ACCEPT}
   allowedTypes="PDF، تصویر، Word و Excel"
   onClose={closeUpload}
 />}
+{letterEditorFile && <AttachmentImageEditor key={letterEditorFile.name + letterEditorFile.lastModified} title="پیوست سند" initialFile={letterEditorFile} onClose={() => { setLetterEditorFile(null); setUploadOpen(true); }} onConfirm={finishLetterEditor} />}
 {false && uploadOpen &&
   createPortal(
     <div className="fixed inset-0 z-[9999]">

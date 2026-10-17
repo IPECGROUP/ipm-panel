@@ -1663,7 +1663,7 @@ async function compressExpensePhoto(source, image, turns, crop) {
   return { file, width: canvas.width, height: canvas.height };
 }
 
-export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm, onAddImages, onViewFiles }) {
+export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm, onAddImages, onViewFiles, title = "پیوست هزینه" }) {
   const [source, setSource] = useState(null);
   const [image, setImage] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
@@ -1848,7 +1848,7 @@ export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onC
         <header className="flex items-center justify-between gap-4 border-b border-neutral-100 px-5 py-4">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-neutral-100"><img src="/images/icons/upload.svg" alt="" className="h-6 w-6" /></span>
-            <h2 id="petty-cash-photo-title" className="font-bold">پیوست هزینه</h2>
+            <h2 id="petty-cash-photo-title" className="font-bold">{title}</h2>
           </div>
           <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800"><X className="h-4 w-4" /></button>
         </header>
