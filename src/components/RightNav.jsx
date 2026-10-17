@@ -55,6 +55,7 @@ const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" 
 const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
 const IcOperations = () => <NavIcon src="/images/icons/modriat-agra.svg" />;
 const IcEquipmentManagement = () => <NavIcon src="/images/icons/modiriat-taghizat.svg" />;
+const IcExecutiveOperations = () => <NavIcon src="/images/icons/modiriat-amaliat-egraei.svg" />;
 
 function RightNav() {
   const auth = useAuth() || {};
@@ -174,6 +175,10 @@ function RightNav() {
       return "equipment";
     }
 
+    if (path.startsWith("/executive-operations/")) {
+      return "executiveOperations";
+    }
+
     if (path.startsWith("/base/") || path === "/centers/projects" || path.startsWith("/admin/")) {
       return "base";
     }
@@ -201,6 +206,7 @@ function RightNav() {
   const budgetParentActive = !!open.budget || activeSection === "budget";
   const supplyParentActive = !!open.supply || activeSection === "supply";
   const equipmentParentActive = !!open.equipment || activeSection === "equipment";
+  const executiveOperationsParentActive = !!open.executiveOperations || activeSection === "executiveOperations";
   const operationsParentActive = !!open.operations || activeSection === "operations";
   const baseParentActive = !!open.base || activeSection === "base";
   const knowledgeParentActive = !!open.knowledge || isActive("/knowledge-management");
@@ -338,6 +344,23 @@ function RightNav() {
             { to: "/equipment/identity", label: "شناسنامه تجهیزات", hint: "ثبت و مدیریت شناسنامه تجهیزات", icon: <NavIcon src="/images/icons/shenasnameh-taghizat.svg" /> },
             { to: "/equipment/service-maintenance", label: "سرویس و نگهداری", hint: "مدیریت سرویس و نگهداری تجهیزات", icon: <NavIcon src="/images/icons/service.svg" /> },
             { to: "/equipment/repair-rebuild", label: "تعمیرات و بازسازی", hint: "مدیریت تعمیرات و بازسازی تجهیزات", icon: <NavIcon src="/images/icons/tamirat.svg" /> },
+          ],
+        },
+      ],
+    },
+    {
+      title: "مدیریت عملیات اجرایی",
+      items: [
+        {
+          type: "section",
+          key: "executiveOperations",
+          label: "مدیریت عملیات اجرایی",
+          icon: <IcExecutiveOperations />,
+          active: executiveOperationsParentActive,
+          items: [
+            { to: "/executive-operations/daily-work-report", label: "گزارش کارکرد روزانه", hint: "ثبت و مدیریت گزارش کارکرد روزانه", icon: <NavIcon src="/images/icons/gozaresh-karkardrozaneh.svg" /> },
+            { to: "/executive-operations/operation-history", label: "سوابق عملیات ها", hint: "مرور سوابق عملیات ها", icon: <NavIcon src="/images/icons/savabegh-amaliat.svg" /> },
+            { to: "/executive-operations/equipment-calibration", label: "کالیبراسیون تجهیزات", hint: "مدیریت کالیبراسیون تجهیزات", icon: <NavIcon src="/images/icons/kalibrasion.svg" /> },
           ],
         },
       ],

@@ -146,6 +146,10 @@ export default function App() {
         <Route path="/equipment/service-maintenance" element={<NavPlaceholderPage title="سرویس و نگهداری" />} />
         <Route path="/equipment/repair-rebuild" element={<NavPlaceholderPage title="تعمیرات و بازسازی" />} />
 
+        <Route path="/executive-operations/daily-work-report" element={<NavPlaceholderPage title="گزارش کارکرد روزانه" />} />
+        <Route path="/executive-operations/operation-history" element={<NavPlaceholderPage title="سوابق عملیات ها" />} />
+        <Route path="/executive-operations/equipment-calibration" element={<NavPlaceholderPage title="کالیبراسیون تجهیزات" />} />
+
         <Route path="/operations/equipment" element={<NavPlaceholderPage title="ماشین آلات و تجهیزات" />} />
         <Route path="/operations/history" element={<NavPlaceholderPage title="سوابق عملیات" />} />
 
