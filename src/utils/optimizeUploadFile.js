@@ -30,7 +30,6 @@ export async function optimizeUploadFile(file, { maxEdge = 3000, quality = 0.84 
     canvas.height = height;
     canvas.getContext("2d", { alpha: true })?.drawImage(image, 0, 0, width, height);
     const blob = await canvasBlob(canvas, quality);
-    // Never replace a file with a larger or unusable result.
     if (!blob || blob.size >= file.size) return file;
     return new File([blob], imageName(file.name), { type: "image/webp", lastModified: file.lastModified });
   } catch {

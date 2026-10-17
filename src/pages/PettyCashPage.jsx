@@ -1663,7 +1663,7 @@ async function compressExpensePhoto(source, image, turns, crop) {
   return { file, width: canvas.width, height: canvas.height };
 }
 
-function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm }) {
+export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm }) {
   const [source, setSource] = useState(null);
   const [image, setImage] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
@@ -1925,3 +1925,7 @@ function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, o
     </div>, document.body
   );
 }
+
+// Public name for screens other than petty cash. Keeping the implementation here
+// guarantees every caller gets the exact same crop, rotate and compression flow.
+export { PettyCashPhotoEditor as AttachmentImageEditor };

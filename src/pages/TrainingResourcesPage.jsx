@@ -6,8 +6,8 @@ import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { dayjs } from "../utils/date.js";
-import { optimizeUploadFile } from "../utils/optimizeUploadFile.js";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
+import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
@@ -107,6 +107,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [imageEditorOpen, setImageEditorOpen] = useState(false);
+  const [imageQueue, setImageQueue] = useState([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
   const [pickerIds, setPickerIds] = useState([]);
@@ -208,6 +210,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     setEditingId("");
     setForm(emptyForm());
     setUploadOpen(false);
+    setImageEditorOpen(false);
+    setImageQueue([]);
     setPickerOpen(false);
     setTagPickerOpen(false);
     setFilterQuery("");
@@ -266,8 +270,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     setError("");
     try {
       const uploaded = [];
-      for (const selectedFile of selected) {
-        const file = await optimizeUploadFile(selectedFile);
+      for (const file of selected) {
         const body = new FormData();
         body.append("file", file);
         const response = await fetch(isLibrary ? "/api/library-items/upload" : "/api/training-resources/upload", { method: "POST", credentials: "include", headers: requestHeaders, body });
@@ -281,6 +284,27 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     } finally {
       setUploading(false);
     }
+  };
+
+  const selectUploadFiles = async (fileList) => {
+    const selected = Array.from(fileList || []);
+    const images = isLibrary ? [] : selected.filter((file) => /\.(jpe?g|png|webp)$/i.test(file.name));
+    const documents = selected.filter((file) => !images.includes(file));
+    if (documents.length) await uploadFiles(documents);
+    if (images.length) {
+      setImageQueue(images);
+      setUploadOpen(false);
+      setImageEditorOpen(true);
+    }
+  };
+
+  const confirmEditedImage = async (file) => {
+    await uploadFiles([file]);
+    setImageQueue((queue) => {
+      const next = queue.slice(1);
+      if (!next.length) setImageEditorOpen(false);
+      return next;
+    });
   };
 
   const submit = async () => {
@@ -491,7 +515,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
       {tagPickerOpen && <TagPicker tags={tagPickerFor === "filter" ? filterTags : tags} query={tagPickerQuery} setQuery={setTagPickerQuery} selectedIds={tagPickerDraftIds} setSelectedIds={setTagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
-      {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} onClose={() => setUploadOpen(false)} />}
+      {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onSelectFiles={selectUploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} onClose={() => setUploadOpen(false)} />}
+      {imageEditorOpen && imageQueue[0] && <AttachmentImageEditor initialFile={imageQueue[0]} onClose={() => { setImageEditorOpen(false); setImageQueue([]); }} onConfirm={confirmEditedImage} />}
     </div>
   );
 }

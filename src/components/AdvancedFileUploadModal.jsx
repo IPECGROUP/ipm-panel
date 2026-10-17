@@ -17,6 +17,7 @@ export default function AdvancedFileUploadModal({
   files = [],
   uploading = false,
   onUpload,
+  onSelectFiles,
   onRemove,
   onClose,
   accept = defaultAccept,
@@ -30,7 +31,9 @@ export default function AdvancedFileUploadModal({
 
   const selectFiles = (fileList) => {
     if (!fileList?.length || uploading) return;
-    onUpload?.(multiple ? fileList : [fileList[0]]);
+    const normalized = multiple ? fileList : [fileList[0]];
+    if (onSelectFiles) onSelectFiles(normalized);
+    else onUpload?.(normalized);
   };
 
   useEffect(() => {
