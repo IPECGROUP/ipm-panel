@@ -109,6 +109,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [imageEditorOpen, setImageEditorOpen] = useState(false);
   const [imageQueue, setImageQueue] = useState([]);
+  const [editingImage, setEditingImage] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQuery, setPickerQuery] = useState("");
   const [pickerIds, setPickerIds] = useState([]);
@@ -212,6 +213,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     setUploadOpen(false);
     setImageEditorOpen(false);
     setImageQueue([]);
+    setEditingImage(null);
     setPickerOpen(false);
     setTagPickerOpen(false);
     setFilterQuery("");
@@ -263,7 +265,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     }
   };
 
-  const uploadFiles = async (fileList) => {
+  const uploadFiles = async (fileList, { replaceIndex = null } = {}) => {
     const selected = Array.from(fileList || []);
     if (!selected.length) return;
     setUploading(true);
@@ -278,9 +280,11 @@ export default function TrainingResourcesPage({ variant = "training" }) {
         if (!response.ok) throw new Error(data.error === "unsupported_file_type" ? (isLibrary ? "فقط فایل‌های اکسل، ورد و PDF مجاز هستند." : "فقط فایل‌های اکسل، ورد، PDF و تصاویر JPG، PNG یا WebP مجاز هستند.") : data.error || "بارگذاری فایل انجام نشد.");
         uploaded.push(data.file);
       }
-      setForm((previous) => ({ ...previous, files: [...previous.files, ...uploaded] }));
+      setForm((previous) => ({ ...previous, files: replaceIndex == null ? [...previous.files, ...uploaded] : previous.files.map((item, index) => index === replaceIndex ? uploaded[0] : item) }));
+      return uploaded;
     } catch (err) {
       setError(err.message || "بارگذاری فایل انجام نشد.");
+      return [];
     } finally {
       setUploading(false);
     }
@@ -308,6 +312,26 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       }
       return next;
     });
+  };
+
+  const openImageEditor = (file, index) => {
+    setEditingImage({ file, index });
+    setUploadOpen(false);
+    setImageEditorOpen(true);
+  };
+
+  const confirmEditedExistingImage = async (file) => {
+    const uploaded = await uploadFiles([file], { replaceIndex: editingImage.index });
+    if (uploaded.length) {
+      setEditingImage(null);
+      setImageQueue((queue) => {
+        if (!queue.length) {
+          setImageEditorOpen(false);
+          setUploadOpen(true);
+        }
+        return queue;
+      });
+    }
   };
 
   const addImagesToQueue = (fileList) => {
@@ -523,8 +547,8 @@ export default function TrainingResourcesPage({ variant = "training" }) {
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
       {tagPickerOpen && <TagPicker tags={tagPickerFor === "filter" ? filterTags : tags} query={tagPickerQuery} setQuery={setTagPickerQuery} selectedIds={tagPickerDraftIds} setSelectedIds={setTagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
-      {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onSelectFiles={selectUploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} multiple selectionHint={isLibrary ? "" : "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."} onClose={() => setUploadOpen(false)} />}
-      {imageEditorOpen && imageQueue[0] && <AttachmentImageEditor initialFile={imageQueue[0]} onClose={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} onConfirm={confirmEditedImage} onAddImages={addImagesToQueue} />}
+      {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onSelectFiles={selectUploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onEditFile={!isLibrary ? openImageEditor : undefined} isEditableFile={!isLibrary ? (file) => /\.(jpe?g|png|webp)$/i.test(file.name || file.url || "") : undefined} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} multiple={!isLibrary} selectionHint={isLibrary ? "" : "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."} onClose={() => setUploadOpen(false)} />}
+      {imageEditorOpen && editingImage ? <AttachmentImageEditor initialUrl={editingImage.file.url} initialName={editingImage.file.name} onClose={() => { setEditingImage(null); setImageEditorOpen(false); setUploadOpen(true); }} onConfirm={confirmEditedExistingImage} onAddImages={addImagesToQueue} onViewFiles={() => { setEditingImage(null); setImageEditorOpen(false); setUploadOpen(true); }} /> : imageEditorOpen && imageQueue[0] && <AttachmentImageEditor initialFile={imageQueue[0]} onClose={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} onConfirm={confirmEditedImage} onAddImages={addImagesToQueue} onViewFiles={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} />}
     </div>
   );
 }

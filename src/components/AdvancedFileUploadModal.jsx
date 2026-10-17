@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, ExternalLink, FileText, LoaderCircle, Trash2, Upload, X } from "lucide-react";
+import { Check, ExternalLink, FileText, LoaderCircle, Pencil, Trash2, Upload, X } from "lucide-react";
 
 const defaultAccept = ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv";
 
@@ -19,10 +19,12 @@ export default function AdvancedFileUploadModal({
   onUpload,
   onSelectFiles,
   onRemove,
+  onEditFile,
+  isEditableFile,
   onClose,
   accept = defaultAccept,
   allowedTypes = "PDF، Word و Excel",
-  multiple = true,
+  multiple = false,
   selectionHint = "",
   confirmLabel = "تأیید پیوست",
 }) {
@@ -77,6 +79,7 @@ export default function AdvancedFileUploadModal({
                 {files.length ? files.map((file, index) => <div key={file.url || `${fileLabel(file)}-${index}`} className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-white/10 dark:bg-white/[.03]">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><FileText className="h-4 w-4 text-neutral-600 dark:text-neutral-300" /></span>
                   <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold" title={fileLabel(file)}>{fileLabel(file)}</span>{file.size ? <span className="mt-0.5 block text-[11px] text-neutral-500">{Math.ceil(file.size / 1024).toLocaleString("fa-IR")} کیلوبایت</span> : null}</span>
+                  {onEditFile && isEditableFile?.(file) ? <button type="button" disabled={uploading} onClick={() => onEditFile(file, index)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] disabled:opacity-40 dark:hover:bg-white/10" title="ویرایش تصویر" aria-label="ویرایش تصویر"><Pencil className="h-4 w-4" /></button> : null}
                   {file.url ? <a href={file.url} target="_blank" rel="noreferrer" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/[.06] dark:hover:bg-white/10" title="باز کردن فایل" aria-label="باز کردن فایل"><ExternalLink className="h-4 w-4" /></a> : null}
                   <button type="button" disabled={uploading} onClick={() => onRemove?.(index)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-red-600 transition hover:bg-red-50 disabled:opacity-40 dark:hover:bg-red-500/10" title="حذف فایل" aria-label="حذف فایل"><Trash2 className="h-4 w-4" /></button>
                 </div>) : <div className="rounded-xl border border-dashed border-neutral-200 py-5 text-center text-sm text-neutral-500 dark:border-white/10">هنوز فایلی انتخاب نشده است.</div>}

@@ -1663,7 +1663,7 @@ async function compressExpensePhoto(source, image, turns, crop) {
   return { file, width: canvas.width, height: canvas.height };
 }
 
-export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm, onAddImages }) {
+export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm, onAddImages, onViewFiles }) {
   const [source, setSource] = useState(null);
   const [image, setImage] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
@@ -1866,6 +1866,7 @@ export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onC
               {cropping ? <Check className="h-4 w-4" /> : <Crop className="h-4 w-4" />}{cropping ? "اعمال برش" : "برش عکس"}
             </button>
             <button type="button" disabled={loading || draggingCrop} onClick={() => { setTurns(0); setCrop(fullPhotoCrop()); setCropping(false); }} className={toolbarButton}><RefreshCw className="h-4 w-4" />بازنشانی</button>
+            {onViewFiles && <button type="button" disabled={loading || draggingCrop} onClick={onViewFiles} className={toolbarButton}><Eye className="h-4 w-4" />مشاهده فایل‌ها</button>}
             <button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className={`${toolbarButton} mr-auto`}><ImagePlus className="h-4 w-4" />{onAddImages ? "افزودن عکس دیگر" : "انتخاب عکس دیگر"}</button>
           </div>}
           {documentFile && <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
