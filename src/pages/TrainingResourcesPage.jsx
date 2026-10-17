@@ -6,6 +6,8 @@ import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { dayjs } from "../utils/date.js";
+import { optimizeUploadFile } from "../utils/optimizeUploadFile.js";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
@@ -90,7 +92,6 @@ function FileTypeIcon({ file }) {
 export default function TrainingResourcesPage({ variant = "training" }) {
   const isLibrary = variant === "library";
   const { user, loading: authLoading } = useAuth();
-  const fileRef = useRef(null);
   const trainingVisitRecordedRef = useRef(false);
   const tableMenuRef = useRef(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -265,12 +266,13 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     setError("");
     try {
       const uploaded = [];
-      for (const file of selected) {
+      for (const selectedFile of selected) {
+        const file = await optimizeUploadFile(selectedFile);
         const body = new FormData();
         body.append("file", file);
         const response = await fetch(isLibrary ? "/api/library-items/upload" : "/api/training-resources/upload", { method: "POST", credentials: "include", headers: requestHeaders, body });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error === "unsupported_file_type" ? "فقط فایل‌های اکسل، ورد و PDF مجاز هستند." : data.error || "بارگذاری فایل انجام نشد.");
+        if (!response.ok) throw new Error(data.error === "unsupported_file_type" ? (isLibrary ? "فقط فایل‌های اکسل، ورد و PDF مجاز هستند." : "فقط فایل‌های اکسل، ورد، PDF و تصاویر JPG، PNG یا WebP مجاز هستند.") : data.error || "بارگذاری فایل انجام نشد.");
         uploaded.push(data.file);
       }
       setForm((previous) => ({ ...previous, files: [...previous.files, ...uploaded] }));
@@ -489,7 +491,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
       {tagPickerOpen && <TagPicker tags={tagPickerFor === "filter" ? filterTags : tags} query={tagPickerQuery} setQuery={setTagPickerQuery} selectedIds={tagPickerDraftIds} setSelectedIds={setTagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
-      {uploadOpen && <UploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} fileRef={fileRef} files={form.files} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onClose={() => setUploadOpen(false)} />}
+      {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} onClose={() => setUploadOpen(false)} />}
     </div>
   );
 }
@@ -599,8 +601,3 @@ function LetterPicker({ query, setQuery, letters, selectedIds, setSelectedIds, o
 }
 
 function ModalHeader({ title, onClose }) { return <div className="flex items-center justify-between gap-3 p-4"><div className="truncate text-sm font-bold">{title}</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" aria-label="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>; }
-
-function UploadModal({ title, fileRef, files, uploading, onUpload, onRemove, onClose }) {
-  const handleDrop = (event) => { event.preventDefault(); if (event.dataTransfer?.files?.length) onUpload(event.dataTransfer.files); };
-  return createPortal(<div className="fixed inset-0 z-[9999]"><div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} /><div className="absolute inset-0 flex items-center justify-center p-3"><div dir="rtl" className="relative flex max-h-[calc(100dvh-24px)] w-[min(720px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-xl dark:border-white/10 dark:bg-neutral-900 dark:text-white"><ModalHeader title={title} onClose={onClose} /><div className="h-px bg-black/10 dark:bg-white/10" /><div className="overflow-y-auto p-4"><div className="mb-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">فایل‌های انتخاب‌شده</div><div className="space-y-2">{files.length ? files.map((file, index) => <div key={file.url || index} className="flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 dark:border-white/10"><FileTypeIcon file={file} /><span className="min-w-0 flex-1 truncate text-sm font-semibold">{file.name}</span><a href={file.url} target="_blank" rel="noreferrer" className="text-xs hover:underline">باز کردن</a><button type="button" onClick={() => onRemove(index)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10" title="حذف"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button></div>) : <div className="py-5 text-center text-sm text-neutral-500">فایلی انتخاب نشده است.</div>}</div><div onDrop={handleDrop} onDragOver={(event) => event.preventDefault()} className="mt-3 rounded-2xl border border-dashed border-black/15 bg-black/[.01] px-4 py-8 text-center dark:border-white/15 dark:bg-white/[.03]"><div className="text-sm font-semibold">فایل را اینجا رها کنید</div><div className="mt-1 text-xs text-neutral-500">فایل‌های مجاز: PDF، Word و Excel</div><button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="mt-4 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm text-white disabled:opacity-50 dark:bg-white dark:text-black"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 invert dark:invert-0" />{uploading ? "در حال بارگذاری..." : "انتخاب فایل"}</button><input ref={fileRef} type="file" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.xlsm,.csv,.rtf" className="hidden" onChange={(event) => { onUpload(event.target.files); event.target.value = ""; }} /></div><div className="mt-4 flex justify-end"><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div></div></div></div></div>, document.body);
-}

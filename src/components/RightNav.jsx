@@ -53,8 +53,13 @@ const IcLiquidity = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />
 const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />;
 const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
 const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
-const IcOperations = () => <NavIcon src="/images/icons/modriat-agra.svg" />;
-const IcEquipmentManagement = () => <NavIcon src="/images/icons/modiriat-taghizat.svg" />;
+// This source icon has a much larger filled surface than the rest of the set.
+// Lowering its opacity gives it the same apparent visual weight in the sidebar.
+const IcEquipmentManagement = () => (
+  <span className="opacity-[0.72]">
+    <NavIcon src="/images/icons/modiriat-taghizat.svg" />
+  </span>
+);
 const IcExecutiveOperations = () => <NavIcon src="/images/icons/modiriat-amaliat-egraei.svg" />;
 
 function RightNav() {
@@ -167,10 +172,6 @@ function RightNav() {
       return "supply";
     }
 
-    if (path.startsWith("/operations/")) {
-      return "operations";
-    }
-
     if (path.startsWith("/equipment/")) {
       return "equipment";
     }
@@ -207,7 +208,6 @@ function RightNav() {
   const supplyParentActive = !!open.supply || activeSection === "supply";
   const equipmentParentActive = !!open.equipment || activeSection === "equipment";
   const executiveOperationsParentActive = !!open.executiveOperations || activeSection === "executiveOperations";
-  const operationsParentActive = !!open.operations || activeSection === "operations";
   const baseParentActive = !!open.base || activeSection === "base";
   const knowledgeParentActive = !!open.knowledge || isActive("/knowledge-management");
 
@@ -361,22 +361,6 @@ function RightNav() {
             { to: "/executive-operations/daily-work-report", label: "گزارش کارکرد روزانه", hint: "ثبت و مدیریت گزارش کارکرد روزانه", icon: <NavIcon src="/images/icons/gozaresh-karkardrozaneh.svg" /> },
             { to: "/executive-operations/operation-history", label: "سوابق عملیات ها", hint: "مرور سوابق عملیات ها", icon: <NavIcon src="/images/icons/savabegh-amaliat.svg" /> },
             { to: "/executive-operations/equipment-calibration", label: "کالیبراسیون تجهیزات", hint: "مدیریت کالیبراسیون تجهیزات", icon: <NavIcon src="/images/icons/kalibrasion.svg" /> },
-          ],
-        },
-      ],
-    },
-    {
-      title: "مدیریت اجرا",
-      items: [
-        {
-          type: "section",
-          key: "operations",
-          label: "مدیریت اجرا",
-          icon: <IcOperations />,
-          active: operationsParentActive,
-          items: [
-            { to: "/operations/equipment", label: "ماشین آلات و تجهیزات", hint: "مدیریت ماشین آلات و تجهیزات", icon: <NavIcon src="/images/icons/tanzimat.svg" /> },
-            { to: "/operations/history", label: "سوابق عملیات", hint: "مرور سوابق عملیات", icon: <NavIcon src="/images/icons/gozareshrozane.svg" /> },
           ],
         },
       ],
