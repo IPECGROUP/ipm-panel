@@ -808,7 +808,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </div>)}
       </div>
 
-      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_374px]">
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[284px_minmax(0,1fr)_393px]">
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <section className="min-w-0 overflow-hidden">

@@ -1,6 +1,7 @@
  // درخواست پرداخت
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { BriefcaseBusiness, CalendarDays, FileText, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../components/AuthProvider";
@@ -13,6 +14,7 @@ import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import { budgetPickerItems } from "../utils/budgetPickerItems.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
+import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 const DOC_OPTIONS = [
@@ -519,6 +521,8 @@ export default function PaymentRequestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [paymentAttachmentEditor, setPaymentAttachmentEditor] = useState(null);
+  const [paymentAttachmentQueue, setPaymentAttachmentQueue] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [submitNotice, setSubmitNotice] = useState(null);
@@ -749,22 +753,60 @@ export default function PaymentRequestPage() {
 
   const setField = (name, value) => { setForm((old) => ({ ...old, [name]: value })); setError(""); setSuccess(""); };
 
-  const uploadFiles = async (fileList) => {
+  const uploadFiles = async (fileList, replaceIndex = null) => {
     const files = Array.from(fileList || []);
-    if (!files.length) return;
+    if (!files.length) return false;
     setUploading(true); setError("");
     try {
-      const uploaded = [];
       for (const file of files) {
         const body = new FormData(); body.append("file", file);
         const response = await fetch("/api/upload/payment-doc", { method: "POST", credentials: "include", headers: user?.id != null ? { "x-user-id": String(user.id) } : {}, body });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "upload_failed");
-        uploaded.push(data.file || data);
+        const uploaded = data.file || data;
+        setForm((old) => ({ ...old, attachments: replaceIndex == null
+          ? [...old.attachments, uploaded]
+          : old.attachments.map((item, index) => index === replaceIndex ? uploaded : item) }));
       }
-      setForm((old) => ({ ...old, attachments: [...old.attachments, ...uploaded] }));
-    } catch { setError("آپلود فایل انجام نشد."); }
+      return true;
+    } catch { setError("آپلود فایل انجام نشد."); return false; }
     finally { setUploading(false); }
+  };
+
+  const selectPaymentFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    const editable = files.filter((file) => /\.(jpe?g|png|webp|pdf)$/i.test(file.name));
+    const other = files.filter((file) => !editable.includes(file));
+    if (other.length) await uploadFiles(other);
+    if (editable.length) {
+      setPaymentAttachmentQueue(editable);
+      setPaymentAttachmentEditor({ file: editable[0], sequence: 0 });
+      setUploadOpen(false);
+    }
+  };
+
+  const editPaymentImage = (file, index) => {
+    setPaymentAttachmentQueue([]);
+    setPaymentAttachmentEditor({ existing: file, index });
+    setUploadOpen(false);
+  };
+
+  const confirmPaymentAttachment = async (file) => {
+    const saved = await uploadFiles([file], paymentAttachmentEditor?.index ?? null);
+    if (saved) {
+      const remaining = paymentAttachmentEditor?.existing ? paymentAttachmentQueue : paymentAttachmentQueue.slice(1);
+      setPaymentAttachmentQueue(remaining);
+      if (remaining.length) setPaymentAttachmentEditor({ file: remaining[0], sequence: (paymentAttachmentEditor?.sequence || 0) + 1 });
+      else {
+        setPaymentAttachmentEditor(null);
+        setUploadOpen(true);
+      }
+    }
+  };
+
+  const queueMorePaymentImages = (fileList) => {
+    const files = Array.from(fileList || []).filter((file) => /\.(jpe?g|png|webp)$/i.test(file.name));
+    if (files.length) setPaymentAttachmentQueue((queue) => [...queue, ...files]);
   };
 
   const removeAttachment = (index) => {
@@ -1358,7 +1400,17 @@ export default function PaymentRequestPage() {
           </div>
           {(error || success) && <div className={`rounded-xl px-3 py-2 text-sm ${error ? "bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"}`}>{error || success}</div>}
         </form>}
-        {uploadOpen && <AdvancedFileUploadModal title="بارگذاری اسناد درخواست پرداخت" files={form.attachments} uploading={uploading} onUpload={uploadFiles} onRemove={removeAttachment} accept="image/*,.pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" allowedTypes="تصویر، PDF، Word و Excel" onClose={() => setUploadOpen(false)} />}
+        {uploadOpen && <AdvancedFileUploadModal title="بارگذاری اسناد درخواست پرداخت" files={form.attachments} uploading={uploading} onSelectFiles={selectPaymentFiles} onRemove={removeAttachment} onEditFile={editPaymentImage} isEditableFile={(file) => /\.(jpe?g|png|webp)$/i.test(file.name || file.url || "")} accept="image/*,.pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" allowedTypes="تصویر، PDF، Word و Excel" multiple selectionHint="می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید." onClose={() => setUploadOpen(false)} />}
+        {paymentAttachmentEditor && <AttachmentImageEditor
+          key={paymentAttachmentEditor.file ? `${paymentAttachmentEditor.file.name}-${paymentAttachmentEditor.file.lastModified}-${paymentAttachmentEditor.sequence}` : `${paymentAttachmentEditor.existing?.url}-${paymentAttachmentEditor.index}`}
+          title="پیوست درخواست پرداخت"
+          initialFile={paymentAttachmentEditor.file}
+          initialUrl={paymentAttachmentEditor.existing?.url}
+          initialName={paymentAttachmentEditor.existing?.name}
+          onClose={() => { setPaymentAttachmentQueue([]); setPaymentAttachmentEditor(null); setUploadOpen(true); }}
+          onConfirm={confirmPaymentAttachment}
+          onAddImages={queueMorePaymentImages}
+        />}
         {supplyPickerOpen && <RequestChoiceModal
           title="انتخاب درخواست تامین"
           query={supplyPickerQuery}
@@ -2189,6 +2241,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const docName = item.docId === "other" ? (item.docOther || "سایر") : (DOC_OPTIONS.find(([value]) => value === item.docId)?.[1] || String(item.docId || "").trim() || "—");
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const [imageAttachment, setImageAttachment] = useState(null);
+  const [previewAttachmentIndex, setPreviewAttachmentIndex] = useState(0);
   const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
   const embeddedRelatedLetters = useMemo(() => Array.isArray(item.relatedLetters) ? item.relatedLetters : [], [item.relatedLetters]);
   const [relatedLetterDetails, setRelatedLetterDetails] = useState({});
@@ -2863,7 +2916,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   return createPortal(<div className="fixed inset-0 z-[9999]">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-end justify-center sm:items-center sm:p-3 md:p-6">
-      <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(90vh,860px)] sm:w-[min(1180px,calc(100vw-20px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+      <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(90vh,860px)] sm:w-[min(1680px,calc(100vw-32px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
@@ -2871,30 +2924,27 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           </div>
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)] lg:overflow-hidden">
-          <aside className="flex items-start border-b border-black/10 p-3 dark:border-white/10 sm:p-4 lg:border-b-0 lg:border-l">
-            <section className="w-full self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-              <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند پرداخت</div>
-              <div className="px-4">
-                <PaymentWorkflowTimeline history={history} item={item} />
-              </div>
-            </section>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
+          <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-4">
+            <PaymentMetadata label="شماره درخواست" value={displayPaymentSerial(item, projects)} Icon={FileText} />
+            <PaymentMetadata label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
+            <PaymentMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} Icon={UserRound} />
+            <PaymentMetadata label="پروژه" value={canEditRequest ? (
+              <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
+                <option value="">انتخاب پروژه</option>
+                {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
+              </select>
+            ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} Icon={BriefcaseBusiness} />
+          </div>
+          <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
+          <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+            <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند پرداخت</div>
+            <div className="px-3"><PaymentWorkflowTimeline history={history} item={item} /></div>
           </aside>
-          <main className="min-h-0 overflow-visible p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4 md:p-5 lg:overflow-y-auto">
+          <main className="min-w-0 space-y-4">
             <div className="space-y-4">
               <PreviewSection title="جزئیات درخواست پرداخت" flush>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact fixedLabel colon leader label="شماره درخواست" value={displayPaymentSerial(item, projects)} ltr />
-                  <PreviewRow compact fixedLabel colon leader label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} />
-                  <PreviewRow compact fixedLabel colon leader label="درخواست کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} />
-                </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.5fr)_minmax(260px,1fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="پروژه" value={canEditRequest ? (
-                    <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
-                      <option value="">انتخاب پروژه</option>
-                      {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
-                    </select>
-                  ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} />
+                <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="کد بودجه" value={canEditRequest ? (
                     <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
                       <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
@@ -3000,6 +3050,13 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
               {!canDecide && !canEditRequest && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
             </div>
           </main>
+          <PaymentAttachmentPreview
+            files={canEditRequest ? editAttachments : attachments}
+            selectedIndex={previewAttachmentIndex}
+            onSelect={setPreviewAttachmentIndex}
+            onOpenImage={setImageAttachment}
+          />
+          </div>
           {relatedLetterPreview && <DocumentPreviewModal letter={relatedLetterPreview} api={api} onClose={() => setRelatedLetterPreview(null)} />}
           {imageAttachment && <ImageAttachmentViewer file={imageAttachment} onClose={() => setImageAttachment(null)} />}
           {editLetterPickerOpen && <RelatedLettersPickerModal
@@ -3016,6 +3073,34 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
       </div>
     </div>
   </div>, document.body);
+}
+
+function PaymentMetadata({ label, value, Icon }) {
+  return <div className="flex min-w-0 items-center gap-2 border-l border-b border-neutral-200 px-3 py-2 last:border-l-0 dark:border-white/10 md:border-b-0">
+    <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200"><Icon className="h-4 w-4 stroke-[1.6]" /></span>
+    <div className="min-w-0 flex-1"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-0.5 min-w-0 break-words text-xs font-bold">{value}</div></div>
+  </div>;
+}
+
+function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage }) {
+  const index = Math.min(selectedIndex, Math.max(files.length - 1, 0));
+  const file = files[index];
+  const url = file ? attachmentViewUrl(file) : "";
+  const name = file?.name || file?.originalName || `پیوست ${toFa(index + 1)}`;
+  const isPdf = /\.pdf(?:[?#]|$)/i.test(file?.name || url || "") || /application\/pdf/i.test(file?.type || file?.mimeType || "");
+  return <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+    <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
+    <div className="p-3">
+      <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 xl:h-[min(44vh,430px)]">
+        {!url ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p>
+          : isPdf ? <iframe key={url} src={url} title={`پیش‌نمایش ${name}`} className="h-full w-full border-0" />
+          : isImageAttachment(file) ? <button type="button" onClick={() => onOpenImage(file)} className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={url} alt={name} className="max-h-full max-w-full object-contain" /></button>
+          : <div className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</div>}
+      </div>
+      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" className="shrink-0 rounded-lg border border-neutral-200 px-2 py-1 text-[11px] hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">باز کردن فایل</a>}</div>}
+      {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(fileIndex + 1)}</button>)}</div>}
+    </div>
+  </aside>;
 }
 
 function WorkflowPanel({
@@ -3128,8 +3213,8 @@ function NextRecipientSelect({ recipients, loading, value, onChange, visible = t
 }
 
 function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
-  return <div className="flex items-center justify-between gap-3 pt-2">
-    <div className="text-xs text-red-600 dark:text-red-400">{actionError || ""}</div>
+  return <div className="flex flex-col items-center gap-2 pt-2">
+    {actionError && <div className="text-center text-xs text-red-600 dark:text-red-400">{actionError}</div>}
     <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت">
       <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
     </button>
