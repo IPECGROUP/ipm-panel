@@ -2920,7 +2920,6 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
-            <button type="button" onClick={openPdfPreview} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-black/10 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" /></button>
           </div>
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
@@ -3017,8 +3016,6 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 actionNote={actionNote}
                 setActionNote={setActionNote}
                 actionBusy={actionBusy}
-                actionError={actionError}
-                onSubmit={submitWorkflow}
                 hasEnoughLiquidity={hasEnoughLiquidity}
                 urgentCash={urgentCash}
                 setUrgentCash={setUrgentCash}
@@ -3044,8 +3041,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 {editUploadError && <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{editUploadError}</div>}
                 {canEditReturned ? <>
                   <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} />
-                  <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)} onSubmit={() => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })} />
-                </> : <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={editUploading} onSubmit={() => onEdit(item, editForm)} />}
+                </> : null}
               </>}
               {!canDecide && !canEditRequest && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
             </div>
@@ -3055,6 +3051,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             selectedIndex={previewAttachmentIndex}
             onSelect={setPreviewAttachmentIndex}
             onOpenImage={setImageAttachment}
+            onOpenPdf={openPdfPreview}
           />
           </div>
           {relatedLetterPreview && <DocumentPreviewModal letter={relatedLetterPreview} api={api} onClose={() => setRelatedLetterPreview(null)} />}
@@ -3070,6 +3067,15 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             onClose={() => setEditLetterPickerOpen(false)}
           />}
         </div>
+        {(canDecide || canEditRequest) && <footer className="shrink-0 border-t border-neutral-100 px-3 py-3 dark:border-white/10 sm:px-5">
+          <ActionFooter actionBusy={actionBusy} actionError={actionError}
+            disabled={canEditRequest
+              ? editUploading || (canEditReturned && nextRecipients.users?.length > 0 && !targetAssigneeUserId)
+              : finalAccounting ? !cashPayAmount && !creditPayAmount : !choice || (choice === "approve" && nextRecipients.users?.length > 0 && !targetAssigneeUserId)}
+            onSubmit={canEditRequest
+              ? canEditReturned ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null }) : () => onEdit(item, editForm)
+              : submitWorkflow} />
+        </footer>}
       </div>
     </div>
   </div>, document.body);
@@ -3082,7 +3088,7 @@ function PaymentMetadata({ label, value, Icon }) {
   </div>;
 }
 
-function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage }) {
+function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage, onOpenPdf }) {
   const index = Math.min(selectedIndex, Math.max(files.length - 1, 0));
   const file = files[index];
   const url = file ? attachmentViewUrl(file) : "";
@@ -3099,19 +3105,19 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage 
       </div>
       {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" className="shrink-0 rounded-lg border border-neutral-200 px-2 py-1 text-[11px] hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">باز کردن فایل</a>}</div>}
       {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(fileIndex + 1)}</button>)}</div>}
+      <button type="button" onClick={onOpenPdf} className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" />مشاهده PDF</button>
     </div>
   </aside>;
 }
 
 function WorkflowPanel({
-  stepKey, stepIndex, choice, setChoice, actionNote, setActionNote, actionBusy, actionError, onSubmit,
+  stepKey, stepIndex, choice, setChoice, actionNote, setActionNote, actionBusy,
   hasEnoughLiquidity, urgentCash, setUrgentCash,
   cashPayAmount, setCashPayAmount, cashPayCurrencyId, setCashPayCurrencyId, paymentMethod, setPaymentMethod,
   creditPayAmount, setCreditPayAmount, creditPayCurrencyId, setCreditPayCurrencyId, creditPayDesc, setCreditPayDesc,
   currencyTypes, nextRecipients, nextRecipientsLoading, targetAssigneeUserId, setTargetAssigneeUserId,
 }) {
   const finalAccounting = stepKey === "accounting" && Number(stepIndex) >= 5;
-  const targetRequired = choice === "approve" && (nextRecipients?.users || []).length > 0;
   if (finalAccounting) {
     return <PreviewSection title="ثبت پرداخت نهایی">
       <div className="space-y-4 py-4">
@@ -3131,7 +3137,6 @@ function WorkflowPanel({
           </div>
           <div className="mt-3"><Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-24 py-3`} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field></div>
         </div>
-        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!cashPayAmount && !creditPayAmount} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
   }
@@ -3148,7 +3153,6 @@ function WorkflowPanel({
           <ActionOption kind="reject" checked={choice === "reject"} onClick={() => setChoice("reject")} label="رد درخواست"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} mt-2 min-h-20 py-2 text-xs`} placeholder="توضیح..." /></ActionOption>
           {!hasEnoughLiquidity && <ActionOption kind="reject" checked={choice === "stop"} onClick={() => setChoice("stop")} label="توقف پرداخت به دلیل عدم نقدینگی"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} mt-2 min-h-20 py-2 text-xs`} placeholder="توضیح..." /></ActionOption>}
         </div>
-        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
   }
@@ -3167,7 +3171,6 @@ function WorkflowPanel({
             <input value={actionNote} onClick={(event) => event.stopPropagation()} onChange={(event) => setActionNote(event.target.value)} disabled={choice !== "reject" || actionBusy} className={`${inputClass} mt-2 h-9 text-center text-xs`} placeholder="دلیل رد را وارد کنید..." />
           </ActionOption>
         </div>
-        <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
       </div>
     </PreviewSection>;
   }
@@ -3180,7 +3183,6 @@ function WorkflowPanel({
         </ActionOption>
         <ActionOption kind="return" checked={choice === "return"} onClick={() => setChoice("return")} label="برگشت درخواست پرداخت"><textarea value={actionNote} onChange={(event) => setActionNote(event.target.value)} className={`${inputClass} mt-2 min-h-20 py-2 text-xs`} placeholder="توضیح..." /></ActionOption>
       </div>
-      <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!choice || (targetRequired && !targetAssigneeUserId)} onSubmit={onSubmit} />
     </div>
   </PreviewSection>;
 }
@@ -3213,8 +3215,8 @@ function NextRecipientSelect({ recipients, loading, value, onChange, visible = t
 }
 
 function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
-  return <div className="flex flex-col items-center gap-2 pt-2">
-    {actionError && <div className="text-center text-xs text-red-600 dark:text-red-400">{actionError}</div>}
+  return <div className="flex items-center justify-end gap-3">
+    {actionError && <div role="alert" className="ml-auto text-xs text-red-600 dark:text-red-400">{actionError}</div>}
     <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت">
       <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
     </button>
