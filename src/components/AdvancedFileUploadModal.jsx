@@ -23,6 +23,7 @@ export default function AdvancedFileUploadModal({
   accept = defaultAccept,
   allowedTypes = "PDF، Word و Excel",
   multiple = true,
+  selectionHint = "",
   confirmLabel = "تأیید پیوست",
 }) {
   const inputRef = useRef(null);
@@ -86,10 +87,11 @@ export default function AdvancedFileUploadModal({
               onDrop={(event) => { event.preventDefault(); setDropActive(false); selectFiles(event.dataTransfer.files); }}
               className={`flex min-h-64 flex-col items-center justify-center rounded-2xl border-2 p-5 text-center transition ${dropActive ? "border-sky-400 bg-sky-50 dark:bg-sky-500/10" : "border-dashed border-neutral-300 bg-neutral-50 dark:border-white/20 dark:bg-white/[.03]"}`}>
               <span className="grid h-16 w-16 place-items-center rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/10"><Upload className="h-8 w-8" /></span>
-              <p className="mt-4 text-sm font-bold sm:text-base">فایل را اینجا رها کنید یا برای انتخاب کلیک کنید</p>
+              <p className="mt-4 text-sm font-bold sm:text-base">{multiple ? "فایل‌ها را اینجا رها کنید یا برای انتخاب کلیک کنید" : "فایل را اینجا رها کنید یا برای انتخاب کلیک کنید"}</p>
               <p className="mt-2 text-xs text-neutral-500">فایل‌های مجاز: {allowedTypes}</p>
+              {selectionHint ? <p className="mt-1 text-xs text-neutral-500">{selectionHint}</p> : null}
               <button type="button" onClick={() => inputRef.current?.click()} disabled={uploading} className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50 dark:bg-white dark:text-black">
-                {uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{uploading ? "در حال بارگذاری..." : "انتخاب فایل"}
+                {uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}{uploading ? "در حال بارگذاری..." : multiple ? "انتخاب فایل‌ها" : "انتخاب فایل"}
               </button>
             </div>
           </div>
