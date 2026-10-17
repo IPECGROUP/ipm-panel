@@ -506,7 +506,6 @@ export default function FinancialWorksheetPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [rowSort, setRowSort] = useState({ field: "number", direction: "desc" });
-  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     let stop = false;
@@ -717,6 +716,11 @@ export default function FinancialWorksheetPage() {
 
   useEffect(() => {
     let dead = false;
+    if (!projectId) {
+      setWorksheetRows([]);
+      setRowsLoading(false);
+      return () => { dead = true; };
+    }
     (async () => {
       setRowsLoading(true);
       try {
@@ -739,12 +743,7 @@ export default function FinancialWorksheetPage() {
     };
   }, [api, contractId, projectId, tab, normalizeRows]);
 
-  const filteredRows = useMemo(() => {
-    const normalizeSearch = (value) => toEnDigits(String(value ?? "")).toLowerCase().replace(/[٬,،\s]/g, "");
-    const query = normalizeSearch(searchQuery);
-    if (!query) return worksheetRows;
-    return worksheetRows.filter((row, index) => [worksheetRows.length - index, row.number, row.date, row.description, row.rialDescription, row.currencySourceLabel, row.raw?.contract_no, row.raw?.receipt_type, row.raw?.receipt_no, row.grossAmount, row.vatAmount, row.receiptAmount].some((value) => normalizeSearch(value).includes(query)));
-  }, [worksheetRows, searchQuery]);
+  const filteredRows = worksheetRows;
   const worksheetTotals = useMemo(() => {
     return filteredRows.reduce(
       (acc, row) => {
@@ -1425,7 +1424,7 @@ export default function FinancialWorksheetPage() {
                 disabled={projectsLoading}
                 className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
               >
-                <option value="">{projectsLoading ? "در حال بارگذاری..." : "همه پروژه‌ها"}</option>
+                <option value="">{projectsLoading ? "در حال بارگذاری..." : "انتخاب پروژه"}</option>
                 {activeProjects.map((p) => (
                   <option key={String(p?.id)} value={String(p?.id)}>
                     {projectLabel(p)}
@@ -1434,18 +1433,12 @@ export default function FinancialWorksheetPage() {
               </select>
             </div>
             <div className="min-w-0">
-              <label htmlFor="worksheet-search" className="block text-xs text-neutral-600 dark:text-white/60">جست و جو</label>
-              <input id="worksheet-search" type="search" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setPage(0); }} placeholder="جستجو در شماره، تاریخ، شرح، قرارداد یا مبلغ..." className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[auto_minmax(310px,1fr)] lg:items-end">
-            <div className="lg:justify-self-center">
               <label className="text-xs text-neutral-600 dark:text-white/60">قرارداد</label>
-              <div className="mt-1 flex items-center gap-1">
+              <div className="mt-1 grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+                <div className="flex items-center gap-1">
                 {[
-                  { id: "main", label: "اصلی" },
-                  { id: "sub", label: "فرعی" },
+                  { id: "main", label: "اصلی", activeClass: "border-emerald-400 bg-emerald-500 text-white shadow-sm", idleClass: "border-emerald-200 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:border-emerald-500/35 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25" },
+                  { id: "sub", label: "فرعی", activeClass: "border-sky-400 bg-sky-500 text-white shadow-sm", idleClass: "border-sky-200 bg-sky-100 text-sky-800 hover:bg-sky-200 dark:border-sky-500/35 dark:bg-sky-500/15 dark:text-sky-200 dark:hover:bg-sky-500/25" },
                 ].map((item) => {
                   const active = contractKind === item.id;
                   return (
@@ -1458,29 +1451,21 @@ export default function FinancialWorksheetPage() {
                         setContractKind(item.id);
                         setContractId("");
                       }}
-                      className={`h-11 min-w-[68px] rounded-xl border px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                        active
-                          ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                          : "border-black/10 bg-white text-neutral-700 hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
-                      }`}
+                      className={`h-11 min-w-[68px] rounded-xl border px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${active ? item.activeClass : item.idleClass}`}
                     >
                       {item.label}
                     </button>
                   );
                 })}
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-neutral-600 dark:text-white/60">شماره قرارداد</label>
+                </div>
               <select
                 value={contractId}
                 onChange={(e) => setContractId(e.target.value)}
                 disabled={!projectId}
                 aria-label="شماره قرارداد"
-                className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15 disabled:opacity-60"
+                className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white disabled:opacity-60"
               >
-                <option value="">{projectId ? `انتخاب قرارداد ${contractKind === "main" ? "اصلی" : "فرعی"}` : "ابتدا پروژه را انتخاب کنید"}</option>
+                <option value="">{projectId ? `انتخاب شماره قرارداد ${contractKind === "main" ? "اصلی" : "فرعی"}` : "ابتدا پروژه را انتخاب کنید"}</option>
                 {visibleProjectContractOptions.map((item) => (
                   <option key={item.id} value={item.id}>
                     {toFaDigits(item.no)}
@@ -1489,6 +1474,7 @@ export default function FinancialWorksheetPage() {
                   </option>
                 ))}
               </select>
+              </div>
             </div>
           </div>
 
@@ -1951,7 +1937,7 @@ export default function FinancialWorksheetPage() {
                           rowsLoading ? (
                             <TR><td colSpan={6} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
                           ) : !pageRows.length ? (
-                            <TR><td colSpan={6} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</td></TR>
+                            <TR><td colSpan={6} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR>
                           ) : (
                             <>
                               <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
@@ -1976,7 +1962,7 @@ export default function FinancialWorksheetPage() {
                         ) : rowsLoading ? (
                           <TR><td colSpan={8} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
                         ) : !pageRows.length ? (
-                          <TR><td colSpan={8} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{searchQuery.trim() ? "موردی با این جستجو پیدا نشد." : "موردی برای نمایش وجود ندارد."}</td></TR>
+                          <TR><td colSpan={8} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR>
                         ) : (
                           <>
                             <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">

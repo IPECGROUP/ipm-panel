@@ -2774,34 +2774,44 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 sheets.push(sheet.outerHTML);
                 continue;
               }
-              if (!pdfjs) {
-                pdfjs = await import("pdfjs-dist");
-                pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-              }
-              const pdf = await pdfjs.getDocument({ url: new URL(rawUrl, window.location.href).href }).promise;
               try {
-                for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-                  const page = await pdf.getPage(pageNumber);
-                  const viewport = page.getViewport({ scale: 2 });
-                  const canvas = pdfWindow.document.createElement("canvas");
-                  canvas.width = Math.ceil(viewport.width);
-                  canvas.height = Math.ceil(viewport.height);
-                  await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-                  const printableSheet = sheet.cloneNode(true);
-                  printableSheet.querySelector(".attachment-preview-header span").textContent = `پیوست ${toFa(index + 1)}، صفحه ${toFa(pageNumber)} از ${toFa(pdf.numPages)}`;
-                  const previewBody = printableSheet.querySelector(".attachment-preview-body");
-                  const image = pdfWindow.document.createElement("img");
-                  image.className = "attachment-image";
-                  image.alt = `${name}، صفحه ${pageNumber}`;
-                  image.src = canvas.toDataURL("image/png");
-                  previewBody.replaceChildren(image);
-                  sheets.push(printableSheet.outerHTML);
-                  canvas.width = 0;
-                  canvas.height = 0;
-                  page.cleanup();
+                if (!pdfjs) {
+                  pdfjs = await import("pdfjs-dist");
+                  pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
                 }
-              } finally {
-                await pdf.destroy();
+                const pdf = await pdfjs.getDocument({ url: new URL(rawUrl, window.location.href).href, withCredentials: true }).promise;
+                try {
+                  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+                    const page = await pdf.getPage(pageNumber);
+                    const viewport = page.getViewport({ scale: 2 });
+                    const canvas = pdfWindow.document.createElement("canvas");
+                    canvas.width = Math.ceil(viewport.width);
+                    canvas.height = Math.ceil(viewport.height);
+                    await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+                    const printableSheet = sheet.cloneNode(true);
+                    printableSheet.querySelector(".attachment-preview-header span").textContent = `پیوست ${toFa(index + 1)}، صفحه ${toFa(pageNumber)} از ${toFa(pdf.numPages)}`;
+                    const previewBody = printableSheet.querySelector(".attachment-preview-body");
+                    const image = pdfWindow.document.createElement("img");
+                    image.className = "attachment-image";
+                    image.alt = `${name}، صفحه ${pageNumber}`;
+                    image.src = canvas.toDataURL("image/png");
+                    previewBody.replaceChildren(image);
+                    sheets.push(printableSheet.outerHTML);
+                    canvas.width = 0;
+                    canvas.height = 0;
+                    page.cleanup();
+                  }
+                } finally {
+                  await pdf.destroy();
+                }
+              } catch (attachmentError) {
+                // A damaged or inaccessible attachment must not prevent the
+                // payment request itself (or the other attachments) printing.
+                console.warn("Unable to render payment attachment for printing", attachmentError);
+                const fallbackSheet = sheet.cloneNode(true);
+                const previewBody = fallbackSheet.querySelector(".attachment-preview-body");
+                if (previewBody) previewBody.textContent = "نمایش این پیوست برای چاپ ممکن نشد. فایل اصلی را از صفحه درخواست باز کنید.";
+                sheets.push(fallbackSheet.outerHTML);
               }
             }
 
@@ -2821,7 +2831,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             frameDocument.close();
             await Promise.all([
               frameDocument.fonts?.ready,
-              ...[...frameDocument.querySelectorAll(".attachment-preview-body img")].map((image) => image.decode()),
+              ...[...frameDocument.querySelectorAll(".attachment-preview-body img")].map((image) => image.decode().catch(() => {})),
             ]);
             frameWindow.focus();
             frameWindow.print();
