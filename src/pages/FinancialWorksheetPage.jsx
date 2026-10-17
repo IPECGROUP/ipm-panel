@@ -922,6 +922,18 @@ export default function FinancialWorksheetPage() {
   const receiptTypeLabel = (value) => receiptTypeOptions.find((item) => item.value === value)?.label || DEFAULT_RECEIPT_TYPE_OPTIONS.find((item) => item.value === value)?.label || "—";
   const isStatementReceiptType = (value) => String(value) === "statement" || receiptTypeLabel(value) === "صورت وضعیت";
   const isOtherReceiptType = (value) => String(value) === "other" || receiptTypeLabel(value) === "سایر";
+  const receiptBasisLabel = (row) => {
+    const types = Array.isArray(row.raw?.receipt_types) && row.raw.receipt_types.length
+      ? row.raw.receipt_types
+      : [{ type: row.receiptType, otherDescription: row.receiptTypeOtherDescription }];
+    return types.map((item) => {
+      const type = String(item?.type || "").trim();
+      if (!type) return "";
+      if (isOtherReceiptType(type)) return String(item?.otherDescription ?? item?.other_description ?? row.receiptTypeOtherDescription ?? "").trim() || "سایر";
+      const label = receiptTypeLabel(type);
+      return label === "—" ? type : label;
+    }).filter(Boolean).join("، ") || "—";
+  };
 
   const addReceiptTypeRow = () =>
     setReceiptTypeRows((prev) => [...(Array.isArray(prev) ? prev : []), { id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
@@ -1084,13 +1096,13 @@ export default function FinancialWorksheetPage() {
   const worksheetExportData = () => {
     const receipt = tab === "receipts";
     const headers = receipt
-      ? ["#", receiptUi.date, receiptUi.amount, receiptUi.foreignAmount]
+      ? ["#", receiptUi.date, "بابت", receiptUi.amount, receiptUi.foreignAmount]
       : ["#", "شماره صورت وضعیت", "تاریخ", "مبلغ ناخالص", "VAT", "ارز منشا"];
     const rows = sortedRows.map((row) => receipt
-      ? [rowNumberById.get(String(row.id)), row.date || "", Number(row.receiptAmount || 0), Number(row.receiptForeignAmount || 0)]
+      ? [rowNumberById.get(String(row.id)), row.date || "", receiptBasisLabel(row), Number(row.receiptAmount || 0), Number(row.receiptForeignAmount || 0)]
       : [rowNumberById.get(String(row.id)), row.number || "", row.date || "", Number(row.grossAmount || 0), Number(row.vatAmount || 0), row.currencySourceLabel || ""]);
     const totals = receipt
-      ? ["", "جمع", sumReceiptAmount, sumReceiptForeignAmount]
+      ? ["", "", "جمع", sumReceiptAmount, sumReceiptForeignAmount]
       : ["", "", "جمع", sumGross, sumVat, ""];
     return { headers, rows: [...rows, totals] };
   };
@@ -1982,6 +1994,7 @@ export default function FinancialWorksheetPage() {
                             <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
                             <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="#" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
                             <TH className={`w-36 ${tablePreset.th}`}><SortableWorksheetHeader label={receiptUi.date} field="date" sort={rowSort} onSort={changeRowSort} /></TH>
+                            <TH className={`w-48 ${tablePreset.th}`}>بابت</TH>
                             <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.amount}</TH>
                             <TH className={`relative w-44 !pl-10 ${tablePreset.th}`}>{receiptUi.foreignAmount}<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                           </tr>
@@ -2002,15 +2015,15 @@ export default function FinancialWorksheetPage() {
                       <tbody className={`${tablePreset.body} [&_tr]:h-9 [&_td]:!py-0`}>
                         {tab === "receipts" ? (
                           rowsLoading ? (
-                            <TR><td colSpan={6} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
+                            <TR><td colSpan={7} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
                           ) : !pageRows.length ? (
-                            <TR><td colSpan={6} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR>
+                            <TR><td colSpan={7} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR>
                           ) : (
                             <>
                               <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
                                 <TD /><TD />
                                 <TD>-</TD>
-                                <TD>جمع</TD>
+                                <TD /><TD>جمع</TD>
                                 <TD>{toFaDigits(formatMoney(sumReceiptAmount))}</TD>
                                 <TD>{toFaDigits(formatMoney(sumReceiptForeignAmount))}</TD>
                               </TR>
@@ -2020,6 +2033,7 @@ export default function FinancialWorksheetPage() {
                                   <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
                                   <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD>
                                   <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
+                                  <TD title={receiptBasisLabel(row)}>{receiptBasisLabel(row)}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptAmount || 0))}</TD>
                                   <TD>{toFaDigits(formatMoney(row.receiptForeignAmount || 0))}</TD>
                                 </TR>
