@@ -302,9 +302,17 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     await uploadFiles([file]);
     setImageQueue((queue) => {
       const next = queue.slice(1);
-      if (!next.length) setImageEditorOpen(false);
+      if (!next.length) {
+        setImageEditorOpen(false);
+        setUploadOpen(true);
+      }
       return next;
     });
+  };
+
+  const addImagesToQueue = (fileList) => {
+    const images = Array.from(fileList || []).filter((file) => /\.(jpe?g|png|webp)$/i.test(file.name));
+    if (images.length) setImageQueue((queue) => [...queue, ...images]);
   };
 
   const submit = async () => {
@@ -516,7 +524,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
       {tagPickerOpen && <TagPicker tags={tagPickerFor === "filter" ? filterTags : tags} query={tagPickerQuery} setQuery={setTagPickerQuery} selectedIds={tagPickerDraftIds} setSelectedIds={setTagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
       {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onSelectFiles={selectUploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} multiple selectionHint={isLibrary ? "" : "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."} onClose={() => setUploadOpen(false)} />}
-      {imageEditorOpen && imageQueue[0] && <AttachmentImageEditor initialFile={imageQueue[0]} onClose={() => { setImageEditorOpen(false); setImageQueue([]); }} onConfirm={confirmEditedImage} />}
+      {imageEditorOpen && imageQueue[0] && <AttachmentImageEditor initialFile={imageQueue[0]} onClose={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} onConfirm={confirmEditedImage} onAddImages={addImagesToQueue} />}
     </div>
   );
 }

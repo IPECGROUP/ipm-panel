@@ -1663,7 +1663,7 @@ async function compressExpensePhoto(source, image, turns, crop) {
   return { file, width: canvas.width, height: canvas.height };
 }
 
-export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm }) {
+export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm, onAddImages }) {
   const [source, setSource] = useState(null);
   const [image, setImage] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
@@ -1853,8 +1853,8 @@ export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onC
           <button type="button" onClick={onClose} aria-label="بستن پنجره پیوست" className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800"><X className="h-4 w-4" /></button>
         </header>
         <div className="min-h-0 overflow-y-auto p-4 sm:p-5">
-          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" className="hidden"
-            onChange={(event) => { choosePhoto(event.target.files?.[0]); event.target.value = ""; }} />
+          <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf" multiple={Boolean(onAddImages)} className="hidden"
+            onChange={(event) => { const files = Array.from(event.target.files || []); if (onAddImages && image) onAddImages(files); else choosePhoto(files[0]); event.target.value = ""; }} />
           {error && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
           {image && <div className="mb-4 flex flex-wrap gap-2">
             <button type="button" disabled={loading || draggingCrop} onClick={() => rotate(-1)} className={toolbarButton} aria-label="چرخش عکس به چپ"><RotateCcw className="h-4 w-4" />چرخش به چپ</button>
@@ -1866,7 +1866,7 @@ export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onC
               {cropping ? <Check className="h-4 w-4" /> : <Crop className="h-4 w-4" />}{cropping ? "اعمال برش" : "برش عکس"}
             </button>
             <button type="button" disabled={loading || draggingCrop} onClick={() => { setTurns(0); setCrop(fullPhotoCrop()); setCropping(false); }} className={toolbarButton}><RefreshCw className="h-4 w-4" />بازنشانی</button>
-            <button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className={`${toolbarButton} mr-auto`}><ImagePlus className="h-4 w-4" />انتخاب عکس دیگر</button>
+            <button type="button" disabled={loading} onClick={() => inputRef.current?.click()} className={`${toolbarButton} mr-auto`}><ImagePlus className="h-4 w-4" />{onAddImages ? "افزودن عکس دیگر" : "انتخاب عکس دیگر"}</button>
           </div>}
           {documentFile && <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-bold" title={documentFile.name}>{documentFile.name}</p><p className="mt-1 text-xs text-neutral-500">PDF، {photoSize(documentFile.size)}</p></div>
