@@ -7265,10 +7265,10 @@ const rowBg = normalRowBg;
 
 {uploadOpen && <AdvancedFileUploadModal
   title={`بارگذاری اسناد ${uploadFor === "incoming" ? "وارده" : uploadFor === "outgoing" ? "صادره" : "داخلی"}`}
-  files={docFiles}
-  uploading={docFiles.some((file) => file.status === "uploading")}
+  files={currentDocFiles}
+  uploading={currentDocFiles.some((file) => file.status === "uploading")}
   onUpload={(files) => addFilesToUpload(uploadFor, files)}
-  onRemove={(index) => removeDocFile(uploadFor, docFiles[index]?.id)}
+  onRemove={(index) => removeDocFile(uploadFor, currentDocFiles[index]?.id)}
   accept={LETTER_UPLOAD_ACCEPT}
   allowedTypes="PDF، تصویر، Word و Excel"
   onClose={closeUpload}
