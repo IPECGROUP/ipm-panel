@@ -54,6 +54,7 @@ const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />
 const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
 const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
 const IcOperations = () => <NavIcon src="/images/icons/modriat-agra.svg" />;
+const IcEquipmentManagement = () => <NavIcon src="/images/icons/modiriat-taghizat.svg" />;
 
 function RightNav() {
   const auth = useAuth() || {};
@@ -169,6 +170,10 @@ function RightNav() {
       return "operations";
     }
 
+    if (path.startsWith("/equipment/")) {
+      return "equipment";
+    }
+
     if (path.startsWith("/base/") || path === "/centers/projects" || path.startsWith("/admin/")) {
       return "base";
     }
@@ -195,6 +200,7 @@ function RightNav() {
   const contractsParentActive = !!open.contracts || activeSection === "contracts";
   const budgetParentActive = !!open.budget || activeSection === "budget";
   const supplyParentActive = !!open.supply || activeSection === "supply";
+  const equipmentParentActive = !!open.equipment || activeSection === "equipment";
   const operationsParentActive = !!open.operations || activeSection === "operations";
   const baseParentActive = !!open.base || activeSection === "base";
   const knowledgeParentActive = !!open.knowledge || isActive("/knowledge-management");
@@ -315,6 +321,23 @@ function RightNav() {
           items: [
             { to: "/supply/request", label: "درخواست تامین", hint: "ثبت و پیگیری درخواست تامین", icon: <IcSupplyRequest /> },
             { to: "/supply/dashboard", label: "داشبورد مدیریت تامین", hint: "نمای کلی تامین", icon: <IcProjectDashboard /> },
+          ],
+        },
+      ],
+    },
+    {
+      title: "مدیریت تجهیزات",
+      items: [
+        {
+          type: "section",
+          key: "equipment",
+          label: "مدیریت تجهیزات",
+          icon: <IcEquipmentManagement />,
+          active: equipmentParentActive,
+          items: [
+            { to: "/equipment/identity", label: "شناسنامه تجهیزات", hint: "ثبت و مدیریت شناسنامه تجهیزات", icon: <NavIcon src="/images/icons/shenasnameh-taghizat.svg" /> },
+            { to: "/equipment/service-maintenance", label: "سرویس و نگهداری", hint: "مدیریت سرویس و نگهداری تجهیزات", icon: <NavIcon src="/images/icons/service.svg" /> },
+            { to: "/equipment/repair-rebuild", label: "تعمیرات و بازسازی", hint: "مدیریت تعمیرات و بازسازی تجهیزات", icon: <NavIcon src="/images/icons/tamirat.svg" /> },
           ],
         },
       ],

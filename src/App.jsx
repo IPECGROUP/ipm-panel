@@ -142,6 +142,10 @@ export default function App() {
         <Route path="/supply/actions" element={<SupplyActionsRedirect />} />
         <Route path="/supply/dashboard" element={<SupplyManagementDashboardPage />} />
 
+        <Route path="/equipment/identity" element={<NavPlaceholderPage title="شناسنامه تجهیزات" />} />
+        <Route path="/equipment/service-maintenance" element={<NavPlaceholderPage title="سرویس و نگهداری" />} />
+        <Route path="/equipment/repair-rebuild" element={<NavPlaceholderPage title="تعمیرات و بازسازی" />} />
+
         <Route path="/operations/equipment" element={<NavPlaceholderPage title="ماشین آلات و تجهیزات" />} />
         <Route path="/operations/history" element={<NavPlaceholderPage title="سوابق عملیات" />} />
 
