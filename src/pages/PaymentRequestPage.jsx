@@ -916,7 +916,11 @@ export default function PaymentRequestPage() {
     if (!updates.projectId) return setActionError("پروژه را انتخاب کنید.");
     if (!updates.budgetCode) return setActionError("کد بودجه را انتخاب کنید.");
     if (!String(updates.title || "").trim()) return setActionError("موضوع درخواست را وارد کنید.");
-    if (parseAmount(updates.amount) <= 0) return setActionError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    const amount = updates.currencyTypeId ? decimalRequestValue(updates.amount) : amountDigits(updates.amount);
+    const amountMinorUnits = updates.currencyTypeId ? decimalMinorUnits(updates.amount) : BigInt(amount || "0") * 100n;
+    const exchangeRate = updates.currencyTypeId ? amountDigits(updates.exchangeRate) : "1";
+    if (amountMinorUnits <= 0n) return setActionError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    if (BigInt(exchangeRate || "0") <= 0n) return setActionError("نرخ ارز را وارد کنید.");
     if (updates.hasSupplyRequest === "yes" && !updates.supplyRequestId) return setActionError("درخواست تامین را انتخاب کنید.");
 
     setActionBusy(true);
@@ -924,6 +928,8 @@ export default function PaymentRequestPage() {
     try {
       const patchPayload = {
         ...updates,
+        amount,
+        exchangeRate,
         scope: "projects",
         cashAmount: null,
         creditAmount: null,
@@ -954,7 +960,11 @@ export default function PaymentRequestPage() {
       }));
       await loadItems();
     } catch (err) {
-      setActionError(err?.message === "forbidden" ? "شما اجازه انجام این اقدام را ندارید." : "ارسال مجدد درخواست انجام نشد.");
+      setActionError(err?.message === "forbidden"
+        ? "شما اجازه انجام این اقدام را ندارید."
+        : ["amount_must_be_positive", "exchange_rate_required", "amount_exceeds_project_liquidity"].includes(err?.message)
+          ? paymentRequestCreateErrorMessage(err.message)
+          : "ارسال مجدد درخواست انجام نشد.");
     } finally {
       setActionBusy(false);
     }
@@ -2351,6 +2361,11 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const editProject = projects.find((row) => String(row.id) === String(editForm.projectId));
   const editCurrency = currencyTypes.find((row) => String(row.id) === String(editForm.currencyTypeId));
   const editCurrencyName = editCurrency ? itemLabel(editCurrency) : "ریال";
+  const canEditReturnedAmount = canEditRequest && canEditReturned;
+  const editAmountMinorUnits = editForm.currencyTypeId ? decimalMinorUnits(editForm.amount) : BigInt(amountDigits(editForm.amount) || "0") * 100n;
+  const editRialMinorUnits = editForm.currencyTypeId
+    ? editAmountMinorUnits * BigInt(amountDigits(editForm.exchangeRate) || "0")
+    : editAmountMinorUnits;
 
   useEffect(() => {
     if (!item.projectId) {
@@ -2956,9 +2971,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                   <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />
-                  <PreviewRow compact colon leader={!canEditRequest} label="نرخ" ltr={!canEditRequest} value={item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
-                  <PreviewRow compact colon leader={!canEditRequest} label="مبلغ ریالی درخواست" ltr={!canEditRequest} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(exactRialMoney(item.rialAmount || item.amount || 0))}</span></span>} />
+                  <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="مبلغ درخواست" ltr={!canEditReturnedAmount} value={canEditReturnedAmount ? <div className="flex items-center gap-2"><MoneyInput decimals={editForm.currencyTypeId ? 2 : 0} value={editForm.amount} onChange={(value) => setEditField("amount", value)} /><span className="shrink-0 text-xs">{editCurrencyName}</span></div> : <span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />
+                  <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="نرخ" ltr={!canEditReturnedAmount} value={canEditReturnedAmount && editForm.currencyTypeId ? <MoneyInput value={editForm.exchangeRate} onChange={(value) => setEditField("exchangeRate", value)} /> : item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
+                  <PreviewRow compact colon leader={!canEditReturnedAmount} label="مبلغ ریالی درخواست" ltr={!canEditReturnedAmount} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(canEditReturnedAmount ? exactRialMoney(minorUnitsToDecimal(editRialMinorUnits)) : exactRialMoney(item.rialAmount || item.amount || 0))}</span></span>} />
                 </div>
                 <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
                   <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
