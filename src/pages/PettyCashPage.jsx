@@ -795,8 +795,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 md:grid-cols-3 xl:grid-cols-5">
         {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
-          <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
-            {secondary && <p className={`mt-1 text-[10px] text-neutral-500 ${label === "تاریخ" ? "border-t border-neutral-300 pt-1" : ""}`}>{secondary}</p>}
+          <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p>
+            {label === "تاریخ" ? <div className="mt-0.5 flex flex-wrap items-center gap-y-1 text-xs"><span className="font-bold">{value}</span><span className="mr-2 border-r border-neutral-300 pr-2 text-[10px] text-neutral-500">{secondary}</span></div>
+              : <><p className="mt-0.5 break-words text-xs font-bold">{value}</p>{secondary && <p className="mt-1 text-[10px] text-neutral-500">{secondary}</p>}</>}
           </div>
         </div>)}
       </div>
@@ -878,7 +879,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     </div>
     {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
       {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-      {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"}</button></div>}
+       {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black ${reportDecision === "revision" ? "px-5" : "w-11"} text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" && "ثبت بازگشت تنخواه گردان"}</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
