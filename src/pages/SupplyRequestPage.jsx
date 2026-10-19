@@ -1814,9 +1814,11 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </PreviewSection>
                 ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
-                  <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
+                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/10 dark:divide-white/10 dark:md:[&>*+*]:border-white/10">
+                    <PreviewRow compact label="موضوع" value={item.title || "—"} />
+                    <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
+                  </div>
                   <PreviewRow compact label="نوع درخواست" value={item.requestTypeTitle || "—"} />
-                  <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
                     <PreviewRow compact label="برآورد هزینه" value={<CurrencyAmount value={item.amount} currencyName={item.currencyName || "ریال"} />} ltr />
@@ -2226,12 +2228,17 @@ function SupplyActionHistory({ actions, loading }) {
       : "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300";
   return <PreviewSection title="اقدامات انجام‌شده">
     {loading ? <div className="px-4 py-4 text-sm text-neutral-500">در حال دریافت اقدامات...</div> : rows.length === 0 ? <div className="px-4 py-4 text-sm text-neutral-500">هنوز اقدامی توسط واحد تامین ثبت نشده است.</div> : <div className="divide-y divide-black/10 dark:divide-white/10">
-      {rows.map((action, index) => <div key={action.id || index} className="grid gap-2 px-4 py-3 md:grid-cols-[110px_90px_120px_minmax(0,1fr)] md:items-center">
-        <div className="text-xs text-neutral-500">{toFaDigits(String(action.date || "—").replaceAll("-", "/"))}{action.time ? ` · ${toFaDigits(action.time)}` : ""}</div>
-        <span className={`justify-self-start rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
-        <div className="min-w-0 text-sm text-neutral-700 dark:text-neutral-200">{action.description || "بدون توضیح"}</div>
-        <div className="flex flex-wrap gap-1.5 md:justify-end">{(Array.isArray(action.files) ? action.files : []).map((file, fileIndex) => <a key={file.id || file.serverId || fileIndex} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</a>)}</div>
-      </div>)}
+      {rows.map((action, index) => {
+        const files = Array.isArray(action.files) ? action.files : [];
+        return <div key={action.id || index} className={`grid gap-3 px-4 py-3 md:items-start ${files.length ? "md:grid-cols-[150px_minmax(0,1fr)_auto]" : "md:grid-cols-[150px_minmax(0,1fr)]"}`}>
+          <div className="flex flex-col items-start gap-2">
+            <div className="whitespace-nowrap text-xs text-neutral-500">{toFaDigits(String(action.date || "—").replaceAll("-", "/"))}{action.time ? ` · ${toFaDigits(action.time)}` : ""}</div>
+            <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
+          </div>
+          <div className="min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700 dark:text-neutral-200">{action.description || "بدون توضیح"}</div>
+          {files.length > 0 && <div className="flex max-w-[180px] flex-wrap gap-1.5 md:justify-end">{files.map((file, fileIndex) => <a key={file.id || file.serverId || fileIndex} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</a>)}</div>}
+        </div>;
+      })}
     </div>}
   </PreviewSection>;
 }
