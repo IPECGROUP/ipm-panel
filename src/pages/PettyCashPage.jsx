@@ -795,9 +795,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 md:grid-cols-3 xl:grid-cols-5">
         {metadata.map(({ label, value, secondary, recipient, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
-          {recipient ? <div className="flex min-w-0 items-center gap-2">
-            <div className="shrink-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 text-xs font-bold">{value}</p></div>
-            <div className="min-w-0 border-r border-neutral-300 pr-2"><p className="text-[11px] text-neutral-500">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
+          {recipient ? <div className="grid w-full min-w-0 grid-cols-2 items-center">
+            <div className="min-w-0 px-2"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 whitespace-nowrap text-xs font-bold">{value}</p></div>
+            <div className="min-w-0 border-r border-neutral-300 px-2"><p className="text-[11px] text-neutral-500">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
           </div> : <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
             {secondary && <p className="mt-1 text-[10px] text-neutral-500">{secondary}</p>}
           </div>}
@@ -957,17 +957,19 @@ function PettyCashSettlementTimeline({ report }) {
       const last = stageEvents.at(-1);
       const current = entries.some((item) => item.stage === stage);
       const rejected = last?.result === "rejected" || last?.result === "revision";
-      return <li key={stage} className="relative grid grid-cols-[32px_minmax(0,1fr)] gap-3 pb-5 last:pb-0">
-        {index < stages.length - 1 && <span aria-hidden="true" className="absolute right-[15px] top-8 bottom-0 border-r border-neutral-200" />}
-        <span className={`relative z-10 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold ${rejected ? "border-rose-500 bg-white text-rose-500" : last ? "border-emerald-500 bg-emerald-500 text-white" : current ? "border-sky-500 bg-sky-50 text-sky-700" : "border-neutral-300 bg-white text-neutral-400"}`}>
-          {rejected ? "×" : last ? "✓" : toFa(index + 1)}
-        </span>
+       return <li key={stage} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-3 pb-5 last:pb-0">
         <div className="min-w-0 pt-1"><h4 className="text-sm font-bold leading-5">{title}</h4>
           {stageEvents.length ? <div className="mt-2 space-y-2">{stageEvents.map((event, eventIndex) => <div key={`${event.at || stage}-${eventIndex}`} className="border-t border-neutral-100 pt-2 text-xs text-neutral-600 first:border-t-0 first:pt-0">
             <p><span className="font-semibold">{event.actor}</span>، {event.label}، {reportDateTime(event.at)}</p>
             {event.note && <p className="mt-1 break-words text-neutral-500">توضیح: {event.note}</p>}
           </div>)}</div> : <p className="mt-1 text-xs text-neutral-400">{current ? "در انتظار اقدام" : "در انتظار شروع مرحله"}</p>}
         </div>
+         <div className="relative flex justify-center" aria-hidden="true">
+           {index < stages.length - 1 && <span className="absolute bottom-[-20px] top-8 w-px bg-neutral-200" />}
+           <span className={`relative z-10 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold ${rejected ? "border-rose-500 bg-white text-rose-500" : last ? "border-emerald-500 bg-emerald-500 text-white" : current ? "border-sky-500 bg-sky-50 text-sky-700" : "border-neutral-300 bg-white text-neutral-400"}`}>
+             {rejected ? "×" : last ? "✓" : toFa(index + 1)}
+           </span>
+         </div>
       </li>;
     })}</ol>
   </aside>;
