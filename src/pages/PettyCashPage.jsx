@@ -872,9 +872,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           <div className="border-t border-neutral-200 p-3"><button type="button"
             disabled={!entries.length || !entries.every((item) => item.stage === "completed")}
             onClick={() => openPettyCashReportPdf(report)}
-            title={entries.length && entries.every((item) => item.stage === "completed") ? "مشاهده PDF" : "گزارش تنخواه پس از تأیید نهایی فعال می‌شود"}
+            title={entries.length && entries.every((item) => item.stage === "completed") ? "مشاهده" : "گزارش تنخواه پس از تأیید نهایی فعال می‌شود"}
             className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
-            <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />مشاهده PDF
+            <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />مشاهده
           </button></div>
         </aside>
       </div>

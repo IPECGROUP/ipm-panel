@@ -56,11 +56,22 @@ export default function EquipmentIdentityPage() {
     title,
     fields: definitions.fields.filter((field) => String(field.categoryId) === String(form.categoryId) && String(field.titleId) === String(title.id)),
   })).filter((section) => section.fields.length), [definitions, form.categoryId]);
+  const tableSections = useMemo(() => definitions.titles.map((title) => {
+    const columns = new Map();
+    definitions.fields.filter((field) => String(field.titleId) === String(title.id)).forEach((field) => {
+      const key = field.name.trim().toLocaleLowerCase("fa");
+      if (!columns.has(key)) columns.set(key, { key: `${title.id}-${key}`, name: field.name, categoryFields: [] });
+      columns.get(key).categoryFields.push(field);
+    });
+    return { title, fields: [...columns.values()] };
+  }).filter((section) => section.fields.length), [definitions]);
+  const tableFields = useMemo(() => tableSections.flatMap((section) => section.fields), [tableSections]);
   const filteredItems = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase("fa");
+    const terms = query.trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
     return items.filter((item) => {
-      const matchesText = !term || [item.code, item.name, item.category].join(" ").toLocaleLowerCase("fa").includes(term);
-      return matchesText;
+      const values = item.fieldValues && typeof item.fieldValues === "object" ? Object.values(item.fieldValues) : [];
+      const text = [item.category, item.code, item.name, ...values].join(" ").toLocaleLowerCase("fa");
+      return terms.every((term) => text.includes(term));
     });
   }, [items, query]);
   const safePage = Math.min(page, Math.max(0, Math.ceil(filteredItems.length / pageSize) - 1));
@@ -130,12 +141,23 @@ export default function EquipmentIdentityPage() {
           {categorySections.map(({ title, fields }) => <section key={title.id} className="mt-4 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-3 border-b border-black/10 pb-2 text-sm font-bold dark:border-white/10">{title.name}</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{fields.map((field) => <label key={field.id} className="block"><span className={`block ${labelClass}`}>{field.name}</span><input type="text" value={form.fieldValues[String(field.id)] || ""} onChange={(event) => setForm((old) => ({ ...old, fieldValues: { ...old.fieldValues, [String(field.id)]: event.target.value } }))} maxLength={10000} className={inputClass} /></label>)}</div></section>)}
           <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت تجهیز"} aria-label="ثبت تجهیز"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
-          <label className="block"><span className={`block ${labelClass}`}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در کد تجهیز، نام تجهیز و دسته‌بندی..." /></label>
+          <label className="block"><span className={`block ${labelClass}`}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در دسته‌بندی و اطلاعات ثبت‌شده تجهیز..." /></label>
         </div>}
 
         {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-          <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[600px] table-fixed text-sm [&_td]:text-center [&_th]:text-center"><colgroup><col style={{ width: 80 }} /><col style={{ width: "24%" }} /><col /><col style={{ width: "25%" }} /></colgroup><thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">{["ردیف", "کد تجهیز", "نام تجهیز", "دسته‌بندی"].map((heading) => <th key={heading} className="px-3 py-2 text-[14px] font-semibold md:text-[15px]">{heading}</th>)}</tr></thead><tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={4} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="h-10 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(safePage * pageSize + index + 1)}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700" dir="auto">{item.code}</td><td className="border-b border-neutral-300 px-3 font-medium dark:border-neutral-700">{item.name}</td><td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{item.category || "—"}</td></tr>)}</tbody></table></div>
+          <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full table-fixed text-sm [&_td]:text-center [&_th]:text-center" style={{ minWidth: Math.max(600, 280 + tableFields.length * 190) }}>
+            <colgroup><col style={{ width: 80 }} /><col style={{ width: 200 }} />{tableFields.map((field) => <col key={field.key} style={{ width: 190 }} />)}</colgroup>
+            <thead className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
+              {tableFields.length > 0 && <tr><th rowSpan={2} className="border-b border-neutral-300 px-3 py-2 text-[14px] font-semibold dark:border-neutral-700">ردیف</th><th rowSpan={2} className="border-b border-neutral-300 px-3 py-2 text-[14px] font-semibold dark:border-neutral-700">دسته‌بندی</th>{tableSections.map((section) => <th key={section.title.id} colSpan={section.fields.length} className="border-b border-neutral-300 px-3 py-2 text-[14px] font-semibold dark:border-neutral-700">{section.title.name}</th>)}</tr>}
+              <tr>{tableFields.length === 0 && <><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th></>}{tableFields.map((field) => <th key={field.key} className="px-3 py-2 text-[13px] font-semibold">{field.name}</th>)}</tr>
+            </thead>
+            <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={2 + tableFields.length} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="h-10 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+              <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(safePage * pageSize + index + 1)}</td>
+              <td className="border-b border-neutral-300 px-3 font-medium dark:border-neutral-700">{definitions.categories.find((category) => String(category.id) === String(item.categoryId))?.name || item.category || "—"}</td>
+              {tableFields.map((column) => { const field = column.categoryFields.find((candidate) => String(candidate.categoryId) === String(item.categoryId)); const value = field ? item.fieldValues?.[String(field.id)] : ""; return <td key={column.key} className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block max-w-full whitespace-pre-wrap break-words" dir="auto">{value || "—"}</span></td>; })}
+            </tr>)}</tbody>
+          </table></div>
           <BaseTablePager total={filteredItems.length} page={safePage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </div>
       </div>
