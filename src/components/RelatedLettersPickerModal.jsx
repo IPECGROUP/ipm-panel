@@ -13,6 +13,16 @@ function normalizeDigits(value = "") {
   return toEnglishDigits(String(value ?? "")).replace(/[\u0660-\u0669]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
 }
 
+function normalizeSearchText(value = "") {
+  return normalizeDigits(value)
+    .toLowerCase()
+    .replace(/ي/g, "ی")
+    .replace(/ك/g, "ک")
+    .replace(/[\u200c\u200d]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function ChoiceModal({ title, query, onQueryChange, loading, children, footer, onClose, blackActions = false }) {
   return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5" dir="rtl">
@@ -29,11 +39,15 @@ function ChoiceModal({ title, query, onQueryChange, loading, children, footer, o
 
 export default function RelatedLettersPickerModal({ api, title = "انتخاب نامه مرتبط", query, onQueryChange, loading, items, selectedIds, onToggle, onConfirm, onClose, blackActions = false }) {
   const [previewLetter, setPreviewLetter] = useState(null);
-  const normalizedQuery = normalizeDigits(query).trim().toLowerCase();
-  const rows = (Array.isArray(items) ? items : []).filter((item) => !normalizedQuery || [item.letterNo, item.letter_no, item.secretariatNo, item.secretariat_no, item.subject, item.title, item.organization, item.companyName].map((value) => normalizeDigits(value).toLowerCase()).join(" ").includes(normalizedQuery));
+  const terms = normalizeSearchText(query).split(" ").filter(Boolean);
+  const rows = (Array.isArray(items) ? items : []).filter((item) => {
+    if (!terms.length) return true;
+    const searchableText = normalizeSearchText([item.letterNo, item.letter_no, item.secretariatNo, item.secretariat_no, item.subject, item.title, item.description, item.organization, item.companyName].join(" "));
+    return terms.every((term) => searchableText.includes(term));
+  });
   const visibleRows = rows.slice(0, 200);
 
-  const confirmFooter = typeof onConfirm === "function" ? <div className="flex shrink-0 justify-end border-t border-black/10 p-3 dark:border-white/10"><button type="button" onClick={onConfirm} className={`grid h-10 min-w-10 place-items-center rounded-xl bg-black px-3 text-sm font-semibold text-white transition hover:bg-black/90 ${blackActions ? "dark:bg-black dark:text-white" : "dark:bg-white dark:text-black"}`} title="تأیید انتخاب نامه" aria-label="تأیید انتخاب نامه">✓</button></div> : null;
+  const confirmFooter = typeof onConfirm === "function" ? <div className="flex shrink-0 justify-end border-t border-black/10 p-3 dark:border-white/10"><button type="button" onClick={onConfirm} className={`grid h-10 min-w-10 place-items-center rounded-xl bg-black px-3 text-sm font-semibold text-white transition hover:bg-black/90 ${blackActions ? "dark:bg-black dark:text-white" : "dark:bg-white dark:text-black"}`} title="تأیید انتخاب نامه" aria-label="تأیید انتخاب نامه"><img src="/images/icons/check.svg" alt="" className={`h-5 w-5 ${blackActions ? "brightness-0 invert" : "brightness-0 invert dark:invert-0"}`} /></button></div> : null;
   return <ChoiceModal title={title} query={query} onQueryChange={onQueryChange} loading={loading} footer={confirmFooter} onClose={onClose} blackActions={blackActions}>
     {rows.length ? <div className="space-y-1">{visibleRows.map((item) => {
       const id = String(item.id);
