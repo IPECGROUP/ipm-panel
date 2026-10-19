@@ -9,29 +9,12 @@ import { FileText } from "lucide-react";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
-const tagColors = [
-  "border-[#D5E6F1] bg-[#D5E6F1] text-[#036499]",
-  "border-[#D1FAE5] bg-[#D1FAE5] text-[#047857]",
-  "border-[#FEF3C7] bg-[#FEF3C7] text-[#B45309]",
-  "border-[#EDE9FE] bg-[#EDE9FE] text-[#6D28D9]",
-  "border-[#FFE4E6] bg-[#FFE4E6] text-[#BE123C]",
-  "border-[#CCFBF1] bg-[#CCFBF1] text-[#0F766E]",
-];
-const selectedTagColors = [
-  "border-[#036499] bg-[#036499] text-[#D5E6F1]",
-  "border-[#047857] bg-[#047857] text-[#D1FAE5]",
-  "border-[#B45309] bg-[#B45309] text-[#FEF3C7]",
-  "border-[#6D28D9] bg-[#6D28D9] text-[#EDE9FE]",
-  "border-[#BE123C] bg-[#BE123C] text-[#FFE4E6]",
-  "border-[#0F766E] bg-[#0F766E] text-[#CCFBF1]",
-];
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
-const emptyForm = () => ({ code: "", name: "", categoryId: "", tagIds: [], fieldValues: {}, relatedLetterIds: [], files: [] });
+const emptyForm = () => ({ categoryId: "", fieldValues: {}, relatedLetterIds: [], files: [] });
 
 export default function EquipmentIdentityPage() {
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState([]);
-  const [tags, setTags] = useState([]);
   const [definitions, setDefinitions] = useState({ categories: [], titles: [], fields: [] });
   const [letters, setLetters] = useState([]);
   const [letterPickerOpen, setLetterPickerOpen] = useState(false);
@@ -44,7 +27,6 @@ export default function EquipmentIdentityPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState("");
-  const [filterTagIds, setFilterTagIds] = useState([]);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [error, setError] = useState("");
@@ -53,12 +35,11 @@ export default function EquipmentIdentityPage() {
     if (authLoading) return;
     let active = true;
     const headers = user?.id != null ? { "x-user-id": String(user.id) } : {};
-    Promise.allSettled([api("/equipment-identities", { headers }), api("/tags", { headers }), api("/base/equipment-fields", { headers }), api("/letters", { headers })])
-      .then(([equipment, tagData, definitionData, letterData]) => {
+    Promise.allSettled([api("/equipment-identities", { headers }), api("/base/equipment-fields", { headers }), api("/letters", { headers })])
+      .then(([equipment, definitionData, letterData]) => {
         if (!active) return;
         if (equipment.status === "fulfilled") setItems(Array.isArray(equipment.value?.items) ? equipment.value.items : []);
         else setError(equipment.reason?.message || "دریافت اطلاعات تجهیزات انجام نشد.");
-        if (tagData.status === "fulfilled") setTags(Array.isArray(tagData.value?.items) ? tagData.value.items : []);
         if (definitionData.status === "fulfilled") setDefinitions({
           categories: Array.isArray(definitionData.value?.categories) ? definitionData.value.categories : [],
           titles: Array.isArray(definitionData.value?.titles) ? definitionData.value.titles : [],
@@ -71,7 +52,6 @@ export default function EquipmentIdentityPage() {
     return () => { active = false; };
   }, [authLoading, user?.id]);
 
-  const visibleTags = useMemo(() => tags.filter((tag) => items.some((item) => item.tagIds?.map(String).includes(String(tag.id)))), [items, tags]);
   const categorySections = useMemo(() => definitions.titles.map((title) => ({
     title,
     fields: definitions.fields.filter((field) => String(field.categoryId) === String(form.categoryId) && String(field.titleId) === String(title.id)),
@@ -80,19 +60,15 @@ export default function EquipmentIdentityPage() {
     const term = query.trim().toLocaleLowerCase("fa");
     return items.filter((item) => {
       const matchesText = !term || [item.code, item.name, item.category].join(" ").toLocaleLowerCase("fa").includes(term);
-      const matchesTags = !filterTagIds.length || filterTagIds.some((id) => item.tagIds?.map(String).includes(String(id)));
-      return matchesText && matchesTags;
+      return matchesText;
     });
-  }, [items, query, filterTagIds]);
+  }, [items, query]);
   const safePage = Math.min(page, Math.max(0, Math.ceil(filteredItems.length / pageSize) - 1));
   const pageItems = filteredItems.slice(safePage * pageSize, (safePage + 1) * pageSize);
-
-  const toggleTag = (id, selected, setSelected) => setSelected(selected.includes(String(id)) ? selected.filter((value) => value !== String(id)) : [...selected, String(id)]);
 
   async function save(event) {
     event.preventDefault();
     if (!form.categoryId) { setError("دسته‌بندی تجهیز را انتخاب کنید."); return; }
-    if (!form.code.trim() || !form.name.trim()) { setError("کد تجهیز و نام تجهیز را وارد کنید."); return; }
     if (uploading) { setError("تا پایان بارگذاری فایل صبر کنید."); return; }
     setSaving(true);
     setError("");
@@ -107,7 +83,7 @@ export default function EquipmentIdentityPage() {
       setFormOpen(false);
       setPage(0);
     } catch (err) {
-      setError(err.message === "duplicate_code" ? "این کد تجهیز قبلاً ثبت شده است." : err.message || "ثبت تجهیز انجام نشد.");
+      setError(err.message || "ثبت تجهیز انجام نشد.");
     } finally { setSaving(false); }
   }
 
@@ -143,12 +119,8 @@ export default function EquipmentIdentityPage() {
           </button>
         </div>
 
-        {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
+        {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
           <label className="mb-3 block max-w-sm"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{definitions.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="min-w-[150px] flex-1"><span className={`block ${labelClass}`}>کد تجهیز *</span><input autoFocus maxLength={80} value={form.code} onChange={(event) => setForm((old) => ({ ...old, code: event.target.value }))} className={inputClass} /></label>
-            <label className="min-w-[190px] flex-[1.4]"><span className={`block ${labelClass}`}>نام تجهیز *</span><input maxLength={255} value={form.name} onChange={(event) => setForm((old) => ({ ...old, name: event.target.value }))} className={inputClass} /></label>
-          </div>
           <div className="mt-4 flex flex-wrap items-start gap-3">
             <label className="block"><span className={`block ${labelClass}`}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></label>
             <label className="block"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
@@ -156,11 +128,9 @@ export default function EquipmentIdentityPage() {
           </div>
           {form.files.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{form.files.map((file, index) => <span key={file.url} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs dark:border-white/15 dark:bg-white/5"><a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name}</a><button type="button" onClick={() => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} aria-label="حذف فایل">×</button></span>)}</div>}
           {categorySections.map(({ title, fields }) => <section key={title.id} className="mt-4 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-3 border-b border-black/10 pb-2 text-sm font-bold dark:border-white/10">{title.name}</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{fields.map((field) => <label key={field.id} className="block"><span className={`block ${labelClass}`}>{field.name}</span><input type="text" value={form.fieldValues[String(field.id)] || ""} onChange={(event) => setForm((old) => ({ ...old, fieldValues: { ...old.fieldValues, [String(field.id)]: event.target.value } }))} maxLength={10000} className={inputClass} /></label>)}</div></section>)}
-          {tags.length > 0 && <div className="mt-3"><div className={labelClass}>برچسب‌ها</div><div className="flex flex-wrap gap-2">{tags.map((tag, index) => <button key={tag.id} type="button" onClick={() => setForm((old) => ({ ...old, tagIds: old.tagIds.includes(String(tag.id)) ? old.tagIds.filter((id) => id !== String(tag.id)) : [...old.tagIds, String(tag.id)] }))} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${form.tagIds.includes(String(tag.id)) ? selectedTagColors[index % selectedTagColors.length] : tagColors[index % tagColors.length]}`}>{tag.label}</button>)}</div></div>}
-          <button type="submit" disabled={saving || uploading} className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white transition hover:bg-black/90 disabled:opacity-50" title="ثبت تجهیز"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 brightness-0 invert" />{saving ? "در حال ثبت..." : "ثبت تجهیز"}</button>
+          <div className="mt-4 flex justify-end"><button type="submit" disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت تجهیز"} aria-label="ثبت تجهیز"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
           <label className="block"><span className={`block ${labelClass}`}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در کد تجهیز، نام تجهیز و دسته‌بندی..." /></label>
-          <div className="mt-2"><div className={labelClass}>برچسب‌ها</div><div className="-mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">{visibleTags.map((tag, index) => <button key={tag.id} type="button" onClick={() => { toggleTag(tag.id, filterTagIds, setFilterTagIds); setPage(0); }} className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition hover:brightness-95 ${filterTagIds.includes(String(tag.id)) ? selectedTagColors[index % selectedTagColors.length] : tagColors[index % tagColors.length]}`}>{tag.label}</button>)}</div></div>
         </div>}
 
         {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
