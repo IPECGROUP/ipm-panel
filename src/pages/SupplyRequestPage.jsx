@@ -159,6 +159,7 @@ function emptyForm() {
     dateJalali: todayFa(),
     projectId: "",
     budgetCode: "",
+    requestTypeId: "",
     currencyTypeId: "",
     title: "",
     needDateJalali: "",
@@ -360,6 +361,9 @@ export default function SupplyRequestPage() {
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
   const [currencyTypes, setCurrencyTypes] = useState([]);
+  const [requestTypes, setRequestTypes] = useState([]);
+  const [requestTypesLoading, setRequestTypesLoading] = useState(false);
+  const [requestTypesError, setRequestTypesError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -374,6 +378,7 @@ export default function SupplyRequestPage() {
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
+  const [filterRequestTypeIds, setFilterRequestTypeIds] = useState([]);
   const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
   const [tags, setTags] = useState([]);
   const [tagPickOpen, setTagPickOpen] = useState(false);
@@ -452,6 +457,22 @@ export default function SupplyRequestPage() {
       .then((data) => setCurrencyTypes(Array.isArray(data?.items) ? data.items : Array.isArray(data?.types) ? data.types : []))
       .catch(() => setCurrencyTypes([]));
   }, [api]);
+
+  const loadRequestTypes = useCallback(async () => {
+    setRequestTypesLoading(true);
+    setRequestTypesError(false);
+    try {
+      const data = await api("/base/supply-request-types");
+      setRequestTypes(Array.isArray(data?.items) ? data.items : []);
+    } catch {
+      setRequestTypes([]);
+      setRequestTypesError(true);
+    } finally {
+      setRequestTypesLoading(false);
+    }
+  }, [api]);
+
+  useEffect(() => { loadRequestTypes(); }, [loadRequestTypes]);
 
   useEffect(() => {
     if (authLoading) return undefined;
@@ -610,6 +631,7 @@ export default function SupplyRequestPage() {
   };
 
   const openFreshForm = () => {
+    loadRequestTypes();
     setForm(emptyForm());
     setRelatedDocsOpen(false);
     setRelatedPickOpen(false);
@@ -829,6 +851,7 @@ export default function SupplyRequestPage() {
       if (filterUnread && !(manualUnreadIds.has(String(item.id)) || (isIncoming && !seenIncomingIds.has(String(item.id))))) return false;
       if (filterStatus && statusGroup(displayStatusOf(item)) !== filterStatus) return false;
       if (filterProjectId && String(item.projectId) !== String(filterProjectId)) return false;
+      if (filterRequestTypeIds.length && !filterRequestTypeIds.includes(String(item.requestTypeId))) return false;
       const dateKey = normalizeYmd(itemDateKey(item));
       if ((fromDate || toDate) && !dateKey) return false;
       if (fromDate && dateKey < fromDate) return false;
@@ -845,6 +868,7 @@ export default function SupplyRequestPage() {
         item.title,
         item.description,
         item.budgetCode,
+        item.requestTypeTitle,
         itemProjectLabel(item, projects),
         item.status,
         displayStatusOf(item),
@@ -855,7 +879,7 @@ export default function SupplyRequestPage() {
         .join(" ");
       return haystack.includes(q);
     });
-  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, items, letters, manualUnreadIds, projects, seenIncomingIds, user?.id]);
+  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterRequestTypeIds, filterStatus, filterTagIds, filterToDate, filterUnread, items, letters, manualUnreadIds, projects, seenIncomingIds, user?.id]);
 
   const total = filteredItems.length;
   const pageCount = Math.max(1, Math.ceil(total / rowsPerPage));
@@ -952,7 +976,7 @@ export default function SupplyRequestPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, rowsPerPage]);
+  }, [filterFromDate, filterOwnership, filterProjectId, filterQuery, filterQuick, filterRequestTypeIds, filterStatus, filterTagIds, filterToDate, filterUnread, rowsPerPage]);
 
   const handleExportExcel = async () => {
     if (!filteredItems.length) return;
@@ -961,13 +985,14 @@ export default function SupplyRequestPage() {
     const rows = [
       ["درخواست تامین - خروجی جدول"],
       [""],
-      ["ردیف", "شماره", "تاریخ", "موضوع", "پروژه", "کد بودجه", "مبلغ", "تاریخ نیاز", "آخرین وضعیت", "شرح"],
+      ["ردیف", "شماره", "تاریخ", "موضوع", "پروژه", "نوع", "کد بودجه", "مبلغ", "تاریخ نیاز", "آخرین وضعیت", "شرح"],
       ...filteredItems.map((item, index) => [
         toFaDigits(index + 1),
         item.serial || "",
         toFaDigits(String(item.dateJalali || item.dateFa || "").replaceAll("-", "/")),
         item.title || "",
         itemProjectLabel(item, projects),
+        item.requestTypeTitle || "",
         item.budgetCode || "",
         `${toFaDigits(formatMoney(item.amount))} ریال`,
         toFaDigits(String(item.needDateJalali || item.docDateJalali || "").replaceAll("-", "/")),
@@ -976,7 +1001,7 @@ export default function SupplyRequestPage() {
       ]),
     ];
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws["!cols"] = [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 36 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 22 }, { wch: 44 }];
+    ws["!cols"] = [{ wch: 8 }, { wch: 14 }, { wch: 14 }, { wch: 36 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 22 }, { wch: 44 }];
     ws["!rtl"] = true;
     const wb = XLSX.utils.book_new();
     wb.Workbook = wb.Workbook || {};
@@ -1027,6 +1052,9 @@ export default function SupplyRequestPage() {
               unread={filterUnread}
               setUnread={setFilterUnread}
               tags={tags}
+              requestTypes={requestTypes}
+              activeRequestTypeIds={filterRequestTypeIds}
+              setActiveRequestTypeIds={setFilterRequestTypeIds}
               pinnedTagIds={pinnedFilterTagIds}
               setPinnedTagIds={setPinnedFilterTagIds}
               activeTagIds={filterTagIds}
@@ -1073,15 +1101,16 @@ export default function SupplyRequestPage() {
                   </select>
                 </Field>
                 <Field label="نوع درخواست">
-                  <select className={inputCls} value="" disabled aria-label="نوع درخواست">
-                    <option value="" />
+                  <select className={inputCls} value={form.requestTypeId} onChange={(event) => setField("requestTypeId", event.target.value)} disabled={requestTypesLoading || requestTypesError}>
+                    <option value="">{requestTypesLoading ? "در حال دریافت..." : requestTypesError ? "دریافت نوع درخواست انجام نشد" : "انتخاب کنید"}</option>
+                    {requestTypes.map((type) => <option key={type.id} value={type.id}>{type.title}</option>)}
                   </select>
                 </Field>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[13fr_9fr_8fr]">
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[15fr_9fr_6fr]">
                 <Field label="موضوع درخواست" required>
-                  <input value={form.title} onChange={(event) => setField("title", event.target.value)} className={`${inputCls} h-12 text-[15px]`} />
+                  <input value={form.title} onChange={(event) => setField("title", event.target.value)} className={`${inputCls} text-[15px]`} />
                 </Field>
                 <Field label="برآورد هزینه اولیه" required>
                   <div className="relative min-w-0">
@@ -1268,7 +1297,7 @@ export default function SupplyRequestPage() {
                         </td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{itemProjectLabel(item, projects)}</span></td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">—</td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block truncate">{item.requestTypeTitle || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFaDigits(item.createdById)}`}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
@@ -1339,6 +1368,7 @@ export default function SupplyRequestPage() {
           item={selected}
           projects={projects}
           currencyTypes={currencyTypes}
+          requestTypes={requestTypes}
           letters={letters}
           actionNote={actionNote}
           setActionNote={setActionNote}
@@ -1394,11 +1424,12 @@ function SupplyReadingStatusMenu({ tableMenuRef, tableMenuOpen, setTableMenuOpen
   </div>;
 }
 
-function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onSave, onCancel }) {
+function SupplyRequestEditForm({ item, projects, currencyTypes, requestTypes, busy, error, onSave, onCancel }) {
   const { user } = useAuth();
   const [form, setForm] = useState(() => ({
     projectId: String(item.projectId || ""),
     budgetCode: item.budgetCode || "",
+    requestTypeId: item.requestTypeId ? String(item.requestTypeId) : "",
     currencyTypeId: item.currencyTypeId ? String(item.currencyTypeId) : "",
     title: item.title || "",
     needDateJalali: item.needDateJalali || "",
@@ -1479,6 +1510,7 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onS
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setForm((current) => ({ ...current, projectId: event.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
           <Field label="کد بودجه"><select dir="rtl" className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} disabled={!form.projectId || budgetLoading}><option value="">{!form.projectId ? "ابتدا پروژه را انتخاب کنید" : budgetLoading ? "در حال دریافت..." : "انتخاب کنید"}</option>{budgetItems.map((budgetItem) => { const code = normalizeBudgetCode(budgetItem.code ?? budgetItem.budgetCode ?? budgetItem.budget_code ?? budgetItem.center_code); const name = budgetNameOf(budgetItem); return <option key={budgetItem.id || code} value={code}>{toFaDigits(code)}{name ? ` - ${name}` : ""}</option>; })}</select></Field>
+          <Field label="نوع درخواست"><select className={inputCls} value={form.requestTypeId} onChange={(event) => setField("requestTypeId", event.target.value)}><option value="">انتخاب کنید</option>{requestTypes.map((type) => <option key={type.id} value={type.id}>{type.title}</option>)}</select></Field>
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
           <Field label="برآورد هزینه"><div className="relative"><select value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)} className="absolute left-1 top-1 z-10 h-9 w-16 cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"><option value="">ریال</option>{(currencyTypes || []).filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}</select><input dir="ltr" inputMode="numeric" className={`${inputCls} pl-[72px] text-left font-sans tabular-nums`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></div></Field>
           <Field label="تاریخ نیاز"><JalaliPopupDatePicker value={form.needDateJalali} onChange={(value) => setField("needDateJalali", value)} /></Field>
@@ -1490,7 +1522,7 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, busy, error, onS
       </form>;
 }
 
-export function SupplyRequestPreview({ item, projects, currencyTypes = [], letters = [], actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
+export function SupplyRequestPreview({ item, projects, currencyTypes = [], requestTypes = [], letters = [], actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
   const { user } = useAuth();
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
@@ -1779,7 +1811,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], lette
               <div className="space-y-4">
                 {isEditing && isRequester ? (
                   <PreviewSection title="ویرایش درخواست تامین">
-                    <SupplyRequestEditForm item={item} projects={projects} currencyTypes={currencyTypes} busy={actionBusy} error={actionError} onSave={onEdit} onCancel={() => setIsEditing(false)} />
+                    <SupplyRequestEditForm item={item} projects={projects} currencyTypes={currencyTypes} requestTypes={requestTypes} busy={actionBusy} error={actionError} onSave={onEdit} onCancel={() => setIsEditing(false)} />
                   </PreviewSection>
                 ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
@@ -1792,6 +1824,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], lette
                     <PreviewRow compact label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
                     <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
                   </div>
+                  <PreviewRow compact label="نوع درخواست" value={item.requestTypeTitle || "—"} />
                   <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
@@ -2348,6 +2381,9 @@ function RequestFilterBar({
   unread,
   setUnread,
   tags,
+  requestTypes,
+  activeRequestTypeIds,
+  setActiveRequestTypeIds,
   pinnedTagIds,
   setPinnedTagIds,
   activeTagIds,
@@ -2432,6 +2468,21 @@ function RequestFilterBar({
               {label}
             </button>
           ))}
+          {requestTypes.map((type) => {
+            const id = String(type.id);
+            const isActive = activeRequestTypeIds.includes(id);
+            return (
+              <button
+                key={`request-type-${id}`}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setActiveRequestTypeIds((current) => isActive ? current.filter((value) => value !== id) : [...current, id])}
+                className={`h-9 rounded-full border px-4 text-xs shadow-sm transition ${supplyRequestTagClass({ id: `request-type-${id}` }, isActive)}`}
+              >
+                {type.title}
+              </button>
+            );
+          })}
           {visibleTags.map((tag) => {
             const id = String(tag?.id ?? "");
             const isActive = active.has(id);
