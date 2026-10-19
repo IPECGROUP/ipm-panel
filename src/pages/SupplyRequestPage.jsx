@@ -10,6 +10,7 @@ import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
+import { BriefcaseBusiness, CalendarDays, ExternalLink, FileText, UserRound } from "lucide-react";
 
 const PAGE_ICON = "/images/icons/darkhast-tamin.svg";
 const REQUEST_DOC_ID = "supply_request";
@@ -1531,6 +1532,11 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   const [isEditing, setIsEditing] = useState(!!item.__editing);
   const [commercialActions, setCommercialActions] = useState([]);
   const [commercialActionsLoading, setCommercialActionsLoading] = useState(false);
+  const [previewAttachmentIndex, setPreviewAttachmentIndex] = useState(0);
+  const previewFiles = [
+    ...attachments,
+    ...commercialActions.flatMap((action) => Array.isArray(action.files) ? action.files : []),
+  ];
   const isCompletedCommercialOwner =
     !item.currentStepRoleKey &&
     ["approved", "rejected"].includes(item.status) &&
@@ -1761,7 +1767,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
 <div class="summary"><div class="summary-card"><div class="label">وضعیت فعلی</div><div class="value">${value(currentStatus)}</div></div><div class="summary-card"><div class="label">مرحله فعلی</div><div class="value">${value(currentStage?.label || (["done", "completed"].includes(displayStatusOf(item)) ? "فرآیند تکمیل شده" : "—"))}</div></div><div class="summary-card"><div class="label">تاریخ تهیه گزارش</div><div class="value">${value(printDate)} · ${value(printTime)}</div></div></div>
 <section><h2 class="section-title">مشخصات درخواست</h2><div class="info-grid">${infoCard("درخواست‌کننده", item.createdByName || `کاربر #${toFaDigits(item.createdById)}`)}${infoCard("پروژه", projectName)}${infoCard("کد بودجه", `${toFaDigits(item.budgetCode || "—")}${currentBudgetName ? ` - ${currentBudgetName}` : ""}`)}${infoCard("موضوع درخواست", item.title, "full")}${infoCard("برآورد هزینه اولیه", amount(item.amount), "span-2")}${infoCard("تاریخ نیاز", toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/")))}${infoCard("شرح درخواست", item.description, "full")}${infoCard("برآورد هزینه نهایی", amount(meta.finalAmount), "full")}<div class="info-divider"></div>${infoCard("مسئول فعلی", item.currentAssigneeName, "full")}${infoCard("اسناد مرتبط", relatedLetters, "full")}</div></section>
 <section><h2 class="section-title">فرآیند تامین</h2><table><thead><tr><th>ردیف</th><th>مرحله</th><th>وضعیت</th><th>انجام‌دهنده</th><th>تاریخ و ساعت</th></tr></thead><tbody>${workflowRows}</tbody></table></section>
-<section><h2 class="section-title">اقدامات انجام‌شده در واحد تامین</h2><table><thead><tr><th>ردیف</th><th>تاریخ</th><th>ساعت</th><th>شرح اقدام / توضیح</th><th>در حال اقدام</th><th>پیوست‌ها</th></tr></thead><tbody>${actionRows || '<tr><td colspan="6">هنوز اقدامی ثبت نشده است.</td></tr>'}</tbody></table></section>
+<section><h2 class="section-title">اقدامات انجام‌شده</h2><table><thead><tr><th>ردیف</th><th>تاریخ</th><th>ساعت</th><th>شرح اقدام / توضیح</th><th>در حال اقدام</th><th>پیوست‌ها</th></tr></thead><tbody>${actionRows || '<tr><td colspan="6">هنوز اقدامی ثبت نشده است.</td></tr>'}</tbody></table></section>
 <section><h2 class="section-title">اسناد مرتبط</h2><table><thead><tr><th>ردیف</th><th>شماره سند</th><th>تاریخ</th><th>موضوع</th><th>فرستنده / گیرنده</th></tr></thead><tbody>${relatedLetterRows || '<tr><td colspan="5">سند مرتبطی ثبت نشده است.</td></tr>'}</tbody></table></section>
 <section><h2 class="section-title">پیوست‌ها و اسناد مرتبط</h2><div class="summary-card">تعداد کل پیوست‌ها: <strong>${value(toFaDigits(allFiles.length))}</strong></div>${allFiles.length ? `<ul class="attachment-list">${attachmentList}</ul>` : ""}</section><footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>درخواست تامین ${value(item.serial)}</span></footer></article>${attachmentPreviewPages}</body></html>`;
     const pdfWindow = window.open("", "_blank", "width=1150,height=850");
@@ -1778,36 +1784,29 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   return createPortal(
     <div className="fixed inset-0 z-[9999]">
       <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-        <div dir="rtl" className="flex h-[min(88vh,760px)] w-[min(1180px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
-          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="text-base font-bold md:text-lg">اقدامات تامین</div>
-              <button type="button" onClick={openPdfPreview} className="inline-flex h-9 items-center gap-2 rounded-lg border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="مشاهده PDF" aria-label="مشاهده PDF">
-                <img src="/images/icons/pdf.svg" alt="" className="h-4 w-4 dark:invert" />
-                <span>مشاهده PDF</span>
-              </button>
-            </div>
-            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 dark:bg-white dark:text-black" aria-label="بستن" title="بستن">
-              <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
-            </button>
+      <div className="absolute inset-0 flex items-end justify-center sm:items-center sm:p-3 md:p-6">
+        <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(90vh,860px)] sm:w-[min(1680px,calc(100vw-32px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-3">
+            <div className="text-sm font-bold">اقدامات تامین</div>
+            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
           </div>
 
-          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.55fr)]">
-            <aside className="flex items-start border-b border-black/10 p-4 dark:border-white/10 lg:border-b-0 lg:border-l">
-              <section className="w-full self-start overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-                <div className="shrink-0 border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تامین</div>
-                <div className="px-4">
-                  {history.length ? (
-                    <SupplyWorkflowTimeline history={history} item={item} />
-                  ) : (
-                    <div className="py-5 text-center text-sm text-neutral-500">سابقه‌ای ثبت نشده است.</div>
-                  )}
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
+            <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-4">
+              <SupplyMetadata label="شماره درخواست" value={toFaDigits(item.serial || "—")} Icon={FileText} />
+              <SupplyMetadata label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
+              <SupplyMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} Icon={UserRound} />
+              <SupplyMetadata label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} Icon={BriefcaseBusiness} />
+            </div>
+            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
+              <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+                <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تامین</div>
+                <div className="px-3">
+                  <SupplyWorkflowTimeline history={history} item={item} />
                 </div>
-              </section>
-            </aside>
+              </aside>
 
-            <main className="min-h-0 overflow-y-auto p-4 md:p-5">
+              <main className="min-w-0 space-y-4">
               <div className="space-y-4">
                 {isEditing && isRequester ? (
                   <PreviewSection title="ویرایش درخواست تامین">
@@ -1815,15 +1814,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </PreviewSection>
                 ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
-                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
-                    <PreviewRow compact label="شماره درخواست" value={item.serial || "—"} ltr />
-                    <PreviewRow compact label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} />
-                    <PreviewRow compact label="درخواست کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} />
-                  </div>
-                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-y-0 md:[&>*:first-child]:border-l md:[&>*:first-child]:border-black/10 dark:divide-white/10 dark:md:[&>*:first-child]:border-white/10">
-                    <PreviewRow compact label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} />
-                    <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
-                  </div>
+                  <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
                   <PreviewRow compact label="نوع درخواست" value={item.requestTypeTitle || "—"} />
                   <PreviewRow label="موضوع" value={item.title || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
@@ -1903,25 +1894,52 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                         <ActionFooter actionBusy={actionBusy} actionError={actionError} disabled={!!nextRecipients.targetRoleKey && !targetAssigneeUserId} onSubmit={() => onAction("approve", { targetAssigneeUserId: targetAssigneeUserId || null })} />
                       </div>
                     </PreviewSection>
-                  ) : (
-                    <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
-                      در این مرحله اقدامی برای شما فعال نیست.
-                    </div>
-                  )
-                ) : (
-                  <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">
-                    در این مرحله اقدامی برای شما فعال نیست.
-                  </div>
-                )}
+                  ) : null
+                ) : null}
                 </>}
               </div>
-            </main>
+              </main>
+              <SupplyAttachmentPreview files={previewFiles} selectedIndex={previewAttachmentIndex} onSelect={setPreviewAttachmentIndex} onOpenPdf={openPdfPreview} />
+            </div>
           </div>
         </div>
       </div>
     </div>,
     document.body
   );
+}
+
+function SupplyMetadata({ label, value, Icon }) {
+  return <div className="flex min-w-0 items-center gap-2 border-b border-l border-neutral-200 px-3 py-2 last:border-l-0 dark:border-white/10 md:border-b-0">
+    <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200"><Icon className="h-4 w-4 stroke-[1.6]" /></span>
+    <div className="min-w-0 flex-1"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-0.5 min-w-0 break-words text-xs font-bold">{value}</div></div>
+  </div>;
+}
+
+function SupplyAttachmentPreview({ files, selectedIndex, onSelect, onOpenPdf }) {
+  const index = Math.min(selectedIndex, Math.max(files.length - 1, 0));
+  const file = files[index];
+  const url = String(file?.url || file?.path || "");
+  const name = file?.name || file?.originalName || file?.filename || `پیوست ${toFaDigits(index + 1)}`;
+  const mime = String(file?.type || file?.mimeType || file?.mime_type || "").toLowerCase();
+  const isPdf = mime.includes("pdf") || /\.pdf(?:[?#]|$)/i.test(name) || /\.pdf(?:[?#]|$)/i.test(url);
+  const isImage = mime.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)(?:[?#]|$)/i.test(name) || /\.(png|jpe?g|webp|gif|bmp|svg)(?:[?#]|$)/i.test(url);
+  return <div className="min-w-0 space-y-3">
+    <aside className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+      <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
+      <div className="p-3">
+        <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 xl:h-[min(44vh,430px)]">
+          {!url ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p>
+            : isPdf ? <iframe key={url} src={url} title={`پیش‌نمایش ${name}`} className="h-full w-full border-0" />
+            : isImage ? <a href={url} target="_blank" rel="noreferrer" className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={url} alt={name} className="max-h-full max-w-full object-contain" /></a>
+            : <div className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</div>}
+        </div>
+        {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
+        {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFaDigits(fileIndex + 1)}</button>)}</div>}
+      </div>
+    </aside>
+    <button type="button" onClick={onOpenPdf} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4 dark:invert" />گزارش درخواست تامین</button>
+  </div>;
 }
 
 function fileNameOf(file, index) {
@@ -2206,7 +2224,7 @@ function SupplyActionHistory({ actions, loading }) {
     : status === "canceled"
       ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
       : "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300";
-  return <PreviewSection title="اقدامات انجام‌شده در واحد تامین">
+  return <PreviewSection title="اقدامات انجام‌شده">
     {loading ? <div className="px-4 py-4 text-sm text-neutral-500">در حال دریافت اقدامات...</div> : rows.length === 0 ? <div className="px-4 py-4 text-sm text-neutral-500">هنوز اقدامی توسط واحد تامین ثبت نشده است.</div> : <div className="divide-y divide-black/10 dark:divide-white/10">
       {rows.map((action, index) => <div key={action.id || index} className="grid gap-2 px-4 py-3 md:grid-cols-[110px_90px_120px_minmax(0,1fr)] md:items-center">
         <div className="text-xs text-neutral-500">{toFaDigits(String(action.date || "—").replaceAll("-", "/"))}{action.time ? ` · ${toFaDigits(action.time)}` : ""}</div>
@@ -2287,7 +2305,7 @@ function workflowStageStyle(kind) {
     title: "text-black dark:text-white",
   };
   return {
-    marker: "border-sky-400 bg-sky-500 text-white",
+    marker: "border-neutral-300 bg-white text-neutral-400 dark:border-neutral-600 dark:bg-neutral-900 dark:text-neutral-500",
     line: "bg-neutral-200 dark:bg-white/10",
     card: "",
     title: "text-black dark:text-white",
@@ -2327,14 +2345,14 @@ function WorkflowMarker({ kind, index }) {
 function SupplyWorkflowTimeline({ history, item }) {
   const workflowFinished = !item?.currentStepRoleKey && item?.status === "approved";
   return (
-    <ol className="supply-workflow-timeline flex flex-col justify-start px-1 pb-2 pt-2" aria-label="مراحل فرآیند درخواست تامین">
+    <ol className="flex flex-col justify-start px-1 pb-2 pt-2" aria-label="مراحل فرآیند درخواست تامین">
       {SUPPLY_WORKFLOW_STEPS.map((step, index) => {
         const state = workflowStageState(step, history, item);
         const markerKind = state.kind === "completed" && workflowFinished && index === SUPPLY_WORKFLOW_STEPS.length - 1 ? "final_completed" : state.kind;
         const style = workflowStageStyle(markerKind);
         const isLast = index === SUPPLY_WORKFLOW_STEPS.length - 1;
         return (
-          <li key={step.key} data-state={markerKind} className="supply-workflow-stage relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0" style={{ "--workflow-delay": `${Math.min(index * 110, 440)}ms` }}>
+          <li key={step.key} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-2 pb-2 last:pb-0">
             <div className={`min-w-0 ${style.card ? `rounded-2xl px-3 py-2.5 ${style.card}` : "px-3 py-1"}`}>
               <div className={`text-sm font-bold leading-6 ${style.title}`}>{step.label}</div>
               {state.entry ? <div className="mt-1 text-[11px] leading-5 text-black dark:text-white" dir="rtl">{workflowStageMeta(step, item, state.entry, state)}</div> : null}
@@ -2342,7 +2360,7 @@ function SupplyWorkflowTimeline({ history, item }) {
             </div>
             <div className="relative flex justify-center" aria-hidden="true">
               {!isLast ? <span className={`absolute bottom-[-12px] top-[22px] z-0 w-px ${style.line}`} /> : null}
-              <span className={`supply-workflow-marker relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
+              <span className={`relative z-10 mt-0.5 grid h-7 w-7 place-items-center rounded-full border-2 ${style.marker}`}>
                 <WorkflowMarker kind={markerKind} index={index} />
               </span>
             </div>
