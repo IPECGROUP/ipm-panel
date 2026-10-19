@@ -1814,7 +1814,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </PreviewSection>
                 ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
-                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/10 dark:divide-white/10 dark:md:[&>*+*]:border-white/10">
+                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/10 dark:divide-white/10 dark:md:[&>*+*]:border-white/10">
                     <PreviewRow compact label="موضوع" value={item.title || "—"} />
                     <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
                   </div>
