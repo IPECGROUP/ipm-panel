@@ -1057,6 +1057,11 @@ export default function SupplyRequestPage() {
                     ))}
                   </select>
                 </Field>
+                <Field label="نوع درخواست">
+                  <select className={inputCls} value="" disabled aria-label="نوع درخواست">
+                    <option value="" />
+                  </select>
+                </Field>
                 <Field label="کد بودجه" required>
                   <select dir="rtl" value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} className={inputCls} disabled={!form.projectId}>
                     <option value="">{form.projectId ? "انتخاب کنید" : "ابتدا پروژه را انتخاب کنید"}</option>
@@ -1072,13 +1077,12 @@ export default function SupplyRequestPage() {
                     })}
                   </select>
                 </Field>
+              </div>
+
+              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
                 <Field label="موضوع درخواست" required>
                   <input value={form.title} onChange={(event) => setField("title", event.target.value)} className={`${inputCls} h-12 text-[15px]`} />
                 </Field>
-              </div>
-
-              <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[minmax(180px,0.6fr)_minmax(360px,1.5fr)]">
-                <div className="space-y-3">
                 <Field label="برآورد هزینه اولیه" required>
                   <div className="relative min-w-0">
                     <select
@@ -1109,8 +1113,9 @@ export default function SupplyRequestPage() {
                     disableTodayAndPast
                   />
                 </Field>
-                </div>
-                <Field label="شرح درخواست" className="h-full">
+              </div>
+              <div className="mt-3">
+                <Field label="شرح درخواست">
                   <textarea
                     value={form.description}
                     onChange={(event) => setField("description", event.target.value)}
@@ -1223,6 +1228,7 @@ export default function SupplyRequestPage() {
                   <col style={{ width: 16 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 120 }} />
+                  <col style={{ width: 100 }} />
                   <col style={{ width: 180 }} />
                   <col />
                   <col style={{ width: 130 }} />
@@ -1234,6 +1240,7 @@ export default function SupplyRequestPage() {
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" />
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">شماره</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">نوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
@@ -1243,11 +1250,11 @@ export default function SupplyRequestPage() {
                 <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
+                      <td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td>
                     </tr>
                   ) : pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
+                      <td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواست تامینی ثبت نشده است.</td>
                     </tr>
                   ) : (
                     pageItems.map((item) => (
@@ -1260,6 +1267,7 @@ export default function SupplyRequestPage() {
                           </button>
                         </td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">—</td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{itemProjectLabel(item, projects)}</span></td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFaDigits(item.createdById)}`}</span></td>
