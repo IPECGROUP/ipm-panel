@@ -783,7 +783,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   ];
   const metadata = [
     { label: "شماره گزارش", value: report.reportNumber ? toFa(report.reportNumber) : "—", Icon: FileText },
-    { label: "تاریخ", value: reportDate(report.createdAt), secondary: `تنخواه‌گیرنده: ${report.createdByName || report.createdByUsername || "—"}`, Icon: CalendarDays },
+    { label: "تاریخ", value: reportDate(report.createdAt), recipient: report.createdByName || report.createdByUsername || "—", Icon: CalendarDays },
     { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
     { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
     { label: "مبلغ گزارش", value: `${money(entries.reduce((sum, item) => sum + amount(item.amount), 0n))} ریال`, Icon: FileText },
@@ -793,12 +793,14 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     <div inert={managerOpen ? true : undefined} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 md:grid-cols-3 xl:grid-cols-5">
-        {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
+        {metadata.map(({ label, value, secondary, recipient, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
-          <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p>
-            {label === "تاریخ" ? <div className="mt-0.5 flex flex-wrap items-center gap-y-1 text-xs"><span className="font-bold">{value}</span><span className="mr-2 border-r border-neutral-300 pr-2 text-[10px] text-neutral-500">{secondary}</span></div>
-              : <><p className="mt-0.5 break-words text-xs font-bold">{value}</p>{secondary && <p className="mt-1 text-[10px] text-neutral-500">{secondary}</p>}</>}
-          </div>
+          {recipient ? <div className="flex min-w-0 items-center gap-2">
+            <div className="shrink-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 text-xs font-bold">{value}</p></div>
+            <div className="min-w-0 border-r border-neutral-300 pr-2"><p className="text-[11px] text-neutral-500">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
+          </div> : <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
+            {secondary && <p className="mt-1 text-[10px] text-neutral-500">{secondary}</p>}
+          </div>}
         </div>)}
       </div>
 
