@@ -3,6 +3,9 @@ import Card from "../components/ui/Card.jsx";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
+import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
+import { AttachmentImageEditor } from "./PettyCashPage.jsx";
+import { FileText } from "lucide-react";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
@@ -23,12 +26,19 @@ const selectedTagColors = [
   "border-[#0F766E] bg-[#0F766E] text-[#CCFBF1]",
 ];
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
-const emptyForm = () => ({ code: "", name: "", category: "", tagIds: [] });
+const emptyForm = () => ({ code: "", name: "", categoryId: "", tagIds: [], fieldValues: {}, relatedLetterIds: [], files: [] });
 
 export default function EquipmentIdentityPage() {
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState([]);
   const [tags, setTags] = useState([]);
+  const [definitions, setDefinitions] = useState({ categories: [], titles: [], fields: [] });
+  const [letters, setLetters] = useState([]);
+  const [letterPickerOpen, setLetterPickerOpen] = useState(false);
+  const [letterQuery, setLetterQuery] = useState("");
+  const [draftLetterIds, setDraftLetterIds] = useState([]);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -43,18 +53,29 @@ export default function EquipmentIdentityPage() {
     if (authLoading) return;
     let active = true;
     const headers = user?.id != null ? { "x-user-id": String(user.id) } : {};
-    Promise.allSettled([api("/equipment-identities", { headers }), api("/tags", { headers })])
-      .then(([equipment, tagData]) => {
+    Promise.allSettled([api("/equipment-identities", { headers }), api("/tags", { headers }), api("/base/equipment-fields", { headers }), api("/letters", { headers })])
+      .then(([equipment, tagData, definitionData, letterData]) => {
         if (!active) return;
         if (equipment.status === "fulfilled") setItems(Array.isArray(equipment.value?.items) ? equipment.value.items : []);
         else setError(equipment.reason?.message || "دریافت اطلاعات تجهیزات انجام نشد.");
         if (tagData.status === "fulfilled") setTags(Array.isArray(tagData.value?.items) ? tagData.value.items : []);
+        if (definitionData.status === "fulfilled") setDefinitions({
+          categories: Array.isArray(definitionData.value?.categories) ? definitionData.value.categories : [],
+          titles: Array.isArray(definitionData.value?.titles) ? definitionData.value.titles : [],
+          fields: Array.isArray(definitionData.value?.fields) ? definitionData.value.fields : [],
+        });
+        else setError(definitionData.reason?.message || "دریافت دسته‌بندی‌ها و فیلدهای تجهیزات انجام نشد.");
+        if (letterData.status === "fulfilled") setLetters(Array.isArray(letterData.value?.items) ? letterData.value.items : []);
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [authLoading, user?.id]);
 
   const visibleTags = useMemo(() => tags.filter((tag) => items.some((item) => item.tagIds?.map(String).includes(String(tag.id)))), [items, tags]);
+  const categorySections = useMemo(() => definitions.titles.map((title) => ({
+    title,
+    fields: definitions.fields.filter((field) => String(field.categoryId) === String(form.categoryId) && String(field.titleId) === String(title.id)),
+  })).filter((section) => section.fields.length), [definitions, form.categoryId]);
   const filteredItems = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("fa");
     return items.filter((item) => {
@@ -70,7 +91,9 @@ export default function EquipmentIdentityPage() {
 
   async function save(event) {
     event.preventDefault();
+    if (!form.categoryId) { setError("دسته‌بندی تجهیز را انتخاب کنید."); return; }
     if (!form.code.trim() || !form.name.trim()) { setError("کد تجهیز و نام تجهیز را وارد کنید."); return; }
+    if (uploading) { setError("تا پایان بارگذاری فایل صبر کنید."); return; }
     setSaving(true);
     setError("");
     try {
@@ -86,6 +109,23 @@ export default function EquipmentIdentityPage() {
     } catch (err) {
       setError(err.message === "duplicate_code" ? "این کد تجهیز قبلاً ثبت شده است." : err.message || "ثبت تجهیز انجام نشد.");
     } finally { setSaving(false); }
+  }
+
+  async function uploadFile(file) {
+    setUploading(true);
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch(`${String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "")}/equipment-identities/upload`, {
+        method: "POST", credentials: "include", headers: user?.id != null ? { "x-user-id": String(user.id) } : {}, body,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "بارگذاری فایل انجام نشد.");
+      setForm((old) => ({ ...old, files: [...old.files, data.file] }));
+      setUploadOpen(false);
+    } catch (err) { setError(err.message || "بارگذاری فایل انجام نشد."); }
+    finally { setUploading(false); }
   }
 
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -104,13 +144,20 @@ export default function EquipmentIdentityPage() {
         </div>
 
         {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03]">
+          <label className="mb-3 block max-w-sm"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{definitions.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
           <div className="flex flex-wrap items-end gap-3">
             <label className="min-w-[150px] flex-1"><span className={`block ${labelClass}`}>کد تجهیز *</span><input autoFocus maxLength={80} value={form.code} onChange={(event) => setForm((old) => ({ ...old, code: event.target.value }))} className={inputClass} /></label>
             <label className="min-w-[190px] flex-[1.4]"><span className={`block ${labelClass}`}>نام تجهیز *</span><input maxLength={255} value={form.name} onChange={(event) => setForm((old) => ({ ...old, name: event.target.value }))} className={inputClass} /></label>
-            <label className="min-w-[170px] flex-1"><span className={`block ${labelClass}`}>دسته‌بندی</span><input maxLength={120} value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass} /></label>
-            <button type="submit" disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="افزودن به جدول" aria-label="افزودن به جدول"><img src="/images/icons/afzodan.svg" alt="" className="h-4 w-4 dark:invert" /></button>
           </div>
+          <div className="mt-4 flex flex-wrap items-start gap-3">
+            <label className="block"><span className={`block ${labelClass}`}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></label>
+            <label className="block"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
+            <label className="block"><span className={`block ${labelClass}`}>مستندات</span><button type="button" disabled className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-neutral-400 dark:border-white/15 dark:bg-white/5" title="اتصال مستندات در مرحله بعد مشخص می‌شود"><FileText className="h-5 w-5" /></button></label>
+          </div>
+          {form.files.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{form.files.map((file, index) => <span key={file.url} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs dark:border-white/15 dark:bg-white/5"><a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name}</a><button type="button" onClick={() => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} aria-label="حذف فایل">×</button></span>)}</div>}
+          {categorySections.map(({ title, fields }) => <section key={title.id} className="mt-4 rounded-2xl border border-black/10 bg-white p-3 dark:border-white/10 dark:bg-white/[.03]"><h3 className="mb-3 border-b border-black/10 pb-2 text-sm font-bold dark:border-white/10">{title.name}</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{fields.map((field) => <label key={field.id} className="block"><span className={`block ${labelClass}`}>{field.name}</span><input type="text" value={form.fieldValues[String(field.id)] || ""} onChange={(event) => setForm((old) => ({ ...old, fieldValues: { ...old.fieldValues, [String(field.id)]: event.target.value } }))} maxLength={10000} className={inputClass} /></label>)}</div></section>)}
           {tags.length > 0 && <div className="mt-3"><div className={labelClass}>برچسب‌ها</div><div className="flex flex-wrap gap-2">{tags.map((tag, index) => <button key={tag.id} type="button" onClick={() => setForm((old) => ({ ...old, tagIds: old.tagIds.includes(String(tag.id)) ? old.tagIds.filter((id) => id !== String(tag.id)) : [...old.tagIds, String(tag.id)] }))} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${form.tagIds.includes(String(tag.id)) ? selectedTagColors[index % selectedTagColors.length] : tagColors[index % tagColors.length]}`}>{tag.label}</button>)}</div></div>}
+          <button type="submit" disabled={saving || uploading} className="mt-4 inline-flex h-11 items-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white transition hover:bg-black/90 disabled:opacity-50" title="ثبت تجهیز"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 brightness-0 invert" />{saving ? "در حال ثبت..." : "ثبت تجهیز"}</button>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
           <label className="block"><span className={`block ${labelClass}`}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در کد تجهیز، نام تجهیز و دسته‌بندی..." /></label>
           <div className="mt-2"><div className={labelClass}>برچسب‌ها</div><div className="-mx-1 flex flex-nowrap gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">{visibleTags.map((tag, index) => <button key={tag.id} type="button" onClick={() => { toggleTag(tag.id, filterTagIds, setFilterTagIds); setPage(0); }} className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium shadow-sm transition hover:brightness-95 ${filterTagIds.includes(String(tag.id)) ? selectedTagColors[index % selectedTagColors.length] : tagColors[index % tagColors.length]}`}>{tag.label}</button>)}</div></div>
@@ -123,5 +170,7 @@ export default function EquipmentIdentityPage() {
         </div>
       </div>
     </Card>
+    {letterPickerOpen && <RelatedLettersPickerModal api={api} title="انتخاب اسناد مرتبط" query={letterQuery} onQueryChange={setLetterQuery} loading={false} items={letters} selectedIds={draftLetterIds} onToggle={(id) => setDraftLetterIds((old) => old.includes(String(id)) ? old.filter((value) => value !== String(id)) : [...old, String(id)])} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: draftLetterIds })); setLetterPickerOpen(false); }} onClose={() => setLetterPickerOpen(false)} blackActions />}
+    {uploadOpen && <AttachmentImageEditor title="پیوست تجهیز" onClose={() => setUploadOpen(false)} onConfirm={uploadFile} />}
   </div>;
 }
