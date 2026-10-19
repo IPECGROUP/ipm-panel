@@ -1057,11 +1057,6 @@ export default function SupplyRequestPage() {
                     ))}
                   </select>
                 </Field>
-                <Field label="نوع درخواست">
-                  <select className={inputCls} value="" disabled aria-label="نوع درخواست">
-                    <option value="" />
-                  </select>
-                </Field>
                 <Field label="کد بودجه" required>
                   <select dir="rtl" value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} className={inputCls} disabled={!form.projectId}>
                     <option value="">{form.projectId ? "انتخاب کنید" : "ابتدا پروژه را انتخاب کنید"}</option>
@@ -1075,6 +1070,11 @@ export default function SupplyRequestPage() {
                         </option>
                       );
                     })}
+                  </select>
+                </Field>
+                <Field label="نوع درخواست">
+                  <select className={inputCls} value="" disabled aria-label="نوع درخواست">
+                    <option value="" />
                   </select>
                 </Field>
               </div>
@@ -1228,8 +1228,8 @@ export default function SupplyRequestPage() {
                   <col style={{ width: 16 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 120 }} />
-                  <col style={{ width: 100 }} />
                   <col style={{ width: 180 }} />
+                  <col style={{ width: 100 }} />
                   <col />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 140 }} />
@@ -1240,8 +1240,8 @@ export default function SupplyRequestPage() {
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" />
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">شماره</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">نوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
+                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">نوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
                     <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
                     <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-8 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>وضعیت</span><SupplyReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
@@ -1267,8 +1267,8 @@ export default function SupplyRequestPage() {
                           </button>
                         </td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">—</td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{itemProjectLabel(item, projects)}</span></td>
+                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">—</td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="mx-auto block truncate">{item.createdByName || `کاربر #${toFaDigits(item.createdById)}`}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><StatusBadge status={displayStatusOf(item)} /></td>
