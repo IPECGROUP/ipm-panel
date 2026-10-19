@@ -13,12 +13,12 @@ function normalizeDigits(value = "") {
   return toEnglishDigits(String(value ?? "")).replace(/[\u0660-\u0669]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
 }
 
-function ChoiceModal({ title, query, onQueryChange, loading, children, footer, onClose }) {
+function ChoiceModal({ title, query, onQueryChange, loading, children, footer, onClose, blackActions = false }) {
   return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5" dir="rtl">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
       <div className="relative flex max-h-[min(88vh,700px)] w-[min(760px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
-        <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b className="text-sm">{title}</b><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl border border-black/10 text-xl dark:border-white/10" aria-label="بستن">×</button></div>
+        <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b className="text-sm">{title}</b><button type="button" onClick={onClose} className={`grid h-10 w-10 place-items-center rounded-xl text-xl transition ${blackActions ? "bg-black text-white hover:bg-black/90" : "border border-black/10 dark:border-white/10"}`} aria-label="بستن">×</button></div>
         <div className="border-b border-black/10 p-3 dark:border-white/10"><input autoFocus value={query} onChange={(event) => onQueryChange(event.target.value)} className={inputClass} placeholder="جستجو با شماره، موضوع یا شرح..." /></div>
         <div className="min-h-40 flex-1 overflow-y-auto p-2">{loading ? <div className="p-5 text-center text-sm text-neutral-500">در حال دریافت...</div> : children}</div>
         {footer}
@@ -27,14 +27,14 @@ function ChoiceModal({ title, query, onQueryChange, loading, children, footer, o
   );
 }
 
-export default function RelatedLettersPickerModal({ api, title = "انتخاب نامه مرتبط", query, onQueryChange, loading, items, selectedIds, onToggle, onConfirm, onClose }) {
+export default function RelatedLettersPickerModal({ api, title = "انتخاب نامه مرتبط", query, onQueryChange, loading, items, selectedIds, onToggle, onConfirm, onClose, blackActions = false }) {
   const [previewLetter, setPreviewLetter] = useState(null);
   const normalizedQuery = normalizeDigits(query).trim().toLowerCase();
   const rows = (Array.isArray(items) ? items : []).filter((item) => !normalizedQuery || [item.letterNo, item.letter_no, item.secretariatNo, item.secretariat_no, item.subject, item.title, item.organization, item.companyName].map((value) => normalizeDigits(value).toLowerCase()).join(" ").includes(normalizedQuery));
   const visibleRows = rows.slice(0, 200);
 
-  const confirmFooter = typeof onConfirm === "function" ? <div className="flex shrink-0 justify-end border-t border-black/10 p-3 dark:border-white/10"><button type="button" onClick={onConfirm} className="grid h-10 min-w-10 place-items-center rounded-xl bg-black px-3 text-sm font-semibold text-white transition hover:bg-black/90 dark:bg-white dark:text-black" title="تأیید" aria-label="تأیید">✓</button></div> : null;
-  return <ChoiceModal title={title} query={query} onQueryChange={onQueryChange} loading={loading} footer={confirmFooter} onClose={onClose}>
+  const confirmFooter = typeof onConfirm === "function" ? <div className="flex shrink-0 justify-end border-t border-black/10 p-3 dark:border-white/10"><button type="button" onClick={onConfirm} className={`grid h-10 min-w-10 place-items-center rounded-xl bg-black px-3 text-sm font-semibold text-white transition hover:bg-black/90 ${blackActions ? "dark:bg-black dark:text-white" : "dark:bg-white dark:text-black"}`} title="تأیید انتخاب نامه" aria-label="تأیید انتخاب نامه">✓</button></div> : null;
+  return <ChoiceModal title={title} query={query} onQueryChange={onQueryChange} loading={loading} footer={confirmFooter} onClose={onClose} blackActions={blackActions}>
     {rows.length ? <div className="space-y-1">{visibleRows.map((item) => {
       const id = String(item.id);
       const checked = selectedIds.includes(id);

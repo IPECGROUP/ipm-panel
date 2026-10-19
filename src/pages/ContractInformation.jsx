@@ -1257,6 +1257,7 @@ export default function ContractInformation() {
   const [relatedPickOpen, setRelatedPickOpen] = React.useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = React.useState("");
   const [relatedPickTarget, setRelatedPickTarget] = React.useState("contract");
+  const [appendixRelatedPickIds, setAppendixRelatedPickIds] = React.useState([]);
   const [relatedSummaryOpen, setRelatedSummaryOpen] = React.useState(false);
   const [tagCategories, setTagCategories] = React.useState([]);
   const [tags, setTags] = React.useState([]);
@@ -1934,6 +1935,7 @@ export default function ContractInformation() {
   const openRelatedPicker = (target = "contract") => {
     setRelatedPickTarget(target);
     setRelatedPickQuery("");
+    if (target === "appendix") setAppendixRelatedPickIds(normalizeIdList(appendixDraft.relatedLetterIds));
     setRelatedSummaryOpen(false);
     setRelatedPickOpen(true);
   };
@@ -5532,15 +5534,17 @@ export default function ContractInformation() {
         <RelatedLettersPickerModal
           api={fetchJson}
           title="انتخاب اسناد مرتبط"
+          blackActions
           query={relatedPickQuery}
           onQueryChange={setRelatedPickQuery}
           loading={lettersLoading}
           items={letters}
-          selectedIds={normalizeIdList(appendixDraft.relatedLetterIds)}
-          onToggle={(id) => setAppendixDraft((prev) => {
-            const current = normalizeIdList(prev.relatedLetterIds);
-            return { ...prev, relatedLetterIds: current.includes(id) ? current.filter((item) => item !== id) : [...current, id] };
-          })}
+          selectedIds={appendixRelatedPickIds}
+          onToggle={(id) => setAppendixRelatedPickIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
+          onConfirm={() => {
+            setAppendixDraft((prev) => ({ ...prev, relatedLetterIds: appendixRelatedPickIds }));
+            setRelatedPickOpen(false);
+          }}
           onClose={() => setRelatedPickOpen(false)}
         />
       )}
