@@ -795,9 +795,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 md:grid-cols-3 xl:grid-cols-5">
         {metadata.map(({ label, value, secondary, recipient, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
-          {recipient ? <div className="grid w-full min-w-0 grid-cols-2 items-center">
-            <div className="min-w-0 px-2"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 whitespace-nowrap text-xs font-bold">{value}</p></div>
-            <div className="min-w-0 border-r border-neutral-300 px-2"><p className="text-[11px] text-neutral-500">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
+          {recipient ? <div className="relative grid w-full min-w-0 grid-cols-2 items-center before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-neutral-300">
+            <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 whitespace-nowrap text-xs font-bold">{value}</p></div>
+            <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-neutral-500">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
           </div> : <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
             {secondary && <p className="mt-1 text-[10px] text-neutral-500">{secondary}</p>}
           </div>}
