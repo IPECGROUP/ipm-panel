@@ -555,7 +555,7 @@ export default function PettyCashPage() {
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 items-center gap-3">
               {selectedReport && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-neutral-50"><FileText className="h-5 w-5" /></span>}
-               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "اقدامات تنخواه گردان" : selectedLegacyExpense ? "بررسی هزینه تنخواه" : "تنخواه‌های من"}</h2>
+               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "تسویه تنخواه" : selectedLegacyExpense ? "بررسی هزینه تنخواه" : "تنخواه‌های من"}</h2>
               </div>
             </div>
             <button type="button" disabled={reviewBusy} onClick={closeDialog} aria-label="بستن پنجره"
@@ -776,13 +776,6 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     const fileIndex = attachments.findIndex((file) => file.id === item.id);
     if (fileIndex >= 0) setAttachmentIndex(fileIndex);
   };
-  const rowStatus = (item) => (item.stage === "completed" ? "approved" : item.stage === "rejected" ? "rejected" : ["revision", "revision_requested"].includes(item.stage) ? "revision" : "pending");
-  const badges = {
-    approved: { label: "تأیید شده", className: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-    pending: { label: "در انتظار", className: "bg-sky-50 text-sky-700 border-sky-100" },
-    revision: { label: "درخواست اصلاح", className: "bg-amber-50 text-amber-700 border-amber-100" },
-    rejected: { label: "رد شده", className: "bg-red-50 text-red-700 border-red-100" },
-  };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
   const decisionCards = [
     { decision: "approve", label: "تأیید تنخواه گردان", description: "تأیید و ارسال به مرحله بعد", icon: "/images/icons/finishing-check.svg", iconClass: "bg-emerald-100", selectedClass: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)]" },
@@ -790,10 +783,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   ];
   const metadata = [
     { label: "شماره گزارش", value: report.reportNumber ? toFa(report.reportNumber) : "—", Icon: FileText },
-    { label: "تاریخ", value: reportDate(report.createdAt), Icon: CalendarDays },
+    { label: "تاریخ", value: reportDate(report.createdAt), secondary: `تنخواه‌گیرنده: ${report.createdByName || report.createdByUsername || "—"}`, Icon: CalendarDays },
     { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
     { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
-    { label: "مبلغ", value: `${money(entries.reduce((sum, item) => sum + amount(item.amount), 0n))} ریال`, Icon: FileText },
+    { label: "مبلغ گزارش", value: `${money(entries.reduce((sum, item) => sum + amount(item.amount), 0n))} ریال`, Icon: FileText },
   ];
 
   return <>
@@ -803,7 +796,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         {metadata.map(({ label, value, secondary, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
           <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
-            {secondary && <p className="mt-0.5 text-[10px] text-neutral-500">{secondary}</p>}
+            {secondary && <p className={`mt-1 text-[10px] text-neutral-500 ${label === "تاریخ" ? "border-t border-neutral-300 pt-1" : ""}`}>{secondary}</p>}
           </div>
         </div>)}
       </div>
@@ -812,47 +805,45 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <section className="min-w-0 overflow-hidden">
-             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات ردیف‌های گزارش تنخواه</h3>
+            <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[294px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[336px]">
               <table className="w-full min-w-[650px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
-                <colgroup><col className="w-12" /><col /><col className="w-24" /><col className="w-32" /><col className="w-32" /></colgroup>
+                <colgroup><col className="w-12" /><col /><col className="w-24" /><col className="w-32" /></colgroup>
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
-                  {["ردیف", "شرح", "کد بودجه", "مبلغ", "وضعیت"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
+                  {["ردیف", "شرح", "کد بودجه", "مبلغ گزارش"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
                 </tr></thead>
                 <tbody>{entries.map((item, index) => {
-                  const badge = badges[rowStatus(item)];
                   return <tr key={item.id} tabIndex={0} onClick={() => viewRow(item)}
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
                     className={`h-13 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2">{toFa(index + 1)}</td>
-                    <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{item.description}</td><td className="px-2">{toFa(item.budgetCode)}</td>
+                    <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="px-2">{toFa(item.budgetCode)}</td>
                     <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
-                    <td className="px-2"><span className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full border px-2 py-1 text-[11px] font-semibold ${badge.className}`}>{badge.label}</span></td>
                   </tr>;
                 })}</tbody>
               </table>
             </div>
           </section>
-          {!isCreatorView && canAct && <div className="grid gap-2 border-t border-neutral-200 p-3 sm:grid-cols-2">
+          {!isCreatorView && canAct && <div className="border-t border-neutral-200 p-3"><h3 className="mb-2 text-sm font-bold">نتیجه بررسی</h3><div className="grid gap-2 sm:grid-cols-2">
             {decisionCards.map(({ decision, label, description, icon, iconClass, selectedClass }) => {
               const checked = reportDecision === decision;
               return <div key={decision} className={`min-w-0 rounded-2xl border p-3 text-center transition ${checked ? selectedClass : "border-neutral-200 bg-white hover:border-neutral-300 hover:shadow-sm"}`}>
-                <button type="button" disabled={saving} onClick={() => setReportDecision(decision)} aria-pressed={checked}
-                  className="flex w-full flex-col items-center disabled:cursor-not-allowed disabled:opacity-45">
+                <button type="button" disabled={saving} onClick={() => setReportDecision(decision)} aria-pressed={checked} aria-label={label}
+                  className="flex min-h-[92px] w-full flex-col items-center justify-center disabled:cursor-not-allowed disabled:opacity-45">
                   <span className={`grid h-10 w-10 place-items-center rounded-full ${iconClass}`}><img src={icon} alt="" className="h-5 w-5" /></span>
-                  <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>
-                  <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>
+                  {decision !== "approve" && <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>}
+                  {decision !== "approve" && <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>}
                 </button>
                 {checked && decision === "revision" && <input type="text" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} maxLength={500}
                   aria-label="دلیل بازگشت کل گزارش" placeholder="دلیل بازگشت کل گزارش را وارد کنید..."
                   className="mt-3 h-9 w-full rounded-xl border border-neutral-300 bg-white px-2 text-center text-xs outline-none focus:border-neutral-500" />}
               </div>;
             })}
-          </div>}
+          </div></div>}
         </div>
 
-        <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
-          <h3 className="flex items-center gap-2 px-3 py-3 text-sm font-bold"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست</h3>
+        <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
+          <h3 className="flex items-center gap-2 px-3 py-3 text-sm font-bold"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست‌ها</h3>
           <div className="px-3">
             <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-64 xl:h-[min(34vh,400px)]">
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
@@ -878,9 +869,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           <div className="border-t border-neutral-200 p-3"><button type="button"
             disabled={!entries.length || !entries.every((item) => item.stage === "completed")}
             onClick={() => openPettyCashReportPdf(report)}
-            title={entries.length && entries.every((item) => item.stage === "completed") ? "مشاهده گزارش تنخواه" : "گزارش تنخواه پس از تأیید نهایی فعال می‌شود"}
+            title={entries.length && entries.every((item) => item.stage === "completed") ? "مشاهده PDF" : "گزارش تنخواه پس از تأیید نهایی فعال می‌شود"}
             className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40">
-            <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />گزارش تنخواه
+            <img src="/images/icons/print.svg" alt="" className="h-5 w-5" />مشاهده PDF
           </button></div>
         </aside>
       </div>
