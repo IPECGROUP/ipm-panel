@@ -30,6 +30,7 @@ import PettyCashPage from "./pages/PettyCashPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
+import EquipmentIdentityPage from "./pages/EquipmentIdentityPage.jsx";
 import KnowledgeManagementDashboardPage from "./pages/KnowledgeManagementDashboardPage.jsx";
 import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
@@ -142,7 +143,7 @@ export default function App() {
         <Route path="/supply/actions" element={<SupplyActionsRedirect />} />
         <Route path="/supply/dashboard" element={<SupplyManagementDashboardPage />} />
 
-        <Route path="/equipment/identity" element={<NavPlaceholderPage title="شناسنامه تجهیزات" />} />
+        <Route path="/equipment/identity" element={<EquipmentIdentityPage />} />
         <Route path="/equipment/service-maintenance" element={<NavPlaceholderPage title="سرویس و نگهداری" />} />
         <Route path="/equipment/repair-rebuild" element={<NavPlaceholderPage title="تعمیرات و بازسازی" />} />
 
