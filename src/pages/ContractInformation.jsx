@@ -3,6 +3,7 @@ import React from "react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
+import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { baseCurrenciesTablePreset as financialTablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { dayjs, isJalaliYmd } from "../utils/date";
@@ -2143,10 +2144,6 @@ export default function ContractInformation() {
 
   const saveAppendixRow = () => {
     const draft = makeAppendixRow(appendixDraft);
-    if (!draft.files.length) {
-      alert("بارگذاری فایل الحاقیه الزامی است.");
-      return;
-    }
     setForm((prev) => {
       const financial = normalizeFinancial(prev.financial || {});
       const appendices = editingAppendixId
@@ -4911,8 +4908,8 @@ export default function ContractInformation() {
                           </div>
 
                           <div className="min-w-0">
-                            <div className="text-[11px] text-black/45 dark:text-neutral-500">واگذارنده / کارفرما</div>
-                            <div className="truncate font-semibold">{row.general?.employerAssignor || companyText}</div>
+                            <div className="text-[11px] text-black/45 dark:text-neutral-500">{row.documentType === "sub" ? "مجری" : "واگذارنده / کارفرما"}</div>
+                            <div className="truncate font-semibold">{row.documentType === "sub" ? row.general?.executor || "ثبت نشده" : row.general?.employerAssignor || companyText}</div>
                             <div className="mt-1 truncate text-black/60 dark:text-neutral-400">{row.general?.contractSubject || "ثبت نشده"}</div>
                           </div>
 
@@ -5021,8 +5018,8 @@ export default function ContractInformation() {
                             <div className="mt-1 truncate text-xs text-black/50 dark:text-neutral-400" title={typeText}>{typeText}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
-                            <div className="w-full truncate text-right font-semibold" title={row.general?.employerAssignor || ""}>
-                              {row.general?.employerAssignor || "ثبت نشده"}
+                            <div className="w-full truncate text-right font-semibold" title={(row.documentType === "sub" ? row.general?.executor : row.general?.employerAssignor) || ""}>
+                              {(row.documentType === "sub" ? row.general?.executor : row.general?.employerAssignor) || "ثبت نشده"}
                             </div>
                             <div className="mt-1 w-full truncate text-right text-xs text-black/55 dark:text-neutral-400" title={row.general?.contractSubject || ""}>
                               {row.general?.contractSubject || "ثبت نشده"}
@@ -5531,7 +5528,24 @@ export default function ContractInformation() {
           document.body
         )}
 
-      {relatedPickOpen &&
+      {relatedPickOpen && relatedPickTarget === "appendix" && (
+        <RelatedLettersPickerModal
+          api={fetchJson}
+          title="انتخاب اسناد مرتبط"
+          query={relatedPickQuery}
+          onQueryChange={setRelatedPickQuery}
+          loading={lettersLoading}
+          items={letters}
+          selectedIds={normalizeIdList(appendixDraft.relatedLetterIds)}
+          onToggle={(id) => setAppendixDraft((prev) => {
+            const current = normalizeIdList(prev.relatedLetterIds);
+            return { ...prev, relatedLetterIds: current.includes(id) ? current.filter((item) => item !== id) : [...current, id] };
+          })}
+          onClose={() => setRelatedPickOpen(false)}
+        />
+      )}
+
+      {relatedPickOpen && relatedPickTarget !== "appendix" &&
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50" onClick={() => setRelatedPickOpen(false)} />

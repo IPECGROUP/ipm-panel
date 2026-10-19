@@ -27,14 +27,14 @@ function ChoiceModal({ title, query, onQueryChange, loading, children, footer, o
   );
 }
 
-export default function RelatedLettersPickerModal({ api, query, onQueryChange, loading, items, selectedIds, onToggle, onConfirm, onClose }) {
+export default function RelatedLettersPickerModal({ api, title = "انتخاب نامه مرتبط", query, onQueryChange, loading, items, selectedIds, onToggle, onConfirm, onClose }) {
   const [previewLetter, setPreviewLetter] = useState(null);
   const normalizedQuery = normalizeDigits(query).trim().toLowerCase();
   const rows = (Array.isArray(items) ? items : []).filter((item) => !normalizedQuery || [item.letterNo, item.letter_no, item.secretariatNo, item.secretariat_no, item.subject, item.title, item.organization, item.companyName].map((value) => normalizeDigits(value).toLowerCase()).join(" ").includes(normalizedQuery));
   const visibleRows = rows.slice(0, 200);
 
   const confirmFooter = typeof onConfirm === "function" ? <div className="flex shrink-0 justify-end border-t border-black/10 p-3 dark:border-white/10"><button type="button" onClick={onConfirm} className="grid h-10 min-w-10 place-items-center rounded-xl bg-black px-3 text-sm font-semibold text-white transition hover:bg-black/90 dark:bg-white dark:text-black" title="تأیید" aria-label="تأیید">✓</button></div> : null;
-  return <ChoiceModal title="انتخاب نامه مرتبط" query={query} onQueryChange={onQueryChange} loading={loading} footer={confirmFooter} onClose={onClose}>
+  return <ChoiceModal title={title} query={query} onQueryChange={onQueryChange} loading={loading} footer={confirmFooter} onClose={onClose}>
     {rows.length ? <div className="space-y-1">{visibleRows.map((item) => {
       const id = String(item.id);
       const checked = selectedIds.includes(id);

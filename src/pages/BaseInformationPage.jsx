@@ -4,6 +4,7 @@ import BaseCurrenciesPage from "./BaseCurrenciesPage.jsx";
 import BaseOptionsTable from "./BaseOptionsTable.jsx";
 import ContractManagementSection from "./ContractManagementSection.jsx";
 import FinancialManagementSection from "./FinancialManagementSection.jsx";
+import EquipmentManagementSection from "./EquipmentManagementSection.jsx";
 import ProjectLessonCategoryDescriptionsTable from "./ProjectLessonCategoryDescriptionsTable.jsx";
 
 const tabs = [
@@ -11,6 +12,7 @@ const tabs = [
   { id: "contracts", label: "مدیریت قرارداد ها" },
   { id: "finance", label: "مدیریت مالی" },
   { id: "supply", label: "مدیریت تامین" },
+  { id: "equipment", label: "مدیریت تجهیزات" },
   { id: "worksheet", label: "کاربرگ مالی" },
   { id: "knowledge", label: "مدیریت دانش" },
 ];
@@ -59,7 +61,7 @@ export default function BaseInformationPage() {
         </div>
 
         <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
-          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "supply" ? <BaseOptionsTable title="نوع درخواست" endpoint="/api/base/supply-request-types" /> : activeTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : (
+          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "supply" ? <BaseOptionsTable title="نوع درخواست" endpoint="/api/base/supply-request-types" /> : activeTab === "equipment" ? <EquipmentManagementSection /> : activeTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : (
             <div>
               <div className="mb-5 flex justify-start">
                 <div className="flex w-fit rounded-2xl border border-black/10 bg-neutral-50 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="گزینه‌های مدیریت دانش">
