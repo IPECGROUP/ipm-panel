@@ -7,17 +7,17 @@ import { api } from "../utils/api.js";
 const endpoint = "/base/equipment-fields";
 const inputClass = "h-10 w-full rounded-2xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5";
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
-const initialForm = { id: null, name: "", titleId: "" };
+const initialForm = { id: null, name: "", categoryId: "", titleId: "" };
 
-function DefinitionCell({ item, kind, onEdit, onDelete, busy }) {
+function DefinitionCell({ item, kind, onEdit, onDelete, busy, actions = true }) {
   if (!item) return <span className="text-neutral-400">—</span>;
   const label = kind === "category" ? "دسته‌بندی" : kind === "title" ? "تیتر" : "فیلد";
   return <div className="flex items-center justify-center gap-1">
     <span className="min-w-0 truncate" title={item.name}>{item.name}</span>
-    <span className="flex shrink-0 items-center opacity-60 transition hover:opacity-100">
+    {actions && <span className="flex shrink-0 items-center opacity-60 transition hover:opacity-100">
       <RowActionIconBtn action="edit" title={`ویرایش ${label}`} onClick={() => onEdit(kind, item)} disabled={busy} size={25} iconSize={12} />
       <RowActionIconBtn action="delete" title={`حذف ${label}`} onClick={() => onDelete(kind, item)} disabled={busy} size={25} iconSize={12} />
-    </span>
+    </span>}
   </div>;
 }
 
@@ -51,18 +51,20 @@ export default function EquipmentManagementSection() {
 
   const rows = useMemo(() => [
     ...data.categories.map((category) => ({ key: `c-${category.id}`, category })),
-    ...data.titles.flatMap((title) => {
-      const fields = data.fields.filter((field) => field.titleId === title.id);
-      if (!fields.length) return [{ key: `t-${title.id}`, title }];
-      return fields.map((field) => ({ key: `f-${field.id}`, title, field }));
-    }),
+    ...data.titles.map((title) => ({ key: `t-${title.id}`, title })),
+    ...data.fields.map((field) => ({
+      key: `f-${field.id}`,
+      category: data.categories.find((category) => category.id === field.categoryId),
+      title: data.titles.find((title) => title.id === field.titleId),
+      field,
+    })),
   ], [data]);
   const safePage = Math.min(page, Math.max(0, Math.ceil(rows.length / pageSize) - 1));
   const pageRows = rows.slice(safePage * pageSize, (safePage + 1) * pageSize);
 
   async function submit(kind, form, reset) {
     if (!form.name.trim()) { setError("نام را وارد کنید."); return; }
-    if (kind === "field" && !form.titleId) { setError("تیتر را انتخاب کنید."); return; }
+    if (kind === "field" && (!form.categoryId || !form.titleId)) { setError("دسته‌بندی و تیتر را انتخاب کنید."); return; }
     setBusy(true); setError("");
     try {
       await api(endpoint, { method: form.id ? "PATCH" : "POST", headers, body: JSON.stringify({ ...form, kind, name: form.name.trim() }) });
@@ -78,7 +80,7 @@ export default function EquipmentManagementSection() {
     if (kind === "category") setCategoryForm({ ...initialForm, id: item.id, name: item.name });
     if (kind === "title") setTitleForm({ ...initialForm, id: item.id, name: item.name });
     if (kind === "field") {
-      setFieldForm({ ...initialForm, id: item.id, name: item.name, titleId: String(item.titleId) });
+      setFieldForm({ ...initialForm, id: item.id, name: item.name, categoryId: String(item.categoryId || ""), titleId: String(item.titleId) });
     }
   }
 
@@ -92,7 +94,7 @@ export default function EquipmentManagementSection() {
       if (kind === "category" && categoryForm.id === item.id) setCategoryForm(initialForm);
       if (kind === "title" && titleForm.id === item.id) setTitleForm(initialForm);
       if (kind === "field" && fieldForm.id === item.id) setFieldForm(initialForm);
-    } catch (err) { setError(err.message || "حذف انجام نشد."); }
+    } catch (err) { setError(err.message === "category_in_use" ? "این دسته‌بندی به فیلد وصل است؛ ابتدا فیلد را حذف یا به دسته‌بندی دیگری منتقل کنید." : err.message || "حذف انجام نشد."); }
     finally { setBusy(false); }
   }
 
@@ -111,6 +113,7 @@ export default function EquipmentManagementSection() {
       </form>
       <form onSubmit={(event) => { event.preventDefault(); submit("field", fieldForm, setFieldForm); }} className="flex flex-wrap items-center gap-3">
         <span className="w-24 shrink-0 text-xs font-medium text-neutral-600 dark:text-neutral-300">فیلد</span>
+        <select className={`${inputClass} min-w-[155px] flex-1`} value={fieldForm.categoryId} onChange={(event) => setFieldForm((old) => ({ ...old, categoryId: event.target.value }))} required><option value="">دسته‌بندی را انتخاب کنید</option>{data.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select>
         <select className={`${inputClass} min-w-[155px] flex-1`} value={fieldForm.titleId} onChange={(event) => setFieldForm((old) => ({ ...old, titleId: event.target.value }))} required><option value="">تیتر را انتخاب کنید</option>{data.titles.map((title) => <option key={title.id} value={title.id}>{title.name}</option>)}</select>
         <input className={`${inputClass} min-w-[155px] flex-1`} maxLength={120} value={fieldForm.name} onChange={(event) => setFieldForm((old) => ({ ...old, name: event.target.value }))} placeholder="نام فیلد..." />
         <ActionButtons editing={!!fieldForm.id} busy={busy} onCancel={() => setFieldForm(initialForm)} label="فیلد" />
@@ -125,8 +128,8 @@ export default function EquipmentManagementSection() {
           <thead><tr className="sticky top-0 z-10 border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800"><th>ردیف</th><th>دسته‌بندی</th><th>تیتر</th><th>فیلد</th></tr></thead>
           <tbody className="text-[13px] [&>tr]:h-10">{loading || !pageRows.length ? <tr><td colSpan={4} className="py-8 text-neutral-500">{loading ? "در حال دریافت..." : "هنوز موردی ثبت نشده است."}</td></tr> : pageRows.map((row, index) => <tr key={row.key} className="bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
             <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{toFa(safePage * pageSize + index + 1)}</td>
-            <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><DefinitionCell item={row.category} kind="category" onEdit={edit} onDelete={remove} busy={busy} /></td>
-            <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><DefinitionCell item={row.title} kind="title" onEdit={edit} onDelete={remove} busy={busy} /></td>
+            <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><DefinitionCell item={row.category} kind="category" onEdit={edit} onDelete={remove} busy={busy} actions={!row.field} /></td>
+            <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><DefinitionCell item={row.title} kind="title" onEdit={edit} onDelete={remove} busy={busy} actions={!row.field} /></td>
             <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><DefinitionCell item={row.field} kind="field" onEdit={edit} onDelete={remove} busy={busy} /></td>
           </tr>)}</tbody>
         </table>
