@@ -16,5 +16,12 @@ export function equipmentDefinitionsFromResponse(response) {
     titles.set(titleId, { id: row.titleId, categoryId: row.categoryId, name: row.title });
     fields.push({ id: row.id, categoryId: row.categoryId, titleId: row.titleId, name: row.field });
   });
+  const specifications = Array.isArray(response.specifications) ? response.specifications : [];
+  specifications.slice().sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true })).forEach((item) => {
+    if (item.id == null || item.categoryId == null) return;
+    const titleId = `spec:${item.categoryId}`;
+    titles.set(titleId, { id: titleId, categoryId: item.categoryId, name: "مشخصات تجهیزات" });
+    fields.push({ id: `spec:${item.id}`, categoryId: item.categoryId, titleId, name: `${item.code} - ${item.name}` });
+  });
   return { categories: [...categories.values()], titles: [...titles.values()], fields };
 }
