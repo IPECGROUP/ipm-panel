@@ -4,7 +4,7 @@ import { useAuth } from "./AuthProvider.jsx";
 import { api } from "../utils/api.js";
 
 const endpoint = "/base/equipment-fields";
-const emptyForm = { category: "", title: "", field: "" };
+const emptyForm = { categoryId: "", title: "", field: "" };
 const inputClass = "h-10 w-full rounded-xl border border-black/15 bg-white px-3 text-right text-sm text-neutral-900 outline-none focus:border-neutral-500 dark:border-white/20 dark:bg-neutral-800 dark:text-white";
 const checkboxClass = "h-4 w-4 accent-black dark:accent-neutral-200";
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
@@ -13,6 +13,7 @@ export default function EquipmentCategoryTree() {
   const { user, loading: authLoading } = useAuth();
   const headers = useMemo(() => user?.id != null ? { "x-user-id": String(user.id) } : {}, [user?.id]);
   const [rows, setRows] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
@@ -27,7 +28,7 @@ export default function EquipmentCategoryTree() {
     if (authLoading) return;
     let current = true;
     api(endpoint, { headers })
-      .then((result) => { if (current) setRows(Array.isArray(result.rows) ? result.rows : []); })
+      .then((result) => { if (current) { setRows(Array.isArray(result.rows) ? result.rows : []); setCategories(Array.isArray(result.categories) ? result.categories : []); } })
       .catch((err) => { if (current) setError(err.message || "دریافت اطلاعات انجام نشد."); })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
@@ -41,6 +42,7 @@ export default function EquipmentCategoryTree() {
   async function reload() {
     const result = await api(endpoint, { headers });
     setRows(Array.isArray(result.rows) ? result.rows : []);
+    setCategories(Array.isArray(result.categories) ? result.categories : []);
   }
 
   async function save(event) {
@@ -63,7 +65,7 @@ export default function EquipmentCategoryTree() {
 
   function editSelected() {
     if (!selectedRow) return;
-    setForm({ category: selectedRow.category, title: selectedRow.title, field: selectedRow.field });
+    setForm({ categoryId: String(selectedRow.categoryId), title: selectedRow.title, field: selectedRow.field });
     setEditingId(selectedRow.id);
     setMenuOpen(false); setError("");
   }
@@ -86,12 +88,12 @@ export default function EquipmentCategoryTree() {
   return <section dir="rtl" className="rounded-2xl bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
     <div className="mb-5 flex items-center gap-3">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[.03] dark:border-white/10 dark:bg-white/[.06]"><img src="/images/icons/sakhtar-shekast.svg" alt="" className="h-6 w-6 dark:invert" /></span>
-      <div><h2 className="text-base font-bold">دسته‌بندی تجهیزات</h2><p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">تعریف دسته‌بندی، تیتر و فیلد</p></div>
+      <div><h2 className="text-base font-bold">مشخصات تجهیزات</h2><p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">تعریف تیتر و فیلد برای دسته‌بندی</p></div>
     </div>
 
     <div className="rounded-2xl border border-black/10 p-3 dark:border-white/10 md:p-4">
       <form onSubmit={save} className="grid gap-3 md:grid-cols-3 md:items-end">
-        <label className="block min-w-0"><span className="mb-1 block text-sm">دسته‌بندی</span><input required maxLength={120} value={form.category} onChange={(event) => setForm((old) => ({ ...old, category: event.target.value }))} className={inputClass} placeholder="نام دسته‌بندی" /></label>
+        <label className="block min-w-0"><span className="mb-1 block text-sm">دسته‌بندی</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
         <label className="block min-w-0"><span className="mb-1 block text-sm">تیتر</span><input required maxLength={120} value={form.title} onChange={(event) => setForm((old) => ({ ...old, title: event.target.value }))} className={inputClass} placeholder="تیتر این دسته‌بندی" /></label>
         <label className="block min-w-0"><span className="mb-1 block text-sm">فیلد</span><span className="flex gap-2"><input required maxLength={120} value={form.field} onChange={(event) => setForm((old) => ({ ...old, field: event.target.value }))} className={inputClass} placeholder="فیلد این تیتر" /><button type="submit" disabled={busy} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white hover:bg-neutral-100 disabled:opacity-40 dark:border-white/20 dark:bg-neutral-800" aria-label={editingId ? "ذخیره تغییرات" : "افزودن"}><img src={editingId ? "/images/icons/check.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button>{editingId && <button type="button" onClick={() => { setEditingId(null); setForm(emptyForm); setError(""); }} className="px-2 text-xs">انصراف</button>}</span></label>
       </form>

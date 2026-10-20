@@ -5,7 +5,7 @@ export function equipmentDefinitionsFromResponse(response) {
     fields: Array.isArray(response?.fields) ? response.fields : [],
   };
 
-  const categories = new Map();
+  const categories = new Map((Array.isArray(response.categories) ? response.categories : []).map((item) => [String(item.id), item]));
   const titles = new Map();
   const fields = [];
   response.rows.forEach((row) => {

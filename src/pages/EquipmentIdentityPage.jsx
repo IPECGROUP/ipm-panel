@@ -55,7 +55,7 @@ export default function EquipmentIdentityPage() {
     title,
     fields: definitions.fields.filter((field) => String(field.categoryId) === String(form.categoryId) && String(field.titleId) === String(title.id)),
   })).filter((section) => section.fields.length), [definitions, form.categoryId]);
-  const availableCategories = useMemo(() => definitions.categories.filter((category) => definitions.fields.some((field) => String(field.categoryId) === String(category.id))), [definitions]);
+  const availableCategories = definitions.categories;
   const tableSections = useMemo(() => {
     const sections = new Map();
     definitions.fields.forEach((field) => {
