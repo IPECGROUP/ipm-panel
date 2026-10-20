@@ -56,15 +56,21 @@ export default function EquipmentIdentityPage() {
     title,
     fields: definitions.fields.filter((field) => String(field.categoryId) === String(form.categoryId) && String(field.titleId) === String(title.id)),
   })).filter((section) => section.fields.length), [definitions, form.categoryId]);
-  const tableSections = useMemo(() => definitions.titles.map((title) => {
-    const columns = new Map();
-    definitions.fields.filter((field) => String(field.titleId) === String(title.id)).forEach((field) => {
-      const key = field.name.trim().toLocaleLowerCase("fa");
-      if (!columns.has(key)) columns.set(key, { key: `${title.id}-${key}`, name: field.name, categoryFields: [] });
-      columns.get(key).categoryFields.push(field);
+  const availableCategories = useMemo(() => definitions.categories.filter((category) => definitions.fields.some((field) => String(field.categoryId) === String(category.id))), [definitions]);
+  const tableSections = useMemo(() => {
+    const sections = new Map();
+    definitions.fields.forEach((field) => {
+      const title = definitions.titles.find((item) => String(item.id) === String(field.titleId));
+      if (!title) return;
+      const titleKey = title.name.trim().toLocaleLowerCase("fa");
+      if (!sections.has(titleKey)) sections.set(titleKey, { title, fields: new Map() });
+      const section = sections.get(titleKey);
+      const fieldKey = field.name.trim().toLocaleLowerCase("fa");
+      if (!section.fields.has(fieldKey)) section.fields.set(fieldKey, { key: `${titleKey}-${fieldKey}`, name: field.name, categoryFields: [] });
+      section.fields.get(fieldKey).categoryFields.push(field);
     });
-    return { title, fields: [...columns.values()] };
-  }).filter((section) => section.fields.length), [definitions]);
+    return [...sections.values()].map((section) => ({ title: section.title, fields: [...section.fields.values()] }));
+  }, [definitions]);
   const tableFields = useMemo(() => tableSections.flatMap((section) => section.fields), [tableSections]);
   const filteredItems = useMemo(() => {
     const terms = query.trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
@@ -131,7 +137,7 @@ export default function EquipmentIdentityPage() {
         </div>
 
         {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
-          <label className="mb-3 block max-w-sm"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{definitions.categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label className="mb-3 block max-w-sm"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
           <div className="mt-4 flex flex-wrap items-start gap-3">
             <label className="block"><span className={`block ${labelClass}`}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></label>
             <label className="block"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
