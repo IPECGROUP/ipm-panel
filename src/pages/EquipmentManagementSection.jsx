@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
-import CostBreakdownDemo from "../components/CostBreakdownDemo.jsx";
+import EquipmentCategoryTree from "../components/EquipmentCategoryTree.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 
@@ -163,7 +163,7 @@ export default function EquipmentManagementSection() {
         <BaseTablePager total={rows.length} page={safePage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
       </div>
       {menuOpen && createPortal(<div ref={menuRef} dir="rtl" style={menuPosition} className="fixed z-[10001] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${toFa(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div><button type="button" disabled={!selectedItem || busy} onClick={() => { edit(selectedItem); setMenuOpen(false); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش</span></button><button type="button" disabled={!selectedIds.size || busy} onClick={() => { setMenuOpen(false); removeSelected(); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="text-sm font-semibold">حذف موارد انتخاب‌شده</span></button></div>, document.body)}
-      {active === "category" && <CostBreakdownDemo />}
+      {active === "category" && <EquipmentCategoryTree />}
     </div>
   </section>;
 }
