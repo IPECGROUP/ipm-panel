@@ -83,19 +83,10 @@ export default function EquipmentCategoryTree() {
     finally { setBusy(false); }
   }
 
-  async function exportExcel() {
-    const XLSX = await import("xlsx");
-    const sheet = XLSX.utils.json_to_sheet(rows.map((row) => ({ "دسته‌بندی": row.category, "تیتر": row.title, "فیلد": row.field })));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, sheet, "دسته بندی تجهیزات");
-    XLSX.writeFile(workbook, "equipment-categories.xlsx");
-  }
-
   return <section dir="rtl" className="rounded-2xl bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
     <div className="mb-5 flex items-center gap-3">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[.03] dark:border-white/10 dark:bg-white/[.06]"><img src="/images/icons/sakhtar-shekast.svg" alt="" className="h-6 w-6 dark:invert" /></span>
       <div><h2 className="text-base font-bold">دسته‌بندی تجهیزات</h2><p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">تعریف دسته‌بندی، تیتر و فیلد</p></div>
-      <button type="button" onClick={exportExcel} disabled={!rows.length} className="mr-auto grid h-10 w-10 place-items-center rounded-xl border border-emerald-200 bg-emerald-50 transition hover:bg-emerald-100 disabled:opacity-40 dark:border-emerald-400/25 dark:bg-emerald-500/10" title="خروجی اکسل" aria-label="خروجی اکسل"><img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" /></button>
     </div>
 
     <div className="rounded-2xl border border-black/10 p-3 dark:border-white/10 md:p-4">
