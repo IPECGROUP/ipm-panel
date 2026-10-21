@@ -21,7 +21,7 @@ export function equipmentDefinitionsFromResponse(response) {
     if (item.id == null || item.categoryId == null) return;
     const titleId = `spec:${item.categoryId}`;
     titles.set(titleId, { id: titleId, categoryId: item.categoryId, name: "مشخصات تجهیزات" });
-    fields.push({ id: `spec:${item.id}`, categoryId: item.categoryId, titleId, name: `${item.code} - ${item.name}` });
+    fields.push({ id: `spec:${item.id}`, categoryId: item.categoryId, titleId, name: `${item.code} - ${item.name}`, englishName: item.englishName || "" });
   });
   return { categories: [...categories.values()], titles: [...titles.values()], fields };
 }

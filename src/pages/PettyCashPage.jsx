@@ -1664,7 +1664,7 @@ async function compressExpensePhoto(source, image, turns, crop) {
   return { file, width: canvas.width, height: canvas.height };
 }
 
-export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm, onAddImages, onViewFiles, title = "پیوست هزینه" }) {
+export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onClose, onConfirm, onAddImages, onViewFiles, title = "پیوست هزینه", zIndex = 1500 }) {
   const [source, setSource] = useState(null);
   const [image, setImage] = useState(null);
   const [documentFile, setDocumentFile] = useState(null);
@@ -1843,7 +1843,7 @@ export function PettyCashPhotoEditor({ initialFile, initialUrl, initialName, onC
   const toolbarButton = "inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold transition hover:bg-neutral-50 disabled:opacity-40 sm:text-sm";
 
   return createPortal(
-    <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6" style={{ zIndex }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="petty-cash-photo-title" dir="rtl"
         className="flex max-h-[92dvh] w-full max-w-[1000px] flex-col overflow-hidden rounded-3xl border border-white/30 bg-white text-neutral-900 shadow-2xl">
         <header className="flex items-center justify-between gap-4 border-b border-neutral-100 px-5 py-4">

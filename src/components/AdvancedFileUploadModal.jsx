@@ -49,6 +49,7 @@ export default function AdvancedFileUploadModal({
   multiple = false,
   selectionHint = "",
   confirmLabel = "تأیید پیوست",
+  zIndex = 9999,
 }) {
   const inputRef = useRef(null);
   const dialogRef = useRef(null);
@@ -78,7 +79,7 @@ export default function AdvancedFileUploadModal({
   }, [onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999]" dir="rtl">
+    <div className="fixed inset-0" style={{ zIndex }} dir="rtl">
       <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onMouseDown={onClose} />
       <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
         <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="advanced-upload-title"

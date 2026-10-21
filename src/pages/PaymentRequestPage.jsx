@@ -2249,6 +2249,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const [imageAttachment, setImageAttachment] = useState(null);
   const [previewAttachmentIndex, setPreviewAttachmentIndex] = useState(0);
+  const [editUploadOpen, setEditUploadOpen] = useState(false);
+  const [editAttachmentEditor, setEditAttachmentEditor] = useState(null);
+  const [editAttachmentQueue, setEditAttachmentQueue] = useState([]);
   const relatedLetterIds = Array.isArray(item.relatedLetterIds) ? item.relatedLetterIds.map(String) : [];
   const embeddedRelatedLetters = useMemo(() => Array.isArray(item.relatedLetters) ? item.relatedLetters : [], [item.relatedLetters]);
   const [relatedLetterDetails, setRelatedLetterDetails] = useState({});
@@ -2317,10 +2320,10 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const history = Array.isArray(item.historyJson) ? item.historyJson : Array.isArray(item.history_json) ? item.history_json : [];
   const currentStepRoleKey = item.currentStepRoleKey || "";
   useEffect(() => {
-    const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+    const closeOnEscape = (event) => { if (event.key === "Escape" && !editUploadOpen && !editAttachmentEditor) onClose(); };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [onClose]);
+  }, [editUploadOpen, editAttachmentEditor, onClose]);
   const canDecide = item.status === "pending" && item.canAct === true && !item.__actionLocked && !actionBusy;
   const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
   const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
@@ -2487,13 +2490,12 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     });
   };
 
-  const uploadEditFiles = async (fileList) => {
+  const uploadEditFiles = async (fileList, replaceIndex = null) => {
     const files = Array.from(fileList || []);
-    if (!files.length) return;
+    if (!files.length) return false;
     setEditUploading(true);
     setEditUploadError("");
     try {
-      const uploaded = [];
       for (const file of files) {
         const body = new FormData();
         body.append("file", file);
@@ -2505,14 +2507,38 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || "upload_failed");
-        uploaded.push(data.file || data);
+        const uploaded = data.file || data;
+        setEditForm((old) => ({ ...old, attachments: replaceIndex == null
+          ? [...old.attachments, uploaded]
+          : old.attachments.map((item, index) => index === replaceIndex ? uploaded : item) }));
       }
-      setEditForm((old) => ({ ...old, attachments: [...old.attachments, ...uploaded] }));
+      return true;
     } catch {
       setEditUploadError("آپلود فایل انجام نشد.");
+      return false;
     } finally {
       setEditUploading(false);
     }
+  };
+
+  const selectEditPaymentFiles = async (fileList) => {
+    const files = Array.from(fileList || []);
+    const editable = files.filter((file) => /\.(jpe?g|png|webp|pdf)$/i.test(file.name));
+    const other = files.filter((file) => !editable.includes(file));
+    if (other.length && !(await uploadEditFiles(other))) return;
+    if (editable.length) {
+      setEditAttachmentQueue(editable);
+      setEditAttachmentEditor({ file: editable[0], sequence: 0 });
+      setEditUploadOpen(false);
+    }
+  };
+
+  const confirmEditPaymentAttachment = async (file) => {
+    if (!(await uploadEditFiles([file], editAttachmentEditor?.index ?? null))) return;
+    const remaining = editAttachmentEditor?.existing ? editAttachmentQueue : editAttachmentQueue.slice(1);
+    setEditAttachmentQueue(remaining);
+    if (remaining.length) setEditAttachmentEditor({ file: remaining[0], sequence: (editAttachmentEditor?.sequence || 0) + 1 });
+    else { setEditAttachmentEditor(null); setEditUploadOpen(true); }
   };
 
   const removeEditAttachment = (index) => {
@@ -3001,10 +3027,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                       <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
                       <button type="button" onClick={() => removeEditAttachment(index)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" aria-label="حذف پیوست" title="حذف پیوست">×</button>
                     </span>)}
-                    <label className="grid h-9 w-9 cursor-pointer place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editUploading ? "در حال آپلود" : "بارگذاری"} aria-label={editUploading ? "در حال آپلود" : "بارگذاری"}>
+                    <button type="button" disabled={editUploading} onClick={() => setEditUploadOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editUploading ? "در حال آپلود" : "بارگذاری"} aria-label={editUploading ? "در حال آپلود" : "بارگذاری"}>
                       <img src="/images/icons/upload.svg" alt="" className={`h-4 w-4 dark:invert ${editUploading ? "animate-pulse opacity-60" : ""}`} />
-                      <input type="file" multiple accept="image/*,.heic,.heif,.pdf" className="hidden" onChange={(event) => uploadEditFiles(event.target.files)} />
-                    </label>
+                    </button>
                   </div>
                 ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
                   <PreviewRow compact editing={canEditRelatedDocuments} colon leader={!canEditRelatedDocuments} label="اسناد مرتبط" value={canEditRelatedDocuments ? <div className="flex flex-wrap items-center justify-end gap-2">
@@ -3070,6 +3095,17 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           </div>
           {relatedLetterPreview && <DocumentPreviewModal letter={relatedLetterPreview} api={api} onClose={() => setRelatedLetterPreview(null)} />}
           {imageAttachment && <ImageAttachmentViewer file={imageAttachment} onClose={() => setImageAttachment(null)} />}
+          {editUploadOpen && <AdvancedFileUploadModal title="بارگذاری اسناد درخواست پرداخت" files={editAttachments} uploading={editUploading} onSelectFiles={selectEditPaymentFiles} onRemove={removeEditAttachment}
+            onEditFile={(file, index) => { setEditAttachmentQueue([]); setEditAttachmentEditor({ existing: file, index }); setEditUploadOpen(false); }}
+            isEditableFile={(file) => /\.(jpe?g|png|webp|pdf)$/i.test(file.name || file.url || "")}
+            accept="image/*,.pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" allowedTypes="تصویر، PDF، Word و Excel" multiple selectionHint="می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."
+            zIndex={10000} onClose={() => setEditUploadOpen(false)} />}
+          {editAttachmentEditor && <AttachmentImageEditor
+            key={editAttachmentEditor.file ? `${editAttachmentEditor.file.name}-${editAttachmentEditor.file.lastModified}-${editAttachmentEditor.sequence}` : `${editAttachmentEditor.existing?.url}-${editAttachmentEditor.index}`}
+            title="پیوست درخواست پرداخت" initialFile={editAttachmentEditor.file} initialUrl={editAttachmentEditor.existing?.url} initialName={editAttachmentEditor.existing?.name}
+            zIndex={10001} onClose={() => { setEditAttachmentQueue([]); setEditAttachmentEditor(null); setEditUploadOpen(true); }}
+            onConfirm={confirmEditPaymentAttachment}
+            onAddImages={(fileList) => setEditAttachmentQueue((queue) => [...queue, ...Array.from(fileList || []).filter((file) => /\.(jpe?g|png|webp)$/i.test(file.name))])} />}
           {editLetterPickerOpen && <RelatedLettersPickerModal
             api={api}
             query={editLetterPickerQuery}
