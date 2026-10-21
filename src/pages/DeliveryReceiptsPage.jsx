@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, ExternalLink, FileText, Printer, UserRound } from "lucide-react";
+import { CalendarDays, FileText, Printer, UserRound } from "lucide-react";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import Card from "../components/ui/Card.jsx";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
@@ -147,44 +147,116 @@ function escapeHtml(value) {
 
 async function openReceiptPrintPreview(item) {
   const files = Array.isArray(item.files) ? item.files : [];
-  const printWindow = window.open("", "_blank", "width=1050,height=800");
+  const printWindow = window.open("", "_blank", "width=1150,height=850");
   if (!printWindow) return;
   printWindow.document.write('<!doctype html><html lang="fa" dir="rtl"><meta charset="utf-8"><body style="font-family:Tahoma;padding:30px">در حال آماده‌سازی پیش‌نمایش چاپ...</body></html>');
   printWindow.document.close();
-  let pdfjs;
-  const attachmentRows = await Promise.all(files.map(async (file, index) => {
-    const url = new URL(file.url, window.location.href).href;
-    const label = `<div>پیوست ${toFa(index + 1)}: ${escapeHtml(file.name || "فایل")}</div>`;
-    if (isImage(file)) return `<div class="attachment">${label}<img src="${escapeHtml(url)}" alt="${escapeHtml(file.name || "پیوست")}" /></div>`;
-    if (isPdf(file)) {
-      try {
-        if (!pdfjs) { pdfjs = await import("pdfjs-dist"); pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl; }
-        const pdf = await pdfjs.getDocument({ url, withCredentials: true }).promise;
-        try {
-          const pages = [];
-          for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-            const page = await pdf.getPage(pageNumber);
-            const viewport = page.getViewport({ scale: 1.6 });
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.ceil(viewport.width);
-            canvas.height = Math.ceil(viewport.height);
-            await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-            pages.push(`<div class="attachment">${label}<small>صفحه ${toFa(pageNumber)} از ${toFa(pdf.numPages)}</small><img src="${canvas.toDataURL("image/png")}" alt="${escapeHtml(file.name || "پیوست")}" /></div>`);
-            canvas.width = 0;
-            canvas.height = 0;
-            page.cleanup();
-          }
-          return pages.join("");
-        } finally { await pdf.destroy(); }
-      } catch (error) { console.warn("delivery_receipt_pdf_preview_failed", error); }
-    }
-    return `<div class="attachment">${label}<a href="${escapeHtml(url)}">باز کردن فایل</a></div>`;
-  }));
+  const attachmentRows = files.map((file, index) => {
+    const name = String(file.name || `فایل ${index + 1}`);
+    let url = "";
+    try {
+      const parsed = new URL(file.url, window.location.href);
+      if (["http:", "https:"].includes(parsed.protocol)) url = parsed.href;
+    } catch { /* The fallback page below explains an inaccessible attachment. */ }
+    const attachmentPage = (content, caption = `پیوست ${toFa(index + 1)}`) => `<article class="sheet attachment-page"><div class="attachment-header"><span>${caption}</span><strong dir="auto">${escapeHtml(name)}</strong></div><div class="attachment-body">${content}</div><footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${caption}</span></footer></article>`;
+    if (!url) return attachmentPage('<div class="no-preview">آدرس فایل برای پیش‌نمایش در دسترس نیست.</div>');
+    if (isImage(file)) return attachmentPage(`<img class="attachment-image" src="${escapeHtml(url)}" alt="${escapeHtml(name)}" />`);
+    if (isPdf(file)) return attachmentPage(`<object class="attachment-pdf" data="${escapeHtml(url)}#view=FitH&toolbar=1" type="application/pdf"><iframe title="${escapeHtml(name)}" src="${escapeHtml(url)}#view=FitH&toolbar=1"></iframe></object><a class="original-file" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">باز کردن و چاپ فایل PDF اصلی</a>`);
+    return attachmentPage(`<div class="no-preview">پیش‌نمایش این نوع فایل در مرورگر پشتیبانی نمی‌شود.</div><a class="original-file" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">باز کردن فایل اصلی</a>`);
+  });
   if (printWindow.closed) return;
-  const attachmentMarkup = attachmentRows.length ? attachmentRows.join("") : "<p>پیوستی ثبت نشده است.</p>";
+  const now = new Date();
+  const reportDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+  const reportTime = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
+  const infoCard = (label, value) => `<div class="info-card"><div class="label">${label}</div><div class="value">${escapeHtml(toFa(value || "—"))}</div></div>`;
+  const origin = window.location.origin;
   printWindow.document.open();
-  printWindow.document.write(`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8" /><title>رسید تحویل - ${escapeHtml(item.title)}</title><style>@page{size:A4;margin:16mm}body{font-family:Vazir,Tahoma,sans-serif;color:#171717;margin:0;background:#eee}.sheet{max-width:210mm;min-height:260mm;margin:20px auto;padding:18mm;background:#fff;box-sizing:border-box}header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #222;padding-bottom:12px}header img{width:80px}h1{font-size:20px}h2{font-size:15px;margin-top:28px;border-bottom:1px solid #ddd;padding-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{border:1px solid #ddd;border-radius:8px;padding:12px}.field span{display:block;color:#666;font-size:11px}.field strong{display:block;margin-top:6px;font-size:13px;overflow-wrap:anywhere}.attachment{margin:12px 0;break-inside:avoid}.attachment img{display:block;max-width:100%;max-height:210mm;margin:10px auto;object-fit:contain}.actions{position:sticky;top:0;padding:10px;text-align:center;background:#eee}.actions button{border:0;border-radius:8px;background:#111;color:#fff;padding:10px 22px;cursor:pointer}@media print{body{background:#fff}.sheet{margin:0;padding:0;min-height:auto}.actions{display:none}}</style></head><body><div class="actions"><button onclick="window.print()">چاپ / ذخیره PDF</button></div><article class="sheet"><header><div><h1>رسید تحویل</h1><div>دبیرخانه</div></div><img src="${window.location.origin}/images/ips%20redesign%20logo.png" alt="IPEC" /></header><h2>جزئیات رسید تحویل</h2><div class="grid"><div class="field"><span>تاریخ</span><strong>${escapeHtml(toFa(String(item.date || "—").replaceAll("-", "/")))}</strong></div><div class="field"><span>نوع</span><strong>${escapeHtml(item.type || "—")}</strong></div><div class="field"><span>عنوان</span><strong>${escapeHtml(item.title || "—")}</strong></div><div class="field"><span>گیرنده</span><strong>${escapeHtml(item.recipient || "—")}</strong></div></div><h2>پیوست‌ها</h2>${attachmentMarkup}</article></body></html>`);
+  printWindow.document.write(`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>رسید تحویل - ${escapeHtml(item.title)}</title><style>
+@font-face{font-family:Vazir;src:url("${origin}/fonts/Vazir.woff2") format("woff2");font-weight:400}
+@font-face{font-family:Vazir;src:url("${origin}/fonts/Vazir-Bold.woff2") format("woff2");font-weight:700}
+@page{size:A4;margin:8mm}*{box-sizing:border-box}body{margin:0;background:#eef1f4;color:#16202a;font:9.5px/1.55 Vazir,Tahoma,Arial,sans-serif}
+.toolbar{position:sticky;top:0;z-index:20;display:flex;justify-content:center;gap:8px;padding:12px;background:rgba(238,241,244,.96);border-bottom:1px solid #d7dde3}
+.toolbar button{min-height:38px;border:1px solid #17212b;border-radius:9px;padding:0 16px;background:#17212b;color:#fff;font:700 12px Vazir,Tahoma,sans-serif;cursor:pointer}.toolbar .secondary{background:#fff;color:#17212b}
+.sheet{width:210mm;min-height:297mm;margin:14px auto;padding:8mm;background:#fff;box-shadow:0 10px 35px rgba(20,30,40,.12)}
+.header{display:grid;grid-template-columns:44mm 1fr 44mm;align-items:center;min-height:21mm;border:1.5px solid #182531;border-radius:11px;overflow:hidden}
+.logo{display:flex;height:100%;align-items:center;justify-content:center;padding:4px;border-left:1px solid #d5dbe0}.logo img{width:38mm;max-height:18mm;object-fit:contain}
+.title{padding:5px 10px;text-align:center}.title h1{margin:0;color:#13212d;font-size:17px;line-height:1.4}.title p{margin:2px 0 0;color:#61707d;font-size:9px}
+.document-meta{height:100%;display:grid;align-content:center;padding:5px 8px;border-right:1px solid #d5dbe0}.document-meta div{display:flex;justify-content:space-between;gap:6px}.document-meta span,.label{color:#6b7782}
+section{margin-top:10px;break-inside:avoid}.section-title{display:flex;align-items:center;gap:6px;margin:0 0 4px;color:#172734;font-size:10.5px;font-weight:700}.section-title::before{content:"";width:3px;height:14px;border-radius:4px;background:#1b6c91}
+.info-grid{display:grid;grid-template-columns:repeat(2,1fr);border:1px solid #d8e0e6;border-radius:11px;overflow:hidden}.info-card{min-height:43px;padding:5px 8px;border-left:1px solid #e1e6ea;border-bottom:1px solid #e1e6ea}.info-card:nth-child(2n){border-left:0}.info-card:nth-last-child(-n+2){border-bottom:0}.label{font-size:9px;font-weight:700}.value{margin-top:1px;color:#17232d;font-size:10px;font-weight:700;overflow-wrap:anywhere;white-space:pre-wrap}
+.attachment-state{display:inline-flex;padding:4px 8px;border-radius:7px;background:#f1f3f5;color:#53606b;font-weight:700}.attachment-list{margin:5px 0 0;padding:0;list-style:none;border:1px solid #d9e0e5;border-radius:8px;overflow:hidden}.attachment-list li{display:grid;grid-template-columns:9mm 1fr;gap:6px;padding:4px 8px;border-bottom:1px solid #e4e8eb}.attachment-list li:last-child{border-bottom:0}.attachment-list .number{color:#1b6c91;font-weight:700}.attachment-list strong{direction:ltr;unicode-bidi:isolate;text-align:right;overflow-wrap:anywhere}
+.attachment-page{break-before:page;page-break-before:always;display:flex;flex-direction:column}.attachment-header{display:grid;grid-template-columns:28mm 1fr;align-items:center;gap:10px;min-height:15mm;padding:8px 11px;border:1px solid #d6dee4;border-radius:11px;background:#f4f7f9}.attachment-header span{color:#1b6c91;font-weight:700}.attachment-header strong{overflow-wrap:anywhere}.attachment-body{display:flex;min-height:235mm;flex:1;flex-direction:column;align-items:center;justify-content:center;margin-top:9px;overflow:hidden;border:1px solid #d9e0e5;border-radius:11px;background:#fafbfc}.attachment-image{display:block;max-width:100%;max-height:235mm;object-fit:contain}.attachment-pdf,.attachment-pdf iframe{display:block;width:100%;min-height:225mm;border:0}.no-preview{padding:25px;color:#697680;text-align:center}.original-file{display:inline-flex;margin:8px;border-radius:8px;background:#17212b;color:#fff;padding:6px 12px;text-decoration:none;font-weight:700}
+.footer{display:flex;justify-content:space-between;gap:10px;margin-top:13px;padding-top:7px;border-top:1px solid #d9e0e5;color:#75818b;font-size:8.5px}
+@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.toolbar{display:none}.sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}.original-file{display:none}}
+@media screen and (max-width:900px){.sheet{width:calc(100% - 20px);min-height:auto;padding:18px}.header{grid-template-columns:1fr}.logo,.document-meta{border:0;border-bottom:1px solid #d5dbe0}}
+</style></head><body><div class="toolbar"><button id="print-document" type="button">چاپ / ذخیره PDF</button><button id="close-preview" class="secondary" type="button">بستن پیش‌نمایش</button></div><article class="sheet"><header class="header"><div class="logo"><img src="${origin}/images/light%20mode.png" alt="IPEC" /></div><div class="title"><h1>فرم رسید تحویل</h1><p>گزارش رسمی رسید تحویل</p></div><div class="document-meta"><div><span>تاریخ:</span><strong>${escapeHtml(toFa(String(item.date || "—").replaceAll("-", "/")))}</strong></div></div></header><section><h2 class="section-title">مشخصات رسید تحویل</h2><div class="info-grid">${infoCard("تاریخ", String(item.date || "—").replaceAll("-", "/"))}${infoCard("نوع", item.type)}${infoCard("عنوان", item.title)}${infoCard("گیرنده", item.recipient)}</div></section><section><h2 class="section-title">پیوست‌های رسید تحویل</h2><div class="attachment-state">پیوست: ${files.length ? "دارد" : "ندارد"}</div>${files.length ? `<ul class="attachment-list">${files.map((file, index) => `<li><span class="number">${toFa(index + 1)}</span><strong>${escapeHtml(file.name || `فایل ${index + 1}`)}</strong></li>`).join("")}</ul>` : ""}</section><footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapeHtml(`${reportTime} - ${reportDate}`)}</span></footer></article>${attachmentRows.join("")}</body></html>`);
   printWindow.document.close();
+  printWindow.document.getElementById("close-preview")?.addEventListener("click", () => printWindow.close());
+  printWindow.document.getElementById("print-document")?.addEventListener("click", async () => {
+    const button = printWindow.document.getElementById("print-document");
+    button.disabled = true;
+    button.textContent = "آماده‌سازی پیوست‌ها...";
+    try {
+      const sheets = [printWindow.document.querySelector("article.sheet:not(.attachment-page)").outerHTML];
+      const attachmentSheets = [...printWindow.document.querySelectorAll("article.attachment-page")];
+      let pdfjs;
+      for (const [index, file] of files.entries()) {
+        const sheet = attachmentSheets[index];
+        if (!sheet) continue;
+        if (!isPdf(file)) { sheets.push(sheet.outerHTML); continue; }
+        try {
+          if (!pdfjs) { pdfjs = await import("pdfjs-dist"); pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl; }
+          const pdf = await pdfjs.getDocument({ url: new URL(file.url, window.location.href).href, withCredentials: true }).promise;
+          try {
+            for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+              const page = await pdf.getPage(pageNumber);
+              const viewport = page.getViewport({ scale: 2 });
+              const canvas = document.createElement("canvas");
+              canvas.width = Math.ceil(viewport.width);
+              canvas.height = Math.ceil(viewport.height);
+              await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+              const printableSheet = sheet.cloneNode(true);
+              printableSheet.querySelector(".attachment-header span").textContent = `پیوست ${toFa(index + 1)}، صفحه ${toFa(pageNumber)} از ${toFa(pdf.numPages)}`;
+              const image = printWindow.document.createElement("img");
+              image.className = "attachment-image";
+              image.alt = String(file.name || "پیوست");
+              image.src = canvas.toDataURL("image/png");
+              printableSheet.querySelector(".attachment-body").replaceChildren(image);
+              sheets.push(printableSheet.outerHTML);
+              canvas.width = 0;
+              canvas.height = 0;
+              page.cleanup();
+            }
+          } finally { await pdf.destroy(); }
+        } catch (error) {
+          console.warn("delivery_receipt_pdf_print_failed", error);
+          const fallback = sheet.cloneNode(true);
+          fallback.querySelector(".attachment-body").textContent = "نمایش این پیوست برای چاپ ممکن نشد. فایل اصلی را از صفحه رسید باز کنید.";
+          sheets.push(fallback.outerHTML);
+        }
+      }
+      printWindow.document.getElementById("delivery-receipt-print-frame")?.remove();
+      const frame = printWindow.document.createElement("iframe");
+      frame.id = "delivery-receipt-print-frame";
+      frame.title = "چاپ رسید تحویل و پیوست‌ها";
+      frame.style.cssText = "position:fixed;width:1px;height:1px;left:-10000px;top:0;border:0";
+      printWindow.document.body.appendChild(frame);
+      frame.contentWindow.addEventListener("afterprint", () => window.setTimeout(() => frame.remove(), 500), { once: true });
+      frame.contentDocument.open();
+      frame.contentDocument.write(`<!doctype html><html lang="fa" dir="rtl"><head>${printWindow.document.head.innerHTML}</head><body>${sheets.join("")}</body></html>`);
+      frame.contentDocument.close();
+      await frame.contentDocument.fonts?.ready;
+      await Promise.all([...frame.contentDocument.images].map((image) => image.decode().catch(() => {})));
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch (error) {
+      console.error("delivery_receipt_print_failed", error);
+      printWindow.alert("آماده‌سازی رسید و پیوست‌ها برای چاپ ممکن نشد.");
+    } finally {
+      button.disabled = false;
+      button.textContent = "چاپ / ذخیره PDF";
+    }
+  });
 }
 
 function ReceiptMetadata({ label, value, Icon }) {
@@ -210,7 +282,7 @@ function DeliveryReceiptPreview({ item, onClose }) {
   return createPortal(<div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true" aria-label="پیش‌نمایش رسید تحویل">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-end justify-center sm:items-center sm:p-3 md:p-6">
-      <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(90vh,860px)] sm:w-[min(1200px,calc(100vw-32px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+      <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(90vh,860px)] sm:w-[min(1680px,calc(100vw-32px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:px-4 sm:py-3"><h2 className="text-sm font-bold">پیش‌نمایش رسید تحویل</h2><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-xl text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900" title="بستن" aria-label="بستن">×</button></header>
         <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
           <div className="mb-4 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-4">
@@ -222,13 +294,13 @@ function DeliveryReceiptPreview({ item, onClose }) {
           <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
             <section className="min-w-0 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><h3 className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">جزئیات رسید تحویل</h3><div className="divide-y divide-black/10 dark:divide-white/10">{[["تاریخ", toFa(String(item.date || "—").replaceAll("-", "/"))], ["نوع", item.type], ["عنوان", item.title], ["گیرنده", item.recipient]].map(([label, value]) => <div key={label} className="grid grid-cols-[95px_minmax(0,1fr)] gap-3 px-4 py-3 text-sm"><span className="text-neutral-500 dark:text-neutral-400">{label}:</span><span className="min-w-0 break-words font-medium">{value || "—"}</span></div>)}</div></section>
             <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-white/5"><h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3><div className="p-3"><div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 lg:h-[min(44vh,430px)]">{!file ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p> : isPdf(file) ? <iframe key={file.url} src={file.url} title={`پیش‌نمایش ${file.name}`} className="h-full w-full border-0" /> : isImage(file) ? <button type="button" onClick={() => setImageOpen(true)} className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={file.url} alt={file.name || "پیوست رسید"} className="max-h-full max-w-full object-contain" /></button> : <p className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این فایل در مرورگر در دسترس نیست.</p>}</div>
-              {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-right text-xs font-semibold" dir="auto" title={file.name}>{file.name || "پیوست"}</p><p className="mt-1 text-right text-[11px] text-neutral-500 dark:text-neutral-400">{fileSize(file.size)}</p></div><a href={file.url} target="_blank" rel="noreferrer" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5" title="باز کردن فایل" aria-label="باز کردن فایل"><ExternalLink className="h-4 w-4" /></a></div>}
+              {file && <div className="mt-3 min-w-0"><p className="truncate text-right text-xs font-semibold" dir="auto" title={file.name}>{file.name || "پیوست"}</p><p className="mt-1 text-right text-[11px] text-neutral-500 dark:text-neutral-400">{fileSize(file.size)}</p></div>}
               {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, index) => <button key={`${entry.url}-${index}`} type="button" onClick={() => setSelectedIndex(index)} className={`rounded-lg border px-2 py-1 text-xs transition ${index === selectedIndex ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(index + 1)}</button>)}</div>}
             </div><div className="border-t border-neutral-200 p-3 dark:border-white/10"><button type="button" onClick={() => openReceiptPrintPreview(item)} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><Printer className="h-4 w-4" />چاپ / ذخیره PDF</button></div></aside>
           </div>
         </div>
       </div>
     </div>
-    {imageOpen && file && createPortal(<div className="fixed inset-0 z-[10001] flex flex-col bg-neutral-950 text-white" dir="rtl" role="dialog" aria-modal="true" aria-label={`نمایش ${file.name || "تصویر"}`}><div className="flex min-h-14 items-center gap-3 border-b border-white/15 px-4"><strong className="min-w-0 flex-1 truncate text-sm">{file.name || "پیوست تصویری"}</strong><a href={file.url} target="_blank" rel="noreferrer" className="rounded-lg border border-white/20 px-3 py-1.5 text-sm">باز کردن فایل</a><button type="button" onClick={() => setImageOpen(false)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm" aria-label="بستن تصویر">×</button></div><div className="min-h-0 flex-1 overflow-auto p-4"><img src={file.url} alt={file.name || "پیوست"} className="mx-auto max-h-full max-w-full object-contain" /></div></div>, document.body)}
+    {imageOpen && file && createPortal(<div className="fixed inset-0 z-[10001] flex flex-col bg-neutral-950 text-white" dir="rtl" role="dialog" aria-modal="true" aria-label={`نمایش ${file.name || "تصویر"}`}><div className="flex min-h-14 items-center gap-3 border-b border-white/15 px-4"><strong className="min-w-0 flex-1 truncate text-sm">{file.name || "پیوست تصویری"}</strong><button type="button" onClick={() => setImageOpen(false)} className="rounded-lg border border-white/20 px-3 py-1.5 text-sm" aria-label="بستن تصویر">×</button></div><div className="min-h-0 flex-1 overflow-auto p-4"><img src={file.url} alt={file.name || "پیوست"} className="mx-auto max-h-full max-w-full object-contain" /></div></div>, document.body)}
   </div>, document.body);
 }
