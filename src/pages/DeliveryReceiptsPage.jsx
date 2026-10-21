@@ -1,20 +1,23 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
-import { JalaliDatePicker } from "../components/JalaliDatePicker.jsx";
+import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
+import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300";
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
-const emptyForm = () => ({ date: "", type: "", title: "", recipient: "" });
+const emptyForm = () => ({ date: "", type: "", title: "", recipient: "", files: [] });
 
 export default function DeliveryReceiptsPage() {
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState("");
@@ -43,6 +46,7 @@ export default function DeliveryReceiptsPage() {
   async function save(event) {
     event.preventDefault();
     if (!form.date || !form.type.trim() || !form.title.trim() || !form.recipient.trim()) { setError("تاریخ، نوع، عنوان و گیرنده را وارد کنید."); return; }
+    if (uploading) { setError("تا پایان بارگذاری فایل صبر کنید."); return; }
     setSaving(true);
     setError("");
     try {
@@ -55,6 +59,23 @@ export default function DeliveryReceiptsPage() {
     finally { setSaving(false); }
   }
 
+  async function uploadFile(file) {
+    setUploading(true);
+    setError("");
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch(`${String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "")}/documents/delivery-receipts/upload`, {
+        method: "POST", credentials: "include", headers: user?.id != null ? { "x-user-id": String(user.id) } : {}, body,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.file?.url) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
+      setForm((old) => ({ ...old, files: [...old.files, data.file] }));
+      setUploadOpen(false);
+    } catch (err) { setError(err.message || "بارگذاری پیوست انجام نشد."); }
+    finally { setUploading(false); }
+  }
+
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
     <Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-neutral-900">
       <div className="p-3 md:p-4">
@@ -63,17 +84,19 @@ export default function DeliveryReceiptsPage() {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]"><img src="/images/icons/resid-hay-tahvil.svg" alt="" className="h-6 w-6 dark:invert" /></span>
             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight md:text-lg">رسید های تحویل</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">دبیرخانه</span></span>
           </div>
-          <button type="button" onClick={() => { setForm(emptyForm()); setFormOpen((open) => !open); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}><img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button>
+          <button type="button" onClick={() => { setForm(emptyForm()); setFormOpen((open) => !open); setUploadOpen(false); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}><img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" /></button>
         </div>
 
         {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="block"><span className={labelClass}>تاریخ *</span><span className="block [&_input]:h-11 [&_input]:border-black/10 [&_input]:text-sm dark:[&_input]:border-white/15 dark:[&_input]:bg-white/5 dark:[&_input]:text-neutral-100"><JalaliDatePicker value={form.date} onChange={(date) => setForm((old) => ({ ...old, date }))} /></span></label>
+          <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(150px,1fr)_minmax(150px,1fr)_minmax(220px,1.5fr)_minmax(180px,1fr)_auto]">
+            <div className="min-w-0"><span className={labelClass}>تاریخ *</span><JalaliPopupDatePicker value={form.date} onChange={(date) => setForm((old) => ({ ...old, date }))} buttonClassName={`${inputClass} flex items-center justify-between gap-2`} /></div>
             <label className="block"><span className={labelClass}>نوع *</span><input required value={form.type} onChange={(event) => setForm((old) => ({ ...old, type: event.target.value }))} className={inputClass} maxLength={100} /></label>
             <label className="block"><span className={labelClass}>عنوان *</span><input required value={form.title} onChange={(event) => setForm((old) => ({ ...old, title: event.target.value }))} className={inputClass} maxLength={300} /></label>
             <label className="block"><span className={labelClass}>گیرنده *</span><input required value={form.recipient} onChange={(event) => setForm((old) => ({ ...old, recipient: event.target.value }))} className={inputClass} maxLength={200} /></label>
+            <div className="block"><span className={labelClass}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} disabled={uploading} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری پیوست" aria-label="بارگذاری پیوست"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></div>
           </div>
-          <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت رسید تحویل"} aria-label="ثبت رسید تحویل"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
+          {form.files.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{form.files.map((file, index) => <span key={`${file.url}-${index}`} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs dark:border-white/15 dark:bg-white/5"><a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name}</a><span className="text-neutral-400">{Math.ceil(file.size / 1024).toLocaleString("fa-IR")} کیلوبایت</span><button type="button" onClick={() => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} aria-label={`حذف ${file.name}`}>×</button></span>)}</div>}
+          <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت رسید تحویل"} aria-label="ثبت رسید تحویل"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
           <label className="block"><span className={labelClass}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در تاریخ، نوع، عنوان و گیرنده..." /></label>
           <div className="mt-3 min-h-10"><span className={labelClass}>برچسب ها</span></div>
@@ -96,5 +119,6 @@ export default function DeliveryReceiptsPage() {
         </div>
       </div>
     </Card>
+    {uploadOpen && <AttachmentImageEditor title="پیوست رسید تحویل" onClose={() => setUploadOpen(false)} onConfirm={uploadFile} />}
   </div>;
 }
