@@ -58,7 +58,7 @@ export default function LoginPage() {
               <img
                 src={HEADER_IMG}
                 alt="header"
-                className="h-32 object-contain inline-block"
+                className="h-44 object-contain inline-block"
               />
             </div>
 
