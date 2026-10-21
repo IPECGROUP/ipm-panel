@@ -19,7 +19,7 @@ export default function LoginPage() {
   const slides = ["/images/back1.webp", "/images/back2.webp"];
 
   // ✅ هدر جدید فرم (جایگزین متن و لوگو)
-  const HEADER_IMG = "/images/login_page_header.png";
+  const HEADER_IMG = "/images/ips%20redesign%20logo.png";
 
   const [idx, setIdx] = useState(0);
   useEffect(() => {
