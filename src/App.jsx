@@ -36,6 +36,7 @@ import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
 import SecurityAuditPage from "./pages/SecurityAuditPage.jsx";
 import DocumentsManagementDashboardPage from "./pages/DocumentsManagementDashboardPage.jsx";
+import DeliveryReceiptsPage from "./pages/DeliveryReceiptsPage.jsx";
 import ContractsManagementDashboardPage from "./pages/ContractsManagementDashboardPage.jsx";
 import ProjectManagementDashboardPage from "./pages/ProjectManagementDashboardPage.jsx";
 import SupplyManagementDashboardPage from "./pages/SupplyManagementDashboardPage.jsx";
@@ -119,7 +120,7 @@ export default function App() {
         <Route path="/projects/project-management-dashboard" element={<ProjectManagementDashboardPage />} />
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
-        <Route path="/documents/delivery-receipts" element={<NavPlaceholderPage title="رسید های تحویل" icon="/images/icons/resid-hay-tahvil.svg" />} />
+        <Route path="/documents/delivery-receipts" element={<DeliveryReceiptsPage />} />
         <Route path="/documents/management-dashboard" element={<DocumentsManagementDashboardPage />} />
         <Route path="/quality-management" element={<QualityManagementPage />} />
         <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />
