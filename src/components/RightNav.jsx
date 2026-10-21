@@ -510,7 +510,7 @@ function RightNav() {
       </button>
 
       {open[item.key] && (
-        <div className="absolute right-[calc(100%+1rem)] top-0 z-[70] w-64 rounded-xl border border-white/10 bg-[#184B6B] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.04] before:absolute before:-right-4 before:top-0 before:h-full before:w-4 before:content-[''] after:absolute after:-right-1.5 after:top-4 after:h-3 after:w-3 after:rotate-45 after:border-r after:border-t after:border-white/10 after:bg-[#184B6B]">
+        <div className="absolute right-[calc(100%+1rem)] top-0 z-[70] w-64 rounded-xl border border-white/10 bg-[#24211F] p-2 shadow-[0_18px_45px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.04] before:absolute before:-right-4 before:top-0 before:h-full before:w-4 before:content-[''] after:absolute after:-right-1.5 after:top-4 after:h-3 after:w-3 after:rotate-45 after:border-r after:border-t after:border-white/10 after:bg-[#24211F]">
           <div className="px-2 pb-2 pt-1 text-right text-xs font-semibold text-white/50">{item.label}</div>
           <div className="space-y-1">
             {item.items.map((child) => (
@@ -556,7 +556,7 @@ function RightNav() {
         ref={navRef}
         dir="rtl"
         className={[
-          "hidden lg:flex fixed right-4 top-4 bottom-4 z-[200] flex-col rounded-2xl border border-white/10 bg-[#184B6B] text-white",
+          "hidden lg:flex fixed right-4 top-4 bottom-4 z-[200] flex-col rounded-2xl border border-white/10 bg-[#24211F]/[0.96] text-white",
           "shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl transition-all duration-300",
           "overflow-visible",
           expanded ? "w-[280px] py-3 pl-5 pr-3" : "w-[76px] px-2.5 py-3",
@@ -641,7 +641,7 @@ function RightNav() {
 
       {canHover && tip.show && (
         <div
-          className="fixed z-[210] pointer-events-none rounded-lg border border-white/10 bg-[#184B6B] px-3 py-1.5 text-xs text-white/80 shadow-lg whitespace-nowrap"
+          className="fixed z-[210] pointer-events-none rounded-lg border border-white/10 bg-[#24211F] px-3 py-1.5 text-xs text-white/80 shadow-lg whitespace-nowrap"
           style={{ top: tip.y, right: "92px", transform: "translateY(-50%)" }}
         >
           {tip.label}
