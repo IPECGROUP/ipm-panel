@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -7,7 +8,6 @@ import { equipmentDefinitionsFromResponse } from "../utils/equipmentDefinitions.
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 import LibraryItemsPickerModal from "../components/LibraryItemsPickerModal.jsx";
 import { AttachmentImageEditor } from "./PettyCashPage.jsx";
-import { FileText } from "lucide-react";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
@@ -42,6 +42,8 @@ export default function EquipmentIdentityPage() {
   const [loading, setLoading] = useState(true);
   const [definitionsLoading, setDefinitionsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState("");
@@ -85,6 +87,39 @@ export default function EquipmentIdentityPage() {
   }, [items, query, definitions.fields]);
   const safePage = Math.min(page, Math.max(0, Math.ceil(filteredItems.length / pageSize) - 1));
   const pageItems = filteredItems.slice(safePage * pageSize, (safePage + 1) * pageSize);
+  const visibleIds = pageItems.map((item) => String(item.id));
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+
+  function toggleSelected(id) {
+    setSelectedIds((old) => {
+      const next = new Set(old);
+      const key = String(id);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((old) => {
+      const next = new Set(old);
+      visibleIds.forEach((id) => { if (allVisibleSelected) next.delete(id); else next.add(id); });
+      return next;
+    });
+  }
+
+  async function deleteSelected() {
+    const ids = [...selectedIds].filter((id) => items.some((item) => String(item.id) === id));
+    if (!ids.length || !window.confirm(`آیا ${toFa(ids.length)} شناسنامه انتخاب‌شده حذف شود؟ این عملیات قابل بازگشت نیست.`)) return;
+    setDeleting(true);
+    setError("");
+    try {
+      await api("/equipment-identities", { method: "DELETE", headers: user?.id != null ? { "x-user-id": String(user.id) } : {}, body: JSON.stringify({ ids }) });
+      const deleted = new Set(ids);
+      setItems((old) => old.filter((item) => !deleted.has(String(item.id))));
+      setSelectedIds(new Set());
+    } catch (err) { setError(err.message || "حذف شناسنامه‌های انتخاب‌شده انجام نشد."); }
+    finally { setDeleting(false); }
+  }
 
   async function save(event) {
     event.preventDefault();
@@ -134,17 +169,17 @@ export default function EquipmentIdentityPage() {
             </span>
              <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight md:text-lg">شناسنامه تجهیزات</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تجهیزات</span></span>
           </div>
-          <button type="button" onClick={() => { setFormOpen((open) => !open); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>
+          <button type="button" onClick={() => { setForm(emptyForm()); setFormOpen((open) => !open); setLetterPickerOpen(false); setLibraryPickerOpen(false); setUploadOpen(false); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>
             <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
           </button>
         </div>
 
         {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="block min-w-[240px] flex-1"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required disabled={definitionsLoading} value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">{definitionsLoading ? "در حال دریافت دسته‌بندی‌ها..." : "انتخاب دسته‌بندی"}</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            <label className="block w-full sm:w-80"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required disabled={definitionsLoading} value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">{definitionsLoading ? "در حال دریافت دسته‌بندی‌ها..." : "انتخاب دسته‌بندی"}</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
             <label className="block"><span className={`block ${labelClass}`}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></label>
+            <label className="block"><span className={`block ${labelClass}`}>کتابخانه</span><button type="button" onClick={() => { setDraftLibraryItemIds(form.libraryItemIds.map(String)); setLibraryQuery(""); setLibraryPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از کتابخانه‌ها"><img src="/images/icons/ketabkhane.svg" alt="" className="h-5 w-5 dark:invert" />{form.libraryItemIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.libraryItemIds.length)}</span>}</button></label>
             <label className="block"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
-            <label className="block"><span className={`block ${labelClass}`}>مستندات</span><button type="button" onClick={() => { setDraftLibraryItemIds(form.libraryItemIds.map(String)); setLibraryQuery(""); setLibraryPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب مستندات از کتابخانه‌ها"><FileText className="h-5 w-5" />{form.libraryItemIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.libraryItemIds.length)}</span>}</button></label>
           </div>
           {form.files.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{form.files.map((file, index) => <span key={file.url} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs dark:border-white/15 dark:bg-white/5"><a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name}</a><button type="button" onClick={() => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} aria-label="حذف فایل">×</button></span>)}</div>}
            <EquipmentFieldsForm sections={categorySections} values={form.fieldValues}
@@ -156,12 +191,13 @@ export default function EquipmentIdentityPage() {
 
         {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-          <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[600px] table-fixed text-sm [&_td]:text-center [&_th]:text-center">
-            <colgroup><col style={{ width: 80 }} /><col style={{ width: "25%" }} /><col /><col style={{ width: "25%" }} /></colgroup>
+          <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[640px] table-fixed text-sm [&_td]:text-center [&_th]:text-center">
+            <colgroup><col style={{ width: 44 }} /><col style={{ width: 80 }} /><col style={{ width: "25%" }} /><col /><col style={{ width: "25%" }} /></colgroup>
             <thead className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
-              <tr><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th><th className="px-3 py-2 text-[14px] font-semibold">نام تجهیز</th><th className="px-3 py-2 text-[14px] font-semibold">کد تجهیز</th></tr>
+              <tr><th className="px-2 py-2"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه شناسنامه‌های صفحه" /></th><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th><th className="px-3 py-2 text-[14px] font-semibold">نام تجهیز</th><th className="relative py-2 pl-10 pr-3 text-[14px] font-semibold">کد تجهیز<EquipmentTableMenu selectedCount={selectedIds.size} deleting={deleting} onDelete={deleteSelected} /></th></tr>
             </thead>
-            <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={4} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="h-10 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+            <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={5} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="h-10 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+              <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب شناسنامه ${identityFieldValue(item, definitions.fields, "name")}`} /></td>
               <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(safePage * pageSize + index + 1)}</td>
               <td className="border-b border-neutral-300 px-3 font-medium dark:border-neutral-700">{definitions.categories.find((category) => String(category.id) === String(item.categoryId))?.name || item.category || "—"}</td>
               <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block break-words" dir="auto">{identityFieldValue(item, definitions.fields, "name")}</span></td>
@@ -173,9 +209,44 @@ export default function EquipmentIdentityPage() {
       </div>
     </Card>
     {letterPickerOpen && <RelatedLettersPickerModal api={api} title="انتخاب اسناد مرتبط" query={letterQuery} onQueryChange={setLetterQuery} loading={false} items={letters} selectedIds={draftLetterIds} onToggle={(id) => setDraftLetterIds((old) => old.includes(String(id)) ? old.filter((value) => value !== String(id)) : [...old, String(id)])} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: draftLetterIds })); setLetterPickerOpen(false); }} onClose={() => setLetterPickerOpen(false)} blackActions />}
-    {libraryPickerOpen && <LibraryItemsPickerModal title="انتخاب مستندات" query={libraryQuery} onQueryChange={setLibraryQuery} items={libraryItems} selectedIds={draftLibraryItemIds} onToggle={(id) => setDraftLibraryItemIds((old) => old.includes(String(id)) ? old.filter((value) => value !== String(id)) : [...old, String(id)])} onConfirm={() => { setForm((old) => ({ ...old, libraryItemIds: draftLibraryItemIds })); setLibraryPickerOpen(false); }} onClose={() => setLibraryPickerOpen(false)} />}
+    {libraryPickerOpen && <LibraryItemsPickerModal title="انتخاب از کتابخانه‌ها" query={libraryQuery} onQueryChange={setLibraryQuery} items={libraryItems} selectedIds={draftLibraryItemIds} onToggle={(id) => setDraftLibraryItemIds((old) => old.includes(String(id)) ? old.filter((value) => value !== String(id)) : [...old, String(id)])} onConfirm={() => { setForm((old) => ({ ...old, libraryItemIds: draftLibraryItemIds })); setLibraryPickerOpen(false); }} onClose={() => setLibraryPickerOpen(false)} />}
     {uploadOpen && <AttachmentImageEditor title="پیوست تجهیز" onClose={() => setUploadOpen(false)} onConfirm={uploadFile} />}
   </div>;
+}
+
+function EquipmentTableMenu({ selectedCount, deleting, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const closeOnOutside = (event) => { if (!triggerRef.current?.contains(event.target) && !popoverRef.current?.contains(event.target)) setOpen(false); };
+    const closeOnEscape = (event) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", closeOnOutside);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutside);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  return <span className="absolute left-2 top-1/2 -translate-y-1/2" dir="rtl">
+    <button ref={triggerRef} type="button" onClick={() => { if (open) setOpen(false); else { updatePosition(); setOpen(true); } }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت" aria-label="مدیریت وضعیت" aria-expanded={open}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
+    {open && position && createPortal(<div ref={popoverRef} className="fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
+      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+      <button type="button" disabled={!selectedCount || deleting} onClick={() => { setOpen(false); onDelete(); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
+    </div>, document.body)}
+  </span>;
 }
 
 function EquipmentFieldsForm({ sections, values, onValueChange }) {
