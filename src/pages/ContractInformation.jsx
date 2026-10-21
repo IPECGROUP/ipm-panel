@@ -167,7 +167,7 @@ const EMPTY_FORM = {
     employerAssignor: "",
     executor: "",
     companyMembers: "",
-    mainContractors: "",
+    sajatRegistered: false,
   },
   calendar: {
     notifyDate: "",
@@ -819,6 +819,8 @@ function normalizeContractRow(row) {
       const rest = { ...general };
       delete rest.contractTitle;
       delete rest.contract_title;
+      delete rest.mainContractors;
+      rest.sajatRegistered = general.sajatRegistered === true;
       return rest;
     })(),
     calendar: {
@@ -1765,7 +1767,6 @@ export default function ContractInformation() {
         row.general?.employerAssignor,
         row.general?.executor,
         row.general?.companyMembers,
-        row.general?.mainContractors,
         row.technical?.serviceScope,
         row.technical?.duties,
         ...TECHNICAL_SUPPORT_FIELDS.map((item) => row.technical?.[item.key]),
@@ -2811,6 +2812,7 @@ export default function ContractInformation() {
       relatedLetterIds,
       general: {
         ...(form.general || {}),
+        sajatRegistered: form.general?.sajatRegistered === true,
         employerAssignor: documentType === "sub" ? FIXED_SUB_ASSIGNOR : form.general?.employerAssignor || "",
       },
       calendar: { ...(form.calendar || {}) },
@@ -2856,6 +2858,10 @@ export default function ContractInformation() {
       }
       if (!savedRow.id || (documentType === "sub" && savedRow.documentType !== "sub")) {
         throw new Error(`contract_save_not_persisted:${documentType}:${savedRow.documentType || "empty"}:${savedRow.id ? "has_id" : "no_id"}`);
+      }
+      if ((documentType === "main" || documentType === "sub") &&
+          verifiedData?.item?.general?.sajatRegistered !== rowPayload.general.sajatRegistered) {
+        throw new Error("sajat_registration_not_persisted");
       }
       let refreshedRows = await fetchContractRows();
       let savedIsVisibleInServerList = refreshedRows.some((row) => String(row.id) === String(savedRow.id));
@@ -2905,6 +2911,8 @@ export default function ContractInformation() {
             ? `ثبت قرارداد در سرور تایید نشد. جزئیات: ${String(error?.message || "").replace("contract_save_not_persisted:", "")}`
           : error?.message === "contract_saved_but_not_listed"
             ? "قرارداد در تایید تکی سرور دیده شد، اما در فهرست اصلی قراردادها برنگشت. لطفا صفحه را تازه‌سازی کنید و اگر نمایش داده نشد، مشکل از API فهرست/دیتابیس است."
+          : error?.message === "sajat_registration_not_persisted"
+            ? "وضعیت ثبت در سامانه ساجات در سرور تایید نشد. لطفاً دوباره تلاش کنید."
           : error?.message || "خطا در ذخیره قرارداد"
       );
     } finally {
@@ -3322,7 +3330,9 @@ export default function ContractInformation() {
       ["واگذارنده / کارفرما", previewContract.general?.employerAssignor],
       ["مجری", previewContract.general?.executor],
       ["اعضای مشارکت", previewContract.general?.companyMembers],
-      ["پیمانکاران اصلی", previewContract.general?.mainContractors],
+      ...(previewContract.documentType === "main" || previewContract.documentType === "sub"
+        ? [["در سامانه ساجات (رتبه بندی) ثبت گردید", previewContract.general?.sajatRegistered === true ? "بله" : "خیر"]]
+        : []),
       ["اسناد مرتبط", previewRelatedLetterLabel],
     ]))}
     ${section("تقویم قرارداد", infoGrid([
@@ -4161,15 +4171,16 @@ export default function ContractInformation() {
                           />
                         </div>
 
-                        <div>
-                          <div className={labelCls}>پیمانکاران اصلی</div>
-                          <input
-                            value={form.general?.mainContractors || ""}
-                            onChange={(e) => setGeneralField("mainContractors", e.target.value)}
-                            className={inputCls}
-                            type="text"
-                          />
-                        </div>
+                        {(form.documentType === "main" || form.documentType === "sub") ? (
+                          <label className="flex min-h-11 items-center gap-2 self-end rounded-xl border border-black/10 px-3 py-2 text-sm dark:border-neutral-700">
+                            <input
+                              type="checkbox"
+                              checked={form.general?.sajatRegistered === true}
+                              onChange={(e) => setGeneralField("sajatRegistered", e.target.checked)}
+                            />
+                            <span>در سامانه ساجات (رتبه بندی) ثبت گردید</span>
+                          </label>
+                        ) : null}
                       </div>
 
                       <div className="flex items-center justify-end pt-2">
@@ -5242,7 +5253,9 @@ export default function ContractInformation() {
                   {renderPreviewInfo("واگذارنده / کارفرما", previewContract.general?.employerAssignor)}
                   {renderPreviewInfo("مجری", previewContract.general?.executor)}
                   {renderPreviewInfo("اعضای مشارکت", previewContract.general?.companyMembers)}
-                  {renderPreviewInfo("پیمانکاران اصلی", previewContract.general?.mainContractors)}
+                  {(previewContract.documentType === "main" || previewContract.documentType === "sub")
+                    ? renderPreviewInfo("در سامانه ساجات (رتبه بندی) ثبت گردید", previewContract.general?.sajatRegistered === true ? "بله" : "خیر")
+                    : null}
                   {renderPreviewInfo("اسناد مرتبط", previewRelatedLetterLabel)}
                   {renderPreviewInfo("آخرین بخش ذخیره شده", CONTRACT_SECTION_TABS.find((tab) => tab.id === previewContract.lastSavedSection)?.label || previewContract.lastSavedSection)}
                 </div>
