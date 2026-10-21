@@ -119,6 +119,7 @@ export default function App() {
         <Route path="/projects/project-management-dashboard" element={<ProjectManagementDashboardPage />} />
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
+        <Route path="/documents/delivery-receipts" element={<NavPlaceholderPage title="رسید های تحویل" icon="/images/icons/resid-hay-tahvil.svg" />} />
         <Route path="/documents/management-dashboard" element={<DocumentsManagementDashboardPage />} />
         <Route path="/quality-management" element={<QualityManagementPage />} />
         <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />

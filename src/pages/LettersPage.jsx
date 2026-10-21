@@ -8,7 +8,7 @@ import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAcces
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 
-const PAGE_ICON = "/images/icons/nameha.svg";
+const PAGE_ICON = "/images/icons/dabirkhaneh.svg";
 
 const TAB_ACTIVE_BG = {
   incoming: "#0046FF",
@@ -4945,7 +4945,7 @@ useEffect(() => {
                 <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold md:text-lg">مدیریت اسناد</span>
+                <span className="block truncate text-base font-bold md:text-lg">دبیرخانه</span>
               </span>
             </div>
             <button

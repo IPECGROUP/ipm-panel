@@ -164,7 +164,7 @@ function MyPettyCashSummary() {
         <SummaryLine label="مجموع هزینه‌های ثبت‌شده" value={totals.registered} color="#38BDF8" action={<button type="button" onClick={() => setRegisteredOpen(true)} aria-label="مشاهده ریز هزینه‌های ثبت‌شده" title="مشاهده ریز هزینه‌های ثبت‌شده" className="inline-grid h-8 w-8 place-items-center rounded-lg transition hover:bg-sky-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-500"><Eye className="h-4 w-4" /></button>} />
         <SummaryLine label="باقی‌مانده هزینه‌های ثبت نشده" value={unregistered} color="#6B7280" />
         <SummaryLine label="مجموع هزینه‌های تأییدشده" value={totals.approved} color="#10B981" />
-        <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} color="#6B7280" />
+        <SummaryLine label="باقی‌مانده تنخواه تسویه‌نشده" value={unsettled} color="#DC2626" />
       </div>
     </div>
     <hr className="my-9 border-neutral-200" />

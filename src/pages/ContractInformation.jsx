@@ -3019,7 +3019,7 @@ export default function ContractInformation() {
   const paginationIconBtnCls =
     "h-9 w-9 rounded-lg border border-black/10 bg-white inline-flex items-center justify-center transition hover:bg-black/[0.04] disabled:opacity-40 disabled:cursor-not-allowed dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800";
   const tabStripCls =
-    "mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
+    "mb-2 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
   const topTabBtnClass = (isActive, index, total) =>
     [
       "relative z-10 h-10 min-w-[118px] flex-none rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
@@ -4179,7 +4179,7 @@ export default function ContractInformation() {
                         </label>
                       </div>
 
-                      <div className="flex items-center justify-end pt-2">
+                      <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
                         {renderSaveButton("general")}
                       </div>
                     </div>
@@ -4333,7 +4333,7 @@ export default function ContractInformation() {
                               className={`${textareaCls} !h-[286px] !min-h-[286px] !resize-none`}
                             />
                           </div>
-                          <div className="flex items-center justify-end pt-2">
+                          <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
                             {renderSaveButton("technical", "ثبت")}
                           </div>
                         </div>
@@ -4846,7 +4846,7 @@ export default function ContractInformation() {
                         بخش {CONTRACT_SECTION_TABS.find((tab) => tab.id === activeContractTab)?.label} در مرحله بعد تکمیل می‌شود.
                       </div>
 
-                      <div className="flex items-center justify-end pt-2">
+                      <div className="flex items-center justify-end border-t border-black/10 pt-4 dark:border-neutral-800">
                         {renderSaveButton(activeContractTab)}
                       </div>
                     </div>

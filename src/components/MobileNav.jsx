@@ -61,7 +61,7 @@ export default function MobileNav({ groups, user, logout, isActive }) {
           <button key={item.key} type="button" aria-label={item.label} aria-haspopup="dialog" aria-expanded={panel === item.key} className={item.items.some((child) => isActive(child.to)) ? "is-active" : ""} onClick={() => open(item.key)}>
             {item.icon}<span>{item.key === "contracts" ? "قراردادها" : "پروژه‌ها"}</span>
           </button>
-        ) : <Link key={item.to} to={item.to} aria-current={item.active ? "page" : undefined} onClick={close}>{item.icon}<span>{item.to === "/letters" ? "اسناد" : item.label}</span></Link>)}
+        ) : <Link key={item.to} to={item.to} aria-current={item.active ? "page" : undefined} onClick={close}>{item.icon}<span>{item.label}</span></Link>)}
         <button type="button" className={panel === "more" || moreActive ? "is-active" : ""} aria-haspopup="dialog" aria-expanded={panel === "more"} onClick={() => open("more")}><MoreHorizontal size={25} /><span>بیشتر</span></button>
       </nav>
 

@@ -1,5 +1,6 @@
 const ROUTE_PERMISSION_PAGES = [
   ["/letters", "مدیریت اسناد"],
+  ["/documents/delivery-receipts", "مدیریت اسناد"],
   ["/documents/management-dashboard", "مدیریت اسناد", "داشبورد مدیریت اسناد"],
   ["/contracts/info", "قراردادها"],
   ["/contracts/management-dashboard", "قراردادها", "داشبورد مدیریت قراردادها"],

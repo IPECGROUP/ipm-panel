@@ -265,7 +265,8 @@ function RightNav() {
           icon: <IcLetter />,
           active: documentsParentActive,
           items: [
-            { to: "/letters", label: "مدیریت اسناد", hint: "ثبت و پیگیری اسناد", icon: <IcLetter /> },
+            { to: "/letters", label: "دبیرخانه", hint: "ثبت و پیگیری اسناد", icon: <NavIcon src="/images/icons/dabirkhaneh.svg" /> },
+            { to: "/documents/delivery-receipts", label: "رسید های تحویل", hint: "رسید های تحویل", icon: <NavIcon src="/images/icons/resid-hay-tahvil.svg" /> },
             { to: "/documents/management-dashboard", label: "داشبورد مدیریت اسناد", hint: "نمای کلی وضعیت اسناد", icon: <IcProjectDashboard /> },
           ],
         },

@@ -20,7 +20,7 @@ const formatDuration = (from, to) => {
 
 const MAX_SHORTCUTS = 4;
 const shortcutOptions = [
-  ["/letters", "مدیریت اسناد", "nameha.svg"],
+  ["/letters", "دبیرخانه", "dabirkhaneh.svg"],
   ["/contracts/info", "قراردادها", "gharadad.svg"],
   ["/contracts/management-dashboard", "داشبورد قراردادها", "dashboard-12.svg"],
   ["/projects/daily-log", "روزنگار پروژه", "roznegar.svg"],
