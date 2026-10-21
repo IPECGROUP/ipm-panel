@@ -277,17 +277,13 @@ export default function Shell() {
             aria-label="خانه"
             title="خانه"
           >
-            {/* لوگو لایت/دارک */}
-            <img
-              src="/images/light%20mode.png"
-              alt="logo"
-              className="h-10 sm:h-8 md:h-9 max-w-[152px] sm:max-w-none w-auto object-contain block dark:hidden"
-            />
-            <img
-              src="/images/dark%20mode.png"
-              alt="logo (dark)"
-              className="h-10 sm:h-8 md:h-9 max-w-[152px] sm:max-w-none w-auto object-contain hidden dark:block"
-            />
+            <span className="relative block h-10 w-24 shrink-0 overflow-hidden">
+              <img
+                src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-13.png"
+                alt="لوگوی شرکت ایده پویان انرژی"
+                className="absolute left-1/2 top-1/2 w-[190px] max-w-none -translate-x-1/2 -translate-y-1/2"
+              />
+            </span>
           </Link>
 
           <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2 md:gap-3 text-xs md:text-sm">

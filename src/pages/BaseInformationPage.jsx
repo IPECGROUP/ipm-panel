@@ -25,7 +25,7 @@ const knowledgeTabs = [
 
 export default function BaseInformationPage() {
   const [activeTab, setActiveTab] = useState("documents");
-  const [activeProjectTab, setActiveProjectTab] = useState("");
+  const [activeProjectTab, setActiveProjectTab] = useState("worksheet");
   const [activeKnowledgeTab, setActiveKnowledgeTab] = useState("trainingResources");
 
   return (

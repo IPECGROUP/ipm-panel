@@ -10,7 +10,7 @@ import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
-import { BriefcaseBusiness, CalendarDays, ExternalLink, FileText, UserRound } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, FileText, UserRound } from "lucide-react";
 
 const PAGE_ICON = "/images/icons/darkhast-tamin.svg";
 const REQUEST_DOC_ID = "supply_request";
@@ -1937,11 +1937,15 @@ function SupplyAttachmentPreview({ files, selectedIndex, onSelect, onOpenPdf }) 
       <div className="p-3">
         <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 xl:h-[min(44vh,430px)]">
           {!url ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p>
-            : isPdf ? <iframe key={url} src={url} title={`پیش‌نمایش ${name}`} className="h-full w-full border-0" />
-            : isImage ? <a href={url} target="_blank" rel="noreferrer" className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={url} alt={name} className="max-h-full max-w-full object-contain" /></a>
-            : <div className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</div>}
+            : isPdf ? <>
+              <iframe key={url} src={url} title={`پیش‌نمایش ${name}`} className="pointer-events-none h-full w-full border-0" />
+              <a href={url} target="_blank" rel="noreferrer" className="absolute inset-0 cursor-pointer" aria-label={`باز کردن ${name}`} title="باز کردن فایل" />
+            </>
+            : <a href={url} target="_blank" rel="noreferrer" className="grid h-full w-full place-items-center" title="باز کردن فایل" aria-label={`باز کردن ${name}`}>
+              {isImage ? <img src={url} alt={name} className="max-h-full max-w-full object-contain" /> : <span className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</span>}
+            </a>}
         </div>
-        {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
+        {file && <div className="mt-3 min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{url ? <a href={url} target="_blank" rel="noreferrer" className="hover:underline">{name}</a> : name}</div>}
         {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFaDigits(fileIndex + 1)}</button>)}</div>}
       </div>
     </aside>
