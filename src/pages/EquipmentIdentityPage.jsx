@@ -179,7 +179,7 @@ function EquipmentFieldsForm({ sections, values, onValueChange }) {
   return <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
     <div className="max-h-[60vh] overflow-auto">
       <table className="w-full min-w-[760px] table-fixed text-sm" dir="rtl">
-        <colgroup><col className="w-28" /><col /><col className="w-[36%]" /></colgroup>
+        <colgroup><col className="w-36" /><col /><col className="w-[36%]" /></colgroup>
         <thead className="sticky top-0 z-10 bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
           <tr><th className="border-b border-neutral-300 px-3 py-3 text-center font-semibold dark:border-neutral-700">کد مشخصات</th><th className="border-b border-neutral-300 px-3 py-3 text-center font-semibold dark:border-neutral-700">مشخصات (فارسی - انگلیسی)</th><th className="border-b border-neutral-300 px-3 py-3 text-center font-semibold dark:border-neutral-700">مقدار</th></tr>
         </thead>
@@ -189,11 +189,12 @@ function EquipmentFieldsForm({ sections, values, onValueChange }) {
             const id = String(field.id);
             const depth = field.code ? String(field.code).split("-").length - 1 : 0;
             const hasChildren = Boolean(field.code && fields.some((candidate) => candidate !== field && String(candidate.code || "").startsWith(`${field.code}-`)));
+            const isGroup = /^\d+$/.test(String(field.code || ""));
             const label = field.persianName || field.name;
-            return <tr key={id} className={`border-b border-neutral-200 last:border-b-0 dark:border-neutral-700 ${hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
-              <td className="px-3 py-1.5 text-center font-semibold tabular-nums">{field.code ? toFa(field.code) : "—"}</td>
-              <td className="px-3 py-1.5"><label htmlFor={`equipment-value-${id}`} className="block min-w-0 text-right" style={{ paddingRight: Math.min(depth, 5) * 16 }}><span className={hasChildren ? "font-semibold" : ""}>{label}</span>{field.englishName && <span className="mr-1 text-xs font-normal text-neutral-400 dark:text-neutral-500">- <bdi dir="ltr">{field.englishName}</bdi></span>}</label></td>
-              <td className="px-3 py-1.5"><input id={`equipment-value-${id}`} type="text" value={values[id] || ""} onChange={(event) => onValueChange(id, event.target.value)} maxLength={10000} className="h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100" /></td>
+            return <tr key={id} className={`border-b border-neutral-200 last:border-b-0 dark:border-neutral-700 ${isGroup || hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
+              <td className="px-3 py-1.5 font-semibold tabular-nums"><div className="text-right" style={{ paddingRight: Math.min(depth, 4) * 20 }}>{field.code ? toFa(field.code) : "—"}</div></td>
+              <td className="px-3 py-1.5"><div id={`equipment-label-${id}`} className="min-w-0 text-right" style={{ paddingRight: Math.min(depth, 5) * 16 }}><span className={isGroup || hasChildren ? "font-semibold" : ""}>{label}</span>{field.englishName && <span className="mr-1 text-xs font-normal text-neutral-400 dark:text-neutral-500">- <bdi dir="ltr">{field.englishName}</bdi></span>}</div></td>
+              <td className="px-3 py-1.5">{!isGroup && <input type="text" aria-labelledby={`equipment-label-${id}`} value={values[id] || ""} onChange={(event) => onValueChange(id, event.target.value)} maxLength={10000} className="h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100" />}</td>
             </tr>;
           })}
         </tbody>)}
