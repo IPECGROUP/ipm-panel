@@ -10,10 +10,10 @@ import ProjectLessonCategoryDescriptionsTable from "./ProjectLessonCategoryDescr
 const tabs = [
   { id: "documents", label: "مدیریت اسناد" },
   { id: "contracts", label: "مدیریت قرارداد ها" },
+  { id: "projects", label: "مدیریت پروژه ها" },
   { id: "finance", label: "مدیریت مالی" },
   { id: "supply", label: "مدیریت تامین" },
   { id: "equipment", label: "مدیریت تجهیزات" },
-  { id: "worksheet", label: "کاربرگ مالی" },
   { id: "knowledge", label: "مدیریت دانش" },
 ];
 
@@ -25,6 +25,7 @@ const knowledgeTabs = [
 
 export default function BaseInformationPage() {
   const [activeTab, setActiveTab] = useState("documents");
+  const [activeProjectTab, setActiveProjectTab] = useState("");
   const [activeKnowledgeTab, setActiveKnowledgeTab] = useState("trainingResources");
 
   return (
@@ -61,7 +62,22 @@ export default function BaseInformationPage() {
         </div>
 
         <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
-          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "supply" ? <BaseOptionsTable title="نوع درخواست" endpoint="/api/base/supply-request-types" /> : activeTab === "equipment" ? <EquipmentManagementSection /> : activeTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : (
+          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "projects" ? (
+            <div>
+              <div className="mb-5 flex w-fit max-w-full rounded-2xl border border-black/10 bg-neutral-100 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="بخش‌های مدیریت پروژه‌ها">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeProjectTab === "worksheet"}
+                  onClick={() => setActiveProjectTab("worksheet")}
+                  className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${activeProjectTab === "worksheet" ? "bg-white text-black shadow-sm dark:bg-white dark:text-black" : "text-neutral-600 hover:text-black dark:text-neutral-300 dark:hover:text-white"}`}
+                >
+                  کاربرگ مالی
+                </button>
+              </div>
+              {activeProjectTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : null}
+            </div>
+          ) : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "supply" ? <BaseOptionsTable title="نوع درخواست" endpoint="/api/base/supply-request-types" /> : activeTab === "equipment" ? <EquipmentManagementSection /> : (
             <div>
               <div className="mb-5 flex justify-start">
                 <div className="flex w-fit rounded-2xl border border-black/10 bg-neutral-50 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="گزینه‌های مدیریت دانش">

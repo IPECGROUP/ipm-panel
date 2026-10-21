@@ -4116,7 +4116,7 @@ export default function ContractInformation() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(115px,0.75fr)_minmax(135px,0.9fr)_repeat(3,minmax(150px,1fr))]">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(115px,0.75fr)_minmax(135px,0.9fr)_minmax(150px,1fr)_max-content]">
                         {form.documentType !== "sub" ? (
                           <div className="min-w-0">
                             <div className={labelCls}>کارفرمای اصلی</div>
@@ -4168,17 +4168,16 @@ export default function ContractInformation() {
                           />
                         </div>
 
+                        <label className="inline-flex w-fit items-center gap-2 self-end whitespace-nowrap py-3 text-sm">
+                          <input
+                            type="checkbox"
+                            className="shrink-0"
+                            checked={form.general?.sajatRegistered === true}
+                            onChange={(e) => setGeneralField("sajatRegistered", e.target.checked)}
+                          />
+                          <span>در سامانه ساجات (رتبه بندی) ثبت گردید</span>
+                        </label>
                       </div>
-
-                      <label className="inline-flex w-fit items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          className="shrink-0"
-                          checked={form.general?.sajatRegistered === true}
-                          onChange={(e) => setGeneralField("sajatRegistered", e.target.checked)}
-                        />
-                        <span>در سامانه ساجات (رتبه بندی) ثبت گردید</span>
-                      </label>
 
                       <div className="flex items-center justify-end pt-2">
                         {renderSaveButton("general")}

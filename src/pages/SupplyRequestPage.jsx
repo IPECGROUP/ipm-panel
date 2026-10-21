@@ -1537,6 +1537,11 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
     ...attachments,
     ...commercialActions.flatMap((action) => Array.isArray(action.files) ? action.files : []),
   ];
+  const selectActionAttachments = (actionIndex) => {
+    const precedingActionFiles = commercialActions.slice(0, actionIndex)
+      .reduce((count, action) => count + (Array.isArray(action.files) ? action.files.length : 0), 0);
+    setPreviewAttachmentIndex(attachments.length + precedingActionFiles);
+  };
   const isCompletedCommercialOwner =
     !item.currentStepRoleKey &&
     ["approved", "rejected"].includes(item.status) &&
@@ -1823,11 +1828,11 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">
                     <PreviewRow compact label="برآورد هزینه" value={<CurrencyAmount value={item.amount} currencyName={item.currencyName || "ریال"} />} ltr />
                     <PreviewRow compact label="تاریخ نیاز" value={toFaDigits(String(item.needDateJalali || "—").replaceAll("-", "/"))} />
-                    <PreviewRow compact label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-1.5">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</a>)}</div> : "—"} />
+                    <PreviewRow compact label="پیوست‌ها" value={attachments.length ? <div className="flex flex-wrap justify-end gap-1.5">{attachments.map((file, index) => <button key={file.id || file.serverId || index} type="button" onClick={() => setPreviewAttachmentIndex(index)} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(index + 1)}`}</button>)}</div> : "—"} />
                   </div>
                 </PreviewSection>
 
-                <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} />
+                <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} onSelectAttachments={selectActionAttachments} />
 
                 {canAct ? (
                   stepKey === "project_manager" ? (
@@ -2218,7 +2223,7 @@ function historySentence(entry, item) {
   return `درخواست توسط ${actor} ${action}.`;
 }
 
-function SupplyActionHistory({ actions, loading }) {
+function SupplyActionHistory({ actions, loading, onSelectAttachments }) {
   const rows = Array.isArray(actions) ? actions : [];
   const statusLabel = (status) => ({ done: "انجام شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
   const statusClass = (status) => status === "done"
@@ -2230,13 +2235,26 @@ function SupplyActionHistory({ actions, loading }) {
     {loading ? <div className="px-4 py-4 text-sm text-neutral-500">در حال دریافت اقدامات...</div> : rows.length === 0 ? <div className="px-4 py-4 text-sm text-neutral-500">هنوز اقدامی توسط واحد تامین ثبت نشده است.</div> : <div className="divide-y divide-black/10 dark:divide-white/10">
       {rows.map((action, index) => {
         const files = Array.isArray(action.files) ? action.files : [];
-        return <div key={action.id || index} className={`grid gap-3 px-4 py-3 md:items-start ${files.length ? "md:grid-cols-[150px_minmax(0,1fr)_auto]" : "md:grid-cols-[150px_minmax(0,1fr)]"}`}>
+        return <div
+          key={action.id || index}
+          role={files.length ? "button" : undefined}
+          tabIndex={files.length ? 0 : undefined}
+          onClick={files.length ? () => onSelectAttachments(index) : undefined}
+          onKeyDown={files.length ? (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelectAttachments(index);
+            }
+          } : undefined}
+          title={files.length ? "نمایش پیوست‌های این اقدام" : undefined}
+          className={`grid gap-3 px-4 py-3 text-right md:items-start ${files.length ? "cursor-pointer transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-neutral-500 dark:hover:bg-white/[0.05] md:grid-cols-[150px_minmax(0,1fr)_auto]" : "md:grid-cols-[150px_minmax(0,1fr)]"}`}
+        >
           <div className="flex flex-col items-start gap-2">
             <div className="whitespace-nowrap text-xs text-neutral-500">{toFaDigits(String(action.date || "—").replaceAll("-", "/"))}{action.time ? ` · ${toFaDigits(action.time)}` : ""}</div>
             <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
           </div>
           <div className="min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700 dark:text-neutral-200">{action.description || "بدون توضیح"}</div>
-          {files.length > 0 && <div className="flex max-w-[180px] flex-wrap gap-1.5 md:justify-end">{files.map((file, fileIndex) => <a key={file.id || file.serverId || fileIndex} href={file.url || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</a>)}</div>}
+          {files.length > 0 && <div className="flex max-w-[180px] flex-wrap gap-1.5 md:justify-end">{files.map((file, fileIndex) => <span key={file.id || file.serverId || fileIndex} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</span>)}</div>}
         </div>;
       })}
     </div>}
