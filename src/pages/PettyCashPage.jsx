@@ -531,18 +531,18 @@ export default function PettyCashPage() {
                       <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
                       <td className="px-4 py-2">{report.reportNumber ? toFa(report.reportNumber) : "—"}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
-                      <td className="px-4 py-2"><div className="flex min-w-0 items-center justify-center gap-2">
-                        <span className="truncate" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</span>
+                      <td className="truncate px-4 py-2" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
+                      <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
+                      <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
+                      <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
+                      <td className="px-4 py-2"><div className="flex items-center justify-center gap-2">
+                        <span className={`inline-flex max-w-full items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusBadgeClass(state.statusKey)}`}>{state.statusKey === "pending" && state.waiting !== "—" ? state.waiting : state.status}</span>
                         {state.statusKey === "approved" && <button type="button" onClick={(event) => { event.stopPropagation(); openPettyCashReportPdf(report); }}
                           onKeyDown={(event) => event.stopPropagation()} aria-label={`مشاهده و چاپ گزارش ${report.reportName}`} title="مشاهده و چاپ گزارش"
                           className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-500 dark:hover:bg-white/10">
                           <img src="/images/icons/print.svg" alt="" className="h-5 w-5 dark:invert" />
                         </button>}
                       </div></td>
-                      <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
-                      <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
-                      <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
-                      <td className="px-4 py-2"><span className={`inline-flex max-w-full items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusBadgeClass(state.statusKey)}`}>{state.statusKey === "pending" && state.waiting !== "—" ? state.waiting : state.status}</span></td>
                     </tr>;
                   })}
                 </tbody>
