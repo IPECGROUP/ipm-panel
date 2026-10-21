@@ -23,13 +23,13 @@ function normalizeSearchText(value = "") {
     .trim();
 }
 
-function ChoiceModal({ title, query, onQueryChange, loading, children, footer, onClose, blackActions = false }) {
+export function ChoiceModal({ title, query, onQueryChange, loading, children, footer, onClose, blackActions = false, searchPlaceholder = "جستجو با شماره، موضوع یا شرح..." }) {
   return createPortal(
     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5" dir="rtl">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
       <div className="relative flex max-h-[min(88vh,700px)] w-[min(760px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
         <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b className="text-sm">{title}</b><button type="button" onClick={onClose} className={`grid h-10 w-10 place-items-center rounded-xl text-xl transition ${blackActions ? "bg-black text-white hover:bg-black/90" : "border border-black/10 dark:border-white/10"}`} aria-label="بستن">×</button></div>
-        <div className="border-b border-black/10 p-3 dark:border-white/10"><input autoFocus value={query} onChange={(event) => onQueryChange(event.target.value)} className={inputClass} placeholder="جستجو با شماره، موضوع یا شرح..." /></div>
+        <div className="border-b border-black/10 p-3 dark:border-white/10"><input autoFocus value={query} onChange={(event) => onQueryChange(event.target.value)} className={inputClass} placeholder={searchPlaceholder} /></div>
         <div className="min-h-40 flex-1 overflow-y-auto p-2">{loading ? <div className="p-5 text-center text-sm text-neutral-500">در حال دریافت...</div> : children}</div>
         {footer}
       </div>

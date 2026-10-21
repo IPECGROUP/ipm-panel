@@ -5,22 +5,38 @@ import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { equipmentDefinitionsFromResponse } from "../utils/equipmentDefinitions.js";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
+import LibraryItemsPickerModal from "../components/LibraryItemsPickerModal.jsx";
 import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 import { FileText } from "lucide-react";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
-const emptyForm = () => ({ categoryId: "", fieldValues: {}, relatedLetterIds: [], files: [] });
+const emptyForm = () => ({ categoryId: "", fieldValues: {}, relatedLetterIds: [], libraryItemIds: [], files: [] });
+
+function identityFieldValue(item, fields, kind) {
+  const field = fields.find((candidate) => String(candidate.categoryId) === String(item.categoryId) && (kind === "name"
+    ? candidate.persianName === "نام تجهیز" || candidate.englishName === "Equipment Name"
+    : candidate.persianName === "کد تجهیز" || candidate.englishName === "Equipment No."));
+  const value = field ? String(item.fieldValues?.[String(field.id)] || "").trim() : "";
+  if (value) return value;
+  if (kind === "name" && item.name && item.name !== `تجهیز ${item.category}`) return item.name;
+  if (kind === "code" && item.code && !/^EQ-[\da-f-]{36}$/i.test(item.code)) return item.code;
+  return "—";
+}
 
 export default function EquipmentIdentityPage() {
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState([]);
   const [definitions, setDefinitions] = useState({ categories: [], titles: [], fields: [] });
   const [letters, setLetters] = useState([]);
+  const [libraryItems, setLibraryItems] = useState([]);
   const [letterPickerOpen, setLetterPickerOpen] = useState(false);
   const [letterQuery, setLetterQuery] = useState("");
   const [draftLetterIds, setDraftLetterIds] = useState([]);
+  const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
+  const [libraryQuery, setLibraryQuery] = useState("");
+  const [draftLibraryItemIds, setDraftLibraryItemIds] = useState([]);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -48,6 +64,9 @@ export default function EquipmentIdentityPage() {
     api("/letters", { headers })
       .then((result) => { if (active) setLetters(Array.isArray(result?.items) ? result.items : []); })
       .catch(() => {});
+    api("/library-items", { headers })
+      .then((result) => { if (active) setLibraryItems(Array.isArray(result?.items) ? result.items : []); })
+      .catch((err) => { if (active) setError(err.message || "دریافت مستندات کتابخانه انجام نشد."); });
     return () => { active = false; };
   }, [authLoading, user?.id]);
 
@@ -56,30 +75,14 @@ export default function EquipmentIdentityPage() {
     fields: definitions.fields.filter((field) => String(field.categoryId) === String(form.categoryId) && String(field.titleId) === String(title.id)),
   })).filter((section) => section.fields.length), [definitions, form.categoryId]);
   const availableCategories = definitions.categories;
-  const tableSections = useMemo(() => {
-    const sections = new Map();
-    definitions.fields.forEach((field) => {
-      const title = definitions.titles.find((item) => String(item.id) === String(field.titleId));
-      if (!title) return;
-      const titleKey = title.name.trim().toLocaleLowerCase("fa");
-      if (!sections.has(titleKey)) sections.set(titleKey, { title, fields: new Map() });
-      const section = sections.get(titleKey);
-      const fieldKey = field.name.trim().toLocaleLowerCase("fa");
-       if (!section.fields.has(fieldKey)) section.fields.set(fieldKey, { key: `${titleKey}-${fieldKey}`, name: field.name, englishName: field.englishName || "", categoryFields: [] });
-       else if (!section.fields.get(fieldKey).englishName && field.englishName) section.fields.get(fieldKey).englishName = field.englishName;
-      section.fields.get(fieldKey).categoryFields.push(field);
-    });
-    return [...sections.values()].map((section) => ({ title: section.title, fields: [...section.fields.values()] }));
-  }, [definitions]);
-  const tableFields = useMemo(() => tableSections.flatMap((section) => section.fields), [tableSections]);
   const filteredItems = useMemo(() => {
     const terms = query.trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
     return items.filter((item) => {
       const values = item.fieldValues && typeof item.fieldValues === "object" ? Object.values(item.fieldValues) : [];
-       const text = [item.category, item.code, item.name, ...values].join(" ").toLocaleLowerCase("fa");
+       const text = [item.category, identityFieldValue(item, definitions.fields, "name"), identityFieldValue(item, definitions.fields, "code"), ...values].join(" ").toLocaleLowerCase("fa");
       return terms.every((term) => text.includes(term));
     });
-  }, [items, query]);
+  }, [items, query, definitions.fields]);
   const safePage = Math.min(page, Math.max(0, Math.ceil(filteredItems.length / pageSize) - 1));
   const pageItems = filteredItems.slice(safePage * pageSize, (safePage + 1) * pageSize);
 
@@ -137,11 +140,11 @@ export default function EquipmentIdentityPage() {
         </div>
 
         {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
-           <label className="mb-3 block max-w-sm"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required disabled={definitionsLoading} value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">{definitionsLoading ? "در حال دریافت دسته‌بندی‌ها..." : "انتخاب دسته‌بندی"}</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-          <div className="mt-4 flex flex-wrap items-start gap-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block min-w-[240px] flex-1"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required disabled={definitionsLoading} value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">{definitionsLoading ? "در حال دریافت دسته‌بندی‌ها..." : "انتخاب دسته‌بندی"}</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
             <label className="block"><span className={`block ${labelClass}`}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></label>
             <label className="block"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
-            <label className="block"><span className={`block ${labelClass}`}>مستندات</span><button type="button" disabled className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white text-neutral-400 dark:border-white/15 dark:bg-white/5" title="اتصال مستندات در مرحله بعد مشخص می‌شود"><FileText className="h-5 w-5" /></button></label>
+            <label className="block"><span className={`block ${labelClass}`}>مستندات</span><button type="button" onClick={() => { setDraftLibraryItemIds(form.libraryItemIds.map(String)); setLibraryQuery(""); setLibraryPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب مستندات از کتابخانه‌ها"><FileText className="h-5 w-5" />{form.libraryItemIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.libraryItemIds.length)}</span>}</button></label>
           </div>
           {form.files.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{form.files.map((file, index) => <span key={file.url} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs dark:border-white/15 dark:bg-white/5"><a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name}</a><button type="button" onClick={() => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} aria-label="حذف فایل">×</button></span>)}</div>}
            <EquipmentFieldsForm sections={categorySections} values={form.fieldValues}
@@ -153,16 +156,16 @@ export default function EquipmentIdentityPage() {
 
         {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-          <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full table-fixed text-sm [&_td]:text-center [&_th]:text-center" style={{ minWidth: Math.max(600, 280 + tableFields.length * 190) }}>
-            <colgroup><col style={{ width: 80 }} /><col style={{ width: 200 }} />{tableFields.map((field) => <col key={field.key} style={{ width: 190 }} />)}</colgroup>
+          <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[600px] table-fixed text-sm [&_td]:text-center [&_th]:text-center">
+            <colgroup><col style={{ width: 80 }} /><col style={{ width: "25%" }} /><col /><col style={{ width: "25%" }} /></colgroup>
             <thead className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
-              {tableFields.length > 0 && <tr><th rowSpan={2} className="border-b border-neutral-300 px-3 py-2 text-[14px] font-semibold dark:border-neutral-700">ردیف</th><th rowSpan={2} className="border-b border-neutral-300 px-3 py-2 text-[14px] font-semibold dark:border-neutral-700">دسته‌بندی</th>{tableSections.map((section) => <th key={section.title.id} colSpan={section.fields.length} className="border-b border-neutral-300 px-3 py-2 text-[14px] font-semibold dark:border-neutral-700">{section.title.name}</th>)}</tr>}
-               <tr>{tableFields.length === 0 && <><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th></>}{tableFields.map((field) => <th key={field.key} className="px-3 py-2 text-[13px] font-semibold"><span className="block">{field.name}</span>{field.englishName && <span dir="ltr" className="block text-[11px] font-normal text-neutral-500 dark:text-neutral-400">{field.englishName}</span>}</th>)}</tr>
+              <tr><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th><th className="px-3 py-2 text-[14px] font-semibold">نام تجهیز</th><th className="px-3 py-2 text-[14px] font-semibold">کد تجهیز</th></tr>
             </thead>
-            <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={2 + tableFields.length} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="h-10 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+            <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={4} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} className="h-10 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
               <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(safePage * pageSize + index + 1)}</td>
               <td className="border-b border-neutral-300 px-3 font-medium dark:border-neutral-700">{definitions.categories.find((category) => String(category.id) === String(item.categoryId))?.name || item.category || "—"}</td>
-               {tableFields.map((column) => { const field = column.categoryFields.find((candidate) => String(candidate.categoryId) === String(item.categoryId)); const value = field ? item.fieldValues?.[String(field.id)] : ""; return <td key={column.key} className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block max-w-full whitespace-pre-wrap break-words" dir="auto">{value || "—"}</span></td>; })}
+              <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block break-words" dir="auto">{identityFieldValue(item, definitions.fields, "name")}</span></td>
+              <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block break-words" dir="auto">{identityFieldValue(item, definitions.fields, "code")}</span></td>
             </tr>)}</tbody>
           </table></div>
           <BaseTablePager total={filteredItems.length} page={safePage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
@@ -170,6 +173,7 @@ export default function EquipmentIdentityPage() {
       </div>
     </Card>
     {letterPickerOpen && <RelatedLettersPickerModal api={api} title="انتخاب اسناد مرتبط" query={letterQuery} onQueryChange={setLetterQuery} loading={false} items={letters} selectedIds={draftLetterIds} onToggle={(id) => setDraftLetterIds((old) => old.includes(String(id)) ? old.filter((value) => value !== String(id)) : [...old, String(id)])} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: draftLetterIds })); setLetterPickerOpen(false); }} onClose={() => setLetterPickerOpen(false)} blackActions />}
+    {libraryPickerOpen && <LibraryItemsPickerModal title="انتخاب مستندات" query={libraryQuery} onQueryChange={setLibraryQuery} items={libraryItems} selectedIds={draftLibraryItemIds} onToggle={(id) => setDraftLibraryItemIds((old) => old.includes(String(id)) ? old.filter((value) => value !== String(id)) : [...old, String(id)])} onConfirm={() => { setForm((old) => ({ ...old, libraryItemIds: draftLibraryItemIds })); setLibraryPickerOpen(false); }} onClose={() => setLibraryPickerOpen(false)} />}
     {uploadOpen && <AttachmentImageEditor title="پیوست تجهیز" onClose={() => setUploadOpen(false)} onConfirm={uploadFile} />}
   </div>;
 }
@@ -194,7 +198,7 @@ function EquipmentFieldsForm({ sections, values, onValueChange }) {
             return <tr key={id} className={`border-b border-neutral-200 last:border-b-0 dark:border-neutral-700 ${isGroup || hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
               <td className="px-3 py-1.5 font-semibold tabular-nums"><div className="text-center" style={depth ? { transform: `translateX(-${Math.min(depth, 4) * 20}px)` } : undefined}>{field.code ? toFa(field.code) : "—"}</div></td>
               <td className="px-3 py-1.5"><div id={`equipment-label-${id}`} className="min-w-0 text-right" style={{ paddingRight: Math.min(depth, 5) * 16 }}><span className={isGroup || hasChildren ? "font-semibold" : ""}>{label}</span>{field.englishName && <span className="mr-1 text-xs font-normal text-neutral-400 dark:text-neutral-500">- <bdi dir="ltr">{field.englishName}</bdi></span>}</div></td>
-              <td className="px-3 py-1.5 text-right">{!isGroup && <input type="text" dir="ltr" aria-labelledby={`equipment-label-${id}`} value={values[id] || ""} onChange={(event) => onValueChange(id, event.target.value)} maxLength={10000} className="h-9 w-full max-w-[440px] rounded-lg border border-black/10 bg-white px-3 text-left text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100" />}</td>
+              <td className="px-3 py-1.5 text-right">{!isGroup && <input type="text" dir="ltr" aria-labelledby={`equipment-label-${id}`} value={values[id] || ""} onChange={(event) => onValueChange(id, event.target.value)} maxLength={10000} className="h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-left text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100" />}</td>
             </tr>;
           })}
         </tbody>)}
