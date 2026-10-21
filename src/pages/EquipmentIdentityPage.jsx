@@ -192,7 +192,7 @@ function EquipmentFieldsForm({ sections, values, onValueChange }) {
             const isGroup = /^\d+$/.test(String(field.code || ""));
             const label = field.persianName || field.name;
             return <tr key={id} className={`border-b border-neutral-200 last:border-b-0 dark:border-neutral-700 ${isGroup || hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
-              <td className="px-3 py-1.5 font-semibold tabular-nums"><div className="text-right" style={{ paddingRight: Math.min(depth, 4) * 20 }}>{field.code ? toFa(field.code) : "—"}</div></td>
+              <td className="px-3 py-1.5 font-semibold tabular-nums"><div className="text-center" style={depth ? { transform: `translateX(-${Math.min(depth, 4) * 20}px)` } : undefined}>{field.code ? toFa(field.code) : "—"}</div></td>
               <td className="px-3 py-1.5"><div id={`equipment-label-${id}`} className="min-w-0 text-right" style={{ paddingRight: Math.min(depth, 5) * 16 }}><span className={isGroup || hasChildren ? "font-semibold" : ""}>{label}</span>{field.englishName && <span className="mr-1 text-xs font-normal text-neutral-400 dark:text-neutral-500">- <bdi dir="ltr">{field.englishName}</bdi></span>}</div></td>
               <td className="px-3 py-1.5">{!isGroup && <input type="text" aria-labelledby={`equipment-label-${id}`} value={values[id] || ""} onChange={(event) => onValueChange(id, event.target.value)} maxLength={10000} className="h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100" />}</td>
             </tr>;
