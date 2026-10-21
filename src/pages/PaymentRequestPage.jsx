@@ -1,7 +1,7 @@
  // درخواست پرداخت
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BriefcaseBusiness, CalendarDays, ExternalLink, FileText, UserRound } from "lucide-react";
+import { CalendarDays, ExternalLink, FileText, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../components/AuthProvider";
@@ -2937,18 +2937,22 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
-          <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-4">
+          <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-5">
             <PaymentMetadata label="شماره درخواست" value={toFa(displayPaymentSerial(item, projects))} Icon={FileText} />
             <PaymentMetadata label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
             <PaymentMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} Icon={UserRound} />
-            <PaymentMetadata label="پروژه" value={<div className="space-y-1">{canEditRequest ? (
-              <select className={`${inputClass} font-[Vazir]`} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
-                <option value="">انتخاب پروژه</option>
-                {projects.map((row) => <option key={row.id} value={row.id}>{toFa(projectLabel(row))}</option>)}
-              </select>
-            ) : <div>{toFa(project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))}</div>}
-              <div className="text-[11px] font-normal text-neutral-500 dark:text-neutral-400">نقدینگی پروژه: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{liquidityRemaining ? `${toFa(liquidityRemaining)} ریال` : "—"}</span></div>
-            </div>} Icon={BriefcaseBusiness} />
+            <div className="col-span-2 flex min-w-0 items-center gap-2 border-b border-neutral-200 px-3 py-2 dark:border-white/10 md:border-b-0">
+              <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900"><img src="/images/icons/modiriat-projects.svg" alt="" className="h-4 w-4 dark:invert" /></span>
+              <div className="grid min-w-0 flex-1 grid-cols-2 items-center">
+                <div className="min-w-0 pl-3"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">پروژه</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{canEditRequest ? (
+                  <select className={`${inputClass} font-[Vazir]`} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
+                    <option value="">انتخاب پروژه</option>
+                    {projects.map((row) => <option key={row.id} value={row.id}>{toFa(projectLabel(row))}</option>)}
+                  </select>
+                ) : toFa(project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))}</div></div>
+                <div className="min-w-0 border-r border-neutral-300 pr-3 dark:border-white/15"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">نقدینگی پروژه</div><div className="mt-0.5 break-words font-[Vazir] text-xs font-bold">{liquidityRemaining ? `${toFa(liquidityRemaining)} ریال` : "—"}</div></div>
+              </div>
+            </div>
           </div>
           <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
           <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
@@ -3112,6 +3116,18 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
   const url = file ? attachmentViewUrl(file) : "";
   const name = file?.name || file?.originalName || `پیوست ${toFa(index + 1)}`;
   const isPdf = /\.pdf(?:[?#]|$)/i.test(file?.name || url || "") || /application\/pdf/i.test(file?.type || file?.mimeType || "");
+  const storedSize = Number(file?.size ?? file?.fileSize ?? 0);
+  const [measuredSize, setMeasuredSize] = useState({ url: "", size: null });
+  useEffect(() => {
+    if (!url || storedSize > 0) return;
+    const controller = new AbortController();
+    fetch(url, { credentials: "include", signal: controller.signal })
+      .then((response) => response.ok ? response.blob() : null)
+      .then((blob) => { if (blob && !controller.signal.aborted) setMeasuredSize({ url, size: blob.size }); })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [url, storedSize]);
+  const displaySize = storedSize > 0 ? storedSize : measuredSize.url === url ? measuredSize.size : null;
   return <div className="min-w-0">
     <aside className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-white/5">
       <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
@@ -3122,7 +3138,7 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
           : isImageAttachment(file) ? <button type="button" onClick={() => onOpenImage(file)} className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={url} alt={name} className="max-h-full max-w-full object-contain" /></button>
           : <div className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</div>}
       </div>
-      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-semibold" dir="auto" title={name}>{name}</p><p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{attachmentSize(file.size ?? file.fileSize)}</p></div>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
+      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-right text-xs font-semibold" dir="auto" title={name}>{name}</p><p className="mt-1 text-right text-[11px] text-neutral-500 dark:text-neutral-400">{attachmentSize(displaySize)}</p></div>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
       {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(fileIndex + 1)}</button>)}</div>}
       </div>
       <div className="border-t border-neutral-200 p-3 dark:border-white/10"><button type="button" onClick={onOpenPdf} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" />گزارش درخواست پرداخت</button></div>
