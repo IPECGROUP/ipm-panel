@@ -486,7 +486,7 @@ export default function PettyCashPage() {
             <div className="flex flex-wrap items-end gap-2">
               <div className="w-full min-w-0 md:min-w-[280px] md:flex-1"><Field label="جست و جو">
                 <input type="text" value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setReportPage(0); }}
-                  placeholder="جستجو در شماره، نام گزارش، تاریخ، پروژه، مبلغ، درخواست‌کننده و وضعیت ..."
+                  placeholder="جستجو در شماره، نام گزارش، تاریخ، پروژه، مبلغ، تنخواه‌گیرنده و وضعیت ..."
                   className={`${inputClass} placeholder:text-neutral-400 dark:border-white/15 dark:bg-neutral-900 dark:text-white`} />
               </Field></div>
               <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">از</div><JalaliPopupDatePicker value={reportFromDate} onChange={(value) => { setReportFromDate(value); setReportPage(0); }} /></div>
@@ -508,16 +508,16 @@ export default function PettyCashPage() {
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
               <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1200px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
-                <colgroup><col className="w-16" /><col className="w-28" /><col className="w-32" /><col className="w-52" /><col className="w-48" /><col className="w-44" /><col className="w-44" /><col className="w-52" /></colgroup>
+                <colgroup><col className="w-16" /><col className="w-28" /><col className="w-32" /><col className="w-44" /><col className="w-52" /><col className="w-48" /><col className="w-44" /><col className="w-52" /></colgroup>
                 <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
                   <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
                     <th scope="col" className="w-16 px-4 text-center font-bold">ردیف</th>
                     <th scope="col" className="px-4 text-center font-bold">شماره گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">تاریخ</th>
+                    <th scope="col" className="px-4 text-center font-bold">تنخواه‌گیرنده</th>
                     <th scope="col" className="px-4 text-center font-bold">نام گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">پروژه</th>
                     <th scope="col" className="px-4 text-center font-bold">مبلغ</th>
-                    <th scope="col" className="px-4 text-center font-bold">درخواست‌کننده</th>
                     <th scope="col" className="px-4 text-center font-bold">وضعیت</th>
                   </tr>
                 </thead>
@@ -531,10 +531,17 @@ export default function PettyCashPage() {
                       <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
                       <td className="px-4 py-2">{report.reportNumber ? toFa(report.reportNumber) : "—"}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
+                      <td className="px-4 py-2"><div className="flex min-w-0 items-center justify-center gap-2">
+                        <span className="truncate" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</span>
+                        {state.statusKey === "approved" && <button type="button" onClick={(event) => { event.stopPropagation(); openPettyCashReportPdf(report); }}
+                          onKeyDown={(event) => event.stopPropagation()} aria-label={`مشاهده و چاپ گزارش ${report.reportName}`} title="مشاهده و چاپ گزارش"
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg transition hover:bg-black/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-500 dark:hover:bg-white/10">
+                          <img src="/images/icons/print.svg" alt="" className="h-5 w-5 dark:invert" />
+                        </button>}
+                      </div></td>
                       <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
                       <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
                       <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
-                      <td className="truncate px-4 py-2" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
                       <td className="px-4 py-2"><span className={`inline-flex max-w-full items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusBadgeClass(state.statusKey)}`}>{state.statusKey === "pending" && state.waiting !== "—" ? state.waiting : state.status}</span></td>
                     </tr>;
                   })}
@@ -986,7 +993,7 @@ function reportDate(value) {
   return value ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).format(new Date(value)) : "—";
 }
 
-const REPORT_STATUS_LABELS = { pending: "در انتظار تأیید", approved: "تأیید شد", returned: "درخواست اصلاح", rejected: "رد شده" };
+const REPORT_STATUS_LABELS = { pending: "در انتظار تأیید", approved: "تأیید شد", returned: "درخواست اصلاح" };
 
 function reportStatusBadgeClass(status, active = false) {
   const colors = {
