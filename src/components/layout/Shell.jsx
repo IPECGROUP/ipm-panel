@@ -277,7 +277,7 @@ export default function Shell() {
             aria-label="خانه"
             title="خانه"
           >
-            <span className="relative block h-10 w-24 shrink-0 overflow-hidden">
+            <span className="relative block h-12 w-24 shrink-0 overflow-hidden">
               <img
                 src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-13.png"
                 alt="لوگوی شرکت ایده پویان انرژی"
