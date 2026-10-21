@@ -608,7 +608,7 @@ function BaseCurrenciesPage({ embedded = false }) {
 
         <div className="mb-6">
           <Section
-            title="نوع ارز"
+            title="نوع"
             form={
               <FormRow
                 placeholder="نوع ارز…"

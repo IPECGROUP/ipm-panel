@@ -169,7 +169,7 @@ export default function EquipmentCategoryTree() {
   return <section dir="rtl" className="rounded-2xl bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
     <h2 className="mb-4 text-sm font-bold">مشخصات تجهیزات</h2>
 
-      <form onSubmit={save} className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,3.5fr)_minmax(0,3.5fr)_auto] md:items-end">
+      <form onSubmit={save} className="grid gap-3 md:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_minmax(0,3fr)_minmax(0,3fr)_auto] md:items-end">
         <label className="block min-w-0"><span className="mb-1 block text-sm">دسته‌بندی تجهیزات</span><select required value={categoryId} onChange={(event) => changeCategory(event.target.value)} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{categories.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label className="block min-w-0"><span className="mb-1 block text-sm">کد مشخصات</span><input required dir="ltr" maxLength={120} value={code} onChange={(event) => setCode(event.target.value)} className={inputClass + " text-left font-sans tabular-nums"} placeholder="1-2" inputMode="numeric" /></label>
         <label className="block min-w-0"><span className="mb-1 block text-sm">مشخصات (فارسی)</span><input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} className={inputClass} placeholder="مشخصات (فارسی)" /></label>
