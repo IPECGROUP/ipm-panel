@@ -2368,19 +2368,20 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     : editAmountMinorUnits;
 
   useEffect(() => {
-    if (!item.projectId) {
+    const projectId = canEditRequest ? editForm.projectId : item.projectId;
+    if (!projectId) {
       setLiquidityRemaining("");
       return;
     }
     let cancelled = false;
-    fetch(`/api/liquidity-allocations?projectId=${encodeURIComponent(item.projectId)}`, {
+    fetch(`/api/liquidity-allocations?projectId=${encodeURIComponent(projectId)}`, {
       credentials: "include",
       headers: userId != null ? { "x-user-id": String(userId) } : {},
     })
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data?.error || "liquidity_failed");
-        const key = String(item.projectId);
+        const key = String(projectId);
         const totalBudgetMinorUnits = decimalMinorUnits(data?.allocations?.[key] || 0);
         const commitmentMinorUnits = decimalMinorUnits(data?.committed?.[key] || 0);
         const remainingMinorUnits = totalBudgetMinorUnits > commitmentMinorUnits ? totalBudgetMinorUnits - commitmentMinorUnits : 0n;
@@ -2388,7 +2389,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
       })
       .catch(() => { if (!cancelled) setLiquidityRemaining(""); });
     return () => { cancelled = true; };
-  }, [item.projectId, userId]);
+  }, [canEditRequest, editForm.projectId, item.projectId, userId]);
   const editAttachments = Array.isArray(editForm.attachments) ? editForm.attachments : [];
   const previewBudgetProjectId = canEditRequest ? editForm.projectId : item.projectId;
   const previewBudgetCode = canEditRequest ? editForm.budgetCode : item.budgetCode;
@@ -2937,15 +2938,17 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
           <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-4">
-            <PaymentMetadata label="شماره درخواست" value={displayPaymentSerial(item, projects)} Icon={FileText} />
+            <PaymentMetadata label="شماره درخواست" value={toFa(displayPaymentSerial(item, projects))} Icon={FileText} />
             <PaymentMetadata label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
             <PaymentMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} Icon={UserRound} />
-            <PaymentMetadata label="پروژه" value={canEditRequest ? (
-              <select className={inputClass} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
+            <PaymentMetadata label="پروژه" value={<div className="space-y-1">{canEditRequest ? (
+              <select className={`${inputClass} font-[Vazir]`} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
                 <option value="">انتخاب پروژه</option>
-                {projects.map((row) => <option key={row.id} value={row.id}>{projectLabel(row)}</option>)}
+                {projects.map((row) => <option key={row.id} value={row.id}>{toFa(projectLabel(row))}</option>)}
               </select>
-            ) : (project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))} Icon={BriefcaseBusiness} />
+            ) : <div>{toFa(project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))}</div>}
+              <div className="text-[11px] font-normal text-neutral-500 dark:text-neutral-400">نقدینگی پروژه: <span className="font-semibold text-neutral-800 dark:text-neutral-200">{liquidityRemaining ? `${toFa(liquidityRemaining)} ریال` : "—"}</span></div>
+            </div>} Icon={BriefcaseBusiness} />
           </div>
           <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
           <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
@@ -2955,7 +2958,8 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           <main className="min-w-0 space-y-4">
             <div className="space-y-4">
               <PreviewSection title="جزئیات درخواست پرداخت" flush>
-                <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
+                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:divide-white/10 dark:md:[&>*+*]:border-white/15">
+                  <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="کد بودجه" value={canEditRequest ? (
                     <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
                       <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
@@ -2967,18 +2971,12 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                     </select>
                   ) : (item.budgetCode ? <span className="inline-flex max-w-full items-center gap-1.5 font-sans"><bdi dir="ltr">{toFa(item.budgetCode)}</bdi>{budgetName ? <span className="min-w-0 truncate">- {budgetName}</span> : null}</span> : "—")} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
-                </div>
+                <PreviewRow compact editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="مبلغ درخواست" ltr={!canEditReturnedAmount} value={canEditReturnedAmount ? <div className="flex items-center gap-2"><MoneyInput decimals={editForm.currencyTypeId ? 2 : 0} value={editForm.amount} onChange={(value) => setEditField("amount", value)} /><span className="shrink-0 text-xs">{editCurrencyName}</span></div> : <span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />
                   <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="نرخ" ltr={!canEditReturnedAmount} value={canEditReturnedAmount && editForm.currencyTypeId ? <MoneyInput value={editForm.exchangeRate} onChange={(value) => setEditField("exchangeRate", value)} /> : item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
                   <PreviewRow compact colon leader={!canEditReturnedAmount} label="مبلغ ریالی درخواست" ltr={!canEditReturnedAmount} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(canEditReturnedAmount ? exactRialMoney(minorUnitsToDecimal(editRialMinorUnits)) : exactRialMoney(item.rialAmount || item.amount || 0))}</span></span>} />
                 </div>
-                <div className="grid grid-cols-1 divide-y divide-black/10 dark:divide-white/10">
-                  <PreviewRow compact colon leader={!canEditRequest} label="باقی مانده نقدینگی پروژه" value={liquidityRemaining || "—"} ltr />
-                </div>
-                <PreviewRow compact editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="نوع سند" value={canEditRequest ? (
                   <div className="space-y-2">
@@ -3096,8 +3094,16 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
 function PaymentMetadata({ label, value, Icon }) {
   return <div className="flex min-w-0 items-center gap-2 border-l border-b border-neutral-200 px-3 py-2 last:border-l-0 dark:border-white/10 md:border-b-0">
     <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200"><Icon className="h-4 w-4 stroke-[1.6]" /></span>
-    <div className="min-w-0 flex-1"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-0.5 min-w-0 break-words text-xs font-bold">{value}</div></div>
+    <div className="min-w-0 flex-1"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{value}</div></div>
   </div>;
+}
+
+function attachmentSize(bytes) {
+  const size = Number(bytes);
+  if (!Number.isFinite(size) || size <= 0) return "—";
+  return size >= 1024 * 1024
+    ? `${toFa((size / (1024 * 1024)).toFixed(2))} مگابایت`
+    : `${toFa(Math.max(1, Math.round(size / 1024)))} کیلوبایت`;
 }
 
 function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage, onOpenPdf }) {
@@ -3106,8 +3112,8 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
   const url = file ? attachmentViewUrl(file) : "";
   const name = file?.name || file?.originalName || `پیوست ${toFa(index + 1)}`;
   const isPdf = /\.pdf(?:[?#]|$)/i.test(file?.name || url || "") || /application\/pdf/i.test(file?.type || file?.mimeType || "");
-  return <div className="min-w-0 space-y-3">
-    <aside className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+  return <div className="min-w-0">
+    <aside className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-white/5">
       <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
       <div className="p-3">
       <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 xl:h-[min(44vh,430px)]">
@@ -3116,11 +3122,11 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
           : isImageAttachment(file) ? <button type="button" onClick={() => onOpenImage(file)} className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={url} alt={name} className="max-h-full max-w-full object-contain" /></button>
           : <div className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</div>}
       </div>
-      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><span className="min-w-0 truncate text-xs font-semibold" dir="auto" title={name}>{name}</span>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
+      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-semibold" dir="auto" title={name}>{name}</p><p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">{attachmentSize(file.size ?? file.fileSize)}</p></div>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
       {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(fileIndex + 1)}</button>)}</div>}
       </div>
+      <div className="border-t border-neutral-200 p-3 dark:border-white/10"><button type="button" onClick={onOpenPdf} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" />گزارش درخواست پرداخت</button></div>
     </aside>
-    <button type="button" onClick={onOpenPdf} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" />گزارش درخواست پرداخت</button>
   </div>;
 }
 
@@ -3156,7 +3162,7 @@ function WorkflowPanel({
   }
 
   if (stepKey === "project_manager") {
-    return <PreviewSection title="نتیجه بررسی مدیر پروژه">
+    return <PreviewSection title="نتیجه بررسی">
       <div className="space-y-3 py-4">
         <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={urgentCash} onChange={(event) => setUrgentCash(event.target.checked)} className="h-4 w-4 accent-black dark:accent-white" />پرداخت فوری و نقدی</label>
         <div className="grid gap-3 md:grid-cols-3">
@@ -3172,7 +3178,7 @@ function WorkflowPanel({
   }
 
   if (stepKey === "project_control") {
-    return <PreviewSection title="نتیجه بررسی اولیه">
+    return <PreviewSection title="نتیجه بررسی">
       <div className="space-y-3 py-4">
         <div className="grid gap-3 md:grid-cols-3">
           <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label="تایید درخواست پرداخت">
@@ -3189,7 +3195,7 @@ function WorkflowPanel({
     </PreviewSection>;
   }
 
-  return <PreviewSection title={stepKey === "management" ? "نتیجه بررسی مدیریت" : "نتیجه بررسی مالی"}>
+  return <PreviewSection title="نتیجه بررسی">
     <div className="space-y-3 py-4">
       <div className="grid gap-3 md:grid-cols-2">
         <ActionOption kind="approve" checked={choice === "approve"} onClick={() => setChoice("approve")} label={stepKey === "management" ? "تایید درخواست پرداخت" : "تایید درخواست"}>
