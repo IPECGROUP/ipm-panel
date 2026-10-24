@@ -6,6 +6,7 @@ import { useAuth } from "../components/AuthProvider.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 const PAGE_ICON = "/images/icons/modiriat-nagdinegi.svg";
 const HISTORY_QUICK_FILTERS = [["week", "هفته قبل"], ["2w", "2 هفته قبل"], ["1m", "یک ماه قبل"], ["3m", "3 ماه قبل"], ["6m", "6 ماه قبل"]];
@@ -97,6 +98,8 @@ export default function LiquidityAllocationPage() {
   const [historyToDate, setHistoryToDate] = useState("");
   const [historyQuick, setHistoryQuick] = useState("");
   const [previewAllocation, setPreviewAllocation] = useState(null);
+  const [budgetOverviewOpen, setBudgetOverviewOpen] = useState(false);
+  const [selectedOverviewProjectId, setSelectedOverviewProjectId] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -211,6 +214,50 @@ export default function LiquidityAllocationPage() {
     return Number(normalized) || 0;
   };
   const displayMoney = (value) => value ? toFaDigits(Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })) : "—";
+  const displayOverviewMoney = (value) => toFaDigits(Number(value || 0).toLocaleString("en-US", { maximumFractionDigits: 2 }));
+  const formatChartAmount = (value) => {
+    const amount = Number(value) || 0;
+    const magnitude = Math.abs(amount);
+    if (magnitude >= 1_000_000_000_000) return `${toFaDigits((amount / 1_000_000_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 }))} هزار میلیارد`;
+    if (magnitude >= 1_000_000_000) return `${toFaDigits((amount / 1_000_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 }))} میلیارد`;
+    if (magnitude >= 1_000_000) return `${toFaDigits((amount / 1_000_000).toLocaleString("en-US", { maximumFractionDigits: 1 }))} میلیون`;
+    return toFaDigits(amount.toLocaleString("en-US", { maximumFractionDigits: 0 }));
+  };
+  const projectOverview = useMemo(() => {
+    const byId = new Map();
+    const addProject = (project) => {
+      if (project?.id == null) return;
+      const key = String(project.id);
+      if (!byId.has(key)) byId.set(key, { id: key, label: projectLabel(project), total: 0, allocations: [] });
+    };
+    projects.forEach(addProject);
+    for (const batch of history) {
+      for (const detail of batch.details || []) {
+        const key = String(detail.projectId);
+        if (!byId.has(key)) byId.set(key, { id: key, label: detail.project ? projectLabel(detail.project) : `پروژه ${toFaDigits(key)}`, total: 0, allocations: [] });
+        byId.get(key).allocations.push({
+          id: batch.id,
+          date: batch.allocationDate || "—",
+          createdAt: batch.createdAt || "",
+          source: batch.source || "—",
+          description: batch.description || "",
+          amount: money(detail.amount),
+        });
+      }
+    }
+    for (const project of byId.values()) {
+      project.total = money(summary.allocations[project.id]);
+      project.committed = money(summary.committed[project.id]);
+      project.spent = money(summary.spent[project.id]);
+      project.remaining = project.total - project.committed;
+      project.allocations.sort((a, b) => dateKey(a.date).localeCompare(dateKey(b.date)) || a.createdAt.localeCompare(b.createdAt) || String(a.id).localeCompare(String(b.id)));
+      let cumulative = 0;
+      project.allocations = project.allocations.map((entry, index) => ({ ...entry, sequence: index + 1, cumulative: (cumulative += entry.amount) }));
+    }
+    return [...byId.values()].sort((a, b) => b.total - a.total || a.label.localeCompare(b.label, "fa"));
+  }, [history, projects, summary.allocations, summary.committed, summary.spent]);
+  const selectedOverviewProject = projectOverview.find((project) => project.id === selectedOverviewProjectId) || projectOverview[0];
+  const overviewMax = Math.max(0, ...projectOverview.map((project) => Math.abs(project.total)));
   const displayMoneyWithRial = (value) => (
     <span dir="ltr" className="inline-flex w-full items-center justify-end gap-1 whitespace-nowrap">
       <span className="text-xs font-normal">ریال</span>
@@ -314,6 +361,10 @@ export default function LiquidityAllocationPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setBudgetOverviewOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10 sm:text-sm" title="بودجه و نقدینگی پروژه‌ها">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l4-4 3 2 5-6" /></svg>
+            <span>بودجه و نقدینگی پروژه‌ها</span>
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -543,6 +594,52 @@ export default function LiquidityAllocationPage() {
       <div className="mt-4 flex items-center justify-end gap-3" dir="rtl">
         {submitMessage && <span className={submitMessage.includes("شد.") ? "text-xs text-emerald-600 dark:text-emerald-300" : "text-xs text-red-600 dark:text-red-300"}>{submitMessage}</span>}
       </div>
+
+      {budgetOverviewOpen && <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/55 p-3 backdrop-blur-sm" dir="rtl" onMouseDown={(event) => { if (event.target === event.currentTarget) setBudgetOverviewOpen(false); }}>
+        <div role="dialog" aria-modal="true" aria-labelledby="budget-overview-title" className="flex max-h-[88vh] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+          <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
+            <div>
+              <div id="budget-overview-title" className="font-bold">بودجه و نقدینگی پروژه‌ها</div>
+              <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">مجموع تخصیص هر پروژه و ریز نوبت‌های تخصیص</div>
+            </div>
+            <button type="button" onClick={() => setBudgetOverviewOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+          </div>
+          <div className="min-h-0 space-y-5 overflow-y-auto p-4 sm:p-5">
+            <section>
+              <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-bold">کل تخصیص پروژه‌ها</h3><span className="text-xs text-neutral-500 dark:text-neutral-400">ریال</span></div>
+              {projectOverview.length ? <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-black/10 p-3 dark:border-white/10">
+                {projectOverview.map((project) => <button key={project.id} type="button" onClick={() => setSelectedOverviewProjectId(project.id)} className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg px-2 py-2 text-right transition ${selectedOverviewProject?.id === project.id ? "bg-sky-50 dark:bg-sky-500/10" : "hover:bg-neutral-50 dark:hover:bg-white/5"}`} aria-pressed={selectedOverviewProject?.id === project.id}>
+                  <span className="min-w-0 truncate text-xs font-medium sm:text-sm" title={project.label}>{project.label}</span>
+                  <span className="whitespace-nowrap text-xs font-semibold tabular-nums sm:text-sm">{displayOverviewMoney(project.total)}</span>
+                  <span className="col-span-2 h-2 overflow-hidden rounded-full bg-neutral-100 dark:bg-white/10"><span className={`block h-full rounded-full ${project.total < 0 ? "bg-rose-500" : "bg-sky-600 dark:bg-sky-400"}`} style={{ width: `${overviewMax ? Math.max(2, Math.abs(project.total) / overviewMax * 100) : 0}%` }} /></span>
+                </button>)}
+              </div> : <div className="rounded-xl border border-black/10 p-8 text-center text-sm text-neutral-500 dark:border-white/10">پروژه‌ای برای نمایش وجود ندارد.</div>}
+            </section>
+            {selectedOverviewProject && <section className="space-y-4 border-t border-black/10 pt-5 dark:border-white/10">
+              <div><h3 className="font-bold">{selectedOverviewProject.label}</h3><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(selectedOverviewProject.allocations.length)} نوبت تخصیص</p></div>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {[["کل تخصیص", selectedOverviewProject.total], ["تعهدات", selectedOverviewProject.committed], ["مصرف", selectedOverviewProject.spent], ["مانده نقدینگی", selectedOverviewProject.remaining]].map(([label, value]) => <div key={label} className="rounded-xl border border-black/10 bg-neutral-50 p-3 dark:border-white/10 dark:bg-white/[0.04]"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-1 text-sm font-bold tabular-nums">{displayOverviewMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
+              </div>
+              {selectedOverviewProject.allocations.length ? <>
+                <div className="h-56 rounded-xl border border-black/10 px-2 pb-2 pt-4 dark:border-white/10" dir="ltr">
+                  <ResponsiveContainer width="100%" height="100%"><AreaChart data={[{ sequence: 0, cumulative: 0 }, ...selectedOverviewProject.allocations]} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#d4d4d8" vertical={false} />
+                    <XAxis dataKey="sequence" tickFormatter={toFaDigits} tickLine={false} axisLine={false} fontSize={11} />
+                    <YAxis tickFormatter={formatChartAmount} tickLine={false} axisLine={false} width={92} fontSize={10} />
+                    <Tooltip formatter={(value) => [`${displayOverviewMoney(value)} ریال`, "جمع تخصیص"]} labelFormatter={(value) => `نوبت ${toFaDigits(value)}`} />
+                    <Area type="stepAfter" dataKey="cumulative" stroke="#0284c7" fill="#0ea5e9" fillOpacity={0.12} strokeWidth={2} dot={selectedOverviewProject.allocations.length < 20} />
+                  </AreaChart></ResponsiveContainer>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
+                  <table className="w-full min-w-[680px] text-right text-xs sm:text-sm"><thead className="bg-neutral-100 dark:bg-white/5"><tr>{["نوبت", "تاریخ", "منبع نقدینگی", "مبلغ این نوبت", "جمع تا این نوبت", "توضیحات"].map((title) => <th key={title} className="border-b border-black/10 px-3 py-2 font-semibold dark:border-white/10">{title}</th>)}</tr></thead>
+                    <tbody>{[...selectedOverviewProject.allocations].reverse().map((entry) => <tr key={entry.id} className="border-b border-black/10 last:border-b-0 dark:border-white/10"><td className="px-3 py-2">{toFaDigits(entry.sequence)}</td><td className="whitespace-nowrap px-3 py-2">{entry.date}</td><td className="px-3 py-2">{entry.source}</td><td className="whitespace-nowrap px-3 py-2 font-semibold tabular-nums">{displayOverviewMoney(entry.amount)}</td><td className="whitespace-nowrap px-3 py-2 tabular-nums">{displayOverviewMoney(entry.cumulative)}</td><td className="max-w-48 truncate px-3 py-2" title={entry.description}>{entry.description || "—"}</td></tr>)}</tbody>
+                  </table>
+                </div>
+              </> : <div className="rounded-xl border border-black/10 p-6 text-center text-sm text-neutral-500 dark:border-white/10">برای این پروژه تخصیصی ثبت نشده است.</div>}
+            </section>}
+          </div>
+        </div>
+      </div>}
 
       {previewAllocation && <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/55 p-3 backdrop-blur-sm" dir="rtl" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewAllocation(null); }}>
         <div role="dialog" aria-modal="true" aria-labelledby="liquidity-detail-title" className="flex max-h-[88vh] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
