@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, ExternalLink, FileText, LoaderCircle, Pencil, Trash2, Upload, X } from "lucide-react";
+import { readableFileName } from "../utils/fileName.js";
 
 const defaultAccept = ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv";
 
 function fileLabel(file) {
-  return file?.name || file?.originalName || "فایل انتخاب‌شده";
+  return readableFileName(file?.name || file?.originalName || "فایل انتخاب‌شده");
 }
 
 function UploadFileRow({ file, index, uploading, onEditFile, isEditableFile, onRemove }) {

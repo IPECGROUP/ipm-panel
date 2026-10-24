@@ -904,7 +904,13 @@ export default function PaymentRequestPage() {
       return data;
     } catch (err) {
       setSelected((current) => current && Number(current.id) === Number(actionItem.id) ? { ...actionItem } : current);
-      setActionError(["forbidden", "reject_not_allowed_for_step", "return_not_allowed_for_step"].includes(err?.message) ? "شما اجازه انجام این اقدام را ندارید." : "ثبت اقدام انجام نشد.");
+      setActionError(["forbidden", "reject_not_allowed_for_step", "return_not_allowed_for_step"].includes(err?.message)
+        ? "شما اجازه انجام این اقدام را ندارید."
+        : err?.message === "amount_exceeds_project_liquidity"
+          ? "تعهدات پروژه از نقدینگی قابل استفاده بیشتر است؛ ابتدا مانده پروژه را بررسی کنید."
+          : err?.message === "request_changed"
+            ? "این درخواست تغییر کرده است. صفحه را تازه‌سازی و دوباره تلاش کنید."
+            : "ثبت اقدام انجام نشد.");
     } finally {
       actionInFlightRef.current = false;
       setActionBusy(false);
@@ -995,7 +1001,10 @@ export default function PaymentRequestPage() {
       setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
       await loadItems();
     } catch (err) {
-      setActionError(err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست انجام نشد.");
+      setActionError(err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید."
+        : err?.message === "amount_exceeds_project_liquidity" ? paymentRequestCreateErrorMessage(err.message)
+        : err?.message === "request_changed" ? "این درخواست تغییر کرده است. صفحه را تازه‌سازی و دوباره تلاش کنید."
+        : "ویرایش درخواست انجام نشد.");
     } finally {
       setActionBusy(false);
     }

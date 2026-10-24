@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { readableFileName } from "../utils/fileName.js";
 
-const nameOf = (file) => String(file?.name ?? file?.filename ?? file?.file_name ?? file?.fileName ?? file?.original_name ?? file?.originalName ?? "");
+const nameOf = (file) => readableFileName(file?.name ?? file?.filename ?? file?.file_name ?? file?.fileName ?? file?.original_name ?? file?.originalName);
 const filesOf = (letter) => {
   const raw = letter?.attachments ?? letter?.attachment ?? letter?.files ?? letter?.files_json;
   if (Array.isArray(raw)) return raw;

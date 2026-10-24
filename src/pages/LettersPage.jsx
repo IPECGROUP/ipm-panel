@@ -6,6 +6,7 @@ import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
 import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
+import { readableFileName } from "../utils/fileName.js";
 import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 
 const PAGE_ICON = "/images/icons/dabirkhaneh.svg";
@@ -3161,7 +3162,7 @@ const secretariatLongText = (ymd) => {
 
   const attachmentNameOf = (a) => {
     const n = a?.name ?? a?.filename ?? a?.file_name ?? a?.fileName ?? a?.original_name ?? a?.originalName;
-    return String(n || "");
+    return readableFileName(n);
   };
 
   const attachmentTypeOf = (a) => String(a?.type ?? a?.mime ?? a?.mime_type ?? a?.mimeType ?? "");
