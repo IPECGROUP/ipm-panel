@@ -5,6 +5,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import Card from "../components/ui/Card.jsx";
 import PettyCashBarChart from "../components/PettyCashBarChart.jsx";
@@ -692,7 +693,9 @@ const inputClass = "h-11 w-full rounded-xl border border-neutral-200 bg-white px
 const emptyForm = () => ({ expenseDate: todayJalaliYmd().replaceAll("-", "/"), description: "", budgetCode: "", amount: "", currencyTypeId: "", exchangeRate: "" });
 const hasPettyCashDraftContent = (draft) => Boolean(draft.projectId || draft.reportName.trim() || draft.items.length ||
   draft.form.description.trim() || draft.form.budgetCode || draft.form.amount || draft.form.currencyTypeId ||
-  draft.form.expenseDate !== emptyForm().expenseDate || draft.attachment);
+  draft.form.expenseDate !== emptyForm().expenseDate || draft.attachments?.length || draft.attachment);
+const expenseAttachments = (item) => Array.isArray(item.files) && item.files.length ? item.files
+  : item.fileUrl ? [{ name: item.fileName, url: item.fileUrl, file: item.attachmentFile }] : [];
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
 const english = (value) => toEnglishDigits(String(value ?? "")).replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
 
@@ -714,7 +717,9 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const [attachmentIndex, setAttachmentIndex] = useState(0);
   const [viewedRowIds, setViewedRowIds] = useState(() => new Set());
   const [preview, setPreview] = useState({ loading: false, url: "", size: null, error: "" });
-  const attachments = entries.filter((item) => item.fileUrl);
+  const attachments = entries.flatMap((item) => expenseAttachments(item).map((file) => ({
+    id: item.id, fileName: file.name, fileUrl: file.url,
+  })).filter((file) => file.fileUrl));
   const attachment = attachments[attachmentIndex];
   const actionable = entries.filter((item) => item.canAct === true);
   const canAct = entries.length > 0 && actionable.length === entries.length && entries.every((item) => item.stage === entries[0].stage) && !outdated;
@@ -1016,10 +1021,13 @@ function expenseReportState(items = []) {
 }
 
 function ExpenseAttachmentLink({ item }) {
-  return item.fileUrl ? <a href={item.fileUrl} target="_blank" rel="noreferrer" aria-label="نمایش پیوست" title={item.fileName || "نمایش پیوست"}
-    className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-black/5">
-    <img src="/images/icons/namayesh.svg" alt="" className="h-5 w-5" />
-  </a> : "—";
+  const files = expenseAttachments(item);
+  return files.length ? <span className="inline-flex items-center justify-center gap-1">
+    {files.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" aria-label={`نمایش پیوست ${toFa(index + 1)}`} title={file.name || "نمایش پیوست"}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-black/5">
+      <img src="/images/icons/namayesh.svg" alt="" className="h-5 w-5" />
+    </a>)}
+  </span> : "—";
 }
 
 function Field({ label, required = false, children }) {
@@ -1036,18 +1044,19 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
   const [reportName, setReportName] = useState(initialReport?.reportName || "");
   const [budgetItems, setBudgetItems] = useState([]);
   const [currencyTypes, setCurrencyTypes] = useState([]);
-  const [items, setItems] = useState(() => (initialReport?.items || []).map((item) => ({ ...item, uploadedFile: { name: item.fileName, url: item.fileUrl } })));
+  const [items, setItems] = useState(() => (initialReport?.items || []).map((item) => ({ ...item, files: expenseAttachments(item) })));
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [form, setForm] = useState(emptyForm);
-  const [attachment, setAttachment] = useState(null);
+  const [attachments, setAttachments] = useState([]);
   const [budgetPickerOpen, setBudgetPickerOpen] = useState(false);
   const [budgetPickerQuery, setBudgetPickerQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [attachmentEditorOpen, setAttachmentEditorOpen] = useState(false);
+  const [photoEditIndex, setPhotoEditIndex] = useState(null);
   const formRef = useRef(null);
   const menuButtonRef = useRef(null);
   const menuPopoverRef = useRef(null);
@@ -1107,15 +1116,18 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     readPettyCashDraft(user.id).then((draft) => {
       if (!active || draft?.version !== 1 || !Array.isArray(draft.items)) return;
       const restoredItems = draft.items.map((item) => {
-        const fileUrl = item.attachmentFile ? URL.createObjectURL(item.attachmentFile) : item.uploadedFile?.url || item.fileUrl || "";
-        if (item.attachmentFile) previewUrlsRef.current.add(fileUrl);
-        return { ...item, fileUrl };
+        const files = expenseAttachments(item).map((entry) => {
+          const url = entry.file && !entry.url ? URL.createObjectURL(entry.file) : entry.url;
+          if (entry.file && !entry.url) previewUrlsRef.current.add(url);
+          return { ...entry, url };
+        });
+        return { ...item, files, fileUrl: files[0]?.url || "", fileName: files[0]?.name || "" };
       });
       setProjectId(String(draft.projectId || ""));
       setReportName(String(draft.reportName || ""));
       setItems(restoredItems);
       setForm({ ...emptyForm(), ...draft.form });
-      setAttachment(draft.attachment || null);
+      setAttachments(draft.attachments || (draft.attachment ? [{ name: draft.attachment.name, file: draft.attachment }] : []));
       setEditingExpense(restoredItems.find((item) => item.id === draft.editingExpenseId) || null);
       setManualEntryOpen(Boolean(draft.manualEntryOpen));
       if (draft.submissionKey) submissionKeyRef.current = draft.submissionKey;
@@ -1131,9 +1143,10 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
 
   useEffect(() => {
     if (initialReport || !user?.id || !draftReady || draftClearedRef.current) return;
-    const snapshot = { version: 1, projectId, reportName, form, attachment, manualEntryOpen,
+    const snapshot = { version: 1, projectId, reportName, form, attachments, manualEntryOpen,
       editingExpenseId: editingExpense?.id || null, submissionKey: submissionKeyRef.current,
-      items: items.map((item) => ({ ...item, fileUrl: item.fileUrl?.startsWith("blob:") ? "" : item.fileUrl })) };
+      items: items.map((item) => ({ ...item, fileUrl: item.fileUrl?.startsWith("blob:") ? "" : item.fileUrl,
+        files: expenseAttachments(item).map((file) => ({ ...file, url: file.url?.startsWith("blob:") ? "" : file.url })) })) };
     const draft = hasPettyCashDraftContent(snapshot) ? snapshot : null;
     draftLatestRef.current = draft;
     setDraftStatus(draft ? "saving" : "");
@@ -1144,7 +1157,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
         .catch(() => { if (!draftClearedRef.current) setDraftStatus("error"); });
     }, itemsChanged ? 0 : 350);
     return () => clearTimeout(draftSaveTimerRef.current);
-  }, [attachment, draftReady, editingExpense, form, initialReport, items, manualEntryOpen, projectId, queueDraftWrite, reportName, user?.id]);
+  }, [attachments, draftReady, editingExpense, form, initialReport, items, manualEntryOpen, projectId, queueDraftWrite, reportName, user?.id]);
 
   useEffect(() => () => {
     if (!initialReport && draftReadyRef.current && !draftClearedRef.current) {
@@ -1191,7 +1204,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     setEditingExpense(null);
     setMenuPosition(null);
     setForm(emptyForm());
-    setAttachment(null);
+    setAttachments([]);
     setBudgetItems([]);
     setError("");
     if (!id) return;
@@ -1217,21 +1230,23 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     if (!initialReport && availableBalance !== null && (availableBalance <= 0n || otherRowsAmount + rowAmount > availableBalance)) {
       return setError(availableBalance <= 0n ? "مانده‌ای برای ثبت هزینه وجود ندارد." : `مجموع هزینه‌ها نمی‌تواند از مانده تنخواه (${money(availableBalance)} ریال) بیشتر باشد.`);
     }
-    if (!attachment && !editingExpense?.fileUrl) return setError("پیوست هر ردیف الزامی است.");
+    if (!attachments.length) return setError("پیوست هر ردیف الزامی است.");
+    if (attachments.length > 20) return setError("برای هر ردیف حداکثر ۲۰ فایل انتخاب کنید.");
     if (!editingExpense && items.length >= 500) return setError("هر گزارش حداکثر ۵۰۰ ردیف می‌تواند داشته باشد.");
-    const fileUrl = attachment ? URL.createObjectURL(attachment) : editingExpense.fileUrl;
-    if (attachment) previewUrlsRef.current.add(fileUrl);
+    const files = attachments.map((entry) => {
+      const url = entry.file && !entry.url ? URL.createObjectURL(entry.file) : entry.url;
+      if (entry.file && !entry.url) previewUrlsRef.current.add(url);
+      return { ...entry, url };
+    });
     const item = { ...form, description: form.description.trim(), amount: rowAmount.toString(),
       currencyTypeId: form.currencyTypeId || null, currencyName: selectedCurrency ? currencyLabel(selectedCurrency) : "ریال",
       currencyAmount: form.currencyTypeId ? foreignAmount(form.amount) : rowAmount.toString(),
       exchangeRate: form.currencyTypeId ? toEnglishDigits(form.exchangeRate).replace(/[^\d]/g, "") : "1",
-      id: editingExpense?.id || crypto.randomUUID(), stage: editingExpense?.stage || "planning", fileUrl,
-      fileName: attachment?.name || editingExpense?.fileName,
-      attachmentFile: attachment || editingExpense?.attachmentFile,
-      uploadedFile: attachment ? null : editingExpense?.uploadedFile };
+      id: editingExpense?.id || crypto.randomUUID(), stage: editingExpense?.stage || "planning",
+      files, fileUrl: files[0].url, fileName: files[0].name };
     setItems((current) => editingExpense ? current.map((entry) => entry.id === item.id ? item : entry) : [...current, item]);
     setForm(emptyForm());
-    setAttachment(null);
+    setAttachments([]);
     setEditingExpense(null);
     setError("");
   };
@@ -1242,10 +1257,10 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     const reportAmount = items.reduce((sum, item) => sum + amount(item.amount), 0n);
     if (!initialReport && availableBalance !== null && availableBalance <= 0n) return "مانده‌ای برای ثبت هزینه وجود ندارد.";
     if (!initialReport && availableBalance !== null && reportAmount > availableBalance) return `مجموع هزینه‌ها نمی‌تواند از مانده تنخواه (${money(availableBalance)} ریال) بیشتر باشد.`;
-    if (editingExpense || form.description.trim() || form.budgetCode || form.amount || attachment) {
+    if (editingExpense || form.description.trim() || form.budgetCode || form.amount || attachments.length) {
       return "ابتدا ردیف در حال ورود یا ویرایش را با دکمه افزودن ردیف ثبت کنید.";
     }
-    if (items.some((item) => !item.expenseDate || !item.description.trim() || !item.budgetCode || amount(item.amount) <= 0n || (!item.attachmentFile && !item.uploadedFile))) {
+    if (items.some((item) => !item.expenseDate || !item.description.trim() || !item.budgetCode || amount(item.amount) <= 0n || !expenseAttachments(item).length)) {
       return "همه فیلدها و پیوست هر ردیف باید تکمیل باشند.";
     }
     return "";
@@ -1267,22 +1282,27 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     try {
       const prepared = [];
       for (const item of items) {
-        let file = item.uploadedFile;
-        if (!file) {
+        const files = [];
+        for (const attachment of expenseAttachments(item)) {
+          if (attachment.url && !attachment.url.startsWith("blob:")) {
+            files.push({ name: attachment.name, url: attachment.url });
+            continue;
+          }
           const payload = new FormData();
-          payload.append("file", item.attachmentFile);
+          payload.append("file", attachment.file);
           const response = await fetch("/api/petty-cash-expenses/upload", {
             method: "POST", credentials: "include", headers: { "x-user-id": String(user?.id || "") }, body: payload,
           });
           const data = await response.json().catch(() => ({}));
           if (!response.ok || !data.file?.url) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
-          file = data.file;
-          // Retain completed uploads if a later upload or report request needs retrying.
-          setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, uploadedFile: file } : entry));
+          files.push(data.file);
+          // Keep each successful upload for retry if a later upload fails.
+          setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry,
+            files: expenseAttachments(entry).map((file) => file === attachment ? { ...file, url: data.file.url } : file) } : entry));
         }
         prepared.push({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode,
           amount: item.amount, currencyTypeId: item.currencyTypeId || null, currencyName: item.currencyName || "ریال", currencyAmount: item.currencyAmount || item.amount,
-          exchangeRate: item.exchangeRate || "1", fileName: file.name, fileUrl: file.url, stage: item.stage, id: item.id });
+          exchangeRate: item.exchangeRate || "1", files, fileName: files[0].name, fileUrl: files[0].url, stage: item.stage, id: item.id });
       }
       const data = await api("/petty-cash-expenses", { method: initialReport ? "PATCH" : "POST", body: JSON.stringify({
         action: initialReport ? "resubmit_report" : "create_expense_report", reportId: initialReport?.id, expectedVersion: initialReport?.version,
@@ -1355,7 +1375,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode,
       amount: item.currencyTypeId ? decimalAmount(item.currencyAmount) : format3(item.amount),
       currencyTypeId: item.currencyTypeId ? String(item.currencyTypeId) : "", exchangeRate: item.currencyTypeId ? format3(item.exchangeRate) : "" });
-    setAttachment(null);
+    setAttachments(expenseAttachments(item));
     setMenuPosition(null);
     setError("");
     requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }));
@@ -1364,7 +1384,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
   const cancelEdit = () => {
     setEditingExpense(null);
     setForm(emptyForm());
-    setAttachment(null);
+    setAttachments([]);
     setError("");
   };
   const deleteSelected = () => {
@@ -1440,8 +1460,9 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
       <div className="flex items-end gap-3">
         <Field label="پیوست" required>
           <button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving}
-            className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border bg-white outline-none focus:border-neutral-400 disabled:opacity-50 ${attachment ? "border-emerald-400 bg-emerald-50" : "border-neutral-200"}`} title={attachment?.name || editingExpense?.fileName || "بارگذاری"} aria-label="بارگذاری پیوست">
+            className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl border bg-white outline-none focus:border-neutral-400 disabled:opacity-50 ${attachments.length ? "border-emerald-400 bg-emerald-50" : "border-neutral-200"}`} title={attachments.length ? `${toFa(attachments.length)} فایل پیوست‌شده` : "بارگذاری"} aria-label="بارگذاری پیوست">
             <img src="/images/icons/upload.svg" alt="" className="h-5 w-5" />
+            {attachments.length > 0 && <span className="absolute -left-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">{toFa(attachments.length)}</span>}
           </button>
         </Field>
         <button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-black text-2xl text-white disabled:opacity-50"
@@ -1576,12 +1597,32 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
       selectedCode={form.budgetCode} query={budgetPickerQuery} onQueryChange={setBudgetPickerQuery}
       onSelect={(budgetCode) => { setForm((current) => ({ ...current, budgetCode })); setBudgetPickerOpen(false); }}
       onClose={() => setBudgetPickerOpen(false)} />}
-    {attachmentEditorOpen && <PettyCashPhotoEditor
-      initialFile={attachment}
-      initialUrl={editingExpense?.fileUrl}
-      initialName={editingExpense?.fileName}
-      onClose={() => setAttachmentEditorOpen(false)}
-      onConfirm={(file) => { setAttachment(file); setAttachmentEditorOpen(false); }} />}
+    {attachmentEditorOpen && <AdvancedFileUploadModal
+      title="بارگذاری پیوست‌های هزینه" files={attachments} multiple
+      accept=".pdf,.jpg,.jpeg,.png,.webp" allowedTypes="PDF، JPG، PNG و WebP"
+      selectionHint={error || "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید. حداکثر ۲۰ فایل برای هر ردیف."}
+      onUpload={(fileList) => {
+        const selected = Array.from(fileList || []);
+        if (attachments.length + selected.length > 20) return setError("برای هر ردیف حداکثر ۲۰ فایل انتخاب کنید.");
+        const invalid = selected.find((file) => !/\.(jpe?g|png|webp|pdf)$/i.test(file.name) || file.size > 25 * 1024 * 1024);
+        if (invalid) return setError("فقط PDF، JPG، PNG یا WebP تا ۲۵ مگابایت مجاز است.");
+        setError("");
+        setAttachments((current) => [...current, ...selected.map((file) => ({ name: file.name, file }))]);
+      }}
+      onRemove={(index) => setAttachments((current) => current.filter((_, position) => position !== index))}
+      isEditableFile={(file) => /\.(jpe?g|png|webp)$/i.test(file.name || "")}
+      onEditFile={(_, index) => { setPhotoEditIndex(index); setAttachmentEditorOpen(false); }}
+      onClose={() => setAttachmentEditorOpen(false)} />}
+    {photoEditIndex !== null && attachments[photoEditIndex] && <PettyCashPhotoEditor
+      initialFile={attachments[photoEditIndex].file}
+      initialUrl={attachments[photoEditIndex].file ? undefined : attachments[photoEditIndex].url}
+      initialName={attachments[photoEditIndex].name}
+      onClose={() => { setPhotoEditIndex(null); setAttachmentEditorOpen(true); }}
+      onConfirm={(file) => {
+        setAttachments((current) => current.map((entry, index) => index === photoEditIndex ? { name: file.name, file } : entry));
+        setPhotoEditIndex(null);
+        setAttachmentEditorOpen(true);
+      }} />}
   </section>;
 }
 
