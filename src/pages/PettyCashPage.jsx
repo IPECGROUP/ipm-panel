@@ -714,12 +714,14 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const [managersLoading, setManagersLoading] = useState(false);
   const inFlightRef = useRef(false);
   const managerDialogRef = useRef(null);
+  const [selectedAttachmentRowId, setSelectedAttachmentRowId] = useState(() => entries.find((item) => expenseAttachments(item).some((file) => file.url))?.id ?? null);
   const [attachmentIndex, setAttachmentIndex] = useState(0);
   const [viewedRowIds, setViewedRowIds] = useState(() => new Set());
   const [preview, setPreview] = useState({ loading: false, url: "", size: null, error: "" });
-  const attachments = entries.flatMap((item) => expenseAttachments(item).map((file) => ({
-    id: item.id, fileName: file.name, fileUrl: file.url,
-  })).filter((file) => file.fileUrl));
+  const selectedAttachmentRow = entries.find((item) => String(item.id) === String(selectedAttachmentRowId))
+    || entries.find((item) => expenseAttachments(item).some((file) => file.url));
+  const attachments = selectedAttachmentRow ? expenseAttachments(selectedAttachmentRow)
+    .filter((file) => file.url).map((file) => ({ fileName: file.name, fileUrl: file.url })) : [];
   const attachment = attachments[attachmentIndex];
   const actionable = entries.filter((item) => item.canAct === true);
   const canAct = entries.length > 0 && actionable.length === entries.length && entries.every((item) => item.stage === entries[0].stage) && !outdated;
@@ -785,8 +787,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 
   const viewRow = (item) => {
     setViewedRowIds((current) => current.has(item.id) ? current : new Set([...current, item.id]));
-    const fileIndex = attachments.findIndex((file) => file.id === item.id);
-    if (fileIndex >= 0) setAttachmentIndex(fileIndex);
+    setSelectedAttachmentRowId(item.id);
+    setAttachmentIndex(0);
   };
   const actionClass = "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 sm:text-sm";
   const decisionCards = [
