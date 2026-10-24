@@ -5,11 +5,14 @@ import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { api } from "../utils/api.js";
 import { equipmentDefinitionsFromResponse } from "../utils/equipmentDefinitions.js";
+import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
+import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 const toEn = (value) => String(value).replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit)).replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit));
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300";
+const emptyForm = () => ({ serviceDate: "", categoryId: "", equipmentId: "", description: "", lastServiceDate: "", files: [] });
 
 function equipmentValue(item, fields, kind) {
   const field = fields.find((candidate) => String(candidate.categoryId) === String(item.categoryId) && (kind === "name"
@@ -30,7 +33,10 @@ export default function ServiceMaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({ serviceDate: "", equipmentId: "" });
+  const [form, setForm] = useState(emptyForm);
+  const [attachmentEditorOpen, setAttachmentEditorOpen] = useState(false);
+  const [photoEditIndex, setPhotoEditIndex] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -55,11 +61,17 @@ export default function ServiceMaintenancePage() {
   }, [authLoading, user?.id]);
 
   const equipmentById = useMemo(() => new Map(equipment.map((item) => [String(item.id), item])), [equipment]);
+  const categories = useMemo(() => [...new Map(equipment.filter((item) => item.categoryId != null).map((item) => {
+    const category = definitions.categories.find((entry) => String(entry.id) === String(item.categoryId));
+    return [String(item.categoryId), { id: item.categoryId, name: category?.name || item.category || "—" }];
+  })).values()], [definitions.categories, equipment]);
+  const categoryEquipment = useMemo(() => equipment.filter((item) => String(item.categoryId) === String(form.categoryId)), [equipment, form.categoryId]);
+  const selectedEquipment = equipmentById.get(String(form.equipmentId));
   const filteredItems = useMemo(() => {
     const terms = toEn(query).trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
     return items.filter((item) => {
       const selected = equipmentById.get(String(item.equipmentId));
-      const text = [item.serviceDate, selected?.category, selected && equipmentValue(selected, definitions.fields, "name"), selected && equipmentValue(selected, definitions.fields, "code")].join(" ").toLocaleLowerCase("fa");
+      const text = [item.serviceDate, item.lastServiceDate, item.description, selected?.category, selected && equipmentValue(selected, definitions.fields, "name"), selected && equipmentValue(selected, definitions.fields, "code")].join(" ").toLocaleLowerCase("fa");
       return terms.every((term) => text.includes(term));
     });
   }, [items, equipmentById, definitions.fields, query]);
@@ -68,21 +80,38 @@ export default function ServiceMaintenancePage() {
 
   async function save(event) {
     event.preventDefault();
-    if (!form.serviceDate || !form.equipmentId) { setError("تاریخ سرویس و تجهیز را انتخاب کنید."); return; }
+    if (!form.serviceDate || !form.categoryId || !form.equipmentId) { setError("تاریخ سرویس، دسته‌بندی و کد تجهیز را انتخاب کنید."); return; }
     setSaving(true);
     setError("");
     try {
+      const files = [];
+      for (const attachment of form.files) {
+        if (attachment.url && !attachment.url.startsWith("blob:")) {
+          files.push({ name: attachment.name, url: attachment.url });
+          continue;
+        }
+        setUploading(true);
+        const payload = new FormData();
+        payload.append("file", attachment.file);
+        const response = await fetch(`${String(import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "")}/equipment/service-maintenance/upload`, {
+          method: "POST", credentials: "include", headers: user?.id != null ? { "x-user-id": String(user.id) } : {}, body: payload,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.file?.url) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
+        files.push(data.file);
+        setForm((current) => ({ ...current, files: current.files.map((file) => file === attachment ? data.file : file) }));
+      }
       const result = await api("/equipment/service-maintenance", {
         method: "POST",
         headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
-        body: JSON.stringify(form),
+        body: JSON.stringify({ serviceDate: form.serviceDate, equipmentId: form.equipmentId, description: form.description, lastServiceDate: form.lastServiceDate, files }),
       });
       setItems((current) => [result.item, ...current]);
-      setForm({ serviceDate: "", equipmentId: "" });
+      setForm(emptyForm());
       setFormOpen(false);
       setPage(0);
     } catch (err) { setError(err.message || "ثبت سرویس انجام نشد."); }
-    finally { setSaving(false); }
+    finally { setSaving(false); setUploading(false); }
   }
 
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
@@ -93,17 +122,22 @@ export default function ServiceMaintenancePage() {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]"><img src="/images/icons/service.svg" alt="" className="h-6 w-6 dark:invert" /></span>
             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight md:text-lg">سرویس و نگهداری</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تجهیزات</span></span>
           </div>
-          <button type="button" onClick={() => { setFormOpen((open) => !open); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>
+          <button type="button" onClick={() => { setFormOpen((open) => !open); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen} disabled={saving}>
             <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
           </button>
         </div>
 
         {formOpen && <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block"><span className={labelClass}>تاریخ سرویس *</span><JalaliPopupDatePicker value={form.serviceDate} onChange={(serviceDate) => setForm((old) => ({ ...old, serviceDate }))} placeholder="انتخاب تاریخ سرویس" /></label>
-            <label className="block"><span className={labelClass}>تجهیز *</span><select required value={form.equipmentId} onChange={(event) => setForm((old) => ({ ...old, equipmentId: event.target.value }))} className={inputClass}><option value="">انتخاب تجهیز</option>{equipment.map((item) => <option key={item.id} value={item.id}>{equipmentValue(item, definitions.fields, "name")} — {equipmentValue(item, definitions.fields, "code")}</option>)}</select></label>
+            <label className="block"><span className={labelClass}>دسته‌بندی *</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, equipmentId: "" }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+            <label className="block"><span className={labelClass}>کد تجهیز *</span><select required disabled={!form.categoryId} value={form.equipmentId} onChange={(event) => setForm((old) => ({ ...old, equipmentId: event.target.value }))} className={`${inputClass} disabled:opacity-50`}><option value="">انتخاب کد تجهیز</option>{categoryEquipment.map((item) => <option key={item.id} value={item.id}>{equipmentValue(item, definitions.fields, "code")}</option>)}</select></label>
+            <label className="block"><span className={labelClass}>نام تجهیز</span><input readOnly value={selectedEquipment ? equipmentValue(selectedEquipment, definitions.fields, "name") : ""} className={`${inputClass} bg-neutral-50 dark:bg-white/[0.03]`} placeholder="پس از انتخاب کد تجهیز نمایش داده می‌شود" /></label>
+            <label className="block sm:col-span-2 lg:col-span-3"><span className={labelClass}>شرح تجهیز</span><textarea value={form.description} onChange={(event) => setForm((old) => ({ ...old, description: event.target.value }))} rows={3} maxLength={10000} className={`${inputClass} h-auto min-h-24 resize-y py-3`} placeholder="شرح سرویس یا وضعیت تجهیز را وارد کنید" /></label>
+            <label className="block"><span className={labelClass}>تاریخ آخرین سرویس</span><JalaliPopupDatePicker value={form.lastServiceDate} onChange={(lastServiceDate) => setForm((old) => ({ ...old, lastServiceDate }))} placeholder="انتخاب تاریخ آخرین سرویس" /></label>
+            <div className="block"><span className={labelClass}>بارگذاری</span><button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving} className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl border bg-white outline-none focus:border-neutral-400 disabled:opacity-50 dark:bg-white/5 ${form.files.length ? "border-emerald-400 bg-emerald-50" : "border-neutral-200 dark:border-white/15"}`} title={form.files.length ? `${toFa(form.files.length)} فایل پیوست‌شده` : "بارگذاری"} aria-label="بارگذاری پیوست"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />{form.files.length > 0 && <span className="absolute -left-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></div>
           </div>
-          <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || loading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت سرویس"} aria-label="ثبت سرویس"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
+          <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || loading || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت سرویس"} aria-label="ثبت سرویس"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form>}
 
         <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]"><label className="block"><span className={labelClass}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در تاریخ سرویس، کد، نام و دسته‌بندی تجهیز..." /></label></div>
@@ -127,5 +161,14 @@ export default function ServiceMaintenancePage() {
         </div>
       </div>
     </Card>
+    {attachmentEditorOpen && <AdvancedFileUploadModal title="بارگذاری پیوست‌های سرویس" files={form.files} multiple accept=".pdf,.jpg,.jpeg,.png,.webp" allowedTypes="PDF، JPG، PNG و WebP" selectionHint={error || "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید. حداکثر ۲۰ فایل."} onUpload={(fileList) => {
+      const selected = Array.from(fileList || []);
+      if (form.files.length + selected.length > 20) return setError("حداکثر ۲۰ فایل انتخاب کنید.");
+      const invalid = selected.find((file) => !/\.(jpe?g|png|webp|pdf)$/i.test(file.name) || file.size > 25 * 1024 * 1024);
+      if (invalid) return setError("فقط PDF، JPG، PNG یا WebP تا ۲۵ مگابایت مجاز است.");
+      setError("");
+      setForm((current) => ({ ...current, files: [...current.files, ...selected.map((file) => ({ name: file.name, file }))] }));
+    }} onRemove={(index) => setForm((current) => ({ ...current, files: current.files.filter((_, position) => position !== index) }))} isEditableFile={(file) => /\.(jpe?g|png|webp)$/i.test(file.name || "")} onEditFile={(_, index) => { setPhotoEditIndex(index); setAttachmentEditorOpen(false); }} onClose={() => setAttachmentEditorOpen(false)} />}
+    {photoEditIndex !== null && form.files[photoEditIndex] && <AttachmentImageEditor initialFile={form.files[photoEditIndex].file} initialUrl={form.files[photoEditIndex].file ? undefined : form.files[photoEditIndex].url} initialName={form.files[photoEditIndex].name} onClose={() => { setPhotoEditIndex(null); setAttachmentEditorOpen(true); }} onConfirm={(file) => { setForm((current) => ({ ...current, files: current.files.map((entry, index) => index === photoEditIndex ? { name: file.name, file } : entry) })); setPhotoEditIndex(null); setAttachmentEditorOpen(true); }} />}
   </div>;
 }
