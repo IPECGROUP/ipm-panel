@@ -314,6 +314,7 @@ export default function PettyCashPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [expenseFormKey, setExpenseFormKey] = useState(0);
+  const [activeDraft, setActiveDraft] = useState(null);
   const [reportSaving, setReportSaving] = useState(false);
   const [expenseAccess, setExpenseAccess] = useState({ loading: true, received: 0n, available: 0n, error: "" });
   const [expenseStartError, setExpenseStartError] = useState("");
@@ -346,10 +347,8 @@ export default function PettyCashPage() {
     try {
       const balance = await fetchPettyCashBalance(userId);
       setExpenseAccess({ loading: false, ...balance, error: "" });
-      if (balance.available <= 0n) setExpenseFormOpen(false);
     } catch (reason) {
       setExpenseAccess({ loading: false, received: 0n, available: 0n, error: reason.message });
-      setExpenseFormOpen(false);
     }
   }, [userId]);
   useEffect(() => {
@@ -452,7 +451,9 @@ export default function PettyCashPage() {
             <button type="button" onClick={() => setSummaryOpen(true)} aria-haspopup="dialog"
               className="h-10 rounded-xl px-3 text-sm font-semibold ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">تنخواه‌های من</button>
             <button type="button" disabled={reportSaving} onClick={() => {
-               if (expenseFormOpen) { setExpenseFormOpen(false); setExpenseFormKey((current) => current + 1); setExpenseStartError(""); return; }
+               if (expenseFormOpen) { setExpenseFormOpen(false); setActiveDraft(null); setExpenseFormKey((current) => current + 1); setExpenseStartError(""); return; }
+               const hasOwnDraft = reports.some((report) => report.initialStage === "draft" && String(report.createdById) === String(userId));
+               if (hasOwnDraft) { setExpenseStartError(""); setExpenseFormOpen(true); return; }
               if (expenseAccess.loading) return setExpenseStartError("مانده تنخواه در حال دریافت است. دوباره تلاش کنید.");
               if (expenseAccess.error) return setExpenseStartError(expenseAccess.error);
               if (expenseAccess.available <= 0n) return setExpenseStartError(expenseAccess.received <= 0n ? "برای ثبت هزینه، ابتدا باید تنخواه دریافت کنید." : "مانده تنخواه تسویه‌نشده‌ای برای ثبت هزینه جدید وجود ندارد.");
@@ -467,19 +468,23 @@ export default function PettyCashPage() {
         </header>
         {expenseStartError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{expenseStartError}</p>}
          {expenseFormOpen && <div>
-          <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onDraftSaved={(_report, savedReports) => {
+          <PettyCashExpenseTab key={expenseFormKey} initialReport={activeDraft} availableBalance={expenseAccess.available} onBusyChange={setReportSaving}
+            onChooseDraft={(draft) => { setActiveDraft(draft); setExpenseFormKey((current) => current + 1); setExpenseStartError(""); }}
+            onDeleted={() => { setReports((current) => current.filter((report) => report.id !== activeDraft?.id)); setActiveDraft(null); setExpenseFormOpen(false); setExpenseFormKey((current) => current + 1); loadReports().catch((reason) => setReportError(reason.message)); }}
+            onDraftSaved={(_report, savedReports) => {
             setReports(savedReports);
-           setExpenseFormOpen(false); setExpenseFormKey((current) => current + 1);
+            setExpenseFormOpen(false); setActiveDraft(null); setExpenseFormKey((current) => current + 1);
             setSearchQuery(""); setReportStatusFilter(""); setReportOwnershipFilter("");
             setReportFromDate(""); setReportToDate(""); setReportPage(0);
             setReportError("");
          }} onSubmitted={(report) => {
-          setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
+           setReports((current) => [report, ...current.filter((item) => item.id !== report.id && item.id !== activeDraft?.id)]);
           setSearchQuery("");
           setReportStatusFilter("");
           setReportOwnershipFilter("");
           setReportPage(0);
           setExpenseFormOpen(false);
+           setActiveDraft(null);
           setEditingReport(null);
           setExpenseFormKey((current) => current + 1);
           loadReports().catch((reason) => setReportError(reason.message));
@@ -897,8 +902,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </aside>
       </div>
     </div>
-     {(report.canRevise || report.initialStage === "draft" || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
-       {(report.canRevise || report.initialStage === "draft") && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />{report.initialStage === "draft" ? "تکمیل پیش‌نویس" : "ویرایش موارد برگشتی"}</button>}
+     {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
+       {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
        {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black ${reportDecision === "revision" ? "px-5" : "w-11"} text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" && "ثبت بازگشت تنخواه گردان"}</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
@@ -1050,7 +1055,7 @@ function Field({ label, required = false, children }) {
   </label>;
 }
 
-function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChange, initialReport, availableBalance = null }) {
+function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDraft, onBusyChange, initialReport, availableBalance = null }) {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(initialReport ? String(initialReport.projectId) : "");
@@ -1083,9 +1088,26 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
   });
   const [manualEntryOpen, setManualEntryOpen] = useState(Boolean(initialReport?.draftPayload?.manualEntryOpen));
   const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
+  const [draftPickerOpen, setDraftPickerOpen] = useState(false);
+  const [draftOptions, setDraftOptions] = useState([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftsError, setDraftsError] = useState("");
   const submissionKeyRef = useRef(crypto.randomUUID());
   const savedDraftRef = useRef(initialReport?.initialStage === "draft" ? { id: initialReport.id, version: initialReport.version } : null);
   const previewUrlsRef = useRef(new Set());
+  const openDraftPicker = async () => {
+    setDraftPickerOpen(true);
+    setDraftsLoading(true);
+    setDraftsError("");
+    try {
+      const freshReports = await fetchExpenseReports(user.id);
+      setDraftOptions(freshReports.filter((report) => report.initialStage === "draft" && String(report.createdById) === String(user.id)));
+    } catch (reason) {
+      setDraftsError(reason.message);
+    } finally {
+      setDraftsLoading(false);
+    }
+  };
   useEffect(() => () => { previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
   useEffect(() => {
@@ -1392,9 +1414,16 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
             {projects.map((project) => <option key={project.id} value={project.id}>{english(project.code)} - {project.name}</option>)}
           </select>
         </Field>
-        <Field label="گزارش" required>
-          <input type="text" required maxLength={180} value={reportName} onChange={(event) => setReportName(event.target.value)} className={`${inputClass} sm:w-64`} />
-        </Field>
+         <div className="min-w-0">
+           <label htmlFor="petty-cash-report-name" className="mb-1 block text-xs font-medium text-neutral-600">گزارش<span className="mr-1 text-red-500">*</span></label>
+           <div className="flex items-center gap-2">
+             <input id="petty-cash-report-name" type="text" required maxLength={180} value={reportName} onChange={(event) => setReportName(event.target.value)} className={`${inputClass} min-w-0 sm:w-64`} />
+             {onChooseDraft && <button type="button" onClick={openDraftPicker} aria-haspopup="dialog"
+               className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 text-sm font-semibold text-neutral-900 transition hover:bg-neutral-50">
+               <FileText className="h-4 w-4" />پیش‌نویس‌ها
+             </button>}
+           </div>
+         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => setManualEntryOpen((current) => !current)} aria-expanded={manualEntryOpen}
@@ -1532,6 +1561,28 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
       </button>}
     </div>
     </fieldset>
+    {draftPickerOpen && createPortal(<div className="fixed inset-0 z-[1700] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) setDraftPickerOpen(false); }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="petty-cash-drafts-title" dir="rtl"
+        onKeyDown={(event) => { event.stopPropagation(); if (event.key === "Escape") setDraftPickerOpen(false); }}
+        className="flex max-h-[80dvh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white text-neutral-900 shadow-2xl">
+        <header className="flex items-center justify-between border-b border-neutral-200 px-5 py-4">
+          <h3 id="petty-cash-drafts-title" className="text-lg font-bold">پیش‌نویس‌های درحال تکمیل</h3>
+          <button type="button" onClick={() => setDraftPickerOpen(false)} aria-label="بستن فهرست پیش‌نویس‌ها"
+            className="grid h-9 w-9 place-items-center rounded-lg hover:bg-neutral-100"><X className="h-5 w-5" /></button>
+        </header>
+        <div className="min-h-0 overflow-y-auto p-4">
+          {draftsLoading ? <p role="status" className="py-6 text-center text-sm text-neutral-500">در حال دریافت پیش‌نویس‌ها...</p>
+            : draftsError ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{draftsError}</p>
+              : draftOptions.length ? <div className="space-y-2">{draftOptions.map((draft) => <button key={draft.id} type="button"
+                onClick={() => onChooseDraft(draft)} className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-200 px-4 py-3 text-right transition hover:border-orange-300 hover:bg-orange-50">
+                <span className="min-w-0"><span className="block font-semibold">{draft.reportName || "گزارش بدون نام"}</span>
+                  <span className="mt-1 block text-xs text-neutral-500">{draft.projectCode ? `${toFa(draft.projectCode)} - ` : ""}{draft.projectName || "—"}</span></span>
+                <span className="text-xs text-neutral-500">{toFa((draft.items || []).length)} ردیف · {reportDate(draft.updatedAt || draft.createdAt)}</span>
+              </button>)}</div> : <p className="py-6 text-center text-sm text-neutral-500">پیش‌نویسی در حال تکمیل ندارید.</p>}
+        </div>
+      </div>
+    </div>, document.body)}
     {draftConfirmOpen && createPortal(<div className="fixed inset-0 z-[1700] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setDraftConfirmOpen(false); }}>
       <div role="dialog" aria-modal="true" aria-labelledby="petty-cash-draft-title" dir="rtl" className="w-full max-w-md rounded-3xl bg-white p-6 text-neutral-900 shadow-2xl"
         onKeyDown={(event) => {
