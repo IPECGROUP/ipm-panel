@@ -31,6 +31,7 @@ import RoznegarPgae from "./pages/RoznegarPgae.jsx";
 import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
 import EquipmentIdentityPage from "./pages/EquipmentIdentityPage.jsx";
+import ServiceMaintenancePage from "./pages/ServiceMaintenancePage.jsx";
 import KnowledgeManagementDashboardPage from "./pages/KnowledgeManagementDashboardPage.jsx";
 import TrainingResourcesPage from "./pages/TrainingResourcesPage.jsx";
 import ProjectLessonsLearnedPage from "./pages/ProjectLessonsLearnedPage.jsx";
@@ -146,7 +147,7 @@ export default function App() {
         <Route path="/supply/dashboard" element={<SupplyManagementDashboardPage />} />
 
         <Route path="/equipment/identity" element={<EquipmentIdentityPage />} />
-        <Route path="/equipment/service-maintenance" element={<NavPlaceholderPage title="سرویس و نگهداری" />} />
+        <Route path="/equipment/service-maintenance" element={<ServiceMaintenancePage />} />
         <Route path="/equipment/repair-rebuild" element={<NavPlaceholderPage title="تعمیرات و بازسازی" />} />
 
         <Route path="/executive-operations/daily-work-report" element={<NavPlaceholderPage title="گزارش کارکرد روزانه" />} />

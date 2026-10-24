@@ -13,6 +13,10 @@ function mapError(data, fallback = "request_failed") {
   if (e === "protected_super_admin") return "حساب سوپرادمین محافظت شده و قابل تغییر نیست";
   if (e === "user_in_use") return "این کاربر در سوابق سیستم استفاده شده و قابل حذف کامل نیست";
   if (e === "not_found") return "سرویس مورد نظر روی سرور پیدا نشد";
+  if (e === "invalid_service_data") return "تاریخ سرویس یا تجهیز انتخاب‌شده معتبر نیست";
+  if (e === "equipment_not_found") return "تجهیز انتخاب‌شده پیدا نشد";
+  if (e === "equipment_service_maintenance_get_failed") return "دریافت اطلاعات سرویس و نگهداری انجام نشد";
+  if (e === "equipment_service_maintenance_post_failed") return "ثبت سرویس و نگهداری انجام نشد";
 
   return String(e);
 }

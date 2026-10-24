@@ -1013,7 +1013,7 @@ function reportDate(value) {
   return value ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).format(new Date(value)) : "—";
 }
 
-const REPORT_STATUS_LABELS = { draft: "درحال تکمیل", pending: "در انتظار تأیید", approved: "تأیید شد", returned: "درخواست اصلاح" };
+const REPORT_STATUS_LABELS = { draft: "در حال تکمیل", pending: "در انتظار تأیید", approved: "تأیید شد", returned: "درخواست اصلاح" };
 
 function reportStatusBadgeClass(status, active = false) {
   const colors = {
@@ -1027,7 +1027,7 @@ function reportStatusBadgeClass(status, active = false) {
 }
 
 function expenseReportState(report) {
-  if (report.initialStage === "draft") return { waiting: "—", status: "درحال تکمیل", statusKey: "draft" };
+  if (report.initialStage === "draft") return { waiting: "—", status: "در حال تکمیل", statusKey: "draft" };
   const items = report.items || [];
   const pending = items.filter((item) => ["planning", "project_manager", "finance", "management", "revision"].includes(item.stage));
   const waiting = [...new Set(pending.map((item) => item.stage === "planning" ? "برنامه‌ریزی و کنترل پروژه" : item.stage === "finance" ? "مالی"
@@ -1214,8 +1214,8 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
     if (!projectId || !reportName.trim()) return "پروژه و نام گزارش را تکمیل کنید.";
     if (!items.length) return "حداقل یک ردیف هزینه به گزارش اضافه کنید.";
     const reportAmount = items.reduce((sum, item) => sum + amount(item.amount), 0n);
-    if (!initialReport && availableBalance !== null && availableBalance <= 0n) return "مانده‌ای برای ثبت هزینه وجود ندارد.";
-    if (!initialReport && availableBalance !== null && reportAmount > availableBalance) return `مجموع هزینه‌ها نمی‌تواند از مانده تنخواه (${money(availableBalance)} ریال) بیشتر باشد.`;
+    if ((!initialReport || initialReport.initialStage === "draft") && availableBalance !== null && availableBalance <= 0n) return "مانده‌ای برای ثبت هزینه وجود ندارد.";
+    if ((!initialReport || initialReport.initialStage === "draft") && availableBalance !== null && reportAmount > availableBalance) return `مجموع هزینه‌ها نمی‌تواند از مانده تنخواه (${money(availableBalance)} ریال) بیشتر باشد.`;
     if (editingExpense || form.description.trim() || form.budgetCode || form.amount || attachments.length) {
       return "ابتدا ردیف در حال ورود یا ویرایش را با دکمه افزودن ردیف ثبت کنید.";
     }
@@ -1555,7 +1555,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
         title="ذخیره پیش‌نویس" aria-label="ذخیره پیش‌نویس" className="grid h-12 w-12 place-items-center rounded-xl bg-[#f48120] transition hover:bg-[#db6f11] disabled:opacity-50">
         <img src="/images/icons/pishnevis.svg" alt="" className="h-6 w-6" />
       </button>}
-      {(!initialReport || items.length > 0) && <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
+      {(!initialReport || initialReport.initialStage === "draft" || items.length > 0) && <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
         className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
         {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
       </button>}
