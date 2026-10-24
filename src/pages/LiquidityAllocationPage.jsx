@@ -76,12 +76,12 @@ function quickHistoryStartDate(key) {
 
 const tableCellClass = "h-12 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-neutral-700";
 const moneyTableCellClass = tableCellClass + " !text-right font-[Vazir]";
-const historyTableCellClass = "h-11 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
+const historyTableCellClass = "h-9 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
 
 export default function LiquidityAllocationPage() {
   useFeatureVisibility("تخصیص نقدینگی", { "افزودن": "افزودن" });
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [formOpen, setFormOpen] = useState(false);
   const [batchId, setBatchId] = useState("");
   const [form, setForm] = useState(emptyAllocationForm);
@@ -100,7 +100,6 @@ export default function LiquidityAllocationPage() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [resetting, setResetting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [showValidation, setShowValidation] = useState(false);
 
@@ -302,33 +301,8 @@ export default function LiquidityAllocationPage() {
     }
   };
 
-  const resetLiquidityData = async () => {
-    if (!window.confirm("همه سوابق تخصیص نقدینگی این صفحه حذف شوند؟ این عملیات قابل بازگشت نیست.")) return;
-    setResetting(true);
-    try {
-      const response = await fetch("/api/liquidity-allocations", { method: "DELETE", credentials: "include", headers: user?.id != null ? { "x-user-id": String(user.id) } : {} });
-      if (!response.ok) throw new Error("reset_failed");
-      setRows(projects.map((project) => ({
-        id: `project-${project.id}`,
-        projectId: project.id,
-        label: projectLabel(project),
-        newAllocation: "",
-      })));
-      setSummary({ allocations: {}, spent: {}, committed: {} });
-      setHistory([]);
-      setPreviewAllocation(null);
-      await loadSummary();
-      await loadProjects();
-      setSubmitMessage("اطلاعات تخصیص نقدینگی پاک شد.");
-    } catch {
-      setSubmitMessage("پاک‌سازی تخصیص نقدینگی انجام نشد.");
-    } finally {
-      setResetting(false);
-    }
-  };
-
   return (
-    <Card className="liquidity-allocation-page rounded-2xl border border-neutral-200 bg-white p-7 text-neutral-900 md:p-8 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+    <Card className="liquidity-allocation-page mx-auto min-w-0 max-w-[1400px] rounded-2xl border border-neutral-200 bg-white p-2.5 text-neutral-900 sm:p-3 md:p-4 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
       <div className="mb-5 flex min-w-0 items-center justify-between gap-3" dir="rtl">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
@@ -340,7 +314,6 @@ export default function LiquidityAllocationPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && <button type="button" onClick={resetLiquidityData} disabled={resetting} className="grid h-9 w-9 place-items-center rounded-xl border border-red-500/40 text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:text-red-300 dark:hover:bg-red-950/30" title="پاک‌سازی تخصیص نقدینگی" aria-label="پاک‌سازی تخصیص نقدینگی"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></button>}
           <button
             type="button"
             onClick={() => {
@@ -510,7 +483,7 @@ export default function LiquidityAllocationPage() {
         </div>
         <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-300 bg-[#fbfbf8] shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
         <div dir="ltr" className="max-h-[55vh] overflow-y-auto overflow-x-auto">
-        <table dir="rtl" className="w-full min-w-[760px] table-fixed border-collapse text-xs text-neutral-800 dark:text-neutral-100 sm:text-sm">
+        <table dir="rtl" className="w-full min-w-[760px] table-fixed border-collapse text-[13px] text-neutral-800 dark:text-neutral-100">
           <colgroup>
             <col className="w-[8%]" />
             <col className="w-[18%]" />
@@ -521,24 +494,19 @@ export default function LiquidityAllocationPage() {
           <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["ردیف", "تاریخ تخصیص", "مبلغ تخصیص", "منبع نقدینگی", "توضیحات"].map((title) => (
-                <th key={title} className="sticky top-0 z-10 h-10 border-b border-l border-neutral-400 bg-neutral-200 px-3 text-center font-bold dark:border-white/10 dark:bg-neutral-900">{title}</th>
+                 <th key={title} className="sticky top-0 z-10 h-9 border-b border-l border-neutral-400 bg-neutral-200 px-3 text-center text-[14px] font-semibold dark:border-white/10 dark:bg-neutral-900 md:text-[15px]">{title}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {pagedHistory.length ? pagedHistory.map((item, index) => (
-              <tr key={item.id} className="bg-[#fbfbf8] transition-colors hover:bg-neutral-100/80 dark:bg-neutral-900 dark:hover:bg-white/[0.03]">
+               <tr key={item.id} onClick={() => setPreviewAllocation(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPreviewAllocation(item); } }} tabIndex={0} aria-label={`نمایش جزئیات تخصیص ${item.allocationDate || ""}`} className="cursor-pointer bg-[#fbfbf8] transition-colors hover:bg-neutral-100/80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:bg-neutral-900 dark:hover:bg-white/[0.06]">
                 <td className={historyTableCellClass}>{toFaDigits(historyStartIndex + index + 1)}</td>
                 <td className={historyTableCellClass}>{item.allocationDate || "—"}</td>
                 <td className={historyTableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
                 <td className={historyTableCellClass + " truncate"} title={item.source}>{item.source || "—"}</td>
                 <td className={historyTableCellClass}>
-                  <div className="flex min-w-0 items-center justify-between gap-2 text-right">
-                    <span className="min-w-0 flex-1 truncate" title={item.description || ""}>{item.description || "—"}</span>
-                    <button type="button" onClick={() => setPreviewAllocation(item)} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-black/10 transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" title="پیش‌نمایش جزئیات تخصیص" aria-label="پیش‌نمایش جزئیات تخصیص">
-                      <img src="/images/icons/namayeshname.svg" alt="" className="h-4 w-4 dark:invert" />
-                    </button>
-                  </div>
+                   <span className="block truncate text-right" title={item.description || ""}>{item.description || "—"}</span>
                 </td>
               </tr>
             )) : <tr><td colSpan={5} className="h-24 px-4 text-center text-neutral-500 dark:text-neutral-400">هنوز تخصیصی ثبت نشده است.</td></tr>}
@@ -577,25 +545,22 @@ export default function LiquidityAllocationPage() {
       </div>
 
       {previewAllocation && <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/55 p-3 backdrop-blur-sm" dir="rtl" onMouseDown={(event) => { if (event.target === event.currentTarget) setPreviewAllocation(null); }}>
-        <div className="w-full max-w-5xl overflow-hidden rounded-3xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900">
-          <div className="flex items-center justify-between border-b border-black/10 bg-gradient-to-l from-amber-50 to-white px-5 py-4 dark:border-white/10 dark:from-amber-400/[0.08] dark:to-neutral-900">
-            <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-xl border border-amber-500/25 bg-amber-100/70 text-lg text-amber-800 dark:bg-amber-400/10 dark:text-amber-200">₪</span>
-              <div>
-              <div className="font-bold">جزئیات تخصیص نقدینگی</div>
-              <div className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{previewAllocation.allocationDate} • {previewAllocation.source}</div>
-              </div>
+        <div role="dialog" aria-modal="true" aria-labelledby="liquidity-detail-title" className="flex max-h-[88vh] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+          <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
+            <div className="min-w-0">
+              <div id="liquidity-detail-title" className="font-bold">جزئیات تخصیص نقدینگی</div>
+              <div className="mt-1 truncate text-xs text-neutral-500 dark:text-neutral-400">{previewAllocation.allocationDate} • {previewAllocation.source}</div>
             </div>
-            <button type="button" onClick={() => setPreviewAllocation(null)} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 text-xl transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10" aria-label="بستن">×</button>
+            <button type="button" onClick={() => setPreviewAllocation(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
           </div>
-          <div className="max-h-[70vh] overflow-auto p-4 sm:p-5">
-            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="min-h-0 overflow-auto p-4 sm:p-5">
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {[
                 ["نقدینگی قابل تخصیص", money(previewAllocation.availableAmount), "text-neutral-900 dark:text-white"],
                 ["جمع مبلغ تخصیص", money(previewAllocation.allocatedAmount), "text-sky-700 dark:text-sky-300"],
-              ].map(([label, value, color]) => <div key={label} className="rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className={`mt-1 text-base font-bold ${color}`}>{displayMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
+              ].map(([label, value, color]) => <div key={label} className="rounded-xl border border-black/10 bg-neutral-50 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className={`mt-1 text-base font-bold ${color}`}>{displayMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
             </div>
-            <div className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
+            <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
             <table className="w-full min-w-[860px] table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
                 <tr>{["پروژه", "کل تخصیص", "مصرف", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-100" : title === "نقدینگی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>)}</tr>

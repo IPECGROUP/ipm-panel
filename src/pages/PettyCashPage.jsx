@@ -1551,14 +1551,16 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
     <div className={`flex items-center gap-3 ${initialReport?.canRevise || initialReport?.initialStage === "draft" ? "justify-between" : "justify-end"}`}>
       {(initialReport?.canRevise || initialReport?.initialStage === "draft") && <button type="button" onClick={deleteReport} disabled={saving}
         className="h-11 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50">حذف کامل گزارش</button>}
-      {(!initialReport || initialReport.initialStage === "draft") && <button type="button" onClick={() => { if (!projectId) return setError("ابتدا پروژه را انتخاب کنید."); setError(""); setDraftConfirmOpen(true); }} disabled={saving}
-        title="ذخیره پیش‌نویس" aria-label="ذخیره پیش‌نویس" className="grid h-12 w-12 place-items-center rounded-xl bg-[#f48120] transition hover:bg-[#db6f11] disabled:opacity-50">
-        <img src="/images/icons/pishnevis.svg" alt="" className="h-6 w-6" />
-      </button>}
-      {(!initialReport || initialReport.initialStage === "draft" || items.length > 0) && <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
-        className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
-        {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
-      </button>}
+      <div className="flex items-center gap-3">
+        {(!initialReport || initialReport.initialStage === "draft") && <button type="button" onClick={() => { if (!projectId) return setError("ابتدا پروژه را انتخاب کنید."); setError(""); setDraftConfirmOpen(true); }} disabled={saving}
+          title="ذخیره پیش‌نویس" aria-label="ذخیره پیش‌نویس" className="grid h-12 w-12 place-items-center rounded-xl bg-[#f48120] transition hover:bg-[#db6f11] disabled:opacity-50">
+          <img src="/images/icons/pishnevis.svg" alt="" className="h-6 w-6" />
+        </button>}
+        {(!initialReport || initialReport.initialStage === "draft" || items.length > 0) && <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
+          className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
+          {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
+        </button>}
+      </div>
     </div>
     </fieldset>
     {draftPickerOpen && createPortal(<div className="fixed inset-0 z-[1700] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm"

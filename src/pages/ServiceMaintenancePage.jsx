@@ -37,6 +37,7 @@ export default function ServiceMaintenancePage() {
   const [attachmentEditorOpen, setAttachmentEditorOpen] = useState(false);
   const [photoEditIndex, setPhotoEditIndex] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [serviceDateError, setServiceDateError] = useState(false);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -80,7 +81,8 @@ export default function ServiceMaintenancePage() {
 
   async function save(event) {
     event.preventDefault();
-    if (!form.serviceDate || !form.categoryId || !form.equipmentId) { setError("تاریخ سرویس، دسته‌بندی و کد تجهیز را انتخاب کنید."); return; }
+    if (!form.serviceDate) { setServiceDateError(true); setError("تاریخ سرویس را انتخاب کنید."); return; }
+    if (!form.categoryId || !form.equipmentId) { setError("دسته‌بندی و کد تجهیز را انتخاب کنید."); return; }
     setSaving(true);
     setError("");
     try {
@@ -108,6 +110,7 @@ export default function ServiceMaintenancePage() {
       });
       setItems((current) => [result.item, ...current]);
       setForm(emptyForm());
+      setServiceDateError(false);
       setFormOpen(false);
       setPage(0);
     } catch (err) { setError(err.message || "ثبت سرویس انجام نشد."); }
@@ -122,14 +125,14 @@ export default function ServiceMaintenancePage() {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]"><img src="/images/icons/service.svg" alt="" className="h-6 w-6 dark:invert" /></span>
             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight md:text-lg">سرویس و نگهداری</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تجهیزات</span></span>
           </div>
-          <button type="button" onClick={() => { setFormOpen((open) => !open); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen} disabled={saving}>
+          <button type="button" onClick={() => { setFormOpen((open) => !open); setServiceDateError(false); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen} disabled={saving}>
             <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
           </button>
         </div>
 
         {formOpen && <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="block"><span className={labelClass}>تاریخ سرویس *</span><JalaliPopupDatePicker value={form.serviceDate} onChange={(serviceDate) => setForm((old) => ({ ...old, serviceDate }))} placeholder="انتخاب تاریخ سرویس" /></label>
+            <div className="block"><span className={labelClass}>تاریخ سرویس *</span><JalaliPopupDatePicker value={form.serviceDate} onChange={(serviceDate) => { setForm((old) => ({ ...old, serviceDate })); setServiceDateError(false); setError(""); }} placeholder="انتخاب تاریخ سرویس" buttonClassName={`${inputClass} flex items-center justify-between ${serviceDateError ? "!border-red-500" : ""}`} />{serviceDateError && <span role="alert" className="mt-1 block text-xs text-red-600">تاریخ سرویس الزامی است.</span>}</div>
             <label className="block"><span className={labelClass}>دسته‌بندی *</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, equipmentId: "" }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
             <label className="block"><span className={labelClass}>کد تجهیز *</span><select required disabled={!form.categoryId} value={form.equipmentId} onChange={(event) => setForm((old) => ({ ...old, equipmentId: event.target.value }))} className={`${inputClass} disabled:opacity-50`}><option value="">انتخاب کد تجهیز</option>{categoryEquipment.map((item) => <option key={item.id} value={item.id}>{equipmentValue(item, definitions.fields, "code")}</option>)}</select></label>
             <label className="block"><span className={labelClass}>نام تجهیز</span><input readOnly value={selectedEquipment ? equipmentValue(selectedEquipment, definitions.fields, "name") : ""} className={`${inputClass} bg-neutral-50 dark:bg-white/[0.03]`} placeholder="پس از انتخاب کد تجهیز نمایش داده می‌شود" /></label>
