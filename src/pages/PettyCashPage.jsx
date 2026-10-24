@@ -467,11 +467,12 @@ export default function PettyCashPage() {
         </header>
         {expenseStartError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{expenseStartError}</p>}
          {expenseFormOpen && <div>
-          <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onDraftSaved={(report) => {
-            setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
+          <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onDraftSaved={(_report, savedReports) => {
+            setReports(savedReports);
            setExpenseFormOpen(false); setExpenseFormKey((current) => current + 1);
-           setSearchQuery(""); setReportStatusFilter(""); setReportOwnershipFilter(""); setReportPage(0);
-           loadReports().catch((reason) => setReportError(reason.message));
+            setSearchQuery(""); setReportStatusFilter(""); setReportOwnershipFilter("");
+            setReportFromDate(""); setReportToDate(""); setReportPage(0);
+            setReportError("");
          }} onSubmitted={(report) => {
           setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
           setSearchQuery("");
@@ -576,7 +577,8 @@ export default function PettyCashPage() {
           {selectedReport && editingReport?.id === selectedReport.id ? <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
             <PettyCashExpenseTab key={selectedReport.id} initialReport={selectedReport}
               onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
-                onDraftSaved={(report) => { setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); }}
+                onDraftSaved={(_report, savedReports) => { setReports(savedReports); setEditingReport(null); setSelectedReport(null); setReportError("");
+                  setSearchQuery(""); setReportStatusFilter(""); setReportOwnershipFilter(""); setReportFromDate(""); setReportToDate(""); setReportPage(0); }}
                onSubmitted={() => { if (selectedReport.initialStage !== "draft") window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }}
                onDeleted={() => { if (selectedReport.initialStage !== "draft") window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setReports((current) => current.filter((report) => report.id !== selectedReport.id)); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); loadExpenseAccess(); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
           </div> : selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
@@ -1072,11 +1074,17 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
   const menuButtonRef = useRef(null);
   const menuPopoverRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState(null);
-  const [editingExpense, setEditingExpense] = useState(() => (initialReport?.items || []).find((item) =>
-    String(item.id) === String(initialReport?.draftPayload?.editingExpenseId)) || null);
+  const [editingExpense, setEditingExpense] = useState(() => {
+    const reportItems = initialReport?.items || [];
+    const rawIndex = initialReport?.draftPayload?.editingExpenseIndex;
+    const index = Number(rawIndex);
+    return rawIndex != null && Number.isInteger(index) && index >= 0 && index < reportItems.length ? reportItems[index]
+      : reportItems.find((item) => String(item.id) === String(initialReport?.draftPayload?.editingExpenseId)) || null;
+  });
   const [manualEntryOpen, setManualEntryOpen] = useState(Boolean(initialReport?.draftPayload?.manualEntryOpen));
   const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
   const submissionKeyRef = useRef(crypto.randomUUID());
+  const savedDraftRef = useRef(initialReport?.initialStage === "draft" ? { id: initialReport.id, version: initialReport.version } : null);
   const previewUrlsRef = useRef(new Set());
   useEffect(() => () => { previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
@@ -1249,23 +1257,25 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
         draftAttachments.push(data.file);
       }
       const draftPayload = { reportName: reportName.trim(), form, attachments: draftAttachments, manualEntryOpen,
-        editingExpenseId: editingExpense?.id || null };
+        editingExpenseId: editingExpense?.id || null,
+        editingExpenseIndex: editingExpense ? items.findIndex((item) => item.id === editingExpense.id) : null };
       const data = await api("/petty-cash-expenses", { method: "POST", body: JSON.stringify({
-        action: "save_expense_draft", reportId: initialReport?.initialStage === "draft" ? initialReport.id : undefined,
-        expectedVersion: initialReport?.version, projectId, reportName: reportName.trim(),
+        action: "save_expense_draft", reportId: savedDraftRef.current?.id,
+        expectedVersion: savedDraftRef.current?.version, projectId, reportName: reportName.trim(),
         submissionKey: submissionKeyRef.current, items: prepared,
         draftPayload,
       }) });
-      const project = projects.find((entry) => String(entry.id) === String(projectId));
-      onDraftSaved({ id: data.item.id, version: data.item.version, initialStage: "draft", reportNumber: null,
-        reportName: reportName.trim() || "پیش‌نویس بدون نام", projectId: Number(projectId), projectCode: project?.code || initialReport?.projectCode,
-        projectName: project?.name || initialReport?.projectName, createdById: user?.id,
-        createdByName: user?.name, createdByUsername: user?.username, createdAt: initialReport?.createdAt || new Date().toISOString(),
-        draftPayload, items: prepared.map((item) => ({ ...item, stage: "draft" })) });
+      savedDraftRef.current = { id: data.item.id, version: data.item.version };
+      const savedReports = await fetchExpenseReports(user.id);
+      const savedReport = savedReports.find((report) => Number(report.id) === Number(data.item.id) && report.initialStage === "draft");
+      if (!savedReport) throw new Error("draft_not_visible");
+      onDraftSaved(savedReport, savedReports);
     } catch (reason) {
       const messages = { invalid_report: "پروژه و نام گزارش معتبر وارد کنید.", required_expense_fields: "همه فیلدها و پیوست هر ردیف باید معتبر باشند.",
         active_project_not_found: "پروژه فعال پیدا نشد.", budget_code_not_found: "کد بودجه در این پروژه معتبر نیست.",
-        workflow_changed: "پیش‌نویس در دستگاه دیگری تغییر کرده است؛ گزارش را دوباره باز کنید.", internal_error: "ذخیره پیش‌نویس انجام نشد؛ دوباره تلاش کنید." };
+        workflow_changed: "پیش‌نویس در دستگاه دیگری تغییر کرده است؛ گزارش را دوباره باز کنید.",
+        draft_not_visible: "پیش‌نویس ذخیره شد اما در فهرست گزارش‌ها بازیابی نشد؛ دوباره تلاش کنید.",
+        internal_error: "ذخیره پیش‌نویس انجام نشد؛ دوباره تلاش کنید." };
       setError(messages[reason.message] || reason.message);
     } finally { setSaving(false); onBusyChange(false); }
   };
