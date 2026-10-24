@@ -11,7 +11,7 @@ import Card from "../components/ui/Card.jsx";
 import PettyCashBarChart from "../components/PettyCashBarChart.jsx";
 import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
-import { budgetPickerItems } from "../utils/budgetPickerItems.js";
+import { budgetPickerItems, fullBudgetCode } from "../utils/budgetPickerItems.js";
 import { openPettyCashReportPdf } from "../utils/pettyCashReportPdf.js";
 
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
@@ -244,14 +244,14 @@ function RegisteredExpenseDetailsDialog({ userId, onClose }) {
     Promise.all([read("/api/petty-cash-expenses"), read("/api/tenkhah")])
       .then(([expenses, tenkhah]) => {
         const currentExpenses = (expenses.items || []).filter((item) => Number(item.createdById) === Number(userId)).map((item) => ({
-          key: `expense-${item.id}`, date: item.expenseDate, projectName: item.projectName || item.projectCode,
+          key: `expense-${item.id}`, date: item.expenseDate, projectCode: item.projectCode, projectName: item.projectName || item.projectCode,
           description: item.description, budgetCode: item.budgetCode, amount: item.amount, source: "گزارش هزینه",
         }));
         const legacyEntries = (tenkhah.items || []).filter((request) => Number(request.beneficiaryUserId) === Number(userId))
           .flatMap((request) => (request.settlements || []).filter((settlement) => Number(settlement.createdById) === Number(userId))
             .flatMap((settlement) => (settlement.entries || []).map((entry) => ({
               key: `settlement-${settlement.id}-${entry.id}`, date: entry.expenseDate,
-              projectName: request.projectName || request.projectCode, description: entry.description,
+              projectCode: request.projectCode, projectName: request.projectName || request.projectCode, description: entry.description,
               budgetCode: entry.budgetCode, amount: entry.amount, source: "تسویه تنخواه",
             }))));
         setRows([...currentExpenses, ...legacyEntries].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))));
@@ -286,7 +286,7 @@ function RegisteredExpenseDetailsDialog({ userId, onClose }) {
       <div className="min-h-0 overflow-auto p-4 sm:p-6">
         {loading ? <p role="status" className="text-sm text-neutral-500">در حال دریافت اطلاعات...</p> : error ? <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p> : rows.length ? <div className="overflow-x-auto rounded-xl border border-neutral-200"><table className="w-full min-w-[760px] text-right text-sm">
           <thead className="bg-neutral-50 text-neutral-700"><tr><th className="px-3 py-3">ردیف</th><th className="px-3 py-3">تاریخ هزینه</th><th className="px-3 py-3">پروژه</th><th className="px-3 py-3">شرح</th><th className="px-3 py-3">کد بودجه</th><th className="px-3 py-3">نوع ثبت</th><th className="px-3 py-3 text-left">مبلغ (ریال)</th></tr></thead>
-          <tbody>{rows.map((row, index) => <tr key={row.key} className="border-t border-neutral-200"><td className="px-3 py-3">{toFa(index + 1)}</td><td className="px-3 py-3">{toFa(row.date || "—")}</td><td className="px-3 py-3">{row.projectName || "—"}</td><td className="max-w-64 break-words px-3 py-3">{row.description || "—"}</td><td className="px-3 py-3">{toFa(row.budgetCode || "—")}</td><td className="px-3 py-3">{row.source}</td><td className="whitespace-nowrap px-3 py-3 text-left font-semibold tabular-nums">{money(row.amount)}</td></tr>)}</tbody>
+          <tbody>{rows.map((row, index) => <tr key={row.key} className="border-t border-neutral-200"><td className="px-3 py-3">{toFa(index + 1)}</td><td className="px-3 py-3">{toFa(row.date || "—")}</td><td className="px-3 py-3">{row.projectName || "—"}</td><td className="max-w-64 break-words px-3 py-3">{row.description || "—"}</td><td className="px-3 py-3">{toFa(fullBudgetCode(row.budgetCode, row.projectCode) || "—")}</td><td className="px-3 py-3">{row.source}</td><td className="whitespace-nowrap px-3 py-3 text-left font-semibold tabular-nums">{money(row.amount)}</td></tr>)}</tbody>
         </table></div> : <p className="text-sm text-neutral-500">هنوز هزینه‌ای ثبت نشده است.</p>}
       </div>
       {!loading && !error && <footer className="flex shrink-0 justify-between border-t border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-bold sm:px-6"><span>مجموع هزینه‌های ثبت‌شده</span><span className="tabular-nums">{money(total)} ریال</span></footer>}
@@ -467,7 +467,8 @@ export default function PettyCashPage() {
         </header>
         {expenseStartError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{expenseStartError}</p>}
          {expenseFormOpen && <div>
-         <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onDraftSaved={() => {
+          <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onDraftSaved={(report) => {
+            setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
            setExpenseFormOpen(false); setExpenseFormKey((current) => current + 1);
            setSearchQuery(""); setReportStatusFilter(""); setReportOwnershipFilter(""); setReportPage(0);
            loadReports().catch((reason) => setReportError(reason.message));
@@ -575,7 +576,7 @@ export default function PettyCashPage() {
           {selectedReport && editingReport?.id === selectedReport.id ? <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
             <PettyCashExpenseTab key={selectedReport.id} initialReport={selectedReport}
               onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
-               onDraftSaved={() => { setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); }}
+                onDraftSaved={(report) => { setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); }}
                onSubmitted={() => { if (selectedReport.initialStage !== "draft") window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }}
                onDeleted={() => { if (selectedReport.initialStage !== "draft") window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setReports((current) => current.filter((report) => report.id !== selectedReport.id)); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); loadExpenseAccess(); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
           </div> : selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
@@ -835,7 +836,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
                     className={`h-13 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2">{toFa(index + 1)}</td>
-                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-all px-2" title={item.budgetCode}>{toFa(item.budgetCode || "—")}</td>
+                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-all px-2" title={fullBudgetCode(item.budgetCode, report.projectCode)}>{toFa(fullBudgetCode(item.budgetCode, report.projectCode) || "—")}</td>
                     <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
                   </tr>;
                 })}</tbody>
@@ -1247,13 +1248,20 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
         if (!response.ok || !data.file?.url) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
         draftAttachments.push(data.file);
       }
-      await api("/petty-cash-expenses", { method: "POST", body: JSON.stringify({
+      const draftPayload = { reportName: reportName.trim(), form, attachments: draftAttachments, manualEntryOpen,
+        editingExpenseId: editingExpense?.id || null };
+      const data = await api("/petty-cash-expenses", { method: "POST", body: JSON.stringify({
         action: "save_expense_draft", reportId: initialReport?.initialStage === "draft" ? initialReport.id : undefined,
         expectedVersion: initialReport?.version, projectId, reportName: reportName.trim(),
         submissionKey: submissionKeyRef.current, items: prepared,
-        draftPayload: { form, attachments: draftAttachments, manualEntryOpen, editingExpenseId: editingExpense?.id || null },
+        draftPayload,
       }) });
-      onDraftSaved();
+      const project = projects.find((entry) => String(entry.id) === String(projectId));
+      onDraftSaved({ id: data.item.id, version: data.item.version, initialStage: "draft", reportNumber: null,
+        reportName: reportName.trim() || "پیش‌نویس بدون نام", projectId: Number(projectId), projectCode: project?.code || initialReport?.projectCode,
+        projectName: project?.name || initialReport?.projectName, createdById: user?.id,
+        createdByName: user?.name, createdByUsername: user?.username, createdAt: initialReport?.createdAt || new Date().toISOString(),
+        draftPayload, items: prepared.map((item) => ({ ...item, stage: "draft" })) });
     } catch (reason) {
       const messages = { invalid_report: "پروژه و نام گزارش معتبر وارد کنید.", required_expense_fields: "همه فیلدها و پیوست هر ردیف باید معتبر باشند.",
         active_project_not_found: "پروژه فعال پیدا نشد.", budget_code_not_found: "کد بودجه در این پروژه معتبر نیست.",
@@ -1318,6 +1326,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
   const startIndex = safePage * rowsPerPage;
   const endIndex = Math.min(items.length, startIndex + rowsPerPage);
   const pageItems = items.slice(startIndex, endIndex);
+  const selectedProjectCode = projects.find((project) => String(project.id) === String(projectId))?.code || initialReport?.projectCode;
   const visibleIds = pageItems.map((item) => item.id);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const someVisibleSelected = visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
@@ -1486,7 +1495,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChang
               <td className="px-3">{toFa(startIndex + index + 1)}</td>
               <td className="px-3">{toFa(item.expenseDate)}</td>
               <td className="truncate px-3 text-right" title={item.description}>{item.description}</td>
-              <td className="px-3">{toFa(item.budgetCode)}</td>
+              <td className="px-3" title={fullBudgetCode(item.budgetCode, selectedProjectCode)}>{toFa(fullBudgetCode(item.budgetCode, selectedProjectCode) || "—")}</td>
               <td className="px-3 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
               <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
                {initialReport && <td className="px-2"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.stage === "draft" ? "bg-orange-50 text-orange-700" : item.stage === "revision" ? "bg-amber-50 text-amber-800" : item.stage === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>{item.stage === "draft" ? "درحال تکمیل" : item.stage === "revision" ? "درخواست اصلاح" : item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span></td>}

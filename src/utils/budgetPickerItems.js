@@ -3,6 +3,13 @@ import { toEnglishDigits } from "./format.js";
 const normalizeCode = (value) => toEnglishDigits(String(value ?? "")).trim().toUpperCase()
   .replace(/[^\d.-]/g, "-").replace(/[.-]+/g, "-").replace(/^-|-$/g, "");
 
+export function fullBudgetCode(storedCode, projectCode) {
+  const prefix = normalizeCode(projectCode);
+  const code = normalizeCode(storedCode);
+  if (!code) return "";
+  return prefix && code !== prefix && !code.startsWith(`${prefix}-`) ? `${prefix}-${code}` : code;
+}
+
 // Both forms show the project hierarchy; petty cash keeps the stored code as
 // its selected value because its API validates against the cost breakdown.
 export function budgetPickerItems(items, project, keepStoredValue = false) {
@@ -10,9 +17,8 @@ export function budgetPickerItems(items, project, keepStoredValue = false) {
   const byCode = new Map();
   (Array.isArray(items) ? items : []).forEach((item) => {
     const storedCode = String(item?.budgetCode ?? item?.budget_code ?? item?.code ?? "");
-    const normalized = normalizeCode(storedCode);
-    if (!normalized) return;
-    const code = prefix && normalized !== prefix && !normalized.startsWith(`${prefix}-`) ? `${prefix}-${normalized}` : normalized;
+    const code = fullBudgetCode(storedCode, project?.code);
+    if (!code) return;
     const previous = byCode.get(code);
     byCode.set(code, {
       code,
