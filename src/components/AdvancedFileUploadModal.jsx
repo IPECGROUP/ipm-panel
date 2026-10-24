@@ -20,7 +20,7 @@ function UploadFileRow({ file, index, uploading, onEditFile, isEditableFile, onR
   const viewUrl = file?.url || localUrl;
   return <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-white/10 dark:bg-white/[.03]">
     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><FileText className="h-4 w-4 text-neutral-600 dark:text-neutral-300" /></span>
-    <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold" title={fileLabel(file)}>{fileLabel(file)}</span>
+    <span className="min-w-0 flex-1"><span dir="auto" className="block text-sm font-semibold [overflow-wrap:anywhere] [unicode-bidi:plaintext]" title={fileLabel(file)}>{fileLabel(file)}</span>
       <span className="mt-0.5 block text-[11px] text-neutral-500">{file.size ? `${Math.ceil(file.size / 1024).toLocaleString("fa-IR")} کیلوبایت` : ""}{file.status === "uploading" ? ` · ${Number(file.progress || 0).toLocaleString("fa-IR")}٪` : ""}</span>
       {file.status === "error" && file.error ? <span className="block text-[11px] text-red-600">{file.error}</span> : null}
     </span>

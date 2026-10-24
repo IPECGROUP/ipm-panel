@@ -4946,6 +4946,7 @@ useEffect(() => {
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-base font-bold md:text-lg">دبیرخانه</span>
+                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت اسناد</span>
               </span>
             </div>
             <button
@@ -6905,7 +6906,6 @@ const rowBg = normalRowBg;
                             <div className={labelCls}>فایل‌ها</div>
                             <div className="flex flex-wrap gap-2">
                               {viewAttachments.map((a, i) => {
-                                const u = attachmentUrlOf(a);
                                 const n = attachmentNameOf(a) || `فایل ${i + 1}`;
                                 const active = (viewAttIdx || 0) === i;
                                 return (
@@ -6914,7 +6914,7 @@ const rowBg = normalRowBg;
                                     type="button"
                                     onClick={() => setViewAttIdx(i)}
                                     className={
-                                      "h-10 px-3 rounded-xl border transition text-sm " +
+                                      "max-w-full min-h-10 px-3 py-2 rounded-xl border transition text-sm [overflow-wrap:anywhere] [unicode-bidi:plaintext] " +
                                       (active
                                         ? theme === "dark"
                                           ? "border-white/15 bg-white text-black"
@@ -6923,7 +6923,8 @@ const rowBg = normalRowBg;
                                         ? "border-white/15 bg-white/5 text-white hover:bg-white/10"
                                         : "border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02]")
                                     }
-                                    title={u || ""}
+                                    title={n}
+                                    dir="auto"
                                   >
                                     {n}
                                   </button>
@@ -7031,7 +7032,7 @@ const rowBg = normalRowBg;
                               </a>
 
                               {currentViewName ? (
-                                <div className={theme === "dark" ? "text-[11px] text-white/60 text-center" : "text-[11px] text-neutral-600 text-center"}>
+                                <div dir="auto" className={theme === "dark" ? "text-[11px] text-white/60 text-center [overflow-wrap:anywhere] [unicode-bidi:plaintext]" : "text-[11px] text-neutral-600 text-center [overflow-wrap:anywhere] [unicode-bidi:plaintext]"}>
                                   {currentViewName}
                                 </div>
                               ) : null}
@@ -7356,7 +7357,7 @@ const rowBg = normalRowBg;
                               }
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="text-[13px] font-semibold whitespace-normal break-words leading-6">
+                                <div dir="auto" className="text-[13px] font-semibold whitespace-normal leading-6 [overflow-wrap:anywhere] [unicode-bidi:plaintext]">
                                   {f.name}
                                 </div>
                                 <div className={theme === "dark" ? "text-white/60 text-[11px] mt-1" : "text-neutral-600 text-[11px] mt-1"}>
