@@ -13,7 +13,6 @@ import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
 import { budgetPickerItems } from "../utils/budgetPickerItems.js";
 import { openPettyCashReportPdf } from "../utils/pettyCashReportPdf.js";
-import { readPettyCashDraft, writePettyCashDraft, removePettyCashDraft } from "../utils/pettyCashDraftStorage.js";
 
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
 const amount = (value) => { try { return BigInt(value || 0); } catch { return 0n; } };
@@ -395,7 +394,7 @@ export default function PettyCashPage() {
       .catch(() => { if (openingNotificationRef.current === key) { openingNotificationRef.current = ""; setReportError("دریافت گزارش اعلان‌شده انجام نشد. دوباره تلاش کنید."); } });
   }, [searchParams, setSearchParams, userId]);
   const visibleReports = reports.filter((report) => {
-    const state = expenseReportState(report.items);
+     const state = expenseReportState(report);
     if (reportStatusFilter && state.statusKey !== reportStatusFilter) return false;
     if (reportOwnershipFilter === "mine" && String(report.createdById) !== String(user?.id)) return false;
     if (reportOwnershipFilter === "incoming" && !report.canAct && !report.wasSentToMe) return false;
@@ -453,7 +452,7 @@ export default function PettyCashPage() {
             <button type="button" onClick={() => setSummaryOpen(true)} aria-haspopup="dialog"
               className="h-10 rounded-xl px-3 text-sm font-semibold ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10">تنخواه‌های من</button>
             <button type="button" disabled={reportSaving} onClick={() => {
-              if (expenseFormOpen) { setExpenseFormOpen(false); setExpenseStartError(""); return; }
+               if (expenseFormOpen) { setExpenseFormOpen(false); setExpenseFormKey((current) => current + 1); setExpenseStartError(""); return; }
               if (expenseAccess.loading) return setExpenseStartError("مانده تنخواه در حال دریافت است. دوباره تلاش کنید.");
               if (expenseAccess.error) return setExpenseStartError(expenseAccess.error);
               if (expenseAccess.available <= 0n) return setExpenseStartError(expenseAccess.received <= 0n ? "برای ثبت هزینه، ابتدا باید تنخواه دریافت کنید." : "مانده تنخواه تسویه‌نشده‌ای برای ثبت هزینه جدید وجود ندارد.");
@@ -467,8 +466,12 @@ export default function PettyCashPage() {
           </div>
         </header>
         {expenseStartError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{expenseStartError}</p>}
-        <div hidden={!expenseFormOpen}>
-        <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onSubmitted={(report) => {
+         {expenseFormOpen && <div>
+         <PettyCashExpenseTab key={expenseFormKey} availableBalance={expenseAccess.available} onBusyChange={setReportSaving} onDraftSaved={() => {
+           setExpenseFormOpen(false); setExpenseFormKey((current) => current + 1);
+           setSearchQuery(""); setReportStatusFilter(""); setReportOwnershipFilter(""); setReportPage(0);
+           loadReports().catch((reason) => setReportError(reason.message));
+         }} onSubmitted={(report) => {
           setReports((current) => [report, ...current.filter((item) => item.id !== report.id)]);
           setSearchQuery("");
           setReportStatusFilter("");
@@ -481,8 +484,8 @@ export default function PettyCashPage() {
           loadExpenseAccess();
           window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
         }} />
-        </div>
-        {!expenseFormOpen && <>
+         </div>}
+         {!expenseFormOpen && <>
           <div className="mb-4 rounded-2xl border border-black/10 bg-neutral-50 p-3 shadow-sm dark:border-white/10 dark:bg-white/5">
             <div className="flex flex-wrap items-end gap-2">
               <div className="w-full min-w-0 md:min-w-[280px] md:flex-1"><Field label="جست و جو">
@@ -524,7 +527,7 @@ export default function PettyCashPage() {
                 </thead>
                 <tbody className="text-[13px] [&>tr]:h-11">
                   {pageReports.map((report, index) => {
-                    const state = expenseReportState(report.items);
+                     const state = expenseReportState(report);
                     return <tr key={report.id} tabIndex={0} onClick={() => setSelectedReport(report)}
                       onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedReport(report); } }}
                       aria-label={`مشاهده گزارش ${report.reportName}`}
@@ -534,7 +537,7 @@ export default function PettyCashPage() {
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
                       <td className="truncate px-4 py-2" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
                       <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
-                      <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode} - {report.projectName}</td>
+                       <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode ? `${toFa(report.projectCode)} - ` : ""}{report.projectName}</td>
                       <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
                       <td className="relative px-4 py-2">
                         <span className={`inline-flex max-w-full items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusBadgeClass(state.statusKey)}`}>{state.statusKey === "pending" && state.waiting !== "—" ? state.waiting : state.status}</span>
@@ -563,7 +566,7 @@ export default function PettyCashPage() {
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
             <div className="flex min-w-0 items-center gap-3">
               {selectedReport && <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-neutral-50"><FileText className="h-5 w-5" /></span>}
-               <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? "اصلاح گزارش تنخواه" : "تسویه تنخواه" : selectedLegacyExpense ? "بررسی هزینه تنخواه" : "تنخواه‌های من"}</h2>
+              <div><h2 id="petty-cash-summary-title" className="text-base font-bold sm:text-lg">{selectedReport ? editingReport?.id === selectedReport.id ? selectedReport.initialStage === "draft" ? "تکمیل پیش‌نویس تنخواه" : "اصلاح گزارش تنخواه" : "تسویه تنخواه" : selectedLegacyExpense ? "بررسی هزینه تنخواه" : "تنخواه‌های من"}</h2>
               </div>
             </div>
             <button type="button" disabled={reviewBusy} onClick={closeDialog} aria-label="بستن پنجره"
@@ -572,8 +575,9 @@ export default function PettyCashPage() {
           {selectedReport && editingReport?.id === selectedReport.id ? <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
             <PettyCashExpenseTab key={selectedReport.id} initialReport={selectedReport}
               onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
-              onSubmitted={() => { window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }}
-              onDeleted={() => { window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setReports((current) => current.filter((report) => report.id !== selectedReport.id)); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); loadExpenseAccess(); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
+               onDraftSaved={() => { setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); }}
+               onSubmitted={() => { if (selectedReport.initialStage !== "draft") window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }}
+               onDeleted={() => { if (selectedReport.initialStage !== "draft") window.dispatchEvent(new CustomEvent("request-notification-completed", { detail: { notificationTarget: "petty_cash_report", id: selectedReport.id } })); setReports((current) => current.filter((report) => report.id !== selectedReport.id)); setEditingReport(null); setSelectedReport(null); loadReports().catch((reason) => setReportError(reason.message)); loadExpenseAccess(); window.dispatchEvent(new Event("tenkhah-notifications-refresh")); }} />
           </div> : selectedReport ? <PettyCashReportReview key={selectedReport.id} report={selectedReport}
             onBusyChange={(busy) => { reviewBusyRef.current = busy; setReviewBusy(busy); }}
             onRefresh={() => loadReports().catch((reason) => setReportError(reason.message))}
@@ -691,9 +695,6 @@ function TablePagination({ total, rowsPerPage, page, setPage, onRowsPerPageChang
 
 const inputClass = "h-11 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm outline-none focus:border-neutral-400";
 const emptyForm = () => ({ expenseDate: todayJalaliYmd().replaceAll("-", "/"), description: "", budgetCode: "", amount: "", currencyTypeId: "", exchangeRate: "" });
-const hasPettyCashDraftContent = (draft) => Boolean(draft.projectId || draft.reportName.trim() || draft.items.length ||
-  draft.form.description.trim() || draft.form.budgetCode || draft.form.amount || draft.form.currencyTypeId ||
-  draft.form.expenseDate !== emptyForm().expenseDate || draft.attachments?.length || draft.attachment);
 const expenseAttachments = (item) => Array.isArray(item.files) && item.files.length ? item.files
   : item.fileUrl ? [{ name: item.fileName, url: item.fileUrl, file: item.attachmentFile }] : [];
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
@@ -799,7 +800,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     { label: "شماره گزارش", value: report.reportNumber ? toFa(report.reportNumber) : "—", Icon: FileText },
     { label: "تاریخ", value: reportDate(report.createdAt), recipient: report.createdByName || report.createdByUsername || "—", Icon: CalendarDays },
     { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
-    { label: "پروژه", value: report.projectName || "—", secondary: report.projectCode ? `کد پروژه: ${toFa(report.projectCode)}` : "", Icon: BriefcaseBusiness },
+    { label: "پروژه", value: report.projectCode ? `${toFa(report.projectCode)} - ${report.projectName}` : report.projectName || "—", Icon: BriefcaseBusiness },
     { label: "مبلغ گزارش", value: `${money(entries.reduce((sum, item) => sum + amount(item.amount), 0n))} ریال`, Icon: FileText },
   ];
 
@@ -825,7 +826,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[294px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[336px]">
               <table className="w-full min-w-[650px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
-                <colgroup><col className="w-12" /><col /><col className="w-24" /><col className="w-32" /></colgroup>
+                 <colgroup><col className="w-12" /><col /><col className="w-40" /><col className="w-32" /></colgroup>
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   {["ردیف", "شرح", "کد بودجه", "مبلغ گزارش"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
                 </tr></thead>
@@ -834,7 +835,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
                     className={`h-13 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2">{toFa(index + 1)}</td>
-                    <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="px-2">{toFa(item.budgetCode)}</td>
+                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-all px-2" title={item.budgetCode}>{toFa(item.budgetCode || "—")}</td>
                     <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
                   </tr>;
                 })}</tbody>
@@ -893,8 +894,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </aside>
       </div>
     </div>
-    {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
-      {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
+     {(report.canRevise || report.initialStage === "draft" || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
+       {(report.canRevise || report.initialStage === "draft") && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />{report.initialStage === "draft" ? "تکمیل پیش‌نویس" : "ویرایش موارد برگشتی"}</button>}
        {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black ${reportDecision === "revision" ? "px-5" : "w-11"} text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" && "ثبت بازگشت تنخواه گردان"}</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
@@ -929,6 +930,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
 }
 
 function PettyCashSettlementTimeline({ report }) {
+  if (report.initialStage === "draft") return <aside className="min-w-0 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm text-orange-900">
+    <h3 className="font-bold">پیش‌نویس شخصی</h3>
+    <p className="mt-2 leading-6">این گزارش در حال تکمیل است و هنوز برای بررسی ارسال نشده است.</p>
+  </aside>;
   const history = Array.isArray(report.historyJson) ? report.historyJson : [];
   const entries = report.items || [];
   const stages = report.initialStage === "management"
@@ -1000,10 +1005,11 @@ function reportDate(value) {
   return value ? new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Tehran" }).format(new Date(value)) : "—";
 }
 
-const REPORT_STATUS_LABELS = { pending: "در انتظار تأیید", approved: "تأیید شد", returned: "درخواست اصلاح" };
+const REPORT_STATUS_LABELS = { draft: "درحال تکمیل", pending: "در انتظار تأیید", approved: "تأیید شد", returned: "درخواست اصلاح" };
 
 function reportStatusBadgeClass(status, active = false) {
   const colors = {
+    draft: ["border-[#FFE2CA] bg-[#FFF1E5] text-[#A94D00]", "border-[#F48120] bg-[#F48120] text-white"],
     pending: ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499]", "border-[#036499] bg-[#036499] text-[#D5E6F1]"],
     approved: ["border-[#DDF6E8] bg-[#DDF6E8] text-[#247A4D]", "border-[#247A4D] bg-[#247A4D] text-[#DDF6E8]"],
     returned: ["border-[#FFF0D8] bg-[#FFF0D8] text-[#A65D00]", "border-[#A65D00] bg-[#A65D00] text-[#FFF0D8]"],
@@ -1012,7 +1018,9 @@ function reportStatusBadgeClass(status, active = false) {
   return `border shadow-sm ${(colors[status] || colors.pending)[active ? 1 : 0]}`;
 }
 
-function expenseReportState(items = []) {
+function expenseReportState(report) {
+  if (report.initialStage === "draft") return { waiting: "—", status: "درحال تکمیل", statusKey: "draft" };
+  const items = report.items || [];
   const pending = items.filter((item) => ["planning", "project_manager", "finance", "management", "revision"].includes(item.stage));
   const waiting = [...new Set(pending.map((item) => item.stage === "planning" ? "برنامه‌ریزی و کنترل پروژه" : item.stage === "finance" ? "مالی"
     : item.stage === "management" ? "مدیریت" : item.stage === "revision" ? "—" : "مدیریت پروژه‌ها"))].filter((name) => name !== "—").join("، ") || "—";
@@ -1039,19 +1047,19 @@ function Field({ label, required = false, children }) {
   </label>;
 }
 
-function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialReport, availableBalance = null }) {
+function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onBusyChange, initialReport, availableBalance = null }) {
   const { user } = useAuth();
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState(initialReport ? String(initialReport.projectId) : "");
-  const [reportName, setReportName] = useState(initialReport?.reportName || "");
+  const [reportName, setReportName] = useState(initialReport?.initialStage === "draft" ? initialReport.draftPayload?.reportName || "" : initialReport?.reportName || "");
   const [budgetItems, setBudgetItems] = useState([]);
   const [currencyTypes, setCurrencyTypes] = useState([]);
   const [items, setItems] = useState(() => (initialReport?.items || []).map((item) => ({ ...item, files: expenseAttachments(item) })));
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [form, setForm] = useState(emptyForm);
-  const [attachments, setAttachments] = useState([]);
+  const [form, setForm] = useState(() => ({ ...emptyForm(), ...(initialReport?.draftPayload?.form || {}) }));
+  const [attachments, setAttachments] = useState(initialReport?.draftPayload?.attachments || []);
   const [budgetPickerOpen, setBudgetPickerOpen] = useState(false);
   const [budgetPickerQuery, setBudgetPickerQuery] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1063,18 +1071,12 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
   const menuButtonRef = useRef(null);
   const menuPopoverRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState(null);
-  const [editingExpense, setEditingExpense] = useState(null);
-  const [manualEntryOpen, setManualEntryOpen] = useState(false);
-  const [draftReady, setDraftReady] = useState(Boolean(initialReport));
-  const [draftStatus, setDraftStatus] = useState("");
+  const [editingExpense, setEditingExpense] = useState(() => (initialReport?.items || []).find((item) =>
+    String(item.id) === String(initialReport?.draftPayload?.editingExpenseId)) || null);
+  const [manualEntryOpen, setManualEntryOpen] = useState(Boolean(initialReport?.draftPayload?.manualEntryOpen));
+  const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
   const submissionKeyRef = useRef(crypto.randomUUID());
   const previewUrlsRef = useRef(new Set());
-  const draftSaveTimerRef = useRef(null);
-  const draftWriteQueueRef = useRef(Promise.resolve());
-  const draftLatestRef = useRef(null);
-  const draftLastItemsRef = useRef(items);
-  const draftReadyRef = useRef(Boolean(initialReport));
-  const draftClearedRef = useRef(false);
   useEffect(() => () => { previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)); }, []);
 
   useEffect(() => {
@@ -1103,82 +1105,6 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     if (!response.ok) throw new Error(data.error || "دریافت اطلاعات انجام نشد.");
     return data;
   }, [user?.id]);
-
-  const queueDraftWrite = useCallback((draft) => {
-    if (!user?.id) return Promise.resolve();
-    const next = draftWriteQueueRef.current.catch(() => {}).then(() => draft
-      ? writePettyCashDraft(user.id, draft) : removePettyCashDraft(user.id));
-    draftWriteQueueRef.current = next;
-    return next;
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (initialReport || !user?.id) return;
-    let active = true;
-    readPettyCashDraft(user.id).then((draft) => {
-      if (!active || draft?.version !== 1 || !Array.isArray(draft.items)) return;
-      const restoredItems = draft.items.map((item) => {
-        const files = expenseAttachments(item).map((entry) => {
-          const url = entry.file && !entry.url ? URL.createObjectURL(entry.file) : entry.url;
-          if (entry.file && !entry.url) previewUrlsRef.current.add(url);
-          return { ...entry, url };
-        });
-        return { ...item, files, fileUrl: files[0]?.url || "", fileName: files[0]?.name || "" };
-      });
-      setProjectId(String(draft.projectId || ""));
-      setReportName(String(draft.reportName || ""));
-      setItems(restoredItems);
-      setForm({ ...emptyForm(), ...draft.form });
-      setAttachments(draft.attachments || (draft.attachment ? [{ name: draft.attachment.name, file: draft.attachment }] : []));
-      setEditingExpense(restoredItems.find((item) => item.id === draft.editingExpenseId) || null);
-      setManualEntryOpen(Boolean(draft.manualEntryOpen));
-      if (draft.submissionKey) submissionKeyRef.current = draft.submissionKey;
-      setDraftStatus("saved");
-      if (draft.projectId) api(`/cost-breakdown?project_id=${encodeURIComponent(draft.projectId)}`)
-        .then((data) => { if (active) setBudgetItems(data.items || []); })
-        .catch((reason) => { if (active) setError(reason.message); });
-    }).catch(() => { if (active) setDraftStatus("error"); }).finally(() => {
-      if (active) { draftReadyRef.current = true; setDraftReady(true); }
-    });
-    return () => { active = false; };
-  }, [api, initialReport, user?.id]);
-
-  useEffect(() => {
-    if (initialReport || !user?.id || !draftReady || draftClearedRef.current) return;
-    const snapshot = { version: 1, projectId, reportName, form, attachments, manualEntryOpen,
-      editingExpenseId: editingExpense?.id || null, submissionKey: submissionKeyRef.current,
-      items: items.map((item) => ({ ...item, fileUrl: item.fileUrl?.startsWith("blob:") ? "" : item.fileUrl,
-        files: expenseAttachments(item).map((file) => ({ ...file, url: file.url?.startsWith("blob:") ? "" : file.url })) })) };
-    const draft = hasPettyCashDraftContent(snapshot) ? snapshot : null;
-    draftLatestRef.current = draft;
-    setDraftStatus(draft ? "saving" : "");
-    const itemsChanged = draftLastItemsRef.current !== items;
-    draftLastItemsRef.current = items;
-    draftSaveTimerRef.current = setTimeout(() => {
-      queueDraftWrite(draft).then(() => { if (!draftClearedRef.current) setDraftStatus(draft ? "saved" : ""); })
-        .catch(() => { if (!draftClearedRef.current) setDraftStatus("error"); });
-    }, itemsChanged ? 0 : 350);
-    return () => clearTimeout(draftSaveTimerRef.current);
-  }, [attachments, draftReady, editingExpense, form, initialReport, items, manualEntryOpen, projectId, queueDraftWrite, reportName, user?.id]);
-
-  useEffect(() => () => {
-    if (!initialReport && draftReadyRef.current && !draftClearedRef.current) {
-      clearTimeout(draftSaveTimerRef.current);
-      void queueDraftWrite(draftLatestRef.current).catch(() => {});
-    }
-  }, [initialReport, queueDraftWrite]);
-
-  const clearSavedDraft = async () => {
-    if (initialReport || !user?.id) return;
-    draftClearedRef.current = true;
-    clearTimeout(draftSaveTimerRef.current);
-    try {
-      await draftWriteQueueRef.current.catch(() => {});
-      await removePettyCashDraft(user.id);
-    } catch {
-      // A successful report must not be submitted twice because local cleanup failed.
-    }
-  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1273,15 +1199,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     setError("");
     setConfirmOpen(true);
   };
-  const submitReport = async () => {
-    if (saving) return;
-    const validationError = reportValidationError();
-    if (validationError) { setConfirmOpen(false); return setError(validationError); }
-    setConfirmOpen(false);
-    setSaving(true);
-    onBusyChange(true);
-    setError("");
-    try {
+  const prepareReportItems = async () => {
       const prepared = [];
       for (const item of items) {
         const files = [];
@@ -1306,11 +1224,57 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
           amount: item.amount, currencyTypeId: item.currencyTypeId || null, currencyName: item.currencyName || "ریال", currencyAmount: item.currencyAmount || item.amount,
           exchangeRate: item.exchangeRate || "1", files, fileName: files[0].name, fileUrl: files[0].url, stage: item.stage, id: item.id });
       }
-      const data = await api("/petty-cash-expenses", { method: initialReport ? "PATCH" : "POST", body: JSON.stringify({
-        action: initialReport ? "resubmit_report" : "create_expense_report", reportId: initialReport?.id, expectedVersion: initialReport?.version,
+    return prepared;
+  };
+  const saveDraft = async () => {
+    if (saving) return;
+    if (!projectId) { setDraftConfirmOpen(false); return setError("ابتدا پروژه را انتخاب کنید."); }
+    setDraftConfirmOpen(false); setSaving(true); onBusyChange(true); setError("");
+    try {
+      const prepared = await prepareReportItems();
+      const draftAttachments = [];
+      for (const attachment of attachments) {
+        if (attachment.url && !attachment.url.startsWith("blob:")) {
+          draftAttachments.push({ name: attachment.name, url: attachment.url });
+          continue;
+        }
+        const payload = new FormData();
+        payload.append("file", attachment.file);
+        const response = await fetch("/api/petty-cash-expenses/upload", {
+          method: "POST", credentials: "include", headers: { "x-user-id": String(user?.id || "") }, body: payload,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.file?.url) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
+        draftAttachments.push(data.file);
+      }
+      await api("/petty-cash-expenses", { method: "POST", body: JSON.stringify({
+        action: "save_expense_draft", reportId: initialReport?.initialStage === "draft" ? initialReport.id : undefined,
+        expectedVersion: initialReport?.version, projectId, reportName: reportName.trim(),
+        submissionKey: submissionKeyRef.current, items: prepared,
+        draftPayload: { form, attachments: draftAttachments, manualEntryOpen, editingExpenseId: editingExpense?.id || null },
+      }) });
+      onDraftSaved();
+    } catch (reason) {
+      const messages = { invalid_report: "پروژه و نام گزارش معتبر وارد کنید.", required_expense_fields: "همه فیلدها و پیوست هر ردیف باید معتبر باشند.",
+        active_project_not_found: "پروژه فعال پیدا نشد.", budget_code_not_found: "کد بودجه در این پروژه معتبر نیست.",
+        workflow_changed: "پیش‌نویس در دستگاه دیگری تغییر کرده است؛ گزارش را دوباره باز کنید.", internal_error: "ذخیره پیش‌نویس انجام نشد؛ دوباره تلاش کنید." };
+      setError(messages[reason.message] || reason.message);
+    } finally { setSaving(false); onBusyChange(false); }
+  };
+  const submitReport = async () => {
+    if (saving) return;
+    const validationError = reportValidationError();
+    if (validationError) { setConfirmOpen(false); return setError(validationError); }
+    setConfirmOpen(false);
+    setSaving(true);
+    onBusyChange(true);
+    setError("");
+    try {
+      const prepared = await prepareReportItems();
+      const data = await api("/petty-cash-expenses", { method: initialReport && initialReport.initialStage !== "draft" ? "PATCH" : "POST", body: JSON.stringify({
+        action: initialReport && initialReport.initialStage !== "draft" ? "resubmit_report" : "create_expense_report", reportId: initialReport?.id, draftReportId: initialReport?.initialStage === "draft" ? initialReport.id : undefined, expectedVersion: initialReport?.version,
         projectId, reportName: reportName.trim(), submissionKey: submissionKeyRef.current, items: prepared,
       }) });
-      await clearSavedDraft();
       const project = projects.find((entry) => String(entry.id) === String(projectId));
       onSubmitted({ id: data.item.id, reportNumber: data.item.reportNumber || initialReport?.reportNumber,
         documentType: data.item.documentType || initialReport?.documentType, reportName: reportName.trim(), projectId, projectName: project?.name,
@@ -1330,14 +1294,15 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
   };
 
   const deleteReport = async () => {
-    if (!initialReport?.canRevise || saving) return;
+    if (!(initialReport?.canRevise || initialReport?.initialStage === "draft") || saving) return;
     const originalAmount = (initialReport.items || []).reduce((sum, item) => sum + amount(item.amount), 0n);
-    if (!window.confirm(`گزارش «${initialReport.reportName}» و همه ردیف‌های آن حذف شود؟ مبلغ ${money(originalAmount)} ریال به باقی‌مانده هزینه‌های ثبت‌نشده برمی‌گردد.`)) return;
+    if (!window.confirm(initialReport.initialStage === "draft" ? `پیش‌نویس «${initialReport.reportName}» و همه ردیف‌های آن حذف شود؟`
+      : `گزارش «${initialReport.reportName}» و همه ردیف‌های آن حذف شود؟ مبلغ ${money(originalAmount)} ریال به باقی‌مانده هزینه‌های ثبت‌نشده برمی‌گردد.`)) return;
     setSaving(true);
     onBusyChange(true);
     setError("");
     try {
-      await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ action: "delete_report", reportId: initialReport.id, expectedVersion: initialReport.version }) });
+      await api("/petty-cash-expenses", { method: "DELETE", body: JSON.stringify({ action: initialReport.initialStage === "draft" ? "delete_draft_report" : "delete_report", reportId: initialReport.id, expectedVersion: initialReport.version }) });
       onDeleted();
     } catch (reason) {
       const messages = { workflow_changed: "گزارش تغییر کرده است؛ آن را دوباره باز کنید.", not_allowed: "حذف این گزارش در مرحله فعلی مجاز نیست.", internal_error: "حذف گزارش انجام نشد؛ دوباره تلاش کنید." };
@@ -1368,8 +1333,8 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     return next;
   });
   const selectedItems = items.filter((item) => selectedIds.has(item.id));
-  const canEdit = selectedItems.length === 1 && (!initialReport || selectedItems[0].stage === "revision" || !Number.isInteger(Number(selectedItems[0].id)));
-  const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || item.stage === "revision" || !Number.isInteger(Number(item.id)));
+  const canEdit = selectedItems.length === 1 && (!initialReport || initialReport.initialStage === "draft" || selectedItems[0].stage === "revision" || !Number.isInteger(Number(selectedItems[0].id)));
+  const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || initialReport.initialStage === "draft" || item.stage === "revision" || !Number.isInteger(Number(item.id)));
   const beginEdit = (item) => {
     setManualEntryOpen(true);
     setEditingExpense(item);
@@ -1390,7 +1355,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     setError("");
   };
   const deleteSelected = () => {
-    if (canDelete && initialReport && selectedItems.length === items.length) return deleteReport();
+    if (canDelete && initialReport?.initialStage !== "draft" && selectedItems.length === items.length) return deleteReport();
     if (!canDelete || !window.confirm(`آیا ${toFa(selectedItems.length)} ردیف انتخاب‌شده حذف شود؟`)) return;
     setItems((current) => current.filter((item) => !selectedIds.has(item.id)));
     if (editingExpense && selectedIds.has(editingExpense.id)) cancelEdit();
@@ -1399,7 +1364,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
     setError("");
   };
   return <section className="rounded-2xl border border-neutral-200 bg-white p-3 sm:p-4">
-    <fieldset disabled={saving || !draftReady} className="min-w-0">
+    <fieldset disabled={saving} className="min-w-0">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div className="flex max-w-full flex-wrap items-end gap-3">
         <Field label="پروژه" required>
@@ -1413,10 +1378,6 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
         </Field>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {!initialReport && <span role="status" className={`text-xs ${draftStatus === "error" ? "text-red-700" : "text-neutral-500"}`}>
-          {!draftReady ? "در حال بازیابی پیش‌نویس..." : draftStatus === "saving" ? "در حال ذخیره پیش‌نویس..."
-            : draftStatus === "saved" ? "پیش‌نویس ذخیره شد" : draftStatus === "error" ? "ذخیره پیش‌نویس انجام نشد" : ""}
-        </span>}
         <button type="button" onClick={() => setManualEntryOpen((current) => !current)} aria-expanded={manualEntryOpen}
           className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
           ثبت موردی
@@ -1528,7 +1489,7 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
               <td className="px-3">{toFa(item.budgetCode)}</td>
               <td className="px-3 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
               <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
-              {initialReport && <td className="px-2"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.stage === "revision" ? "bg-amber-50 text-amber-800" : item.stage === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>{item.stage === "revision" ? "درخواست اصلاح" : item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span></td>}
+               {initialReport && <td className="px-2"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.stage === "draft" ? "bg-orange-50 text-orange-700" : item.stage === "revision" ? "bg-amber-50 text-amber-800" : item.stage === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>{item.stage === "draft" ? "درحال تکمیل" : item.stage === "revision" ? "درخواست اصلاح" : item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span></td>}
               <td />
             </tr>)}
             {!pageItems.length && <tr><td colSpan={initialReport ? 9 : 8} className="px-3 text-neutral-500">ردیفی ثبت نشده است.</td></tr>}
@@ -1539,15 +1500,37 @@ function PettyCashExpenseTab({ onSubmitted, onDeleted, onBusyChange, initialRepo
         onRowsPerPageChange={(count) => { setRowsPerPage(count); setPage(0); }} />
     </div>
     <hr className="my-4 border-neutral-200" />
-    <div className={`flex items-center gap-3 ${initialReport?.canRevise ? "justify-between" : "justify-end"}`}>
-      {initialReport?.canRevise && <button type="button" onClick={deleteReport} disabled={saving}
+    <div className={`flex items-center gap-3 ${initialReport?.canRevise || initialReport?.initialStage === "draft" ? "justify-between" : "justify-end"}`}>
+      {(initialReport?.canRevise || initialReport?.initialStage === "draft") && <button type="button" onClick={deleteReport} disabled={saving}
         className="h-11 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50">حذف کامل گزارش</button>}
+      {(!initialReport || initialReport.initialStage === "draft") && <button type="button" onClick={() => { if (!projectId) return setError("ابتدا پروژه را انتخاب کنید."); setError(""); setDraftConfirmOpen(true); }} disabled={saving}
+        title="ذخیره پیش‌نویس" aria-label="ذخیره پیش‌نویس" className="grid h-12 w-12 place-items-center rounded-xl bg-[#f48120] transition hover:bg-[#db6f11] disabled:opacity-50">
+        <img src="/images/icons/pishnevis.svg" alt="" className="h-6 w-6" />
+      </button>}
       {(!initialReport || items.length > 0) && <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
         className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
         {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
       </button>}
     </div>
     </fieldset>
+    {draftConfirmOpen && createPortal(<div className="fixed inset-0 z-[1700] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setDraftConfirmOpen(false); }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="petty-cash-draft-title" dir="rtl" className="w-full max-w-md rounded-3xl bg-white p-6 text-neutral-900 shadow-2xl"
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          if (event.key === "Escape" && !saving) setDraftConfirmOpen(false);
+          if (event.key !== "Tab") return;
+          const controls = [...event.currentTarget.querySelectorAll('button:not(:disabled)')];
+          if (event.shiftKey && document.activeElement === controls[0]) { event.preventDefault(); controls.at(-1)?.focus(); }
+          else if (!event.shiftKey && document.activeElement === controls.at(-1)) { event.preventDefault(); controls[0]?.focus(); }
+        }}>
+        <h3 id="petty-cash-draft-title" className="text-lg font-bold">ذخیره پیش‌نویس</h3>
+        <p className="mt-3 text-sm text-neutral-600">آیا از ذخیره پیش‌نویس مطمئن هستید؟ این گزارش فقط برای شما ذخیره می‌شود.</p>
+        <div className="mt-6 flex gap-3">
+          <button type="button" autoFocus disabled={saving} onClick={() => setDraftConfirmOpen(false)} className="h-11 flex-1 rounded-xl border border-neutral-200">انصراف</button>
+          <button type="button" disabled={saving} onClick={saveDraft} className="h-11 flex-1 rounded-xl bg-[#f48120] font-semibold text-white disabled:opacity-50">تأیید</button>
+        </div>
+      </div>
+    </div>, document.body)}
     {confirmOpen && createPortal(
       <div className="fixed inset-0 z-[1700] grid place-items-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) setConfirmOpen(false); }}>
         <div role="dialog" aria-modal="true" aria-labelledby="petty-cash-confirm-title" aria-describedby="petty-cash-confirm-description" dir="rtl"
