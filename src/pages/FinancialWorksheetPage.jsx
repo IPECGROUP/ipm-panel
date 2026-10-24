@@ -8,6 +8,7 @@ import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 import FinancialWorksheetDetailModal from "../components/FinancialWorksheetDetailModal.jsx";
+import { openFinancialWorksheetPrintPreview } from "../utils/financialWorksheetPrint.js";
 import { useAuth } from "../components/AuthProvider";
 
 const CONTRACT_VERIFIED_STORAGE_KEY = "ipm_contract_information_verified_rows_v1";
@@ -1127,31 +1128,13 @@ export default function FinancialWorksheetPage() {
   };
   const printWorksheet = () => {
     if (!projectId) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
     const { headers, rows } = worksheetExportData();
-    const doc = printWindow.document;
-    doc.title = `کاربرگ مالی - ${worksheetTabs.find((item) => item.id === tab)?.label || ""}`;
-    const style = doc.createElement("style");
-    style.textContent = "body{font-family:Tahoma,Arial,sans-serif;direction:rtl;padding:24px;color:#111}h1{font-size:18px}p{font-size:13px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{border:1px solid #aaa;padding:8px;text-align:center}th{background:#eee}tr:last-child{font-weight:bold;background:#f5f5f5}@page{size:landscape;margin:12mm}";
-    doc.head.appendChild(style);
-    const title = doc.createElement("h1");
-    title.textContent = doc.title;
-    doc.body.appendChild(title);
-    const context = doc.createElement("p");
-    context.textContent = `پروژه: ${selectedProject ? projectLabel(selectedProject) : ""}${contractId ? ` | قرارداد: ${contractNoForRow(selectedContract)}` : ""}`;
-    doc.body.appendChild(context);
-    const table = doc.createElement("table");
-    const addRow = (values, tag) => {
-      const tr = doc.createElement("tr");
-      values.forEach((value) => { const cell = doc.createElement(tag); cell.textContent = String(value ?? ""); tr.appendChild(cell); });
-      table.appendChild(tr);
-    };
-    addRow(headers, "th");
-    rows.forEach((row) => addRow(row, "td"));
-    doc.body.appendChild(table);
-    printWindow.focus();
-    printWindow.setTimeout(() => printWindow.print(), 150);
+    openFinancialWorksheetPrintPreview({
+      title: worksheetTabs.find((item) => item.id === tab)?.label || "کاربرگ مالی",
+      project: selectedProject ? projectLabel(selectedProject) : "",
+      contract: contractId ? contractNoForRow(selectedContract) : "",
+      headers, rows,
+    });
   };
   const tabStripCls =
     "flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
@@ -1471,6 +1454,7 @@ export default function FinancialWorksheetPage() {
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-base font-bold md:text-lg">کاربرگ مالی</span>
+                <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
               </span>
             </div>
             <button type="button" onClick={toggleAddForm} className="h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={formOpen ? "بستن" : "افزودن"} aria-label={formOpen ? "بستن" : "افزودن"}>
