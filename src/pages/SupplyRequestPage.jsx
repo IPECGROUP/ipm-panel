@@ -2243,14 +2243,41 @@ function SupplyActionHistory({ requestId, requestDate, userId, actions, loading,
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const startEdit = (action) => {
+    if (uploading) return;
     setEditingId(action.id);
-    setDraft({ date: action.date || "", time: action.time || "", description: action.description || "" });
+    setDraft({ date: action.date || "", time: action.time || "", description: action.description || "", files: Array.isArray(action.files) ? [...action.files] : [] });
     setError("");
   };
+  const uploadAttachments = async (selectedFiles) => {
+    const files = Array.from(selectedFiles || []);
+    if (!files.length || uploading) return;
+    setUploading(true);
+    setError("");
+    try {
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await fetch("/api/supply-actions/upload", {
+          method: "POST",
+          credentials: "include",
+          headers: userId != null ? { "x-user-id": String(userId) } : undefined,
+          body,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.file) throw new Error("upload_failed");
+        setDraft((prev) => ({ ...prev, files: [...(prev.files || []), data.file] }));
+      }
+    } catch {
+      setError("بارگذاری پیوست انجام نشد. فایل‌های اضافه‌شده را بررسی و دوباره تلاش کنید.");
+    } finally {
+      setUploading(false);
+    }
+  };
   const saveEdit = async (action) => {
-    if (!draft || saving) return;
+    if (!draft || saving || uploading) return;
     setSaving(true);
     setError("");
     try {
@@ -2258,7 +2285,7 @@ function SupplyActionHistory({ requestId, requestDate, userId, actions, loading,
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...(userId != null ? { "x-user-id": String(userId) } : {}) },
-        body: JSON.stringify({ requestId, actionId: action.id, ...draft, status: action.status, files: action.files || [] }),
+        body: JSON.stringify({ requestId, actionId: action.id, ...draft, status: action.status }),
       });
       if (!response.ok) throw new Error("save_failed");
       const data = await response.json();
@@ -2295,11 +2322,21 @@ function SupplyActionHistory({ requestId, requestDate, userId, actions, loading,
             </div>
             <div>
               <textarea value={draft.description} onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))} className={`${inputCls} min-h-24 py-2`} placeholder="شرح اقدام/توضیح" />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <label className="cursor-pointer rounded-lg border border-black/10 px-3 py-2 text-xs transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">
+                  {uploading ? "در حال بارگذاری..." : "افزودن پیوست"}
+                  <input type="file" multiple disabled={uploading || saving} className="sr-only" onChange={(event) => { uploadAttachments(event.target.files); event.target.value = ""; }} />
+                </label>
+                {(draft.files || []).map((file, fileIndex) => <span key={`${file.id || file.url || file.name}-${fileIndex}`} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
+                  <a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</a>
+                  <button type="button" onClick={() => setDraft((prev) => ({ ...prev, files: prev.files.filter((_, index) => index !== fileIndex) }))} disabled={uploading || saving} className="px-1 text-red-600 disabled:opacity-50" title="حذف پیوست" aria-label={`حذف پیوست ${file.name || fileIndex + 1}`}>×</button>
+                </span>)}
+              </div>
               {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
             </div>
             <div className="flex gap-2 md:justify-end">
-              <button type="button" onClick={() => saveEdit(action)} disabled={saving} className="h-9 rounded-lg bg-black px-3 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black">{saving ? "در حال ذخیره..." : "ذخیره"}</button>
-              <button type="button" onClick={() => { setEditingId(null); setDraft(null); setError(""); }} disabled={saving} className="h-9 rounded-lg border border-black/10 px-3 text-xs dark:border-white/10">انصراف</button>
+              <button type="button" onClick={() => saveEdit(action)} disabled={saving || uploading} className="h-9 rounded-lg bg-black px-3 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black">{saving ? "در حال ذخیره..." : "ذخیره"}</button>
+              <button type="button" onClick={() => { setEditingId(null); setDraft(null); setError(""); }} disabled={saving || uploading} className="h-9 rounded-lg border border-black/10 px-3 text-xs dark:border-white/10">انصراف</button>
             </div>
           </> : <>
           <div className="flex flex-col items-start gap-2">
@@ -2309,7 +2346,7 @@ function SupplyActionHistory({ requestId, requestDate, userId, actions, loading,
           <div className="min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700 dark:text-neutral-200">{action.description || "بدون توضیح"}</div>
           <div className="flex flex-wrap items-start gap-2 md:justify-end">
             {files.length > 0 && <button type="button" onClick={() => onSelectAttachments(index)} className="flex max-w-[180px] flex-wrap gap-1.5 text-right" title="نمایش پیوست‌های این اقدام">{files.map((file, fileIndex) => <span key={file.id || file.serverId || fileIndex} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</span>)}</button>}
-            {canEdit && <button type="button" onClick={() => startEdit(action)} className="rounded-lg border border-black/10 px-3 py-1 text-xs transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">ویرایش</button>}
+            {canEdit && <button type="button" onClick={() => startEdit(action)} disabled={uploading} className="rounded-lg border border-black/10 px-3 py-1 text-xs transition hover:bg-black/5 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/10">ویرایش</button>}
           </div>
           </>}
         </div>;
