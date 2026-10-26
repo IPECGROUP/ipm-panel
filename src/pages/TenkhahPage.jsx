@@ -19,6 +19,7 @@ const normalizedCurrencyTitle = (value) => {
   return /ریال|rial|﷼|(^|\s)irr(\s|$)/i.test(normalized) ? "rial" : normalized;
 };
 const RIAL_CURRENCY = "ریال";
+const PETTY_CASH_LIMIT_MESSAGE = "سقف مجاز درخواست تنخواه شما پر شده است. جهت دریافت تنخواه، موارد باقی‌مانده ثبت‌نشده را ثبت یا تأیید موارد ثبت‌شده را پیگیری نمایید.";
 const isRialCurrency = (currency) => {
   const raw = `${currencyTitle(currency)} ${Object.values(currency || {}).join(" ")}`;
   const title = normalizedCurrencyTitle(raw);
@@ -118,6 +119,7 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     [projectLiquidity, setProjectLiquidity] = useState("0"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
+    [limitState, setLimitState] = useState({ loading: true, blocked: false, error: "" }),
     [currencyTouched, setCurrencyTouched] = useState(false),
     [workflowChoice, setWorkflowChoice] = useState("approve"),
     [workflowNote, setWorkflowNote] = useState("");
@@ -148,6 +150,14 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
   };
   useEffect(() => {
     load();
+  }, [user?.id]);
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    api("/tenkhah?limit=1")
+      .then((status) => { if (active) setLimitState({ loading: false, blocked: !!status.blocked, error: "" }); })
+      .catch(() => { if (active) setLimitState({ loading: false, blocked: false, error: "دریافت حد تنخواه انجام نشد." }); });
+    return () => { active = false; };
   }, [user?.id]);
   useEffect(() => {
     if (!focusRequestId || focusedRequestRef.current === String(focusRequestId)) return;
@@ -218,6 +228,11 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     return uniqueCurrencies;
   };
   const add = async () => {
+    try {
+      const status = await api("/tenkhah?limit=1");
+      setLimitState({ loading: false, blocked: !!status.blocked, error: "" });
+      if (status.blocked) { setOpen(false); return; }
+    } catch { setLimitState({ loading: false, blocked: false, error: "دریافت حد تنخواه انجام نشد." }); return; }
     setOpen(true);
     setForm(empty());
     setCurrencyTouched(false);
@@ -298,13 +313,16 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     setBusy(true);
     setError("");
     try {
+      const status = await api("/tenkhah?limit=1");
+      setLimitState({ loading: false, blocked: !!status.blocked, error: "" });
+      if (status.blocked) return;
       await api("/tenkhah", { method: "POST", body: JSON.stringify({ ...form, currency: displayedCurrency, projectLiquidity }) });
       setOpen(false);
       await load();
       await onRequestCreated?.();
       window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
     } catch (e) {
-      setError(e.message);
+      setError(e.message === "petty_cash_limit_reached" ? PETTY_CASH_LIMIT_MESSAGE : e.message);
     } finally {
       setBusy(false);
     }
@@ -397,7 +415,9 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
             />
           </button>
         </div>}
-        {open && (
+        {limitState.blocked && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{PETTY_CASH_LIMIT_MESSAGE}</div>}
+        {limitState.error && <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{limitState.error}</div>}
+        {open && !limitState.blocked && (
           <section className="mb-5 rounded-2xl border border-black/10 bg-neutral-50/70 p-4 dark:border-white/10 dark:bg-white/[.03] md:p-5">
             {!embedded && <h2 className="mb-5 text-base font-bold">درخواست تنخواه جدید</h2>}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(210px,1fr)_minmax(310px,1.35fr)_minmax(220px,0.9fr)_minmax(24px,0.1fr)]">
