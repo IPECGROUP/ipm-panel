@@ -1832,7 +1832,18 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </div>
                 </PreviewSection>
 
-                <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} onSelectAttachments={selectActionAttachments} />
+                <SupplyActionHistory
+                  requestId={item.id}
+                  requestDate={item.dateJalali || item.dateFa}
+                  userId={user?.id}
+                  actions={commercialActions}
+                  loading={commercialActionsLoading}
+                  onSelectAttachments={selectActionAttachments}
+                  onChanged={(nextItem) => {
+                    setCommercialActions(Array.isArray(nextItem?.actions) ? nextItem.actions : []);
+                    onSupplyActionsChanged?.(nextItem);
+                  }}
+                />
 
                 {canAct ? (
                   stepKey === "project_manager" ? (
@@ -2227,8 +2238,39 @@ function historySentence(entry, item) {
   return `درخواست توسط ${actor} ${action}.`;
 }
 
-function SupplyActionHistory({ actions, loading, onSelectAttachments }) {
+function SupplyActionHistory({ requestId, requestDate, userId, actions, loading, onSelectAttachments, onChanged }) {
   const rows = Array.isArray(actions) ? actions : [];
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const startEdit = (action) => {
+    setEditingId(action.id);
+    setDraft({ date: action.date || "", time: action.time || "", description: action.description || "" });
+    setError("");
+  };
+  const saveEdit = async (action) => {
+    if (!draft || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/supply-actions", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(userId != null ? { "x-user-id": String(userId) } : {}) },
+        body: JSON.stringify({ requestId, actionId: action.id, ...draft, status: action.status, files: action.files || [] }),
+      });
+      if (!response.ok) throw new Error("save_failed");
+      const data = await response.json();
+      onChanged?.(data.item);
+      setEditingId(null);
+      setDraft(null);
+    } catch {
+      setError("ویرایش اقدام تامین انجام نشد.");
+    } finally {
+      setSaving(false);
+    }
+  };
   const statusLabel = (status) => ({ done: "انجام شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
   const statusClass = (status) => status === "done"
     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
@@ -2239,26 +2281,37 @@ function SupplyActionHistory({ actions, loading, onSelectAttachments }) {
     {loading ? <div className="px-4 py-4 text-sm text-neutral-500">در حال دریافت اقدامات...</div> : rows.length === 0 ? <div className="px-4 py-4 text-sm text-neutral-500">هنوز اقدامی توسط واحد تامین ثبت نشده است.</div> : <div className="divide-y divide-black/10 dark:divide-white/10">
       {rows.map((action, index) => {
         const files = Array.isArray(action.files) ? action.files : [];
+        const editing = editingId === action.id;
+        const canEdit = action.id && Number(action.byUserId) === Number(userId);
         return <div
           key={action.id || index}
-          role={files.length ? "button" : undefined}
-          tabIndex={files.length ? 0 : undefined}
-          onClick={files.length ? () => onSelectAttachments(index) : undefined}
-          onKeyDown={files.length ? (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              onSelectAttachments(index);
-            }
-          } : undefined}
-          title={files.length ? "نمایش پیوست‌های این اقدام" : undefined}
-          className={`grid gap-3 px-4 py-3 text-right md:items-start ${files.length ? "cursor-pointer transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-neutral-500 dark:hover:bg-white/[0.05] md:grid-cols-[150px_minmax(0,1fr)_auto]" : "md:grid-cols-[150px_minmax(0,1fr)]"}`}
+          className="grid gap-3 px-4 py-3 text-right md:grid-cols-[150px_minmax(0,1fr)_auto] md:items-start"
         >
+          {editing ? <>
+            <div className="space-y-2">
+              <JalaliPopupDatePicker value={draft.date} onChange={(date) => setDraft((prev) => ({ ...prev, date }))} minDate={requestDate} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ اقدام" />
+              <input dir="ltr" type="time" value={draft.time} onChange={(event) => setDraft((prev) => ({ ...prev, time: event.target.value }))} className={inputCls} aria-label="ساعت اقدام" />
+              <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
+            </div>
+            <div>
+              <textarea value={draft.description} onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))} className={`${inputCls} min-h-24 py-2`} placeholder="شرح اقدام/توضیح" />
+              {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
+            </div>
+            <div className="flex gap-2 md:justify-end">
+              <button type="button" onClick={() => saveEdit(action)} disabled={saving} className="h-9 rounded-lg bg-black px-3 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black">{saving ? "در حال ذخیره..." : "ذخیره"}</button>
+              <button type="button" onClick={() => { setEditingId(null); setDraft(null); setError(""); }} disabled={saving} className="h-9 rounded-lg border border-black/10 px-3 text-xs dark:border-white/10">انصراف</button>
+            </div>
+          </> : <>
           <div className="flex flex-col items-start gap-2">
             <div className="whitespace-nowrap text-xs text-neutral-500">{toFaDigits(String(action.date || "—").replaceAll("-", "/"))}{action.time ? ` · ${toFaDigits(action.time)}` : ""}</div>
             <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
           </div>
           <div className="min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700 dark:text-neutral-200">{action.description || "بدون توضیح"}</div>
-          {files.length > 0 && <div className="flex max-w-[180px] flex-wrap gap-1.5 md:justify-end">{files.map((file, fileIndex) => <span key={file.id || file.serverId || fileIndex} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</span>)}</div>}
+          <div className="flex flex-wrap items-start gap-2 md:justify-end">
+            {files.length > 0 && <button type="button" onClick={() => onSelectAttachments(index)} className="flex max-w-[180px] flex-wrap gap-1.5 text-right" title="نمایش پیوست‌های این اقدام">{files.map((file, fileIndex) => <span key={file.id || file.serverId || fileIndex} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</span>)}</button>}
+            {canEdit && <button type="button" onClick={() => startEdit(action)} className="rounded-lg border border-black/10 px-3 py-1 text-xs transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">ویرایش</button>}
+          </div>
+          </>}
         </div>;
       })}
     </div>}
