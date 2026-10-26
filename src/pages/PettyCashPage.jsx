@@ -727,6 +727,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const [attachmentIndex, setAttachmentIndex] = useState(0);
   const [viewedRowIds, setViewedRowIds] = useState(() => new Set());
   const [preview, setPreview] = useState({ loading: false, url: "", size: null, error: "" });
+  const [budgetItems, setBudgetItems] = useState([]);
+  const budgetNames = useMemo(() => new Map(budgetItems.map((item) => [fullBudgetCode(item.budgetCode, report.projectCode), item.budgetName])), [budgetItems, report.projectCode]);
   const selectedAttachmentRow = entries.find((item) => String(item.id) === String(selectedAttachmentRowId))
     || entries.find((item) => expenseAttachments(item).some((file) => file.url));
   const attachments = selectedAttachmentRow ? expenseAttachments(selectedAttachmentRow)
@@ -735,6 +737,18 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const actionable = entries.filter((item) => item.canAct === true);
   const canAct = entries.length > 0 && actionable.length === entries.length && entries.every((item) => item.stage === entries[0].stage) && !outdated;
   const readyToSubmit = canAct && (reportDecision === "revision" ? Boolean(returnNote.trim()) : reportDecision === "approve");
+
+  useEffect(() => {
+    if (!report.projectId) return;
+    const controller = new AbortController();
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(report.projectId)}`, {
+      credentials: "include", headers: { "x-user-id": String(user?.id || "") }, signal: controller.signal,
+    })
+      .then((response) => { if (!response.ok) throw new Error(); return response.json(); })
+      .then((data) => setBudgetItems(data.items || []))
+      .catch((reason) => { if (reason.name !== "AbortError") setBudgetItems([]); });
+    return () => controller.abort();
+  }, [report.projectId, user?.id]);
 
   useEffect(() => {
     if (!managerOpen) return;
@@ -833,8 +847,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           <section className="min-w-0 overflow-hidden">
             <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[294px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[336px]">
-              <table className="w-full min-w-[650px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
-                 <colgroup><col className="w-12" /><col /><col className="w-40" /><col className="w-32" /></colgroup>
+              <table className="w-full min-w-[700px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
+                 <colgroup><col className="w-12" /><col /><col className="w-52" /><col className="w-32" /></colgroup>
                 <thead className="sticky top-0 z-10 bg-neutral-200"><tr className="h-11">
                   {["ردیف", "شرح", "کد بودجه", "مبلغ گزارش"].map((label) => <th key={label} scope="col" className={`px-2 font-semibold ${label === "شرح" ? "text-right" : ""}`}>{label}</th>)}
                 </tr></thead>
@@ -843,7 +857,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
                     className={`h-13 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2">{toFa(index + 1)}</td>
-                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-all px-2" title={fullBudgetCode(item.budgetCode, report.projectCode)}>{toFa(fullBudgetCode(item.budgetCode, report.projectCode) || "—")}</td>
+                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-words px-2 py-2 leading-5"><span className="block" dir="ltr">{toFa(fullBudgetCode(item.budgetCode, report.projectCode) || "—")}</span>{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode)) && <span className="block text-[11px] text-neutral-600">{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode))}</span>}</td>
                     <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
                   </tr>;
                 })}</tbody>
@@ -857,8 +871,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                 <button type="button" disabled={saving} onClick={() => setReportDecision(decision)} aria-pressed={checked} aria-label={label}
                   className="flex min-h-[92px] w-full flex-col items-center justify-center disabled:cursor-not-allowed disabled:opacity-45">
                   <span className={`grid h-10 w-10 place-items-center rounded-full ${iconClass}`}><img src={icon} alt="" className="h-5 w-5" /></span>
-                  {decision !== "approve" && <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>}
-                  {decision !== "approve" && <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>}
+                  <span className="mt-2 text-sm font-bold text-neutral-800">{label}</span>
+                  <span className="mt-1 text-[11px] leading-5 text-neutral-500">{description}</span>
                 </button>
                 {checked && decision === "revision" && <input type="text" value={returnNote} onChange={(event) => setReturnNote(event.target.value)} maxLength={500}
                   aria-label="دلیل بازگشت کل گزارش" placeholder="دلیل بازگشت کل گزارش را وارد کنید..."
@@ -904,7 +918,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     </div>
      {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-       {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black ${reportDecision === "revision" ? "px-5" : "w-11"} text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" && "ثبت بازگشت تنخواه گردان"}</button></div>}
+       {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"}</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
@@ -1557,8 +1571,9 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
           <img src="/images/icons/pishnevis.svg" alt="" className="h-6 w-6" />
         </button>}
         {(!initialReport || initialReport.initialStage === "draft" || items.length > 0) && <button type="button" onClick={requestSubmit} disabled={saving} title="تأیید گزارش" aria-label="تأیید گزارش"
-          className="grid h-12 w-12 place-items-center rounded-xl bg-black text-white transition hover:bg-neutral-800 disabled:opacity-50">
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-black px-4 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50">
           {saving ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" />}
+          تأیید گزارش
         </button>}
       </div>
     </div>
