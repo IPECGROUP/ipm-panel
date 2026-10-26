@@ -31,6 +31,15 @@ export default function ModernLogin({ onBack }) {
 
   return (
     <main className="modern-login" dir="rtl">
+      <svg className="modern-login__filters" aria-hidden="true" focusable="false">
+        <defs>
+          <filter id="modern-login-refraction" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.025" numOctaves="1" seed="4" result="glass-noise" />
+            <feGaussianBlur in="glass-noise" stdDeviation="2" result="soft-noise" />
+            <feDisplacementMap in="SourceGraphic" in2="soft-noise" scale="6" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </defs>
+      </svg>
       <button className="modern-login__back" type="button" onClick={onBack}>
         بازگشت به طراحی قبلی
       </button>

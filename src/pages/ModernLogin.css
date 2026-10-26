@@ -4,53 +4,73 @@
   width: 100%;
   overflow-x: hidden;
   color: #f8f7f2;
-  background: #073b66 url('/images/ips-blue-waves.png') center center / cover no-repeat;
+  background-color: #073b66;
+  background-image:
+    linear-gradient(90deg, rgba(4, 49, 91, .04), rgba(3, 42, 82, .23) 50%, rgba(4, 49, 91, .04)),
+    url('/images/ips-blue-waves.png'),
+    url('/images/ips-blue-waves.png'),
+    url('/images/ips-blue-waves.png');
+  background-size: 100% 100%, auto 100%, auto 100%, auto 100%;
+  background-position: center, left center, center, right center;
+  background-repeat: no-repeat;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 64px 20px 40px;
+  padding: 52px 18px 30px;
 }
+
+.modern-login__filters { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
 
 .modern-login__back {
   position: absolute;
   top: 24px;
   right: 28px;
   z-index: 2;
-  border: 1px solid rgba(248, 247, 242, .35);
+  border: 1px solid rgba(248, 247, 242, .5);
   border-radius: 999px;
   padding: 8px 16px;
-  background: rgba(7, 41, 74, .38);
+  background: rgba(100, 166, 208, .08);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .38), 0 3px 9px rgba(0, 28, 62, .16);
+  backdrop-filter: blur(3px) saturate(125%);
+  -webkit-backdrop-filter: blur(3px) saturate(125%);
   color: #f8f7f2;
   font-size: 13px;
   cursor: pointer;
 }
 
-.modern-login__content { width: min(100%, 460px); }
-.modern-login__brand { text-align: center; margin: 0 auto 21px; }
-.modern-login__mark { position: relative; width: 240px; height: 74px; margin: 0 auto 8px; overflow: hidden; }
-.modern-login__mark img { position: absolute; top: -42px; left: -114px; display: block; width: 380px; max-width: none; height: auto; filter: brightness(1.8) drop-shadow(0 3px 9px rgba(0, 25, 54, .4)); }
-.modern-login__brand h2 { margin: 0; font-size: clamp(18px, 2.5vw, 22px); font-weight: 700; line-height: 1.5; }
-.modern-login__brand p { margin: 2px 0 0; color: #f48120; font-size: clamp(15px, 2vw, 17px); font-weight: 700; }
+.modern-login__content { position: relative; width: min(100%, 400px); }
+.modern-login__brand { text-align: center; margin: 0 auto 16px; }
+.modern-login__mark { position: relative; width: 202px; height: 61px; margin: 0 auto 6px; overflow: hidden; }
+.modern-login__mark img { position: absolute; top: -36px; left: -96px; display: block; width: 320px; max-width: none; height: auto; filter: brightness(1.8) drop-shadow(0 3px 9px rgba(0, 25, 54, .4)); }
+.modern-login__brand h2 { margin: 0; font-size: clamp(17px, 2vw, 20px); font-weight: 700; line-height: 1.5; }
+.modern-login__brand p { margin: 1px 0 0; color: #f48120; font-size: clamp(14px, 1.7vw, 15px); font-weight: 700; }
 
 .modern-login__panel {
   position: relative;
   overflow: hidden;
-  padding: 30px 29px 32px;
+  padding: 24px 24px 26px;
   border: 1px solid transparent;
-  border-radius: 30px;
+  border-radius: 28px;
   background:
-    linear-gradient(145deg, rgba(226, 247, 255, .18), rgba(79, 156, 208, .08) 35%, rgba(8, 52, 93, .1) 70%, rgba(198, 232, 255, .13)) padding-box,
-    linear-gradient(135deg, rgba(245, 252, 255, .96), rgba(209, 237, 255, .32) 33%, rgba(195, 229, 250, .15) 65%, rgba(224, 246, 255, .8)) border-box;
+    linear-gradient(145deg, rgba(211, 239, 255, .10), rgba(74, 155, 211, .045) 48%, rgba(2, 38, 76, .09)) padding-box,
+    linear-gradient(135deg, rgba(238, 250, 255, .9), rgba(183, 223, 250, .18) 38%, rgba(157, 208, 243, .11) 65%, rgba(226, 247, 255, .78)) border-box;
   box-shadow:
-    0 18px 38px rgba(0, 29, 62, .24),
-    0 3px 9px rgba(0, 20, 42, .15),
-    inset 0 2px 2px rgba(255, 255, 255, .35),
-    inset 2px 0 12px rgba(214, 244, 255, .12),
-    inset -2px -5px 12px rgba(1, 26, 59, .2);
-  backdrop-filter: blur(22px) saturate(145%) brightness(1.09);
-  -webkit-backdrop-filter: blur(22px) saturate(145%) brightness(1.09);
+    0 18px 38px rgba(0, 20, 54, .25),
+    0 3px 8px rgba(0, 15, 37, .14),
+    inset 0 1px 1px rgba(255, 255, 255, .48),
+    inset 1px 0 5px rgba(224, 246, 255, .11),
+    inset -1px -3px 7px rgba(2, 31, 69, .24);
+  backdrop-filter: blur(3px) saturate(122%);
+  -webkit-backdrop-filter: blur(3px) saturate(122%);
   text-align: center;
+}
+
+@supports (backdrop-filter: url("#modern-login-refraction")) {
+  .modern-login__panel {
+    backdrop-filter: url("#modern-login-refraction") blur(3px) saturate(122%);
+    -webkit-backdrop-filter: url("#modern-login-refraction") blur(3px) saturate(122%);
+  }
 }
 
 .modern-login__panel::before {
@@ -59,48 +79,52 @@
   inset: 0;
   border-radius: inherit;
   background:
-    radial-gradient(ellipse 80% 26% at 20% 0%, rgba(255, 255, 255, .21), transparent 72%),
-    radial-gradient(ellipse 75% 29% at 88% 100%, rgba(165, 221, 255, .16), transparent 75%),
-    linear-gradient(115deg, rgba(255, 255, 255, .09), transparent 27%, transparent 77%, rgba(255, 255, 255, .07));
+    radial-gradient(ellipse 70% 16% at 18% 0%, rgba(255, 255, 255, .15), transparent 80%),
+    radial-gradient(ellipse 55% 15% at 88% 100%, rgba(177, 224, 255, .12), transparent 85%);
   pointer-events: none;
 }
 
-.modern-login__panel h1 { position: relative; margin: 0; font-size: clamp(24px, 3vw, 30px); font-weight: 700; line-height: 1.5; }
-.modern-login__subtitle { position: relative; margin: 0 0 24px; color: #d1e7f6; font-size: clamp(14px, 1.8vw, 16px); }
-.modern-login__form { position: relative; display: grid; gap: 12px; }
+.modern-login__panel h1 { position: relative; margin: 0; font-size: clamp(22px, 2.6vw, 26px); font-weight: 700; line-height: 1.5; }
+.modern-login__subtitle { position: relative; margin: 0 0 17px; color: #d1e7f6; font-size: clamp(13px, 1.6vw, 14px); }
+.modern-login__form { position: relative; display: grid; gap: 10px; }
 .modern-login__field {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 54px;
-  padding: 0 16px;
-  border: 1px solid rgba(207, 238, 255, .57);
-  border-radius: 13px;
-  background: linear-gradient(135deg, rgba(235, 249, 255, .12), rgba(76, 155, 207, .08) 60%, rgba(231, 247, 255, .1));
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(207, 238, 255, .53);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(223, 244, 255, .09), rgba(70, 148, 200, .025) 60%, rgba(211, 240, 255, .07));
   color: #f8f7f2;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, .25), inset 0 -2px 6px rgba(0, 40, 75, .13);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .34), inset 0 -2px 4px rgba(0, 36, 72, .15), 0 3px 8px rgba(0, 20, 50, .07);
+  backdrop-filter: blur(2px) saturate(120%);
+  -webkit-backdrop-filter: blur(2px) saturate(120%);
 }
 .modern-login__field:focus-within { border-color: #f8f7f2; box-shadow: 0 0 0 3px rgba(248, 247, 242, .18); }
-.modern-login__field input { min-width: 0; flex: 1; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 16px; }
+.modern-login__field input { min-width: 0; flex: 1; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 15px; }
 .modern-login__field input::placeholder { color: #c3d7e9; opacity: 1; }
 .modern-login__visibility { flex: none; display: grid; place-items: center; padding: 6px; border: 0; color: #f8f7f2; background: transparent; cursor: pointer; }
-.modern-login__captcha { min-height: 48px; display: grid; place-items: center; padding: 9px; border: 1px solid rgba(188, 225, 249, .42); border-radius: 12px; background: rgba(6, 50, 89, .16); color: #d6e6f1; font-size: 11px; line-height: 1.6; }
+.modern-login__captcha { min-height: 42px; display: grid; place-items: center; padding: 8px; border: 1px solid rgba(188, 225, 249, .4); border-radius: 12px; background: rgba(13, 70, 110, .07); box-shadow: inset 0 1px 1px rgba(255, 255, 255, .21); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); color: #d6e6f1; font-size: 10px; line-height: 1.6; }
 .modern-login__error { margin: 0; padding: 9px 12px; background: rgba(87, 18, 18, .65); border-radius: 9px; color: #fff; font-size: 14px; }
-.modern-login__submit { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 55px; margin-top: 6px; border: 1px solid #ffad54; border-radius: 999px; color: white; background: linear-gradient(#fa922c, #eb7410); box-shadow: 0 9px 17px rgba(22, 47, 67, .22), inset 0 1px 2px rgba(255, 255, 255, .33); font: inherit; font-size: 17px; font-weight: 700; cursor: pointer; }
+.modern-login__submit { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 50px; margin-top: 5px; border: 1px solid #ffad54; border-radius: 999px; color: white; background: linear-gradient(#fa922c, #eb7410); box-shadow: 0 9px 17px rgba(22, 47, 67, .22), inset 0 1px 2px rgba(255, 255, 255, .33); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
 .modern-login__submit:hover:not(:disabled) { background: #f48120; }
 .modern-login__submit:disabled { opacity: .67; cursor: wait; }
 .modern-login__back:focus-visible, .modern-login__visibility:focus-visible, .modern-login__submit:focus-visible { outline: 3px solid #f8f7f2; outline-offset: 3px; }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .modern-login__panel { background: rgba(31, 94, 139, .92); }
+  .modern-login__panel { background: rgba(31, 94, 139, .74); }
+}
+@media (max-width: 700px) {
+  .modern-login { background-image: url('/images/ips-blue-waves.png'); background-size: cover; background-position: center; }
 }
 @media (max-width: 640px) {
   .modern-login { align-items: flex-start; padding: 77px 16px 32px; background-position: center top; }
   .modern-login__back { top: 18px; right: 17px; }
   .modern-login__brand { margin-bottom: 18px; }
-  .modern-login__panel { padding: 27px 20px 27px; border-radius: 27px; }
+  .modern-login__panel { padding: 23px 20px 24px; border-radius: 27px; }
   .modern-login__subtitle { margin-bottom: 18px; }
-  .modern-login__field { min-height: 53px; padding: 0 14px; }
-  .modern-login__field input { font-size: 16px; }
-  .modern-login__submit { min-height: 54px; font-size: 17px; }
+  .modern-login__field { min-height: 49px; padding: 0 14px; }
+  .modern-login__field input { font-size: 15px; }
+  .modern-login__submit { min-height: 50px; font-size: 16px; }
 }
