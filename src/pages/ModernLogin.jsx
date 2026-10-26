@@ -38,7 +38,7 @@ export default function ModernLogin({ onBack }) {
       <div className="modern-login__content">
         <header className="modern-login__brand">
           <div className="modern-login__mark">
-            <img src="/images/dark%20mode.png" alt="نشان PEC" />
+            <img src="/images/ips%20redesign%20logo.png" alt="نشان PEC" />
           </div>
           <h2>سامانه فرآیندهای یکپارچه (IPS)</h2>
           <p>شرکت ایده‌پردازان انرژی</p>
