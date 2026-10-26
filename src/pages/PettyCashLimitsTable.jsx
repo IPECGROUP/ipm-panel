@@ -55,7 +55,6 @@ export default function PettyCashLimitsTable() {
 
   return <form onSubmit={save}>
     <h2 className="mb-2 text-sm font-bold">حد تنخواه</h2>
-    <p className="mb-4 text-xs text-neutral-500 dark:text-neutral-400">حد مجاز هر واحد را به ریال وارد کنید. خانه خالی یعنی بدون حد.</p>
     {error && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {saved && <p role="status" className="mb-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">تغییرات حد تنخواه ذخیره شد.</p>}
     <div className="overflow-x-auto rounded-2xl border border-black/10 dark:border-white/10">

@@ -22,7 +22,6 @@ const money = (value) => {
   const formatted = format3(absolute.toString()).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
   return number < 0n ? `(${formatted})` : formatted;
 };
-const PETTY_CASH_LIMIT_MESSAGE = "سقف مجاز درخواست تنخواه شما پر شده است. جهت دریافت تنخواه، موارد باقی‌مانده ثبت‌نشده را ثبت یا تأیید موارد ثبت‌شده را پیگیری نمایید.";
 const currencyLabel = (item) => item?.title || item?.name || item?.label || item?.code || `#${item?.id}`;
 const isRialCurrency = (item) => /ریال|rial|﷼|(^|\s)irr(\s|$)/i.test(currencyLabel(item).replace(/ي/g, "ی").replace(/ك/g, "ک"));
 const decimalAmount = (value) => {
@@ -319,7 +318,6 @@ export default function PettyCashPage() {
   const [reportSaving, setReportSaving] = useState(false);
   const [expenseAccess, setExpenseAccess] = useState({ loading: true, received: 0n, available: 0n, error: "" });
   const [expenseStartError, setExpenseStartError] = useState("");
-  const [limitBlocked, setLimitBlocked] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [reportFromDate, setReportFromDate] = useState("");
   const [reportToDate, setReportToDate] = useState("");
@@ -353,27 +351,17 @@ export default function PettyCashPage() {
       setExpenseAccess({ loading: false, received: 0n, available: 0n, error: reason.message });
     }
   }, [userId]);
-  const loadLimit = useCallback(async () => {
-    if (!userId) return;
-    try {
-      const response = await fetch("/api/tenkhah?limit=1", { credentials: "include", headers: { "x-user-id": String(userId) } });
-      if (!response.ok) return;
-      const status = await response.json();
-      setLimitBlocked(!!status.blocked);
-    } catch { /* The request form still checks the limit before submitting. */ }
-  }, [userId]);
   useEffect(() => {
     const refresh = () => {
       loadReports().catch((reason) => setReportError(reason.message));
       loadExpenseAccess();
-      loadLimit();
     };
     refresh();
     const timer = setInterval(refresh, 30000);
     window.addEventListener("focus", refresh);
     window.addEventListener("tenkhah-notifications-refresh", refresh);
     return () => { clearInterval(timer); window.removeEventListener("focus", refresh); window.removeEventListener("tenkhah-notifications-refresh", refresh); };
-  }, [loadReports, loadExpenseAccess, loadLimit]);
+  }, [loadReports, loadExpenseAccess]);
   useEffect(() => {
     const target = searchParams.get("notificationTarget");
     if (!["petty_cash_report", "petty_cash_expense"].includes(target)) {
@@ -478,7 +466,6 @@ export default function PettyCashPage() {
             </button>
           </div>
         </header>
-        {limitBlocked && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300">{PETTY_CASH_LIMIT_MESSAGE}</p>}
         {expenseStartError && <p role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">{expenseStartError}</p>}
          {expenseFormOpen && <div>
           <PettyCashExpenseTab key={expenseFormKey} initialReport={activeDraft} availableBalance={expenseAccess.available} onBusyChange={setReportSaving}
