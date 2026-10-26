@@ -3,10 +3,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
+import ModernLogin from "./ModernLogin.jsx";
 
 const APP_VERSION = "1.0.0";
 
-export default function LoginPage() {
+function LegacyLogin({ onShowModern }) {
   const { login } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
@@ -48,6 +49,13 @@ export default function LoginPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 min-h-screen">
         {/* ستون فرم */}
         <div className="lg:col-span-7 flex flex-col items-center justify-center p-6">
+          <button
+            type="button"
+            onClick={onShowModern}
+            className="mb-3 w-full max-w-md text-right text-xs text-[#184a6b] underline underline-offset-4 hover:text-[#f48120] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#f48120] dark:text-sky-200"
+          >
+            نمایش طراحی جدید
+          </button>
           <Card
             className="w-full max-w-md rounded-2xl border bg-white text-neutral-900 border-black/10
                         dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800"
@@ -155,5 +163,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  const [showModern, setShowModern] = useState(false);
+  return showModern ? (
+    <ModernLogin onBack={() => setShowModern(false)} />
+  ) : (
+    <LegacyLogin onShowModern={() => setShowModern(true)} />
   );
 }
