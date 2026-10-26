@@ -196,7 +196,7 @@ function TagsPage() {
       let data = {};
       try {
         data = txt ? JSON.parse(txt) : {};
-      } catch (_e) {
+      } catch {
         const snippet = String(txt || "").slice(0, 300);
         throw new Error(`bad_json_response: ${res.status} ${res.statusText} :: ${snippet}`);
       }
@@ -289,6 +289,9 @@ function TagsPage() {
 
   const [categories, setCategories] = useState([]); // [{id,label}]
   const [tags, setTags] = useState([]); // [{id,label,category_id}]
+  const [relatedScopes, setRelatedScopes] = useState({ projects: { categories: [], tags: [] }, execution: { categories: [], tags: [] } });
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedError, setRelatedError] = useState("");
 
   const [newCategory, setNewCategory] = useState("");
 
@@ -342,6 +345,25 @@ function TagsPage() {
     loadScopedTags(activeScope).catch(() => {});
   }, [activeTab, activeScope, loadScopedTags]);
 
+  useEffect(() => {
+    if (activeTab !== "letters") return undefined;
+    let active = true;
+    setRelatedLoading(true);
+    setRelatedError("");
+    setRelatedScopes({ projects: { categories: [], tags: [] }, execution: { categories: [], tags: [] } });
+    Promise.all(["projects", "execution"].map(async (scope) => {
+      const result = await api(`/tags?scope=${scope}`);
+      return [scope, { categories: Array.isArray(result.categories) ? result.categories : [], tags: Array.isArray(result.tags) ? result.tags : [] }];
+    })).then((entries) => {
+      if (active) setRelatedScopes(Object.fromEntries(entries));
+    }).catch((error) => {
+      if (active) setRelatedError(error.message || "دریافت برچسب‌های پروژه‌ها انجام نشد.");
+    }).finally(() => {
+      if (active) setRelatedLoading(false);
+    });
+    return () => { active = false; };
+  }, [activeTab, api]);
+
   const categoriesSorted = useMemo(() => {
     return (categories || [])
       .slice()
@@ -374,6 +396,17 @@ function TagsPage() {
     }
     return map;
   }, [tags, categoriesSorted]);
+
+  const tableRows = useMemo(() => {
+    const ownRows = categoriesSorted.map((category) => ({ key: `own-${category.id}`, category, list: tagsByCategory.get(String(category.id)) || [], mirrored: false }));
+    if (activeTab !== "letters") return ownRows;
+    const projectData = relatedScopes.projects;
+    const projectCategory = projectData.categories.find((category) => String(category.label || "").trim() === "پروژه‌ها");
+    const projectTags = projectCategory ? projectData.tags.filter((tag) => String(tag.category_id) === String(projectCategory.id)) : projectData.tags;
+    const projectRows = [{ key: "related-projects", category: { label: "نام پروژه‌ها" }, list: projectTags, mirrored: true }];
+    const executionRows = relatedScopes.execution.categories.map((category) => ({ key: `related-execution-${category.id}`, category, list: relatedScopes.execution.tags.filter((tag) => String(tag.category_id) === String(category.id)), mirrored: true, scopeLabel: "اجرای پروژه‌ها" }));
+    return [...ownRows, ...projectRows, ...executionRows];
+  }, [activeTab, categoriesSorted, tagsByCategory, relatedScopes]);
 
   // ====== Letters/Execution create category/tag ======
   const addCategory = async (e) => {
@@ -713,7 +746,7 @@ function TagsPage() {
             className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center"
           >
             <TR className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
-              <TD className="px-3 font-semibold">پروژه‌ها</TD>
+              <TD className="px-3 font-semibold">نام پروژه‌ها</TD>
 
               {/* ✅ دقیقاً 6px فاصله بالا/پایین */}
               <TD className="px-3 !py-[6px]">
@@ -769,28 +802,27 @@ function TagsPage() {
         <tbody
           className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_td]:text-center [&_th]:text-center"
         >
-          {lettersLoading ? (
+          {lettersLoading || (activeTab === "letters" && relatedLoading) ? (
             <TR className="border-t-0 bg-white dark:bg-neutral-900">
               <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                 در حال بارگذاری…
               </TD>
             </TR>
-          ) : (categoriesSorted || []).length === 0 ? (
+          ) : tableRows.length === 0 ? (
             <TR className="border-t-0 bg-white dark:bg-neutral-900">
               <TD colSpan={3} className="text-center text-black/60 dark:text-neutral-400 py-3">
                 دسته‌بندی‌ای ثبت نشده است.
               </TD>
             </TR>
           ) : (
-            (categoriesSorted || []).map((c, idx) => {
-              const catId = c?.id;
-              const list = tagsByCategory.get(String(catId)) || [];
-              const isLast = idx === categoriesSorted.length - 1;
+            tableRows.map((row, idx) => {
+              const { category: c, list, mirrored, scopeLabel } = row;
+              const isLast = idx === tableRows.length - 1;
               const tdBorder = isLast ? "" : "border-b border-neutral-300 dark:border-neutral-700";
 
               return (
-                <TR key={catId ?? c?.label} className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
-                  <TD className={`px-3 font-semibold ${tdBorder}`}>{c?.label || "—"}</TD>
+                <TR key={row.key} className="group border-t-0 bg-white transition-colors hover:bg-black/[0.04] dark:bg-neutral-900 dark:hover:bg-white/10">
+                  <TD className={`px-3 font-semibold ${tdBorder}`}>{c?.label || "—"}{scopeLabel && <span className="mt-1 block text-[11px] font-normal text-neutral-500 dark:text-neutral-400">{scopeLabel}</span>}</TD>
 
                   {/* ✅ دقیقاً 6px فاصله بالا/پایین (برای تب اجرای پروژه‌ها هم همین جدول استفاده میشه) */}
                   <TD className={`px-3 !py-[6px] ${tdBorder}`}>
@@ -801,7 +833,7 @@ function TagsPage() {
                             key={t?.id ?? t?.label}
                             label={t?.label || "—"}
                             disabled={lettersSaving}
-                            onRemove={() => deleteScopedTag(t)}
+                            onRemove={mirrored ? undefined : () => deleteScopedTag(t)}
                           />
                         ))}
                       </div>
@@ -812,13 +844,13 @@ function TagsPage() {
 
                   <TD className={`px-3 ${tdBorder}`}>
                     <div className="flex items-center justify-center gap-2">
-                      <RowActionIconBtn
+                      {!mirrored && <RowActionIconBtn
                         action="delete"
                         onClick={() => deleteCategory(c)}
                         disabled={lettersSaving}
                         size={36}
                         iconSize={17}
-                      />
+                      />}
                     </div>
                   </TD>
                 </TR>
@@ -827,6 +859,7 @@ function TagsPage() {
           )}
         </tbody>
       </TableShell>
+      {activeTab === "letters" && relatedError && <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">{relatedError}</p>}
     </div>
   );
 
