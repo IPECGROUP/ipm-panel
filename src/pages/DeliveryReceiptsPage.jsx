@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -13,6 +13,26 @@ const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 
 const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300";
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 const emptyForm = () => ({ date: "", type: "", title: "", recipient: "", files: [] });
+const quickRanges = [["week", "هفته قبل"], ["2w", "۲ هفته قبل"], ["month", "ماه قبل"]];
+const typeColors = [
+  "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-300",
+  "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+  "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-300",
+  "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300",
+  "border-teal-300 bg-teal-50 text-teal-700 dark:border-teal-700 dark:bg-teal-950 dark:text-teal-300",
+];
+const toEnglishDigits = (value) => String(value ?? "").replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit)).replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit));
+const normalizeDate = (value) => {
+  const match = toEnglishDigits(value).replaceAll("-", "/").match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  return match ? `${match[1]}/${match[2].padStart(2, "0")}/${match[3].padStart(2, "0")}` : "";
+};
+const persianDate = (date) => {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, toEnglishDigits(part.value)]));
+  return normalizeDate(`${values.year}/${values.month}/${values.day}`);
+};
 
 export default function DeliveryReceiptsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -31,6 +51,13 @@ export default function DeliveryReceiptsPage() {
   const [menuPosition, setMenuPosition] = useState(null);
   const [previewItem, setPreviewItem] = useState(null);
   const [query, setQuery] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [quickRange, setQuickRange] = useState("");
+  const [selectedType, setSelectedType] = useState("");
+  const [selectedRecipients, setSelectedRecipients] = useState([]);
+  const [recipientsOpen, setRecipientsOpen] = useState(false);
+  const recipientsMenuRef = useRef(null);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [error, setError] = useState("");
@@ -55,14 +82,49 @@ export default function DeliveryReceiptsPage() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!recipientsOpen) return undefined;
+    const closeOnOutsideClick = (event) => { if (!recipientsMenuRef.current?.contains(event.target)) setRecipientsOpen(false); };
+    document.addEventListener("pointerdown", closeOnOutsideClick);
+    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
+  }, [recipientsOpen]);
+
+  const recipients = useMemo(() => [...new Set(items.map((item) => String(item.recipient || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fa")), [items]);
+  const types = useMemo(() => [...new Set([...receiptTypes.map((type) => type.title), ...items.map((item) => item.type)].map((type) => String(type || "").trim()).filter(Boolean))], [receiptTypes, items]);
+  const dateRange = useMemo(() => {
+    if (!quickRange) return { from: normalizeDate(fromDate), to: normalizeDate(toDate) };
+    const today = new Date();
+    const start = new Date(today);
+    if (quickRange === "month") start.setMonth(start.getMonth() - 1);
+    else start.setDate(start.getDate() - (quickRange === "2w" ? 14 : 7));
+    return { from: persianDate(start), to: persianDate(today) };
+  }, [quickRange, fromDate, toDate]);
   const filteredItems = useMemo(() => {
-    const terms = query.trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
-    return items.filter((item) => terms.every((term) => [item.date, item.type, item.title, item.recipient].join(" ").toLocaleLowerCase("fa").includes(term)));
-  }, [items, query]);
+    const terms = toEnglishDigits(query).trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
+    return items.filter((item) => {
+      if (selectedType && item.type !== selectedType) return false;
+      if (selectedRecipients.length && !selectedRecipients.includes(String(item.recipient || "").trim())) return false;
+      if (dateRange.from || dateRange.to) {
+        const dates = [normalizeDate(item.date), item.createdAt ? persianDate(new Date(item.createdAt)) : ""].filter(Boolean);
+        if (!dates.some((date) => (!dateRange.from || date >= dateRange.from) && (!dateRange.to || date <= dateRange.to))) return false;
+      }
+      return terms.every((term) => toEnglishDigits([item.date, item.type, item.title, item.recipient, item.createdAt].join(" ")).toLocaleLowerCase("fa").includes(term));
+    });
+  }, [items, query, selectedType, selectedRecipients, dateRange]);
+  const allFiltersClear = !query && !fromDate && !toDate && !quickRange && !selectedType && !selectedRecipients.length;
   const safePage = Math.min(page, Math.max(0, Math.ceil(filteredItems.length / pageSize) - 1));
   const pageItems = filteredItems.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const selectedItem = selectedIds.size === 1 ? items.find((item) => selectedIds.has(item.id)) : null;
   const canEditSelected = selectedItem && Number(selectedItem.createdById) === Number(user?.id);
+
+  async function exportExcel() {
+    const XLSX = await import("xlsx");
+    const rows = filteredItems.map((item) => ({ "تاریخ": item.date || "", "نوع": item.type || "", "شرح": item.title || "", "گیرنده": item.recipient || "", "زمان ثبت": item.createdAt ? new Date(item.createdAt).toLocaleString("fa-IR", { timeZone: "Asia/Tehran" }) : "" }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, sheet, "رسیدهای تحویل");
+    XLSX.writeFile(workbook, "رسیدهای-تحویل.xlsx");
+  }
 
   function startEditing() {
     if (!canEditSelected) return;
@@ -133,8 +195,24 @@ export default function DeliveryReceiptsPage() {
           {!typesLoading && !typesError && !receiptTypes.length && <p className="mt-3 text-xs text-neutral-500">ابتدا نوع مرسوله را در اطلاعات پایه، مدیریت اسناد ثبت کنید.</p>}
           <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || uploading || typesLoading || !!typesError || !receiptTypes.length} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ذخیره..." : editingId ? "ذخیره تغییرات" : "ثبت رسید تحویل"} aria-label={editingId ? "ذخیره تغییرات" : "ثبت رسید تحویل"}><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
-          <label className="block"><span className={labelClass}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در تاریخ، نوع، شرح و گیرنده..." /></label>
-          <div className="mt-3 min-h-10"><span className={labelClass}>برچسب ها</span></div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="min-w-[240px] flex-1"><span className={labelClass}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در همه فیلدها (تاریخ، نوع، شرح، گیرنده و ...)" /></label>
+            <div className="w-[calc(50%-0.25rem)] sm:w-36"><span className={labelClass}>از</span><JalaliPopupDatePicker value={dateRange.from} onChange={(value) => { setFromDate(value); setToDate(dateRange.to); setQuickRange(""); setPage(0); }} buttonClassName={`${inputClass} flex items-center justify-between gap-2`} /></div>
+            <div className="w-[calc(50%-0.25rem)] sm:w-36"><span className={labelClass}>تا</span><JalaliPopupDatePicker value={dateRange.to} onChange={(value) => { setFromDate(dateRange.from); setToDate(value); setQuickRange(""); setPage(0); }} buttonClassName={`${inputClass} flex items-center justify-between gap-2`} /></div>
+            <button type="button" onClick={exportExcel} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل"><img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" /></button>
+          </div>
+          <div className="mt-3"><span className={labelClass}>برچسب ها</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => { setQuery(""); setFromDate(""); setToDate(""); setQuickRange(""); setSelectedType(""); setSelectedRecipients([]); setPage(0); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${allFiltersClear ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>همه</button>
+              {quickRanges.map(([key, label]) => <button key={key} type="button" onClick={() => { setQuickRange((current) => current === key ? "" : key); setFromDate(""); setToDate(""); setPage(0); }} aria-pressed={quickRange === key} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${quickRange === key ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{label}</button>)}
+              {types.map((type, index) => <button key={type} type="button" onClick={() => { setSelectedType((current) => current === type ? "" : type); setPage(0); }} aria-pressed={selectedType === type} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${typeColors[index % typeColors.length]} ${selectedType === type ? "ring-2 ring-current ring-offset-1 dark:ring-offset-neutral-900" : "hover:brightness-95"}`}>{type}</button>)}
+              <div ref={recipientsMenuRef} className="relative">
+                <button type="button" onClick={() => setRecipientsOpen((open) => !open)} aria-expanded={recipientsOpen} aria-label="فیلتر گیرنده‌ها" title="فیلتر گیرنده‌ها" className={`grid h-9 w-9 place-items-center rounded-xl border text-lg leading-none transition ${selectedRecipients.length ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>•••</button>
+                {recipientsOpen && <div className="absolute left-0 top-full z-30 mt-2 max-h-64 min-w-52 overflow-auto rounded-xl border border-black/10 bg-white p-2 shadow-xl dark:border-white/15 dark:bg-neutral-900" role="group" aria-label="گیرنده‌ها">{recipients.length ? recipients.map((recipient) => <label key={recipient} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-white/10"><input type="checkbox" checked={selectedRecipients.includes(recipient)} onChange={() => { setSelectedRecipients((current) => current.includes(recipient) ? current.filter((value) => value !== recipient) : [...current, recipient]); setPage(0); }} className="accent-black" /><span>{recipient}</span></label>) : <span className="block px-2 py-1 text-xs text-neutral-500">گیرنده‌ای ثبت نشده است.</span>}</div>}
+              </div>
+              {selectedRecipients.map((recipient) => <button key={recipient} type="button" onClick={() => { setSelectedRecipients((current) => current.filter((value) => value !== recipient)); setPage(0); }} className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950 dark:text-indigo-300" title="حذف فیلتر گیرنده">{recipient} ×</button>)}
+            </div>
+          </div>
         </div>}
 
         {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
