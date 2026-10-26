@@ -191,8 +191,8 @@ export default function LessonReviewModal({
                 selected={tagDraft}
                 setSelected={setTagDraft}
                 onClose={() => setTagPickerOpen(false)}
-                onConfirm={() => {
-                  updateDraft({ tagIds: [...new Set(tagDraft.map(String))] });
+                 onConfirm={(selectedIds) => {
+                   updateDraft({ tagIds: [...new Set(selectedIds.map(String))] });
                   setTagPickerOpen(false);
                 }}
               />
@@ -339,10 +339,6 @@ function LessonFields({
       </div>
     </div>
   );
-}
-
-function ReviewTagPicker({ tags, selectedIds, onToggle, onClose }) {
-  return createPortal(<div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" dir="rtl"><div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} /><section className="relative flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900"><header className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><b>انتخاب برچسب‌ها</b><button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-lg dark:border-white/10">×</button></header><div className="flex-1 overflow-y-auto p-3"><div className="flex flex-wrap gap-2">{tags.map((tag) => { const selected = selectedIds.includes(String(tag.id)); return <button key={tag.id} type="button" onClick={() => onToggle(tag.id)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${selected ? "border-sky-600 bg-sky-600 text-white" : "border-black/10 hover:border-sky-300 dark:border-white/15"}`}>{tag.label}</button>; })}</div></div><footer className="border-t border-black/10 p-3 text-left dark:border-white/10"><button type="button" onClick={onClose} className="rounded-xl bg-black px-4 py-2 text-sm font-bold text-white dark:bg-white dark:text-black">تأیید</button></footer></section></div>, document.body);
 }
 
 function FileEditor({

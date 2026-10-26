@@ -1,4 +1,6 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
+import { api } from "../utils/api.js";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { Card } from "../components/ui/Card";
@@ -34,19 +36,6 @@ const WEEKDAY_BY_JS_DAY = {
   4: "پنجشنبه",
   5: "جمعه",
   6: "شنبه",
-};
-
-const TAG_TABS = [
-  { id: "projects", label: "پروژه‌ها" },
-  { id: "letters", label: "نامه‌ها و مستندات" },
-  { id: "execution", label: "اجرای پروژه‌ها" },
-];
-
-
-const TAG_CATEGORIES = {
-  projects: ["همه", "اداری", "بازاریابی", "بانک", "بیمه", "پروژه", "کارفرما", "مالیات", "محرمانه"],
-  letters: ["همه", "اداری", "بازاریابی", "بانک", "بیمه", "پروژه", "کارفرما", "مالیات", "محرمانه"],
-  execution: ["همه", "اجرا", "کارگاه", "تدارکات", "کنترل کیفیت", "ایمنی"],
 };
 
 const MOCK_TAGS = [
@@ -655,9 +644,16 @@ export default function RoznegarPgae() {
   );
 
   const [tagModalOpen, setTagModalOpen] = useState(false);
-  const [tagSearch, setTagSearch] = useState("");
+  const [realTags, setRealTags] = useState([]);
+  useEffect(() => {
+    let active = true;
+    Promise.all(["letters", "projects", "execution"].map((scope) => api(`/tags?scope=${scope}`))).then((groups) => {
+      if (active) setRealTags(groups.flatMap((group) => Array.isArray(group.tags) ? group.tags : []));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const availableTags = useMemo(() => [...realTags, ...MOCK_TAGS.filter((tag) => !realTags.some((real) => String(real.id) === String(tag.id)))], [realTags]);
   const [tagDraftIds, setTagDraftIds] = useState([]);
-  const [tagPickKind, setTagPickKind] = useState("letters");
   const [tagPickCategory, setTagPickCategory] = useState("همه");
 
   const [relatedPickOpen, setRelatedPickOpen] = useState(false);
@@ -1018,13 +1014,13 @@ export default function RoznegarPgae() {
 
   const selectedTags = useMemo(() => {
     const set = new Set((activeEntry?.tagIds || []).map(String));
-    return MOCK_TAGS.filter((t) => set.has(String(t.id)));
-  }, [activeEntry?.tagIds]);
+    return availableTags.filter((t) => set.has(String(t.id)));
+  }, [activeEntry?.tagIds, availableTags]);
 
   const selectedFilterTags = useMemo(() => {
     const set = new Set((tableFilterTagIds || []).map(String));
-    return MOCK_TAGS.filter((t) => set.has(String(t.id)));
-  }, [tableFilterTagIds]);
+    return availableTags.filter((t) => set.has(String(t.id)));
+  }, [tableFilterTagIds, availableTags]);
 
   const relatedSelectedIds = useMemo(
     () => (Array.isArray(activeEntry?.relatedDocIds) ? activeEntry.relatedDocIds.map(String) : []),
@@ -1058,16 +1054,6 @@ export default function RoznegarPgae() {
         ""
     ).trim();
 
-  const filteredTags = useMemo(() => {
-    const q = String(tagSearch || "").trim().toLowerCase();
-    return MOCK_TAGS.filter((t) => {
-      if (String(t.kind || "") !== String(tagPickKind || "")) return false;
-      if (tagPickCategory && tagPickCategory !== "همه" && String(t.category || "") !== String(tagPickCategory)) return false;
-      if (q && !String(t.label || "").toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [tagSearch, tagPickKind, tagPickCategory]);
-
   const letterById = useMemo(
     () =>
       new Map(
@@ -1080,8 +1066,8 @@ export default function RoznegarPgae() {
   );
 
   const tagById = useMemo(() => {
-    return new Map((Array.isArray(MOCK_TAGS) ? MOCK_TAGS : []).map((t) => [String(t.id), t]));
-  }, []);
+    return new Map(availableTags.map((t) => [String(t.id), t]));
+  }, [availableTags]);
 
   const filteredTableRows = useMemo(() => {
     const toDateLabel = (dateYmd) => {
@@ -1198,8 +1184,8 @@ export default function RoznegarPgae() {
     setTagModalOpen(true);
   };
 
-  const applyPickedTags = () => {
-    const clean = (Array.isArray(tagDraftIds) ? tagDraftIds : [])
+  const applyPickedTags = (selectedIds) => {
+    const clean = (Array.isArray(selectedIds) ? selectedIds : [])
       .map((x) => String(x || "").trim())
       .filter(Boolean);
     if (tagModalMode === "filter") setTableFilterTagIds(clean);
@@ -2275,149 +2261,7 @@ export default function RoznegarPgae() {
           document.body
         )}
 
-      {tagModalOpen && (
-        <Portal>
-          <div className="fixed inset-0 z-[9999]" dir="rtl">
-            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setTagModalOpen(false)} />
-
-            <div className="absolute inset-0 p-2 sm:p-3 md:p-6 flex items-start sm:items-center justify-center overflow-y-auto">
-              <div
-                className={
-                  "w-[min(980px,calc(100vw-16px))] h-[min(86vh,760px)] rounded-2xl border shadow-2xl overflow-hidden " +
-                  (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
-                }
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="h-full flex flex-col">
-                  <div className="px-3 md:px-4 py-2.5 md:py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
-                    <div className="font-bold text-[12px] md:text-[13px]">
-                      {tagModalMode === "filter" ? "انتخاب برچسب برای فیلتر" : "انتخاب برچسب"}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setTagModalOpen(false)}
-                      className={
-                        "h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                        (theme === "dark"
-                          ? "bg-white text-black ring-white/20 hover:bg-white/90"
-                          : "bg-white text-black ring-black/15 hover:bg-black/5")
-                      }
-                      aria-label="بستن"
-                      title="بستن"
-                    >
-                      <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 brightness-0" />
-                    </button>
-                  </div>
-
-                  <div className="px-3 md:px-4 pt-3">
-                    <div className="flex items-center justify-start gap-2">
-                      {TAG_TABS.map((tab) => {
-                        const active = tagPickKind === tab.id;
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => {
-                              setTagPickKind(tab.id);
-                              setTagPickCategory("همه");
-                            }}
-                            className={
-                              "h-9 md:h-10 px-3 md:px-4 rounded-xl border text-[11px] md:text-xs font-semibold transition " +
-                              (active
-                                ? "bg-black text-white border-black"
-                                : theme === "dark"
-                                ? "bg-transparent text-white border-white/15 hover:bg-white/5"
-                                : "bg-white text-neutral-900 border-black/15 hover:bg-black/[0.02]")
-                            }
-                          >
-                            {tab.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-3">
-                      <div className={labelCls}>دسته‌بندی‌ها</div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {(TAG_CATEGORIES[tagPickKind] || ["همه"]).map((cat) => {
-                          const active = String(tagPickCategory) === String(cat);
-                          return (
-                            <button
-                              key={cat}
-                              type="button"
-                              onClick={() => setTagPickCategory(cat)}
-                              className={(active ? selectedTagChipCls : chipCls) + " h-9 md:h-10"}
-                            >
-                              {cat}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="mt-3">
-                      <div className={labelCls}>جستجو</div>
-                      <input
-                        value={tagSearch}
-                        onChange={(e) => setTagSearch(e.target.value)}
-                        className={inputCls + " h-9 md:h-10 text-[11px] md:text-xs"}
-                        placeholder="جستجو در برچسب‌ها..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="px-3 md:px-4 py-3 flex-1 min-h-0 overflow-auto">
-                    {!filteredTags.length ? (
-                      <div className="py-10 text-center text-[11px] md:text-xs text-neutral-500 dark:text-white/50">چیزی پیدا نشد.</div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {filteredTags.map((tag) => {
-                          const id = String(tag.id);
-                          const active = (tagDraftIds || []).some((x) => String(x) === id);
-                          return (
-                            <button
-                              key={id}
-                              type="button"
-                              onClick={() =>
-                                setTagDraftIds((prev) =>
-                                  prev.some((x) => String(x) === id)
-                                    ? prev.filter((x) => String(x) !== id)
-                                    : [...prev, id]
-                                )
-                              }
-                              className={(active ? selectedTagChipCls : chipCls) + " h-9 md:h-10"}
-                              title={tag.label}
-                            >
-                              <span className="truncate max-w-[240px]">{tag.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="px-3 md:px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={applyPickedTags}
-                      className={
-                        "h-9 w-9 md:h-10 md:w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                        (theme === "dark"
-                          ? "bg-black text-white ring-white/10 hover:bg-black/90"
-                          : "bg-black text-white ring-black/15 hover:bg-black/90")
-                      }
-                      aria-label="تایید"
-                      title="تایید"
-                    >
-                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Portal>
-      )}
+      {tagModalOpen && <UnifiedTagPicker selectedIds={tagDraftIds} onClose={() => setTagModalOpen(false)} onConfirm={applyPickedTags} />}
 
       {relatedPickOpen && <RelatedLettersPickerModal
         api={relatedLettersApi}

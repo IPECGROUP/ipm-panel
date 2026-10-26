@@ -1,5 +1,6 @@
 // قراردادها
 import React from "react";
+import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
@@ -1261,7 +1262,6 @@ export default function ContractInformation() {
   const [relatedPickTarget, setRelatedPickTarget] = React.useState("contract");
   const [appendixRelatedPickIds, setAppendixRelatedPickIds] = React.useState([]);
   const [relatedSummaryOpen, setRelatedSummaryOpen] = React.useState(false);
-  const [tagCategories, setTagCategories] = React.useState([]);
   const [tags, setTags] = React.useState([]);
   const [tagsLoaded, setTagsLoaded] = React.useState(false);
   const [tagPickOpen, setTagPickOpen] = React.useState(false);
@@ -1372,16 +1372,13 @@ export default function ContractInformation() {
   const ensureContractTags = React.useCallback(async () => {
     if (tagsLoaded) return;
     try {
-      const data = await fetchJson("/tags?scope=letters");
-      setTagCategories(Array.isArray(data?.categories) ? data.categories : []);
-      setTags(Array.isArray(data?.tags) ? data.tags : asArray(data));
+      const groups = await Promise.all(["letters", "projects", "execution"].map((scope) => fetchJson(`/tags?scope=${scope}`)));
+      setTags(groups.flatMap((data) => Array.isArray(data?.tags) ? data.tags : asArray(data)));
     } catch {
       try {
         const data = await fetchJson("/tags");
-        setTagCategories(Array.isArray(data?.categories) ? data.categories : []);
         setTags(Array.isArray(data?.tags) ? data.tags : asArray(data));
       } catch {
-        setTagCategories([]);
         setTags([]);
       }
     } finally {
@@ -2570,8 +2567,8 @@ export default function ContractInformation() {
     setTagPickDraftIds((prev) => (prev.includes(sid) ? prev.filter((item) => item !== sid) : [...prev, sid]));
   };
 
-  const applyPickedTags = () => {
-    setTechnicalTagIds(tagPickDraftIds);
+  const applyPickedTags = (selectedIds) => {
+    setTechnicalTagIds(selectedIds);
     setTagPickOpen(false);
   };
 
@@ -5663,129 +5660,7 @@ export default function ContractInformation() {
           document.body
         )}
 
-      {tagPickOpen &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999]" dir="rtl">
-            <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setTagPickOpen(false)} />
-
-            <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
-              <div className="w-[min(780px,calc(100vw-20px))] h-[min(72vh,680px)] rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl overflow-hidden dark:border-white/10 dark:bg-neutral-900 dark:text-white">
-                <div className="h-full flex flex-col">
-                  <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-black/10 dark:border-white/10">
-                    <div className="font-bold text-sm">انتخاب برچسب</div>
-                    <button
-                      type="button"
-                      onClick={() => setTagPickOpen(false)}
-                      className="h-10 w-10 rounded-xl bg-white text-black ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/5 dark:ring-white/20 dark:hover:bg-white/90"
-                      aria-label="بستن"
-                      title="بستن"
-                    >
-                      <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 brightness-0" />
-                    </button>
-                  </div>
-
-                  <div className="px-4 pt-3 space-y-3">
-                    {Array.isArray(tagCategories) && tagCategories.length ? (
-                      <div>
-                        <div className={labelCls}>دسته‌بندی‌ها</div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setTagPickCategoryId("")}
-                            className={(tagPickCategoryId ? chipCls : selectedTagChipCls) + " shrink-0"}
-                          >
-                            همه
-                          </button>
-
-                          {tagCategories.map((category) => {
-                            const id = String(category?.id ?? "");
-                            const label = pickFirst(category?.label, category?.name, category?.title);
-                            const active = tagPickCategoryId === id;
-                            return (
-                              <button
-                                key={id}
-                                type="button"
-                                onClick={() => setTagPickCategoryId(active ? "" : id)}
-                                className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
-                                title={label}
-                              >
-                                <span className="max-w-[220px] truncate">{label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div>
-                      <div className={labelCls}>جستجو</div>
-                      <input
-                        value={tagPickSearch}
-                        onChange={(e) => setTagPickSearch(e.target.value)}
-                        className={inputCls}
-                        type="text"
-                        placeholder="جستجو در برچسب‌ها..."
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  <div className="px-4 py-3 flex-1 overflow-auto">
-                    {(() => {
-                      const q = String(tagPickSearch || "").trim().toLowerCase();
-                      const filtered = (Array.isArray(tags) ? tags : []).filter((tag) => {
-                        const label = tagLabelOf(tag).toLowerCase();
-                        const categoryId = String(tag?.category_id ?? tag?.categoryId ?? "");
-                        if (tagPickCategoryId && categoryId !== String(tagPickCategoryId)) return false;
-                        if (q && !label.includes(q)) return false;
-                        return true;
-                      });
-
-                      if (!filtered.length) {
-                        return <div className="py-10 text-center text-sm text-neutral-500 dark:text-white/50">چیزی پیدا نشد.</div>;
-                      }
-
-                      return (
-                        <div className="flex flex-wrap gap-2">
-                          {filtered.map((tag) => {
-                            const id = String(tag?.id ?? "");
-                            const label = tagLabelOf(tag);
-                            const active = tagPickDraftIds.some((item) => String(item) === id);
-
-                            return (
-                              <button
-                                key={id}
-                                type="button"
-                                onClick={() => togglePickDraft(id)}
-                                className={(active ? selectedTagChipCls : chipCls) + " shrink-0"}
-                                title={label}
-                              >
-                                <span className="max-w-[240px] truncate">{label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="px-4 py-3 border-t border-black/10 dark:border-white/10 flex items-center justify-end">
-                    <button
-                      type="button"
-                      onClick={applyPickedTags}
-                      className="h-10 w-10 rounded-xl bg-black text-white ring-1 ring-black/15 transition flex items-center justify-center hover:bg-black/90 dark:ring-white/10"
-                      aria-label="تایید"
-                      title="تایید"
-                    >
-                      <img src="/images/icons/check.svg" alt="" className="w-5 h-5 invert" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      {tagPickOpen && <UnifiedTagPicker selectedIds={tagPickDraftIds} onClose={() => setTagPickOpen(false)} onConfirm={applyPickedTags} />}
       {financialUploadKind ? (
         <DocumentUploadModal
           {...financialUploadConfig}

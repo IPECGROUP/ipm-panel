@@ -1,5 +1,6 @@
 // درخواست تامین
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import Card from "../components/ui/Card.jsx";
@@ -497,9 +498,8 @@ export default function SupplyRequestPage() {
   }, [api, authLoading]);
 
   useEffect(() => {
-    api("/tags?scope=letters").then((data) => {
-      const rows = Array.isArray(data?.tags) ? data.tags : Array.isArray(data?.items) ? data.items : [];
-      setTags(rows);
+    Promise.all(["letters", "projects", "execution"].map((scope) => api(`/tags?scope=${scope}`))).then((groups) => {
+      setTags(groups.flatMap((data) => Array.isArray(data?.tags) ? data.tags : []));
     }).catch(() => setTags([]));
   }, [api]);
 
@@ -2544,6 +2544,7 @@ function RequestFilterBar({
               </button>
             );
           })}
+          <button type="button" onClick={() => setTagPickOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 bg-white text-lg dark:border-white/15 dark:bg-white/5" aria-label="انتخاب برچسب" title="انتخاب برچسب">•••</button>
         </div>
       </div>
       {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
@@ -2551,42 +2552,14 @@ function RequestFilterBar({
   );
 }
 
-function TagPicker({ tags, selectedIds, onToggle, query, setQuery, onClose }) {
-  const selected = new Set((selectedIds || []).map(String));
-  const q = String(query || "").trim().toLowerCase();
-  const list = (Array.isArray(tags) ? tags : []).filter((tag) => !q || tagLabelOf(tag).toLowerCase().includes(q));
-  return createPortal(
-    <div className="fixed inset-0 z-[9999]" dir="rtl">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div className="flex h-[min(70vh,620px)] w-[min(760px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white" onClick={(event) => event.stopPropagation()}>
-          <div className="flex items-center justify-between border-b border-black/10 p-4 dark:border-white/10">
-            <b className="text-sm">انتخاب برچسب</b>
-            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 dark:border-white/10" aria-label="بستن" title="بستن">
-              <img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" />
-            </button>
-          </div>
-          <div className="p-4">
-            <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputCls} placeholder="جستجو در برچسب‌ها..." />
-          </div>
-          <div className="flex-1 overflow-auto px-4 pb-4">
-            <div className="flex flex-wrap gap-2">
-              {list.map((tag) => {
-                const id = String(tag?.id ?? "");
-                const active = selected.has(id);
-                return (
-                  <button key={id} type="button" onClick={() => onToggle(id)} className={`h-10 rounded-full border px-4 text-sm shadow-sm transition ${supplyRequestTagClass(tag, active)} `}>
-                    {tagLabelOf(tag)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
+function TagPicker({ selectedIds, onToggle, onClose }) {
+  return <UnifiedTagPicker selectedIds={selectedIds} onClose={onClose} onConfirm={(ids) => {
+    const before = new Set((selectedIds || []).map(String));
+    const after = new Set(ids.map(String));
+    for (const id of before) if (!after.has(id)) onToggle(id);
+    for (const id of after) if (!before.has(id)) onToggle(id);
+    onClose();
+  }} />;
 }
 
 function RegistrationNotice({ info, onClose }) {

@@ -1,5 +1,6 @@
 import React from "react";
 import dayjs from "dayjs";
+import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { Card } from "../components/ui/Card";
 import { Btn, PrimaryBtn } from "../components/ui/Button";
 import { Portal } from "../components/Portal";
@@ -18,6 +19,7 @@ export default function DailyReportPage() {
 
   const [tags, setTags] = React.useState([]);
   const [tagsLoading, setTagsLoading] = React.useState(false);
+  const [tagPickerMode, setTagPickerMode] = React.useState("");
   const [selectedTags, setSelectedTags] = React.useState([]);
 
   const [reports, setReports] = React.useState([]);
@@ -147,10 +149,8 @@ export default function DailyReportPage() {
     const loadTags = async () => {
       setTagsLoading(true);
       try {
-        const r = await api("/base/tags");
-        if (!cancelled) {
-          setTags(Array.isArray(r.items) ? r.items : []);
-        }
+        const groups = await Promise.all(["letters", "projects", "execution"].map((scope) => api(`/tags?scope=${scope}`)));
+        if (!cancelled) setTags(groups.flatMap((group) => (Array.isArray(group.tags) ? group.tags : []).map((tag) => ({ id: tag.id, name: tag.label }))));
       } catch (e) {
         console.error(e);
       } finally {
@@ -179,16 +179,6 @@ export default function DailyReportPage() {
   };
 
   // ===== tags select =====
-  const addTag = (tagId) => {
-    if (!tagId) return;
-    const t = tags.find((x) => String(x.id) === String(tagId));
-    if (!t) return;
-    setSelectedTags((prev) => {
-      if (prev.some((p) => String(p.id) === String(t.id))) return prev;
-      return [...prev, t];
-    });
-  };
-
   const removeTag = (id) => {
     setSelectedTags((prev) => prev.filter((t) => String(t.id) !== String(id)));
   };
@@ -301,16 +291,6 @@ export default function DailyReportPage() {
 
   const removeEditDescItem = (idx) => {
     setEditDescItems((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const addEditTag = (tagId) => {
-    if (!tagId) return;
-    const t = tags.find((x) => String(x.id) === String(tagId));
-    if (!t) return;
-    setEditSelectedTags((prev) => {
-      if (prev.some((p) => String(p.id) === String(t.id))) return prev;
-      return [...prev, t];
-    });
   };
 
   const removeEditTag = (id) => {
@@ -471,25 +451,7 @@ export default function DailyReportPage() {
               برچسب‌ها
             </label>
             <div className="flex flex-col md:flex-row gap-2 md:gap-3">
-              <select
-                onChange={(e) => {
-                  addTag(e.target.value);
-                  e.target.value = "";
-                }}
-                defaultValue=""
-                className="h-10 md:w-64 rounded-xl px-3 bg-white text-neutral-900 text-right border border-neutral-300 outline-none
-                           focus:ring-2 focus:ring-neutral-300 placeholder:text-neutral-400
-                           dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder:text-neutral-500 dark:focus:ring-neutral-600/50"
-              >
-                <option value="">
-                  {tagsLoading ? "در حال بارگذاری..." : "انتخاب برچسب..."}
-                </option>
-                {tags.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+              <button type="button" onClick={() => setTagPickerMode("create")} disabled={tagsLoading} className="h-10 rounded-xl border border-neutral-300 bg-white px-4 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">?????? ?????...</button>
 
               <div className="flex-1 flex flex-wrap gap-2">
                 {selectedTags.map((t) => (
@@ -761,25 +723,7 @@ export default function DailyReportPage() {
                 <div className="flex flex-col gap-2">
                   <span className="text-xs text-neutral-500">برچسب‌ها</span>
                   <div className="flex flex-col md:flex-row gap-2 md:gap-3">
-                    <select
-                      onChange={(e) => {
-                        addEditTag(e.target.value);
-                        e.target.value = "";
-                      }}
-                      defaultValue=""
-                      className="h-10 md:w-64 rounded-xl px-3 bg-white text-neutral-900 text-right border border-neutral-300 outline-none
-                                 focus:ring-2 focus:ring-neutral-300 placeholder:text-neutral-400
-                                 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700 dark:placeholder:text-neutral-500 dark:focus:ring-neutral-600/50"
-                    >
-                      <option value="">
-                        {tagsLoading ? "در حال بارگذاری..." : "انتخاب برچسب..."}
-                      </option>
-                      {tags.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                    <button type="button" onClick={() => setTagPickerMode("edit")} disabled={tagsLoading} className="h-10 rounded-xl border border-neutral-300 bg-white px-4 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">?????? ?????...</button>
 
                     <div className="flex-1 flex flex-wrap gap-2">
                       {editSelectedTags.map((t) => (
@@ -812,6 +756,13 @@ export default function DailyReportPage() {
           </div>
         </Portal>
       )}
+      {tagPickerMode && <UnifiedTagPicker selectedIds={(tagPickerMode === "edit" ? editSelectedTags : selectedTags).map((tag) => String(tag.id))} onClose={() => setTagPickerMode("")} onConfirm={(ids) => {
+        const selected = ids.map((id) => tags.find((tag) => String(tag.id) === String(id))).filter(Boolean);
+        if (tagPickerMode === "edit") setEditSelectedTags(selected);
+        else setSelectedTags(selected);
+        setTagPickerMode("");
+      }} />}
     </>
+
   );
 }

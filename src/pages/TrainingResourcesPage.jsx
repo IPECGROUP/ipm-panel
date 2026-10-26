@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
 import { Copy, File } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
@@ -120,14 +121,12 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
-  const [tags, setTags] = useState([]);
   const [filterTagIds, setFilterTagIds] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [tagPickerFor, setTagPickerFor] = useState("form");
   const [tagPickerDraftIds, setTagPickerDraftIds] = useState([]);
-  const [tagPickerQuery, setTagPickerQuery] = useState("");
 
   const requestHeaders = useMemo(() => user?.id != null ? { "x-user-id": String(user.id) } : {}, [user?.id]);
 
@@ -187,12 +186,6 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       .catch(() => setCategories([]));
   }, [authLoading, isLibrary, requestHeaders]);
 
-  useEffect(() => {
-    if (authLoading) return;
-    api("/tags", { headers: requestHeaders })
-      .then((data) => setTags(Array.isArray(data?.items) ? data.items : []))
-      .catch(() => setTags([]));
-  }, [authLoading, requestHeaders]);
 
   const filteredLetters = useMemo(() => {
     const query = pickerQuery.trim().toLowerCase();
@@ -376,12 +369,11 @@ export default function TrainingResourcesPage({ variant = "training" }) {
   const openTagPicker = (target) => {
     setTagPickerFor(target);
     setTagPickerDraftIds(target === "form" ? form.tagIds.map(String) : filterTagIds.map(String));
-    setTagPickerQuery("");
     setTagPickerOpen(true);
   };
 
-  const applyTagPicker = () => {
-    const ids = [...new Set(tagPickerDraftIds.map(String))];
+  const applyTagPicker = (selectedIds) => {
+    const ids = [...new Set(selectedIds.map(String))];
     if (tagPickerFor === "form") setForm((previous) => ({ ...previous, tagIds: ids }));
     else setFilterTagIds(ids);
     setTagPickerOpen(false);
@@ -546,7 +538,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
       </Card>
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
-      {tagPickerOpen && <TagPicker tags={tagPickerFor === "filter" ? filterTags : tags} query={tagPickerQuery} setQuery={setTagPickerQuery} selectedIds={tagPickerDraftIds} setSelectedIds={setTagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
+      {tagPickerOpen && <UnifiedTagPicker selectedIds={tagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
       {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onSelectFiles={selectUploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onEditFile={!isLibrary ? openImageEditor : undefined} isEditableFile={!isLibrary ? (file) => /\.(jpe?g|png|webp)$/i.test(file.name || file.url || "") : undefined} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} multiple={!isLibrary} selectionHint={isLibrary ? "" : "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."} onClose={() => setUploadOpen(false)} />}
       {imageEditorOpen && editingImage ? <AttachmentImageEditor initialUrl={editingImage.file.url} initialName={editingImage.file.name} onClose={() => { setEditingImage(null); setImageEditorOpen(false); setUploadOpen(true); }} onConfirm={confirmEditedExistingImage} onAddImages={addImagesToQueue} onViewFiles={() => { setEditingImage(null); setImageEditorOpen(false); setUploadOpen(true); }} /> : imageEditorOpen && imageQueue[0] && <AttachmentImageEditor initialFile={imageQueue[0]} onClose={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} onConfirm={confirmEditedImage} onAddImages={addImagesToQueue} onViewFiles={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} />}
     </div>
@@ -593,26 +585,6 @@ function CountBadge({ value }) { return <span className="absolute -left-1 -top-1
 function EmptyRow({ text, colSpan = 7 }) { return <tr><td colSpan={colSpan} className="py-8 text-black/60 dark:text-neutral-400">{text}</td></tr>; }
 function TablePagination({ total, startIndex, endIndex, safePage, pageCount, rowsPerPage, onPrevious, onNext, onRowsPerPage }) { return <div className="border-t border-neutral-300 px-2.5 py-2.5 dark:border-neutral-800"><div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between"><div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={onPrevious} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={onNext} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFaDigits(startIndex + 1)}–${toFaDigits(endIndex)} از ${toFaDigits(total)}`}</div></div><div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => onRowsPerPage(count)} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFaDigits(count)}</button>)}</div></div></div></div>; }
 function FileLinks({ files, onOpen }) { const list = Array.isArray(files) ? files : []; return <div className="flex items-center justify-center gap-1.5">{list.length ? list.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" download onClick={onOpen} className="grid h-8 w-8 place-items-center rounded-lg border border-black/10 bg-white transition hover:-translate-y-0.5 hover:shadow-sm dark:border-white/15 dark:bg-white/5" title={file.name || `فایل ${index + 1}`}><FileTypeIcon file={file} /></a>) : <span>—</span>}</div>; }
-
-function TagPicker({ tags, query, setQuery, selectedIds, setSelectedIds, onClose, onConfirm }) {
-  const selected = new Set(selectedIds.map(String));
-  const filteredTags = tags.filter((tag) => !query.trim() || String(tag.label || "").toLowerCase().includes(query.trim().toLowerCase()));
-  const toggleTag = (id) => setSelectedIds((previous) => previous.map(String).includes(String(id)) ? previous.map(String).filter((value) => value !== String(id)) : [...previous.map(String), String(id)]);
-  return createPortal(
-    <div className="fixed inset-0 z-[9999]" dir="rtl">
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute inset-0 flex items-center justify-center p-3 md:p-6">
-        <div className="flex h-[min(78vh,720px)] w-[min(980px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
-          <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="text-sm font-bold">انتخاب برچسب</div><button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/[.04] dark:border-white/15 dark:bg-white/5" title="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 dark:invert" /></button></div>
-          <div className="p-4"><div className={labelClass}>جستجو</div><input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="جستجو در برچسب‌ها..." autoFocus /></div>
-          <div className="flex-1 overflow-auto px-4 pb-4">{filteredTags.length ? <div className="flex flex-wrap gap-2">{filteredTags.map((tag) => <button key={tag.id} type="button" onClick={() => toggleTag(tag.id)} className={`h-10 rounded-full border px-4 text-xs transition ${selected.has(String(tag.id)) ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{tag.label}</button>)}</div> : <div className="py-10 text-center text-sm text-neutral-500">برچسبی پیدا نشد.</div>}</div>
-          <div className="flex justify-end border-t border-black/10 p-4 dark:border-white/10"><button type="button" onClick={onConfirm} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" /></button></div>
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
 
 function ResourceTableMenu({ entityLabel, menuRef, open, setOpen, selectedCount, onEdit, onDelete, deleting }) {
   const [position, setPosition] = useState({ top: 0, left: 8 });
