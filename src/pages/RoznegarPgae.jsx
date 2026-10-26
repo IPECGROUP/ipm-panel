@@ -654,7 +654,6 @@ export default function RoznegarPgae() {
   }, []);
   const availableTags = useMemo(() => [...realTags, ...MOCK_TAGS.filter((tag) => !realTags.some((real) => String(real.id) === String(tag.id)))], [realTags]);
   const [tagDraftIds, setTagDraftIds] = useState([]);
-  const [tagPickCategory, setTagPickCategory] = useState("همه");
 
   const [relatedPickOpen, setRelatedPickOpen] = useState(false);
   const [relatedPickQuery, setRelatedPickQuery] = useState("");
@@ -1178,9 +1177,6 @@ export default function RoznegarPgae() {
         ? (tableFilterTagIds || []).map(String)
         : (activeEntry?.tagIds || []).map(String)
     );
-    setTagSearch("");
-    setTagPickKind("letters");
-    setTagPickCategory("همه");
     setTagModalOpen(true);
   };
 
