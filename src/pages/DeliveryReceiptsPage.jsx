@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Printer } from "lucide-react";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
@@ -15,12 +15,12 @@ const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳�
 const emptyForm = () => ({ date: "", type: "", title: "", recipient: "", files: [] });
 const quickRanges = [["week", "هفته قبل"], ["2w", "۲ هفته قبل"], ["month", "ماه قبل"]];
 const typeColors = [
-  "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-300",
-  "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-300",
-  "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300",
-  "border-teal-300 bg-teal-50 text-teal-700 dark:border-teal-700 dark:bg-teal-950 dark:text-teal-300",
+  { idle: "border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-700 dark:bg-sky-950 dark:text-sky-300", active: "border-sky-700 bg-sky-700 text-white dark:border-sky-400 dark:bg-sky-400 dark:text-neutral-950" },
+  { idle: "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-300", active: "border-emerald-700 bg-emerald-700 text-white dark:border-emerald-400 dark:bg-emerald-400 dark:text-neutral-950" },
+  { idle: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300", active: "border-amber-700 bg-amber-700 text-white dark:border-amber-400 dark:bg-amber-400 dark:text-neutral-950" },
+  { idle: "border-violet-300 bg-violet-50 text-violet-700 dark:border-violet-700 dark:bg-violet-950 dark:text-violet-300", active: "border-violet-700 bg-violet-700 text-white dark:border-violet-400 dark:bg-violet-400 dark:text-neutral-950" },
+  { idle: "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-700 dark:bg-rose-950 dark:text-rose-300", active: "border-rose-700 bg-rose-700 text-white dark:border-rose-400 dark:bg-rose-400 dark:text-neutral-950" },
+  { idle: "border-teal-300 bg-teal-50 text-teal-700 dark:border-teal-700 dark:bg-teal-950 dark:text-teal-300", active: "border-teal-700 bg-teal-700 text-white dark:border-teal-400 dark:bg-teal-400 dark:text-neutral-950" },
 ];
 const toEnglishDigits = (value) => String(value ?? "").replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit)).replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit));
 const normalizeDate = (value) => {
@@ -57,7 +57,8 @@ export default function DeliveryReceiptsPage() {
   const [selectedType, setSelectedType] = useState("");
   const [selectedRecipients, setSelectedRecipients] = useState([]);
   const [recipientsOpen, setRecipientsOpen] = useState(false);
-  const recipientsMenuRef = useRef(null);
+  const [recipientDraft, setRecipientDraft] = useState([]);
+  const [recipientSearch, setRecipientSearch] = useState("");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [error, setError] = useState("");
@@ -82,14 +83,8 @@ export default function DeliveryReceiptsPage() {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    if (!recipientsOpen) return undefined;
-    const closeOnOutsideClick = (event) => { if (!recipientsMenuRef.current?.contains(event.target)) setRecipientsOpen(false); };
-    document.addEventListener("pointerdown", closeOnOutsideClick);
-    return () => document.removeEventListener("pointerdown", closeOnOutsideClick);
-  }, [recipientsOpen]);
-
   const recipients = useMemo(() => [...new Set(items.map((item) => String(item.recipient || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fa")), [items]);
+  const shownRecipients = useMemo(() => recipients.filter((recipient) => recipient.toLocaleLowerCase("fa").includes(recipientSearch.trim().toLocaleLowerCase("fa"))), [recipients, recipientSearch]);
   const types = useMemo(() => [...new Set([...receiptTypes.map((type) => type.title), ...items.map((item) => item.type)].map((type) => String(type || "").trim()).filter(Boolean))], [receiptTypes, items]);
   const dateRange = useMemo(() => {
     if (!quickRange) return { from: normalizeDate(fromDate), to: normalizeDate(toDate) };
@@ -116,6 +111,12 @@ export default function DeliveryReceiptsPage() {
   const pageItems = filteredItems.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const selectedItem = selectedIds.size === 1 ? items.find((item) => selectedIds.has(item.id)) : null;
   const canEditSelected = selectedItem && Number(selectedItem.createdById) === Number(user?.id);
+
+  function openRecipientPicker() {
+    setRecipientDraft([...selectedRecipients]);
+    setRecipientSearch("");
+    setRecipientsOpen(true);
+  }
 
   async function exportExcel() {
     const XLSX = await import("xlsx");
@@ -205,12 +206,9 @@ export default function DeliveryReceiptsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => { setQuery(""); setFromDate(""); setToDate(""); setQuickRange(""); setSelectedType(""); setSelectedRecipients([]); setPage(0); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${allFiltersClear ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>همه</button>
               {quickRanges.map(([key, label]) => <button key={key} type="button" onClick={() => { setQuickRange((current) => current === key ? "" : key); setFromDate(""); setToDate(""); setPage(0); }} aria-pressed={quickRange === key} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${quickRange === key ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>{label}</button>)}
-              {types.map((type, index) => <button key={type} type="button" onClick={() => { setSelectedType((current) => current === type ? "" : type); setPage(0); }} aria-pressed={selectedType === type} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${typeColors[index % typeColors.length]} ${selectedType === type ? "ring-2 ring-current ring-offset-1 dark:ring-offset-neutral-900" : "hover:brightness-95"}`}>{type}</button>)}
-              <div ref={recipientsMenuRef} className="relative">
-                <button type="button" onClick={() => setRecipientsOpen((open) => !open)} aria-expanded={recipientsOpen} aria-label="فیلتر گیرنده‌ها" title="فیلتر گیرنده‌ها" className={`grid h-9 w-9 place-items-center rounded-xl border text-lg leading-none transition ${selectedRecipients.length ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>•••</button>
-                {recipientsOpen && <div className="absolute left-0 top-full z-30 mt-2 max-h-64 min-w-52 overflow-auto rounded-xl border border-black/10 bg-white p-2 shadow-xl dark:border-white/15 dark:bg-neutral-900" role="group" aria-label="گیرنده‌ها">{recipients.length ? recipients.map((recipient) => <label key={recipient} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-neutral-100 dark:hover:bg-white/10"><input type="checkbox" checked={selectedRecipients.includes(recipient)} onChange={() => { setSelectedRecipients((current) => current.includes(recipient) ? current.filter((value) => value !== recipient) : [...current, recipient]); setPage(0); }} className="accent-black" /><span>{recipient}</span></label>) : <span className="block px-2 py-1 text-xs text-neutral-500">گیرنده‌ای ثبت نشده است.</span>}</div>}
-              </div>
-              {selectedRecipients.map((recipient) => <button key={recipient} type="button" onClick={() => { setSelectedRecipients((current) => current.filter((value) => value !== recipient)); setPage(0); }} className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950 dark:text-indigo-300" title="حذف فیلتر گیرنده">{recipient} ×</button>)}
+              {types.map((type, index) => <button key={type} type="button" onClick={() => { setSelectedType((current) => current === type ? "" : type); setPage(0); }} aria-pressed={selectedType === type} className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${typeColors[index % typeColors.length][selectedType === type ? "active" : "idle"]}`}>{type}</button>)}
+              {selectedRecipients.map((recipient) => <button key={recipient} type="button" onClick={() => { setSelectedRecipients((current) => current.filter((value) => value !== recipient)); setPage(0); }} className="rounded-full border border-indigo-700 bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white dark:border-indigo-400 dark:bg-indigo-400 dark:text-neutral-950" title="حذف فیلتر گیرنده">{recipient} ×</button>)}
+              <button type="button" onClick={openRecipientPicker} aria-expanded={recipientsOpen} aria-label="فیلتر گیرنده‌ها" title="فیلتر گیرنده‌ها" className={`grid h-9 w-9 place-items-center rounded-xl border text-lg leading-none transition ${selectedRecipients.length ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`}>•••</button>
             </div>
           </div>
         </div>}
@@ -234,6 +232,15 @@ export default function DeliveryReceiptsPage() {
         </div>
       </div>
     </Card>
+    {recipientsOpen && createPortal(<div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6" dir="rtl" role="dialog" aria-modal="true" aria-label="انتخاب گیرنده">
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setRecipientsOpen(false)} />
+      <div className="relative flex h-[min(78vh,760px)] w-[min(980px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+        <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><strong className="text-sm">انتخاب گیرنده</strong><button type="button" onClick={() => setRecipientsOpen(false)} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white text-black hover:bg-neutral-50 dark:border-white/20" aria-label="بستن" title="بستن"><img src="/images/icons/bastan.svg" alt="" className="h-5 w-5 brightness-0" /></button></div>
+        <div className="border-b border-black/10 px-4 py-3 dark:border-white/10"><span className={labelClass}>جستجو</span><input autoFocus value={recipientSearch} onChange={(event) => setRecipientSearch(event.target.value)} className={inputClass} placeholder="جستجو در گیرنده‌ها..." /></div>
+        <div className="min-h-0 flex-1 overflow-auto px-4 py-3"><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setRecipientDraft([])} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${recipientDraft.length ? "border-neutral-200 bg-white text-neutral-900 dark:border-white/15 dark:bg-white/5 dark:text-white" : "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"}`}>همه</button>{shownRecipients.map((recipient) => <button key={recipient} type="button" onClick={() => setRecipientDraft((current) => current.includes(recipient) ? current.filter((value) => value !== recipient) : [...current, recipient])} aria-pressed={recipientDraft.includes(recipient)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${recipientDraft.includes(recipient) ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-neutral-200 bg-white text-neutral-900 hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"}`}>{recipient}</button>)}</div>{!shownRecipients.length && <p className="py-10 text-center text-sm text-neutral-500">{recipients.length ? "موردی پیدا نشد." : "گیرنده‌ای ثبت نشده است."}</p>}</div>
+        <div className="flex justify-end border-t border-black/10 px-4 py-3 dark:border-white/10"><button type="button" onClick={() => { setSelectedRecipients(recipientDraft); setPage(0); setRecipientsOpen(false); }} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white hover:bg-black/90" aria-label="تأیید" title="تأیید"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert" /></button></div>
+      </div>
+    </div>, document.body)}
     {uploadOpen && <AttachmentImageEditor title="پیوست رسید تحویل" onClose={() => setUploadOpen(false)} onConfirm={uploadFile} />}
     {menuPosition && createPortal(<><div className="fixed inset-0 z-[99]" onClick={() => setMenuPosition(null)} /><div dir="rtl" className="fixed z-[100] w-60 rounded-2xl border border-black/10 bg-white p-1.5 text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={menuPosition}><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${toFa(selectedIds.size)} مورد انتخاب شده` : "ابتدا یک رسید را انتخاب کنید"}</div><button type="button" disabled={!canEditSelected} onClick={startEditing} title={canEditSelected ? "ویرایش رسید انتخاب‌شده" : "برای ویرایش، یک رسید متعلق به خودتان را انتخاب کنید"} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="text-sm font-semibold">ویرایش رسید</span></button></div></>, document.body)}
     {previewItem && <DeliveryReceiptPreview item={previewItem} onClose={() => setPreviewItem(null)} />}
