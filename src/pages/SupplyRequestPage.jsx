@@ -321,6 +321,10 @@ function displayStatusOf(item) {
   return item?.workflowStatus || item?.status || "";
 }
 
+function hasSupplyApproval(item) {
+  return (Array.isArray(item?.historyJson) ? item.historyJson : []).some((entry) => entry?.type === "approved" || entry?.status === "approved");
+}
+
 function friendlyError(message, fallback) {
   const text = String(message || "");
   if (text === "database_unreachable") return "ارتباط با پایگاه داده برقرار نیست. سرویس دیتابیس را بررسی کنید.";
@@ -830,7 +834,7 @@ export default function SupplyRequestPage() {
       await loadItems();
       return true;
     } catch (ex) {
-      setActionError(ex?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست تامین انجام نشد.");
+      setActionError(ex?.message === "approval_already_recorded" ? "پس از اولین تایید، ویرایش درخواست امکان‌پذیر نیست." : ex?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست تامین انجام نشد.");
       return false;
     } finally {
       setActionBusy(false);
@@ -894,7 +898,8 @@ export default function SupplyRequestPage() {
     ? items.find((item) => selectedIds.has(String(item.id)))
     : null;
   const canEditSelectedRequest = Boolean(selectedEditableRequest)
-    && Number(selectedEditableRequest.createdById) === Number(user?.id);
+    && Number(selectedEditableRequest.createdById) === Number(user?.id)
+    && !hasSupplyApproval(selectedEditableRequest);
   const toggleSelected = (id) => setSelectedIds((previous) => {
     const next = new Set(previous);
     const key = String(id);
@@ -1419,7 +1424,7 @@ function SupplyReadingStatusMenu({ tableMenuRef, tableMenuOpen, setTableMenuOpen
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
       <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(false)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده شده</span></button>
       <button type="button" disabled={!selectedIds.size} onClick={() => setSelectedReadStatus(true)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"><span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span></button>
-      <button type="button" disabled={!canEditSelectedRequest} onClick={editSelectedRequest} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10" title={canEditSelectedRequest ? "ویرایش درخواست انتخاب‌شده" : "برای ویرایش، یک درخواست متعلق به خودتان را انتخاب کنید"}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش درخواست</span></button>
+      <button type="button" disabled={!canEditSelectedRequest} onClick={editSelectedRequest} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10" title={canEditSelectedRequest ? "ویرایش درخواست انتخاب‌شده" : "ویرایش فقط برای درخواست خودتان، پیش از اولین تایید مجاز است"}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش درخواست</span></button>
       <button type="button" disabled={!selectedIds.size || deletingSelected} onClick={deleteSelectedRequests} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deletingSelected ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
     </div>}
   </div>;
@@ -1813,7 +1818,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
 
               <main className="min-w-0 space-y-4">
               <div className="space-y-4">
-                {isEditing && isRequester ? (
+                {isEditing && isRequester && !hasSupplyApproval(item) ? (
                   <PreviewSection title="ویرایش درخواست تامین">
                     <SupplyRequestEditForm item={item} projects={projects} currencyTypes={currencyTypes} requestTypes={requestTypes} busy={actionBusy} error={actionError} onSave={onEdit} onCancel={() => setIsEditing(false)} />
                   </PreviewSection>
@@ -1832,18 +1837,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </div>
                 </PreviewSection>
 
-                <SupplyActionHistory
-                  requestId={item.id}
-                  requestDate={item.dateJalali || item.dateFa}
-                  userId={user?.id}
-                  actions={commercialActions}
-                  loading={commercialActionsLoading}
-                  onSelectAttachments={selectActionAttachments}
-                  onChanged={(nextItem) => {
-                    setCommercialActions(Array.isArray(nextItem?.actions) ? nextItem.actions : []);
-                    onSupplyActionsChanged?.(nextItem);
-                  }}
-                />
+                <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} onSelectAttachments={selectActionAttachments} />
 
                 {canAct ? (
                   stepKey === "project_manager" ? (
@@ -2238,66 +2232,8 @@ function historySentence(entry, item) {
   return `درخواست توسط ${actor} ${action}.`;
 }
 
-function SupplyActionHistory({ requestId, requestDate, userId, actions, loading, onSelectAttachments, onChanged }) {
+function SupplyActionHistory({ actions, loading, onSelectAttachments }) {
   const rows = Array.isArray(actions) ? actions : [];
-  const [editingId, setEditingId] = useState(null);
-  const [draft, setDraft] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
-  const startEdit = (action) => {
-    if (uploading) return;
-    setEditingId(action.id);
-    setDraft({ date: action.date || "", time: action.time || "", description: action.description || "", files: Array.isArray(action.files) ? [...action.files] : [] });
-    setError("");
-  };
-  const uploadAttachments = async (selectedFiles) => {
-    const files = Array.from(selectedFiles || []);
-    if (!files.length || uploading) return;
-    setUploading(true);
-    setError("");
-    try {
-      for (const file of files) {
-        const body = new FormData();
-        body.append("file", file);
-        const response = await fetch("/api/supply-actions/upload", {
-          method: "POST",
-          credentials: "include",
-          headers: userId != null ? { "x-user-id": String(userId) } : undefined,
-          body,
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok || !data.file) throw new Error("upload_failed");
-        setDraft((prev) => ({ ...prev, files: [...(prev.files || []), data.file] }));
-      }
-    } catch {
-      setError("بارگذاری پیوست انجام نشد. فایل‌های اضافه‌شده را بررسی و دوباره تلاش کنید.");
-    } finally {
-      setUploading(false);
-    }
-  };
-  const saveEdit = async (action) => {
-    if (!draft || saving || uploading) return;
-    setSaving(true);
-    setError("");
-    try {
-      const response = await fetch("/api/supply-actions", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...(userId != null ? { "x-user-id": String(userId) } : {}) },
-        body: JSON.stringify({ requestId, actionId: action.id, ...draft, status: action.status }),
-      });
-      if (!response.ok) throw new Error("save_failed");
-      const data = await response.json();
-      onChanged?.(data.item);
-      setEditingId(null);
-      setDraft(null);
-    } catch {
-      setError("ویرایش اقدام تامین انجام نشد.");
-    } finally {
-      setSaving(false);
-    }
-  };
   const statusLabel = (status) => ({ done: "انجام شد", canceled: "لغو شد", in_progress: "در حال اقدام" })[status] || "در حال اقدام";
   const statusClass = (status) => status === "done"
     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
@@ -2308,47 +2244,26 @@ function SupplyActionHistory({ requestId, requestDate, userId, actions, loading,
     {loading ? <div className="px-4 py-4 text-sm text-neutral-500">در حال دریافت اقدامات...</div> : rows.length === 0 ? <div className="px-4 py-4 text-sm text-neutral-500">هنوز اقدامی توسط واحد تامین ثبت نشده است.</div> : <div className="divide-y divide-black/10 dark:divide-white/10">
       {rows.map((action, index) => {
         const files = Array.isArray(action.files) ? action.files : [];
-        const editing = editingId === action.id;
-        const canEdit = action.id && Number(action.byUserId) === Number(userId);
         return <div
           key={action.id || index}
-          className="grid gap-3 px-4 py-3 text-right md:grid-cols-[150px_minmax(0,1fr)_auto] md:items-start"
+          role={files.length ? "button" : undefined}
+          tabIndex={files.length ? 0 : undefined}
+          onClick={files.length ? () => onSelectAttachments(index) : undefined}
+          onKeyDown={files.length ? (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onSelectAttachments(index);
+            }
+          } : undefined}
+          title={files.length ? "نمایش پیوست‌های این اقدام" : undefined}
+          className={`grid gap-3 px-4 py-3 text-right md:items-start ${files.length ? "cursor-pointer transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-neutral-500 dark:hover:bg-white/[0.05] md:grid-cols-[150px_minmax(0,1fr)_auto]" : "md:grid-cols-[150px_minmax(0,1fr)]"}`}
         >
-          {editing ? <>
-            <div className="space-y-2">
-              <JalaliPopupDatePicker value={draft.date} onChange={(date) => setDraft((prev) => ({ ...prev, date }))} minDate={requestDate} buttonClassName={`${inputCls} flex items-center justify-between`} placeholder="تاریخ اقدام" />
-              <input dir="ltr" type="time" value={draft.time} onChange={(event) => setDraft((prev) => ({ ...prev, time: event.target.value }))} className={inputCls} aria-label="ساعت اقدام" />
-              <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
-            </div>
-            <div>
-              <textarea value={draft.description} onChange={(event) => setDraft((prev) => ({ ...prev, description: event.target.value }))} className={`${inputCls} min-h-24 py-2`} placeholder="شرح اقدام/توضیح" />
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <label className="cursor-pointer rounded-lg border border-black/10 px-3 py-2 text-xs transition hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">
-                  {uploading ? "در حال بارگذاری..." : "افزودن پیوست"}
-                  <input type="file" multiple disabled={uploading || saving} className="sr-only" onChange={(event) => { uploadAttachments(event.target.files); event.target.value = ""; }} />
-                </label>
-                {(draft.files || []).map((file, fileIndex) => <span key={`${file.id || file.url || file.name}-${fileIndex}`} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
-                  <a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</a>
-                  <button type="button" onClick={() => setDraft((prev) => ({ ...prev, files: prev.files.filter((_, index) => index !== fileIndex) }))} disabled={uploading || saving} className="px-1 text-red-600 disabled:opacity-50" title="حذف پیوست" aria-label={`حذف پیوست ${file.name || fileIndex + 1}`}>×</button>
-                </span>)}
-              </div>
-              {error && <div className="mt-1 text-xs text-red-600">{error}</div>}
-            </div>
-            <div className="flex gap-2 md:justify-end">
-              <button type="button" onClick={() => saveEdit(action)} disabled={saving || uploading} className="h-9 rounded-lg bg-black px-3 text-xs text-white disabled:opacity-50 dark:bg-white dark:text-black">{saving ? "در حال ذخیره..." : "ذخیره"}</button>
-              <button type="button" onClick={() => { setEditingId(null); setDraft(null); setError(""); }} disabled={saving || uploading} className="h-9 rounded-lg border border-black/10 px-3 text-xs dark:border-white/10">انصراف</button>
-            </div>
-          </> : <>
           <div className="flex flex-col items-start gap-2">
             <div className="whitespace-nowrap text-xs text-neutral-500">{toFaDigits(String(action.date || "—").replaceAll("-", "/"))}{action.time ? ` · ${toFaDigits(action.time)}` : ""}</div>
             <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusClass(action.status)}`}>{statusLabel(action.status)}</span>
           </div>
           <div className="min-w-0 whitespace-pre-wrap break-words text-sm leading-6 text-neutral-700 dark:text-neutral-200">{action.description || "بدون توضیح"}</div>
-          <div className="flex flex-wrap items-start gap-2 md:justify-end">
-            {files.length > 0 && <button type="button" onClick={() => onSelectAttachments(index)} className="flex max-w-[180px] flex-wrap gap-1.5 text-right" title="نمایش پیوست‌های این اقدام">{files.map((file, fileIndex) => <span key={file.id || file.serverId || fileIndex} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</span>)}</button>}
-            {canEdit && <button type="button" onClick={() => startEdit(action)} disabled={uploading} className="rounded-lg border border-black/10 px-3 py-1 text-xs transition hover:bg-black/5 disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/10">ویرایش</button>}
-          </div>
-          </>}
+          {files.length > 0 && <div className="flex max-w-[180px] flex-wrap gap-1.5 md:justify-end">{files.map((file, fileIndex) => <span key={file.id || file.serverId || fileIndex} className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">{file.name || `فایل ${toFaDigits(fileIndex + 1)}`}</span>)}</div>}
         </div>;
       })}
     </div>}
