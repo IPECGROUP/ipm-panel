@@ -53,13 +53,7 @@ const IcLiquidity = () => <NavIcon src="/images/icons/modiriat-nagdinegi.svg" />
 const IcCashForecast = () => <NavIcon src="/images/icons/pishbini-naghdi.svg" />;
 const IcSupply = () => <NavIcon src="/images/icons/modirat-taminposhtibami.svg" />;
 const IcSupplyRequest = () => <NavIcon src="/images/icons/darkhast-tamin.svg" />;
-// This source icon has a much larger filled surface than the rest of the set.
-// Lowering its opacity gives it the same apparent visual weight in the sidebar.
-const IcEquipmentManagement = () => (
-  <span className="opacity-[0.72]">
-    <NavIcon src="/images/icons/modiriat-taghizat.svg" />
-  </span>
-);
+const IcEquipmentManagement = () => <NavIcon src="/images/icons/tamirat.svg" />;
 const IcExecutiveOperations = () => <NavIcon src="/images/icons/modiriat-amaliat-egraei.svg" />;
 
 function RightNav() {
@@ -344,7 +338,6 @@ function RightNav() {
           items: [
             { to: "/equipment/identity", label: "شناسنامه تجهیزات", hint: "ثبت و مدیریت شناسنامه تجهیزات", icon: <NavIcon src="/images/icons/shenasnameh-taghizat.svg" /> },
             { to: "/equipment/service-maintenance", label: "سرویس و نگهداری", hint: "مدیریت سرویس و نگهداری تجهیزات", icon: <NavIcon src="/images/icons/service.svg" /> },
-            { to: "/equipment/repair-rebuild", label: "تعمیرات و بازسازی", hint: "مدیریت تعمیرات و بازسازی تجهیزات", icon: <NavIcon src="/images/icons/tamirat.svg" /> },
           ],
         },
       ],
