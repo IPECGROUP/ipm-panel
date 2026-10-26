@@ -17,6 +17,7 @@ function mapError(data, fallback = "request_failed") {
   if (e === "equipment_not_found") return "تجهیز انتخاب‌شده پیدا نشد";
   if (e === "equipment_service_maintenance_get_failed") return "دریافت اطلاعات سرویس و نگهداری انجام نشد";
   if (e === "equipment_service_maintenance_post_failed") return "ثبت سرویس و نگهداری انجام نشد";
+  if (e === "invalid_delivery_receipt_type") return "نوع مرسوله انتخاب‌شده دیگر معتبر نیست. صفحه را دوباره بارگذاری کنید.";
 
   return String(e);
 }

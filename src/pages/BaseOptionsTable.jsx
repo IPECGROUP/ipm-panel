@@ -6,7 +6,7 @@ import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 const inputClass = "h-10 w-full rounded-2xl border border-black/10 bg-white px-3 text-right text-sm outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5";
 const checkboxClass = "h-4 w-4 rounded border-neutral-400 accent-black dark:accent-neutral-200";
 
-export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoint, relatedFieldLabel = "دسته‌بندی" }) {
+export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoint, relatedFieldLabel = "دسته‌بندی", maxTitleLength }) {
   const [items, setItems] = useState([]);
   const [relatedItems, setRelatedItems] = useState([]);
   const [newTitle, setNewTitle] = useState("");
@@ -128,7 +128,7 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
           <option value="">{relatedFieldLabel} را انتخاب کنید</option>
           {relatedItems.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
         </select>}
-        <input className={inputClass} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder={`${title}...`} />
+        <input className={inputClass} value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder={`${title}...`} maxLength={maxTitleLength} />
         <button type="submit" disabled={busy} className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100" aria-label={`افزودن ${title}`}><img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5" /></button>
       </form>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
@@ -149,7 +149,7 @@ export default function BaseOptionsTable({ title, endpoint, relatedOptionsEndpoi
                   <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className={checkboxClass} checked={selectedIds.has(String(item.id))} onChange={() => toggle(item.id)} /></td>
                   <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{startIndex + index + 1}</td>
                   {relatedOptionsEndpoint && <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <select className="h-7 w-full rounded-xl border border-black/15 bg-white px-2 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingRelatedId} onChange={(event) => setEditingRelatedId(event.target.value)}>{relatedItems.map((related) => <option key={related.id} value={related.id}>{related.title}</option>)}</select> : item.categoryTitle || "—"}</td>}
-                  <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input autoFocus className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") saveEdit(); if (event.key === "Escape") setEditingId(null); }} /> : item.title}</td>
+                  <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{editing ? <input autoFocus className="h-7 w-full rounded-xl border border-black/15 bg-white px-3 text-center outline-none dark:border-white/15 dark:bg-white/5" value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") saveEdit(); if (event.key === "Escape") setEditingId(null); }} maxLength={maxTitleLength} /> : item.title}</td>
                   <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{editing && <div className="flex items-center justify-start gap-1" dir="ltr"><RowActionIconBtn action="cancel" onClick={() => setEditingId(null)} size={30} iconSize={14} /><RowActionIconBtn action="save" onClick={saveEdit} disabled={busy} size={30} iconSize={15} /></div>}</td>
                 </tr>;
               })}

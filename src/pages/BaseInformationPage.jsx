@@ -25,6 +25,7 @@ const knowledgeTabs = [
 
 export default function BaseInformationPage() {
   const [activeTab, setActiveTab] = useState("documents");
+  const [activeDocumentTab, setActiveDocumentTab] = useState("classes");
   const [activeProjectTab, setActiveProjectTab] = useState("worksheet");
   const [activeKnowledgeTab, setActiveKnowledgeTab] = useState("trainingResources");
 
@@ -62,7 +63,12 @@ export default function BaseInformationPage() {
         </div>
 
         <section role="tabpanel" className="rounded-2xl border border-black/10 p-4 dark:border-white/10">
-          {activeTab === "documents" ? <BaseOptionsTable title="کلاس سند" endpoint="/api/base/document-classes" /> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "projects" ? (
+          {activeTab === "documents" ? <div>
+            <div className="mb-5 flex w-fit max-w-full rounded-2xl border border-black/10 bg-neutral-50 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="بخش‌های مدیریت اسناد">
+              {[["classes", "کلاس سند"], ["receipts", "رسید های تحویل"]].map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={activeDocumentTab === id} onClick={() => setActiveDocumentTab(id)} className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${activeDocumentTab === id ? "bg-white text-black shadow-sm dark:bg-neutral-900 dark:text-white" : "text-neutral-600 hover:text-black dark:text-neutral-300 dark:hover:text-white"}`}>{label}</button>)}
+            </div>
+            {activeDocumentTab === "classes" ? <BaseOptionsTable key="classes" title="کلاس سند" endpoint="/api/base/document-classes" /> : <BaseOptionsTable key="receipts" title="نوع مرسوله" endpoint="/api/base/delivery-receipt-types" maxTitleLength={100} />}
+          </div> : activeTab === "contracts" ? <ContractManagementSection /> : activeTab === "projects" ? (
             <div>
               <div className="mb-5 flex w-fit max-w-full rounded-2xl border border-black/10 bg-neutral-100 p-1 dark:border-white/10 dark:bg-white/5" role="tablist" aria-label="بخش‌های مدیریت پروژه‌ها">
                 <button
