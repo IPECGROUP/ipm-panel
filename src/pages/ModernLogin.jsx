@@ -73,8 +73,7 @@ export default function ModernLogin({ onBack, testMode = false }) {
         </header>
 
         <section className="modern-login__panel" aria-labelledby="modern-login-title">
-          <h1 id="modern-login-title">ورود به سامانه</h1>
-          <p className="modern-login__subtitle">ورود</p>
+          <h1 id="modern-login-title">ورود</h1>
 
           <form onSubmit={submit} className="modern-login__form">
             <label className="modern-login__field">
@@ -117,14 +116,14 @@ export default function ModernLogin({ onBack, testMode = false }) {
             </label>
 
             {testMode && <div className="modern-login__captcha">
-              {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => setCaptchaToken(token || "")} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setError("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
+              {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => { setCaptchaToken(token || ""); if (token) setError(""); }} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setError("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
             </div>}
             {success && <p className="modern-login__success" role="status">{"\u0648\u0631\u0648\u062f \u062a\u0633\u062a\u06cc \u0648 \u0627\u0639\u062a\u0628\u0627\u0631\u0633\u0646\u062c\u06cc \u06a9\u067e\u0686\u0627 \u0645\u0648\u0641\u0642 \u0628\u0648\u062f."}</p>}
 
             {error && <p className="modern-login__error" role="alert">{error}</p>}
 
             <button className="modern-login__submit" type="submit" disabled={submitting}>
-              {submitting ? "در حال ورود…" : "ورود به سامانه"}
+              {submitting ? "در حال ورود…" : "ورود"}
               {!submitting && <ArrowLeft aria-hidden="true" size={25} />}
             </button>
           </form>
