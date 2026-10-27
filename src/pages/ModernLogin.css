@@ -98,7 +98,7 @@
 .modern-login__field input { min-width: 0; flex: 1; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 15px; }
 .modern-login__field input::placeholder { color: #c3d7e9; opacity: 1; }
 .modern-login__visibility { flex: none; display: grid; place-items: center; padding: 6px; border: 0; color: #f8f7f2; background: transparent; cursor: pointer; }
-.modern-login__captcha { min-height: 42px; display: grid; place-items: center; padding: 8px; border: 1px solid rgba(188, 225, 249, .4); border-radius: 12px; background: rgba(13, 70, 110, .07); box-shadow: inset 0 1px 1px rgba(255, 255, 255, .21); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); color: #d6e6f1; font-size: 10px; line-height: 1.6; }
+.modern-login__captcha { min-height: 42px; display: grid; place-items: center; color: #d6e6f1; font-size: 10px; line-height: 1.6; }
 .modern-login__error { margin: 0; padding: 9px 12px; background: rgba(87, 18, 18, .65); border-radius: 9px; color: #fff; font-size: 14px; }
 .modern-login__submit { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 50px; margin-top: 5px; border: 1px solid #ffad54; border-radius: 999px; color: white; background: linear-gradient(#fa922c, #eb7410); box-shadow: 0 9px 17px rgba(22, 47, 67, .22), inset 0 1px 2px rgba(255, 255, 255, .33); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
 .modern-login__submit:hover:not(:disabled) { background: #f48120; }
