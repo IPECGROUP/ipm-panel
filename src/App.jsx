@@ -4,6 +4,7 @@ import Shell from "./components/layout/Shell.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import PaymentRequestPage from "./pages/PaymentRequestPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import ModernLogin from "./pages/ModernLogin.jsx";
 import { useAuth } from "./components/AuthProvider.jsx";
 import { canOpenPage } from "./utils/pageAccess.js";
 import ContractInformation from "./pages/ContractInformation.jsx";
@@ -90,6 +91,7 @@ export default function App() {
     <Routes>
       {/* صفحه لاگین خارج از شِل */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/login-test" element={<ModernLogin testMode />} />
 
       {/* بقیهٔ اپ داخل شِل + محافظ لاگین */}
       <Route

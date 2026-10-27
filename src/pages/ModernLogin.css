@@ -34,8 +34,8 @@
 
 .modern-login__content { position: relative; width: min(100%, 400px); }
 .modern-login__brand { text-align: center; margin: 0 auto 16px; }
-.modern-login__mark { position: relative; width: 202px; height: 61px; margin: 0 auto 6px; overflow: hidden; }
-.modern-login__mark img { position: absolute; top: -36px; left: -96px; display: block; width: 320px; max-width: none; height: auto; filter: brightness(1.8) drop-shadow(0 3px 9px rgba(0, 25, 54, .4)); }
+.modern-login__mark { position: relative; width: 202px; height: 110px; margin: 0 auto 6px; overflow: hidden; }
+.modern-login__mark img { position: absolute; left: 50%; top: 50%; display: block; width: 400%; max-width: none; height: auto; transform: translate(-38%, -43.5%); }
 .modern-login__brand h2 { margin: 0; font-size: clamp(17px, 2vw, 20px); font-weight: 700; line-height: 1.5; }
 .modern-login__brand p { margin: 1px 0 0; color: #f48120; font-size: clamp(14px, 1.7vw, 15px); font-weight: 700; }
 
@@ -118,3 +118,5 @@
   .modern-login__field input { font-size: 15px; }
   .modern-login__submit { min-height: 50px; font-size: 16px; }
 }
+
+.modern-login__success { margin: 0; padding: 9px 12px; background: rgba(12, 100, 56, .8); border-radius: 9px; color: white; font-size: 14px; }

@@ -4,6 +4,8 @@ const API_BASE = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
 function mapError(data, fallback = "request_failed") {
   const e = data?.error || data?.message || fallback;
 
+  if (e === "captcha_invalid") return "اعتبارسنجی کپچا ناموفق بود؛ دوباره تلاش کنید";
+  if (e === "captcha_unavailable") return "سرویس کپچا در دسترس نیست یا تنظیم نشده است";
   if (e === "invalid_credentials") return "نام کاربری یا رمز اشتباه است";
   if (e === "username_password_required") return "نام کاربری و رمز را وارد کنید";
   if (e === "user_has_no_password") return "برای این کاربر رمز ثبت نشده است";

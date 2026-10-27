@@ -109,11 +109,12 @@ export function AuthProvider({ children }) {
     };
   }, [user]);
 
-  const login = async (username, password) => {
+  const login = async (username, password, captchaToken) => {
     try {
       const r = await api("/auth/login", {
         method: "POST",
         body: JSON.stringify({
+          captchaToken,
           username: String(username || "").trim(),
           password: String(password || "").trim(),
         }),
