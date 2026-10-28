@@ -1,9 +1,11 @@
 // src/pages/LoginPage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { ArcaptchaWidget } from "arcaptcha-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
 import ModernLogin from "./ModernLogin.jsx";
+import { captchaSiteKeyForHostname } from "../utils/captcha.js";
 
 const APP_VERSION = "1.0.0";
 
@@ -11,6 +13,12 @@ function LegacyLogin({ onShowModern }) {
   const { login } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
+  const captchaRef = useRef(null);
+  const siteKey = captchaSiteKeyForHostname(window.location.hostname, {
+    external: import.meta.env.VITE_ARCAPTCHA_SITE_KEY,
+    internal: import.meta.env.VITE_ARCAPTCHA_SITE_KEY_INTERNAL,
+  });
+  const [captchaToken, setCaptchaToken] = useState("");
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState(""); // عمداً خالی
@@ -33,11 +41,17 @@ function LegacyLogin({ onShowModern }) {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+    if (!siteKey || !captchaToken) {
+      setErr(siteKey ? "لطفاً کپچا را تکمیل کنید." : "سرویس کپچا تنظیم نشده است.");
+      return;
+    }
     try {
-      await login(username.trim(), password.trim());
+      await login(username.trim(), password.trim(), captchaToken);
       nav(loc.state?.from?.pathname || "/", { replace: true });
     } catch (ex) {
       setErr(ex.message);
+      setCaptchaToken("");
+      captchaRef.current?.resetCaptcha();
     }
   };
 
@@ -114,6 +128,10 @@ function LegacyLogin({ onShowModern }) {
                               focus:ring-2 focus:ring-neutral-300 outline-none
                               dark:bg-neutral-800 dark:text-neutral-100 dark:placeholder-neutral-400 dark:border-neutral-700 dark:focus:ring-neutral-700"
                 />
+              </div>
+
+              <div className="flex min-h-11 items-center justify-center text-xs text-neutral-600 dark:text-white/80">
+                {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => { setCaptchaToken(token || ""); if (token) setErr(""); }} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setErr("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
               </div>
 
               {err && (

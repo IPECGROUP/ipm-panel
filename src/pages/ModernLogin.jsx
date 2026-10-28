@@ -29,7 +29,7 @@ export default function ModernLogin({ onBack, testMode = false }) {
     if (submitting) return;
     setError("");
     setSuccess(false);
-    if (testMode && (!siteKey || !captchaToken)) {
+    if (!siteKey || !captchaToken) {
       setError(siteKey ? "\u0644\u0637\u0641\u0627\u064b \u06a9\u067e\u0686\u0627 \u0631\u0627 \u062a\u06a9\u0645\u06cc\u0644 \u06a9\u0646\u06cc\u062f." : "\u0633\u0631\u0648\u06cc\u0633 \u06a9\u067e\u0686\u0627 \u062a\u0646\u0638\u06cc\u0645 \u0646\u0634\u062f\u0647 \u0627\u0633\u062a.");
       return;
     }
@@ -41,7 +41,7 @@ export default function ModernLogin({ onBack, testMode = false }) {
         setCaptchaToken("");
         captchaRef.current?.resetCaptcha();
       } else {
-        await login(username.trim(), password.trim());
+        await login(username.trim(), password.trim(), captchaToken);
         navigate(location.state?.from?.pathname || "/", { replace: true });
       }
     } catch (cause) {
@@ -119,9 +119,9 @@ export default function ModernLogin({ onBack, testMode = false }) {
               </button>
             </label>
 
-            {testMode && <div className="modern-login__captcha">
+            <div className="modern-login__captcha">
               {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => { setCaptchaToken(token || ""); if (token) setError(""); }} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setError("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
-            </div>}
+            </div>
             {success && <p className="modern-login__success" role="status">{"\u0648\u0631\u0648\u062f \u062a\u0633\u062a\u06cc \u0648 \u0627\u0639\u062a\u0628\u0627\u0631\u0633\u0646\u062c\u06cc \u06a9\u067e\u0686\u0627 \u0645\u0648\u0641\u0642 \u0628\u0648\u062f."}</p>}
 
             {error && <p className="modern-login__error" role="alert">{error}</p>}
