@@ -438,7 +438,7 @@ export default function PettyCashPage() {
   useEffect(() => { if (selectAllReportsRef.current) selectAllReportsRef.current.indeterminate = pageReports.some((report) => selectedReportIds.has(String(report.id))) && !allPageReportsSelected; }, [pageReports, selectedReportIds, allPageReportsSelected]);
   const toggleAllReports = () => setSelectedReportIds((previous) => { const next = new Set(previous); pageReports.forEach((report) => { if (allPageReportsSelected) next.delete(String(report.id)); else next.add(String(report.id)); }); return next; });
   const deleteSelectedReports = async () => {
-    if (!selectedReports.length || deletingReports || !window.confirm(`??? ${toFa(selectedReports.length)} ????? ?????????? ??? ???? ??? ?????? ???? ?????? ????.`)) return;
+    if (!selectedReports.length || deletingReports || !window.confirm(`آیا ${toFa(selectedReports.length)} گزارش انتخاب‌شده حذف شود؟ این عملیات قابل بازگشت نیست.`)) return;
     setDeletingReports(true); setReportError("");
     try {
       const results = await Promise.allSettled(selectedReports.map(async (report) => {
@@ -448,7 +448,7 @@ export default function PettyCashPage() {
       const deleted = new Set(results.filter((result) => result.status === "fulfilled").map((result) => String(result.value)));
       setReports((previous) => previous.filter((report) => !deleted.has(String(report.id))));
       setSelectedReportIds((previous) => new Set([...previous].filter((id) => !deleted.has(id))));
-      if (deleted.size !== selectedReports.length) setReportError("???? ???????? ??? ?????? ?????? ?? ????? ????? ?? ????? ????.");
+      if (deleted.size !== selectedReports.length) setReportError("برخی گزارش‌ها حذف نشدند؛ دسترسی یا وضعیت گزارش را بررسی کنید.");
       loadExpenseAccess(); window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
     } finally { setDeletingReports(false); }
   };
@@ -559,18 +559,22 @@ export default function PettyCashPage() {
           {reportError && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
-              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1200px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
-                <colgroup><col className="w-12" /><col className="w-6" /><col className="w-16" /><col className="w-28" /><col className="w-32" /><col className="w-44" /><col className="w-52" /><col className="w-48" /><col className="w-44" /><col className="w-52" /></colgroup>
+              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1150px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
+                <colgroup><col style={{ width: 40 }} /><col style={{ width: 20 }} /><col style={{ width: 50 }} /><col style={{ width: 130 }} /><col style={{ width: 100 }} /><col style={{ width: 140 }} /><col style={{ width: 170 }} /><col style={{ width: 190 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
                 <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
                   <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
-                    <th scope="col" className="w-16 px-4 text-center font-bold">ردیف</th>
+                    <th scope="col" className="px-2"><input ref={selectAllReportsRef} type="checkbox" checked={allPageReportsSelected} onChange={toggleAllReports} aria-label="انتخاب همه گزارش‌های این صفحه" className="h-4 w-4 accent-black" /></th>
+                    <th scope="col" aria-label="خوانده‌نشده" />
+                    <th scope="col" className="px-2 text-center font-bold">ردیف</th>
                     <th scope="col" className="px-4 text-center font-bold">شماره گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">تاریخ</th>
                     <th scope="col" className="px-4 text-center font-bold">تنخواه‌گیرنده</th>
                     <th scope="col" className="px-4 text-center font-bold">نام گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">پروژه</th>
                     <th scope="col" className="px-4 text-center font-bold">مبلغ</th>
-                    <th scope="col" className="px-4 text-center font-bold">وضعیت</th>
+                    <th scope="col" className="px-2 text-center font-bold"><span>وضعیت</span><PettyCashTableMenu selectedCount={selectedReportIds.size} canEdit={Boolean(editableReport)} deleting={deletingReports}
+                      onRead={(unread) => { updateReadState([...selectedReportIds], unread); setSelectedReportIds(new Set()); }}
+                      onEdit={() => { if (!editableReport) return; openReport(editableReport); setEditingReport(editableReport); setSelectedReportIds(new Set()); }} onDelete={deleteSelectedReports} /></th>
                   </tr>
                 </thead>
                 <tbody className="text-[13px] [&>tr]:h-11">
@@ -580,8 +584,8 @@ export default function PettyCashPage() {
                       onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openReport(report); } }}
                       aria-label={`مشاهده گزارش ${report.reportName}`}
                       className="cursor-pointer border-t border-neutral-200 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
-                      <td className="px-2"><input type="checkbox" className="h-4 w-4 accent-black" checked={selectedReportIds.has(String(report.id))} onClick={(event) => event.stopPropagation()} onChange={() => setSelectedReportIds((previous) => { const next = new Set(previous), id = String(report.id); if (next.has(id)) next.delete(id); else next.add(id); return next; })} aria-label={`?????? ????? ${report.reportName}`} /></td>
-                      <td>{isReportUnread(report) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100" title="???????????" aria-label="???????????" />}</td>
+                      <td className="px-2"><input type="checkbox" className="h-4 w-4 accent-black" checked={selectedReportIds.has(String(report.id))} onClick={(event) => event.stopPropagation()} onChange={() => setSelectedReportIds((previous) => { const next = new Set(previous), id = String(report.id); if (next.has(id)) next.delete(id); else next.add(id); return next; })} aria-label={`انتخاب گزارش ${report.reportName}`} /></td>
+                      <td>{isReportUnread(report) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100" title="خوانده‌نشده" aria-label="خوانده‌نشده" />}</td>
                       <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
                       <td className="px-4 py-2">{report.reportNumber ? toFa(report.reportNumber) : "—"}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
@@ -764,13 +768,13 @@ function PettyCashTableMenu({ selectedCount, canEdit, deleting, onRead, onEdit, 
   }, [position]);
   const run = (action) => { setPosition(null); action(); };
   const buttonClass = "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed";
-  return <span className="inline-block align-middle"><button ref={trigger} type="button" title="?????? ????? ??????" aria-label="?????? ????? ??????" aria-expanded={Boolean(position)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-black/10" onClick={() => { const rect = trigger.current.getBoundingClientRect(); setPosition(position ? null : { left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 }); }}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
+  return <span className="inline-block align-middle"><button ref={trigger} type="button" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={Boolean(position)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-black/10" onClick={() => { const rect = trigger.current.getBoundingClientRect(); setPosition(position ? null : { left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 }); }}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
     {position && createPortal(<div ref={menu} dir="rtl" className="fixed z-[100] w-60 rounded-2xl border border-black/10 bg-white p-2 text-neutral-900 shadow-xl" style={position}>
-      <div className="px-3 py-2 text-xs text-neutral-500">{selectedCount ? `${toFa(selectedCount)} ???? ?????? ???` : "????? ????? ??????? ?? ?????? ????"}</div>
-      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(false))}>???????? ???</button>
-      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(true))}>???????? ????</button>
-      <button type="button" className={buttonClass} disabled={!canEdit} onClick={() => run(onEdit)}>???????? ?????</button>
-      <button type="button" className={`${buttonClass} text-red-700`} disabled={!selectedCount || deleting} onClick={() => run(onDelete)}>??{deleting ? "?? ??? ???..." : "??? ????? ??????????"}</button>
+      <div className="px-3 py-2 text-xs text-neutral-500">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(false))}>✓　خوانده شده</button>
+      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(true))}>●　خوانده نشده</button>
+      <button type="button" className={buttonClass} disabled={!canEdit} onClick={() => run(onEdit)}>✎　ویرایش گزارش</button>
+      <button type="button" className={`${buttonClass} text-red-700`} disabled={!selectedCount || deleting} onClick={() => run(onDelete)}>×　{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</button>
     </div>, document.body)}</span>;
 }
 
@@ -830,7 +834,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   }, [managerOpen, user?.id]);
 
   const deleteReport = async () => {
-    if (!report.canDelete || saving || !window.confirm(`????? ?${report.reportName}? ? ??? ???????? ?? ??? ????`)) return;
+    if (!report.canDelete || saving || !window.confirm(`گزارش «${report.reportName}» و همه ردیف‌های آن حذف شود؟`)) return;
     setSaving(true); onBusyChange(true); setError("");
     try {
       const response = await fetch("/api/petty-cash-expenses", { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(user?.id || "") }, body: JSON.stringify({ action: "delete_report", reportId: report.id, expectedVersion: report.version }) });
@@ -838,7 +842,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       if (!response.ok) throw new Error(data.error);
       onReviewed();
       window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
-    } catch (reason) { setError(reason.message === "workflow_changed" ? "????? ????? ???? ???? ?? ?? ?????? ??? ????." : "??? ????? ????? ???? ?????? ???? ????."); }
+    } catch (reason) { setError(reason.message === "workflow_changed" ? "گزارش تغییر کرده است؛ آن را دوباره باز کنید." : "حذف گزارش انجام نشد؛ دوباره تلاش کنید."); }
     finally { setSaving(false); onBusyChange(false); }
   };
 
@@ -996,7 +1000,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       </div>
     </div>
      {(report.canDelete || report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
-       {report.canDelete && <button type="button" disabled={saving} onClick={deleteReport} className={`${actionClass} border-red-200 bg-red-50 text-red-700`}>??? ???? ?????</button>}
+       {report.canDelete && <button type="button" disabled={saving} onClick={deleteReport} className={`${actionClass} border-red-200 bg-red-50 text-red-700`}>حذف کامل گزارش</button>}
        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
        {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"}</button></div>}
     </footer>}
