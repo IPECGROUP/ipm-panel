@@ -1,6 +1,7 @@
 /* eslint-disable no-empty */
 // src/pages/LettersPage.jsx
 import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import { Plus } from "lucide-react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider";
@@ -4919,10 +4920,10 @@ useEffect(() => {
           <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-                <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+                <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold md:text-lg">دبیرخانه</span>
+                <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">دبیرخانه</span>
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت اسناد</span>
               </span>
             </div>
@@ -4934,16 +4935,16 @@ useEffect(() => {
               }}
               className={
                 "h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 " +
-                (theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
+                (!formOpen ? "bg-[#f48120] ring-[#f48120] hover:bg-[#d97018]" : theme === "dark" ? "ring-neutral-800 hover:bg-white/10" : "ring-black/15 hover:bg-black/5")
               }
               title={formOpen ? "بستن" : "افزودن"}
               aria-label={formOpen ? "بستن" : "افزودن"}
             >
-              <img
+              {!formOpen ? <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} /> : <img
                 src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
                 alt=""
                 className="w-5 h-5 dark:invert"
-              />
+              />}
             </button>
           </div>
 
@@ -6349,8 +6350,8 @@ aria-invalid={fieldHasError(formKind, "subject")}
 </colgroup>
 
   <thead>
-    <tr className={theadRowCls}>
-      <th className="w-12 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800">
+    <tr className={`${theadRowCls} !text-white`}>
+      <th className="w-12 !py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-40 bg-[#184a6b]">
         <input
           type="checkbox"
           className="w-4 h-4 accent-black dark:accent-neutral-200"
@@ -6364,7 +6365,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
         />
       </th>
 
-      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-[#184a6b]">
         <button
           type="button"
           onClick={() => {
@@ -6379,12 +6380,12 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <img
             src={letterNoSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"}
             alt=""
-            className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")}
+            className="w-4 h-4 invert"
           />
         </button>
       </th>
 
-      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-[#184a6b]">
         <button
           type="button"
           onClick={() => {
@@ -6399,24 +6400,24 @@ aria-invalid={fieldHasError(formKind, "subject")}
           <img
             src={letterDateSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"}
             alt=""
-            className={"w-4 h-4 " + (theme === "dark" ? "invert" : "")}
+            className="w-4 h-4 invert"
           />
         </button>
       </th>
 
-      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-[#184a6b]">
         نوع سند
       </th>
 
-      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-[#184a6b]">
         موضوع
       </th>
 
-      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-neutral-200 dark:bg-neutral-800">
+      <th className="!py-2 !text-[14px] md:!text-[15px] !font-semibold sticky top-0 z-30 bg-[#184a6b]">
         شرکت/سازمان
       </th>
 
-     <th className="w-12 !p-0 sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800">
+     <th className="w-12 !p-0 sticky top-0 z-40 bg-[#184a6b]">
   <div ref={tableMenuRef} className="relative flex items-center justify-center">
     <button
       type="button"
@@ -6426,7 +6427,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
       aria-label="مدیریت وضعیت خواندن"
       aria-expanded={tableMenuOpen}
     >
-      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} invert`} />
     </button>
 
     {tableMenuOpen && tableMenuPosition ? createPortal(
@@ -6652,12 +6653,8 @@ const rowBg = normalRowBg;
                             className={
                               "min-w-10 px-3 text-sm font-semibold transition " +
                               (active
-                                ? theme === "dark"
-                                  ? "bg-white text-neutral-900"
-                                  : "bg-neutral-900 text-white"
-                                : theme === "dark"
-                                ? "text-white/75 hover:bg-white/10"
-                                : "text-neutral-700 hover:bg-black/[0.04]")
+                                ? "bg-[#184a6b] text-white"
+                                : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200")
                             }
                             aria-pressed={active}
                           >
