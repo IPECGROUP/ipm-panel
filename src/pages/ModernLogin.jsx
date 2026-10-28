@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { ArcaptchaWidget } from "arcaptcha-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import { api } from "../utils/api.js";
 import { useAuth } from "../components/AuthProvider.jsx";
 import "./ModernLogin.css";
@@ -128,10 +128,11 @@ export default function ModernLogin({ onBack, testMode = false }) {
 
             <button className="modern-login__submit" type="submit" disabled={submitting}>
               {submitting ? "در حال ورود…" : "ورود"}
-              {!submitting && <ArrowLeft aria-hidden="true" size={25} />}
             </button>
           </form>
+          <p className="modern-login__help">اگر حساب ندارید، با ادمین تماس بگیرید.</p>
         </section>
+        <p className="modern-login__version">نسخه: ۲</p>
       </div>
     </main>
   );
