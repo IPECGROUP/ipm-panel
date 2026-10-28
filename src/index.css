@@ -280,3 +280,16 @@ td {
 @media (prefers-reduced-motion: reduce) {
   .notification-bell, .notification-ring, .notification-count, .notification-popover, .table-menu-popover { animation: none; }
 }
+.ipm-nav-background {
+  background-image: linear-gradient(rgba(4, 24, 46, .48), rgba(3, 22, 42, .6)), url('/images/menu%20background.webp');
+  background-size: cover;
+  background-position: center;
+}
+
+.ipm-nav-glass {
+  border: 1px solid rgba(220, 239, 255, .18);
+  background: linear-gradient(145deg, rgba(49, 102, 139, .88), rgba(12, 45, 73, .91));
+  box-shadow: 0 16px 36px rgba(3, 18, 33, .25), inset 0 1px 0 rgba(255, 255, 255, .14);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  backdrop-filter: blur(18px) saturate(125%);
+}
