@@ -281,7 +281,7 @@ export default function Shell() {
               <img
                 src="/images/header%20logo.webp"
                 alt="لوگوی شرکت ایده پویان انرژی"
-                className="h-full w-full object-contain"
+                className="h-full w-full object-contain object-right"
               />
             </span>
           </Link>

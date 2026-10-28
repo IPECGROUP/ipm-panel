@@ -7,7 +7,7 @@ import { useAuth } from "../components/AuthProvider.jsx";
 import "./ModernLogin.css";
 import { captchaSiteKeyForHostname } from "../utils/captcha.js";
 
-export default function ModernLogin({ onBack, testMode = false }) {
+export default function ModernLogin({ testMode = false }) {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,10 +67,6 @@ export default function ModernLogin({ onBack, testMode = false }) {
           </filter>
         </defs>
       </svg>
-      <button className="modern-login__back" type="button" onClick={onBack || (() => navigate("/login"))}>
-        بازگشت به طراحی قبلی
-      </button>
-
       <div className="modern-login__content">
         <header className="modern-login__brand">
           <div className="modern-login__mark">

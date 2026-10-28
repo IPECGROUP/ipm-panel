@@ -34,7 +34,7 @@
 
 .modern-login__content { position: relative; width: min(100%, 400px); }
 .modern-login__brand { text-align: center; margin: 0 auto 16px; }
-.modern-login__mark { position: relative; width: 194px; height: 106px; margin: -5px auto 8px; overflow: hidden; }
+.modern-login__mark { position: relative; width: 194px; height: 106px; margin: -5px auto 8px; overflow: hidden; transform: translateY(-12px); }
 .modern-login__mark img { position: absolute; left: 50%; top: 50%; display: block; width: 212%; max-width: none; height: auto; transform: translate(-50%, -49.4%); }
 .modern-login__brand h2 { margin: 0; font-size: clamp(19px, 2.2vw, 23px); font-weight: 700; line-height: 1.5; }
 .modern-login__brand p { margin: 1px 0 0; color: #f48120; font-size: clamp(14px, 1.7vw, 15px); font-weight: 700; }
