@@ -132,7 +132,7 @@ export default function ModernLogin({ onBack, testMode = false }) {
           </form>
           <p className="modern-login__help">اگر حساب ندارید، با ادمین تماس بگیرید.</p>
         </section>
-        <p className="modern-login__version">نسخه: ۲</p>
+        <p className="modern-login__version">نسخه: <span dir="ltr">v2.0.0</span></p>
       </div>
     </main>
   );
