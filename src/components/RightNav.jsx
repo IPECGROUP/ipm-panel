@@ -466,7 +466,7 @@ function RightNav() {
         </button>
 
         {sectionOpen && (
-          <div className="mr-3 space-y-1 border-r border-white/10 pr-3">
+          <div className="mr-3 space-y-1 rounded-xl border border-white/10 bg-black/10 p-1.5">
             {item.items.map((child) => (
               <LinkBtn
                 key={child.to}
