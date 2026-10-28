@@ -12,6 +12,7 @@ export default function ModernLogin({ onBack, testMode = false }) {
   const navigate = useNavigate();
   const location = useLocation();
   const captchaRef = useRef(null);
+  const submittingRef = useRef(false);
   const siteKey = captchaSiteKeyForHostname(window.location.hostname, {
     external: import.meta.env.VITE_ARCAPTCHA_SITE_KEY,
     internal: import.meta.env.VITE_ARCAPTCHA_SITE_KEY_INTERNAL,
@@ -26,13 +27,14 @@ export default function ModernLogin({ onBack, testMode = false }) {
 
   async function submit(event) {
     event.preventDefault();
-    if (submitting) return;
+    if (submittingRef.current) return;
     setError("");
     setSuccess(false);
     if (!siteKey || !captchaToken) {
       setError(siteKey ? "\u0644\u0637\u0641\u0627\u064b \u06a9\u067e\u0686\u0627 \u0631\u0627 \u062a\u06a9\u0645\u06cc\u0644 \u06a9\u0646\u06cc\u062f." : "\u0633\u0631\u0648\u06cc\u0633 \u06a9\u067e\u0686\u0627 \u062a\u0646\u0638\u06cc\u0645 \u0646\u0634\u062f\u0647 \u0627\u0633\u062a.");
       return;
     }
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       if (testMode) {
@@ -49,6 +51,7 @@ export default function ModernLogin({ onBack, testMode = false }) {
       captchaRef.current?.resetCaptcha();
       setError(cause?.message || "ورود انجام نشد. دوباره تلاش کنید.");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }

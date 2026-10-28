@@ -14,6 +14,7 @@ function LegacyLogin({ onShowModern }) {
   const nav = useNavigate();
   const loc = useLocation();
   const captchaRef = useRef(null);
+  const submittingRef = useRef(false);
   const siteKey = captchaSiteKeyForHostname(window.location.hostname, {
     external: import.meta.env.VITE_ARCAPTCHA_SITE_KEY,
     internal: import.meta.env.VITE_ARCAPTCHA_SITE_KEY_INTERNAL,
@@ -23,6 +24,7 @@ function LegacyLogin({ onShowModern }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState(""); // عمداً خالی
   const [err, setErr] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   // ✅ تصاویر جدید اسلایدر (سمت چپ)
   const slides = ["/images/back1.webp", "/images/back2.webp"];
@@ -40,11 +42,14 @@ function LegacyLogin({ onShowModern }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     setErr("");
     if (!siteKey || !captchaToken) {
       setErr(siteKey ? "لطفاً کپچا را تکمیل کنید." : "سرویس کپچا تنظیم نشده است.");
       return;
     }
+    submittingRef.current = true;
+    setSubmitting(true);
     try {
       await login(username.trim(), password.trim(), captchaToken);
       nav(loc.state?.from?.pathname || "/", { replace: true });
@@ -52,6 +57,9 @@ function LegacyLogin({ onShowModern }) {
       setErr(ex.message);
       setCaptchaToken("");
       captchaRef.current?.resetCaptcha();
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
@@ -142,6 +150,7 @@ function LegacyLogin({ onShowModern }) {
 
               <button
                 type="submit"
+                disabled={submitting}
                 className="w-full h-10 rounded-2xl bg-neutral-900 text-white hover:bg-neutral-900 focus:bg-neutral-900 disabled:opacity-50
                             dark:bg-white dark:text-zinc-900 dark:hover:bg-white"
               >
