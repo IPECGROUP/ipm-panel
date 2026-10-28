@@ -80,6 +80,15 @@ export default function BaseInformationPage() {
                 >
                   کاربرگ مالی
                 </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeProjectTab === "sampleStructure"}
+                  onClick={() => setActiveProjectTab("sampleStructure")}
+                  className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${activeProjectTab === "sampleStructure" ? "bg-white text-black shadow-sm dark:bg-white dark:text-black" : "text-neutral-600 hover:text-black dark:text-neutral-300 dark:hover:text-white"}`}
+                >
+                  ساختار نمونه
+                </button>
               </div>
               {activeProjectTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : null}
             </div>
