@@ -440,6 +440,29 @@ function RightNav() {
 
   const renderIcon = (icon, active) => <span className={iconShellCls(active)}>{icon}</span>;
 
+  const renderExpandedSection = (item) => (
+    <div key={item.key} className="space-y-1">
+      <button type="button" className={desktopItemCls(item.active)} onClick={() => toggle(item.key)} aria-expanded={!!open[item.key]}>
+        {renderIcon(item.icon, item.active)}
+        <span className="min-w-0 flex-1 truncate py-0.5 text-right leading-6">{item.label}</span>
+        <ChevronLeft className={`h-4 w-4 shrink-0 text-white/45 transition-transform ${open[item.key] ? "-rotate-90 text-[#DB843D]" : ""}`} strokeWidth={2.2} />
+      </button>
+      {open[item.key] && (
+        <div className="ipm-nav-glass mr-3 space-y-1 rounded-xl p-1.5">
+          {item.items.map((child) => (
+            <LinkBtn key={child.to} to={child.to} onClick={closeOpenMenus} className={subItemCls(isActive(child.to))}>
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.06] group-hover:bg-white/[0.10]">{child.icon}</span>
+              <span className="min-w-0 text-right">
+                <span className="block truncate text-[13px] font-medium leading-5">{child.label}</span>
+                <span className="block truncate text-[11px] leading-4 text-white/[0.42]">{child.hint}</span>
+              </span>
+            </LinkBtn>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   const renderCollapsedSection = (item) => (
     <div key={item.key} className="relative flex w-full justify-center">
       <button
@@ -488,7 +511,7 @@ function RightNav() {
 
   const renderDesktopItem = (item) => {
     if (item.type === "section") {
-      return renderCollapsedSection(item);
+      return expanded ? renderExpandedSection(item) : renderCollapsedSection(item);
     }
 
     return (
@@ -538,7 +561,6 @@ function RightNav() {
         )}
 
         <div
-          onScroll={closeOpenMenus}
           className={[
             "mt-5 min-h-0 flex-1",
             expanded
