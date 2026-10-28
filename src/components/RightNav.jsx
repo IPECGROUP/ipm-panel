@@ -471,10 +471,11 @@ function RightNav() {
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const navRect = navRef.current.getBoundingClientRect();
-          setFlyoutPosition({ top: Math.max(16, Math.min(rect.top, window.innerHeight - 200)), right: window.innerWidth - navRect.left + 12 });
+          setFlyoutPosition({ top: Math.max(16, Math.min(rect.top, window.innerHeight - 200)), right: window.innerWidth - navRect.left + 7 });
+          hideTip();
           toggle(item.key);
         }}
-        onMouseEnter={(e) => { if (!expanded) showTip(item.label, e); }}
+        onMouseEnter={(e) => { if (!expanded && !hasOpenMenu) showTip(item.label, e); }}
         onMouseLeave={hideTip}
         aria-label={item.label}
         aria-expanded={!!open[item.key]}
@@ -484,7 +485,8 @@ function RightNav() {
       </button>
 
       {open[item.key] && createPortal(
-        <div ref={flyoutRef} dir="rtl" style={{ ...flyoutPosition, maxHeight: `calc(100vh - ${flyoutPosition.top + 16}px)` }} className="ipm-nav-glass ipm-nav-flyout fixed z-[250] w-64 overflow-y-auto rounded-xl p-2">
+        <div ref={flyoutRef} dir="rtl" style={flyoutPosition} className="ipm-nav-glass ipm-nav-flyout fixed z-[250] w-64 rounded-xl p-2">
+          <div style={{ maxHeight: `calc(100vh - ${flyoutPosition.top + 32}px)` }} className="overflow-y-auto">
           <div className="px-2 pb-2 pt-1 text-right text-xs font-semibold text-white/50">{item.label}</div>
           <div className="space-y-1">
             {item.items.map((child) => (
@@ -503,6 +505,7 @@ function RightNav() {
                 </span>
               </LinkBtn>
             ))}
+          </div>
           </div>
         </div>, document.body
       )}
@@ -613,7 +616,7 @@ function RightNav() {
 
       <MobileNav key={`${user?.id || user?.username || "guest"}:${pathname}`} groups={visibleNavGroups} user={user} logout={logout} isActive={isActive} />
 
-      {canHover && tip.show && (
+      {canHover && tip.show && !hasOpenMenu && (
         <div
           className="fixed z-[210] pointer-events-none rounded-lg border border-white/10 bg-[#184A6B] px-3 py-1.5 text-xs text-white/80 shadow-lg whitespace-nowrap"
           style={{ top: tip.y, right: "92px", transform: "translateY(-50%)" }}
