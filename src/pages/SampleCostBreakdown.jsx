@@ -18,7 +18,7 @@ export default function SampleCostBreakdown() {
       const items = Array.isArray(data.rows) ? data.rows : [];
       setRows(items);
       setProject(data.project || "");
-      setExpanded(new Set(items.map((row) => row.budgetCode)));
+      setExpanded(new Set());
     }).catch(() => { if (!cancelled) setError("دریافت ساختار نمونه انجام نشد. صفحه را دوباره بارگذاری کنید."); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };

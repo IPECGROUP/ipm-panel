@@ -103,6 +103,9 @@ export default function CostBreakdownPage() {
   const [budgetName, setBudgetName] = useState("");
 
   const [rows, setRows] = useState([]);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [template, setTemplate] = useState(null);
+  const [templateLoading, setTemplateLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
@@ -378,33 +381,51 @@ export default function CostBreakdownPage() {
       return;
     }
 
-    const existsSaved = rows.some((row) => projectBudgetCode(row.budgetCode) === code);
+    const existsSaved = rows.some((row) => projectBudgetCode((editDrafts[row.id] || row).budgetCode) === code);
     if (existsSaved) {
       setErr("این کد بودجه قبلاً در جدول وجود دارد.");
       return false;
     }
 
-    setSaving(true);
-    try {
-      const res = await api("/cost-breakdown", {
-        method: "POST",
-        body: JSON.stringify({
-          project_id: Number(projectId),
-          budget_code: code,
-          budget_name: name,
-          base_budget: 0,
-        }),
-      });
+    const id = `draft-${crypto.randomUUID()}`;
+    const row = { id, budgetCode: code, budgetName: name, baseBudget: "0", draft: true };
+    setRows((current) => [...current, row]);
+    setEditDrafts((current) => ({ ...current, [id]: draftForRow(row) }));
+    clearDraft();
+    return true;
+  };
 
-      if (res?.item) upsertSavedRow(res.item);
-      clearDraft();
-      return true;
-    } catch (ex) {
-      setErr(ex.message === "duplicate_budget_code" ? "این کد بودجه برای پروژه انتخاب‌شده قبلاً ثبت شده است." : ex.message || "خطا در ثبت");
-      return false;
-    } finally {
-      setSaving(false);
-    }
+  const openTemplates = async () => {
+    if (!projectId) { setErr("ابتدا پروژه را انتخاب کنید."); return; }
+    setTemplateOpen(true); setTemplateLoading(true); setErr("");
+    try { setTemplate(await api("/base/sample-cost-structure")); }
+    catch { setTemplate(null); setErr("دریافت قالب انجام نشد."); }
+    finally { setTemplateLoading(false); }
+  };
+
+  const importTemplate = () => {
+    const existing = new Set(rows.map((row) => projectBudgetCode((editDrafts[row.id] || row).budgetCode)));
+    const items = (template?.rows || []).map((row) => ({ ...row, budgetCode: `${selectedProjectCode}-${normalizeCode(row.budgetCode).split("-").slice(1).join("-")}` }));
+    if (!items.length) { setErr("قالب ردیفی برای وارد کردن ندارد."); return; }
+    if (items.some((row) => existing.has(row.budgetCode))) { setErr("برخی کدهای قالب در جدول وجود دارند. برای جلوگیری از ثبت تکراری، قالب وارد نشد."); setTemplateOpen(false); return; }
+    const drafts = items.map((row) => ({ ...row, id: `draft-${crypto.randomUUID()}`, draft: true }));
+    setRows((current) => [...current, ...drafts]);
+    setEditDrafts((current) => ({ ...current, ...Object.fromEntries(drafts.map((row) => [row.id, draftForRow(row)])) }));
+    setExpandedCodes(new Set(drafts.map((row) => row.budgetCode)));
+    setTemplateOpen(false);
+  };
+
+  const saveDraftRows = async () => {
+    const drafts = rows.filter((row) => row.draft).map((row) => ({ ...row, ...editDrafts[row.id] }));
+    const payload = drafts.map((row) => ({ budgetCode: projectBudgetCode(row.budgetCode), budgetName: String(row.budgetName || "").trim(), baseBudget: parseMoney(row.baseBudget) }));
+    const savedCodes = new Set(rows.filter((row) => !row.draft).map((row) => projectBudgetCode(row.budgetCode)));
+    if (payload.some((row) => !/^\d+(?:-\d+)+$/.test(row.budgetCode) || !row.budgetName || savedCodes.has(row.budgetCode)) || new Set(payload.map((row) => row.budgetCode)).size !== payload.length) { setErr("کد و نام همه ردیف‌ها را وارد کنید و کدهای تکراری را اصلاح کنید."); return; }
+    setSaving(true); setErr("");
+    try {
+      await api("/cost-breakdown/batch", { method: "POST", body: JSON.stringify({ projectId: Number(projectId), rows: payload }) });
+      setEditDrafts((current) => Object.fromEntries(Object.entries(current).filter(([id]) => !id.startsWith("draft-")))); await loadRows(projectId);
+    } catch (ex) { setErr(ex.message === "duplicate_budget_code" ? "یکی از کدها قبلاً برای این پروژه ثبت شده است؛ اطلاعات را بازخوانی کنید." : "ثبت ردیف‌ها انجام نشد. دوباره تلاش کنید."); }
+    finally { setSaving(false); }
   };
 
   const canAddDraft = Boolean(projectId && !saving && projectBudgetCode(budgetCode) && String(budgetName || "").trim());
@@ -503,6 +524,7 @@ export default function CostBreakdownPage() {
   };
 
   const handleEditKeyDown = async (event, id) => {
+    if (String(id).startsWith("draft-")) return;
     if (event.key === "Escape") {
       event.preventDefault();
       cancelEdit(id);
@@ -520,6 +542,7 @@ export default function CostBreakdownPage() {
 
   const editSelectedRows = () => {
     if (!selectedRows.length) return;
+    if (selectedRows.some((row) => row.draft)) { setErr("ردیف‌های جدید در حالت ویرایش هستند."); setTableMenuOpen(false); return; }
     setEditIds(new Set(selectedRows.map((row) => String(row.id))));
     setEditDrafts((prev) => Object.fromEntries(selectedRows.map((row) => [row.id, prev[row.id] || draftForRow(row)])));
     setTableMenuOpen(false);
@@ -527,18 +550,18 @@ export default function CostBreakdownPage() {
 
   const deleteSelectedRows = async () => {
     if (!selectedRows.length) return;
+    if (rows.some((row) => row.draft) && selectedRows.some((row) => !row.draft)) { setErr("برای حذف ردیف ثبت‌شده ابتدا ردیف‌های جدید را ثبت یا حذف کنید."); return; }
     const message = selectedRows.length === 1 ? "حذف این ردیف؟" : `حذف ${toFaDigits(selectedRows.length)} ردیف انتخاب‌شده؟`;
     if (!window.confirm(message)) return;
 
     setSaving(true);
     setErr("");
     try {
-      await Promise.all(
-        selectedRows.map((row) => api(`/cost-breakdown?id=${encodeURIComponent(row.id)}`, { method: "DELETE" }))
-      );
+      await Promise.all(selectedRows.filter((row) => !row.draft).map((row) => api(`/cost-breakdown?id=${encodeURIComponent(row.id)}`, { method: "DELETE" })));
+      if (selectedRows.some((row) => !row.draft)) await loadRows(projectId);
+      else setRows((current) => current.filter((row) => !selectedRows.some((selected) => selected.id === row.id)));
       setSelectedIds(new Set());
       setTableMenuOpen(false);
-      await loadRows(projectId);
     } catch (ex) {
       setErr(ex.message || "خطا در حذف موارد انتخاب‌شده");
     } finally {
@@ -657,11 +680,12 @@ export default function CostBreakdownPage() {
             <span className="block truncate text-base font-bold md:text-lg">ساختار شکست هزینه ها</span>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
           </span>
+          <button type="button" onClick={openTemplates} disabled={!projectId || loading || saving} className="mr-auto h-10 rounded-xl border border-neutral-200 px-4 text-sm font-bold transition hover:bg-neutral-50 disabled:opacity-45 dark:border-white/15 dark:hover:bg-white/10">قالب</button>
           <button
             type="button"
             onClick={exportExcel}
             disabled={!rows.length}
-            className="mr-auto inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 shadow-sm transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-45 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/20"
             title="خروجی اکسل"
           >
             <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
@@ -675,7 +699,9 @@ export default function CostBreakdownPage() {
               <span className="text-sm text-neutral-700 dark:text-neutral-300">پروژه</span>
               <select
                 value={projectId}
+                disabled={saving}
                 onChange={(e) => {
+                  if (rows.some((row) => row.draft) && !window.confirm("ردیف‌های ثبت‌نشده حذف می‌شوند. پروژه تغییر کند؟")) return;
                   setProjectId(e.target.value);
                   cancelEdit();
                   clearDraft();
@@ -809,7 +835,7 @@ export default function CostBreakdownPage() {
                   ) : (
                     displayRows.map((item, pageIdx) => {
                       const row = item.row;
-                      const isEditing = editIds.has(String(row.id));
+                      const isEditing = row.draft || editIds.has(String(row.id));
                       const editDraft = editDrafts[row.id] || draftForRow(row);
                       const divider = pageIdx === displayRows.length - 1 ? "" : rowDividerCls;
                       const rowSelected = selectedIds.has(item.key);
@@ -835,6 +861,7 @@ export default function CostBreakdownPage() {
                             <td className={`px-3 ${divider}`}>
                               {isEditing ? (
                                 <div className="flex items-center justify-start" dir="rtl" style={rowIndentStyle}>
+                                  {item.hasChildren && <button type="button" onClick={() => toggleExpandedCode(displayBudgetCode)} aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"} className="ml-2 grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 dark:border-white/15">{isExpanded ? "−" : "+"}</button>}
                                   <input
                                     value={editDraft.budgetCode}
                                     onChange={(e) =>
@@ -843,7 +870,7 @@ export default function CostBreakdownPage() {
                                     onKeyDown={(event) => handleEditKeyDown(event, row.id)}
                                     className={moneyInputCls + " text-right font-sans tabular-nums"}
                                     spellCheck={false}
-                                    autoFocus
+                                    autoFocus={!row.draft}
                                   />
                                 </div>
                               ) : (
@@ -901,7 +928,7 @@ export default function CostBreakdownPage() {
                               </div>
                             </td>
                             <td className={`px-3 text-center ${divider}`}>
-                              {isEditing ? <div className="flex items-center justify-center gap-1"><RowActionIconBtn action="save" onClick={() => saveEdit(row.id)} disabled={saving} size={34} iconSize={15} /><RowActionIconBtn action="cancel" onClick={() => cancelEdit(row.id)} disabled={saving} size={34} iconSize={14} /></div> : <span className="text-neutral-400">—</span>}
+                              {row.draft ? <button type="button" onClick={() => setRows((current) => current.filter((entry) => entry.id !== row.id))} disabled={saving} aria-label="حذف ردیف ثبت‌نشده" className="text-red-600">×</button> : isEditing ? <div className="flex items-center justify-center gap-1"><RowActionIconBtn action="save" onClick={() => saveEdit(row.id)} disabled={saving} size={34} iconSize={15} /><RowActionIconBtn action="cancel" onClick={() => cancelEdit(row.id)} disabled={saving} size={34} iconSize={14} /></div> : <span className="text-neutral-400">—</span>}
                             </td>
                           </tr>
                         );
@@ -962,6 +989,8 @@ export default function CostBreakdownPage() {
       </div>
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
+      <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="button" onClick={saveDraftRows} disabled={saving || !rows.some((row) => row.draft)} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white disabled:opacity-40 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert dark:invert-0" /></button></div>
+      {templateOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="template-title"><div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"><div className="flex items-center justify-between"><h2 id="template-title" className="text-sm font-bold">انتخاب قالب</h2><button type="button" onClick={() => setTemplateOpen(false)} aria-label="بستن" className="text-xl">×</button></div>{templateLoading ? <p className="mt-5 text-sm">در حال دریافت...</p> : template ? <button type="button" onClick={importTemplate} className="mt-5 w-full rounded-xl border border-black/10 p-4 text-right text-sm font-semibold hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">ساختار نمونه — {template.project}</button> : <p className="mt-5 text-sm text-red-600">دریافت قالب انجام نشد.</p>}</div></div>}
       </div>
     </Card>
   );
