@@ -324,3 +324,31 @@ td {
 @media (prefers-reduced-motion: reduce) {
   .ipm-nav-flyout { animation: none; }
 }
+.ipm-base-information table thead tr,
+.ipm-base-information table thead th {
+  background: #184a6b !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, .12) !important;
+}
+.ipm-base-information table thead th {
+  height: 36px;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  font-size: 14px;
+  line-height: 20px;
+}
+.ipm-base-information table thead img[src*="menu-table.svg"] { filter: invert(1); }
+.ipm-base-information button:has(> img[src*="afzodan.svg"]) {
+  background: #f48120 !important;
+  border-color: #f48120 !important;
+  color: #fff !important;
+}
+.ipm-base-information button:has(> img[src*="afzodan.svg"]):hover { background: #d97018 !important; }
+.ipm-base-information button > img[src*="afzodan.svg"] { display: none; }
+.ipm-base-information button:has(> img[src*="afzodan.svg"])::after {
+  content: "+";
+  font: 600 25px/1 Arial, sans-serif;
+}
+.ipm-base-information .base-table-pager button[aria-pressed="true"] { background: #184a6b !important; color: #fff !important; }
+.ipm-base-information .base-table-pager button[aria-pressed="false"] { background: rgba(24, 74, 107, .1) !important; color: #184a6b !important; }
+.dark .ipm-base-information .base-table-pager button[aria-pressed="false"] { color: #bae6fd !important; }

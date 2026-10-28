@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 // src/pages/UsersTab.jsx
 import React, { useState, useEffect } from "react";
 import Card from "../components/ui/Card.jsx";
@@ -542,7 +543,8 @@ function UsersTab({ embedded = false }) {
     table:
       "w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2",
     headRow:
-      "bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700",
+      "bg-[#184a6b] text-white border-b border-[#184a6b]",
+    th: "!text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]",
     body:
       "text-[13px] [&_td]:!text-black dark:[&_td]:!text-neutral-100 [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9",
   };
@@ -609,14 +611,13 @@ function UsersTab({ embedded = false }) {
       onClick={onClick}
       disabled={disabled}
       className={
-        "h-10 w-10 grid place-items-center rounded-xl bg-white text-black border border-black/15 hover:bg-black/5 transition disabled:opacity-50 " +
-        "dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20 " +
+        "h-10 w-10 grid place-items-center rounded-xl bg-[#f48120] text-white border border-[#f48120] hover:bg-[#d97018] transition disabled:opacity-50 " +
         className
       }
       aria-label={title}
       title={title}
     >
-      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
+      <Plus aria-hidden="true" className="h-5 w-5" strokeWidth={2.5} />
     </button>
   );
 
@@ -775,9 +776,7 @@ function UsersTab({ embedded = false }) {
                             <button
                               type="button"
                               onClick={() => toggleSort("name")}
-                              className="h-7 w-7 inline-grid place-items-center bg-transparent p-0
-                                         text-neutral-500 hover:text-neutral-600 active:text-neutral-700
-                                         dark:text-neutral-400 dark:hover:text-neutral-300"
+                              className="h-5 w-5 inline-grid place-items-center bg-transparent p-0 text-white hover:text-white/70"
                               title="مرتب‌سازی نام"
                               aria-label="مرتب‌سازی نام"
                             >
@@ -785,7 +784,7 @@ function UsersTab({ embedded = false }) {
                                 className={`w-[14px] h-[14px] transition-transform ${
                                   sortKey === "name" && sortDir === "asc" ? "rotate-180" : ""
                                 }`}
-                                focusable="false"
+                                fill="currentColor" focusable="false"
                                 aria-hidden="true"
                                 viewBox="0 0 24 24"
                               >

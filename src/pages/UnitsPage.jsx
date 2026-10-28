@@ -1,6 +1,7 @@
 // ساختار سازمانی
 // src/pages/OrgStructurePage.jsx
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { Plus } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -44,13 +45,11 @@ const UnitRoleAddIconBtn = React.memo(function UnitRoleAddIconBtn({ title, disab
     <button
       type="submit"
       disabled={disabled}
-      className="h-10 w-10 rounded-xl bg-white text-black border border-black/15 hover:bg-black/5
-                 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-800 dark:hover:bg-neutral-200
-                 disabled:opacity-50 grid place-items-center shrink-0"
+      className="h-10 w-10 rounded-xl border border-[#f48120] bg-[#f48120] text-white hover:bg-[#d97018] disabled:opacity-50 grid place-items-center shrink-0 transition"
       aria-label={title}
       title={title}
     >
-      <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
+      <Plus aria-hidden="true" className="h-5 w-5" strokeWidth={2.5} />
     </button>
   );
 });
@@ -880,7 +879,8 @@ function OrgStructurePage() {
     table:
       "w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2",
     headRow:
-      "bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700",
+      "bg-[#184a6b] text-white border-b border-[#184a6b]",
+    th: "!text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]",
     body:
       "text-[13px] [&_td]:!text-black dark:[&_td]:!text-neutral-100 [&>tr>td]:!py-0 [&>tr>td:last-child_button]:!h-9 [&>tr>td:last-child_button]:!w-9",
   };
@@ -1217,10 +1217,10 @@ function OrgStructurePage() {
       <Card className="rounded-2xl border bg-white p-7 text-black border-black/10 text-[11px] md:p-8 md:text-sm dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
         <div className="mb-5 flex min-w-0 items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+            <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-base font-bold md:text-lg">ساختار سازمانی</span>
+            <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">ساختار سازمانی</span>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">تنظیمات</span>
           </span>
         </div>
@@ -2013,14 +2013,14 @@ function OrgStructurePage() {
               <div className="mt-3">
                 <UnitRolesTableShell>
                   <THead>
-                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-                      <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                    <tr className="bg-[#184a6b] text-white border-b border-[#184a6b]">
+                      <TH className="w-44 !text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]">
                         واحد ها
                       </TH>
-                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      <TH className="!text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]">
                         نقش‌ها
                       </TH>
-                      <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      <TH className="w-28 !text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]">
                         اقدامات
                       </TH>
                     </tr>
@@ -2160,14 +2160,14 @@ function OrgStructurePage() {
               <div className="mt-3">
                 <UnitRolesTableShell>
                   <THead>
-                    <tr className="bg-neutral-200 text-black border-b border-neutral-300 dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700">
-                      <TH className="w-44 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                    <tr className="bg-[#184a6b] text-white border-b border-[#184a6b]">
+                      <TH className="w-44 !text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]">
                         کاربران
                       </TH>
-                      <TH className="!text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      <TH className="!text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]">
                         نقش ها
                       </TH>
-                      <TH className="w-28 !text-center !font-semibold !text-black dark:!text-neutral-100 !py-2 !text-[14px] md:!text-[15px]">
+                      <TH className="w-28 !text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]">
                         اقدامات
                       </TH>
                     </tr>

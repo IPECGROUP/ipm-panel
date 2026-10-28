@@ -1,5 +1,6 @@
 // src/pages/ProjectsPage.jsx
 import React from "react";
+import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TR, TD, TH } from "../components/ui/Table.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
@@ -273,7 +274,7 @@ function ProjectsPage() {
   React.useEffect(() => {
     if (page !== safePage) setPage(safePage);
   }, [page, safePage]);
-  const tableUi = tablePreset.table;
+  const tableUi = { ...tablePreset.table, headRow: "bg-[#184a6b] text-white border-b border-[#184a6b]", th: "!text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]" };
   const rowUi = tablePreset.row;
   const visibleIds = pageRows.map((r) => String(r.id));
   const selectedSet = new Set((selectedIds || []).map((id) => String(id)));
@@ -430,10 +431,10 @@ function ProjectsPage() {
     >
       <div className="mb-5 flex min-w-0 items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-          <img src="/images/icons/modiriat-projects.svg" alt="" className="h-6 w-6 dark:invert" />
+          <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: "url('/images/icons/modiriat-projects.svg') center / contain no-repeat", mask: "url('/images/icons/modiriat-projects.svg') center / contain no-repeat" }} />
         </span>
         <div className="min-w-0">
-          <span className="block truncate text-base font-bold md:text-lg">پروژه‌ها</span>
+          <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">پروژه‌ها</span>
           <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">تنظیمات</span>
         </div>
       </div>
@@ -477,13 +478,11 @@ function ProjectsPage() {
             <div className="justify-self-start">
               <button
                 type="submit"
-                className="h-10 w-10 grid place-items-center rounded-xl
-                           bg-white text-black border border-black/15 hover:bg-black/5 transition disabled:opacity-50
-                           dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
+                className="h-10 w-10 grid place-items-center rounded-xl bg-[#f48120] text-white border border-[#f48120] hover:bg-[#d97018] transition disabled:opacity-50"
                 aria-label="افزودن"
                 title="افزودن"
               >
-                <img src="/images/icons/afzodan.svg" alt="" className="w-5 h-5" />
+                <Plus aria-hidden="true" className="h-5 w-5" strokeWidth={2.5} />
               </button>
             </div>
           </div>
@@ -525,7 +524,7 @@ function ProjectsPage() {
                             <button
                               type="button"
                               onClick={() => { setCodeSortDir((d) => (d === "asc" ? "desc" : "asc")); setPage(0); }}
-                              className={tablePreset.sortButton}
+                              className="grid h-5 w-5 place-items-center text-white transition hover:text-white/70"
                               title="مرتب‌سازی کد"
                               aria-label="مرتب‌سازی کد"
                             >
@@ -533,7 +532,7 @@ function ProjectsPage() {
                                 className={`w-[14px] h-[14px] transition-transform ${
                                   codeSortDir === "asc" ? "rotate-180" : ""
                                 }`}
-                                focusable="false"
+                                fill="currentColor" focusable="false"
                                 aria-hidden="true"
                                 viewBox="0 0 24 24"
                               >
@@ -549,7 +548,7 @@ function ProjectsPage() {
                                   e.stopPropagation();
                                   exportProjectsExcel();
                                 }}
-                                className={tablePreset.sortButton}
+                                className="grid h-5 w-5 place-items-center text-white transition hover:text-white/70"
                                 title="خروجی اکسل"
                                 aria-label="خروجی اکسل"
                               >
@@ -776,7 +775,7 @@ function ProjectsPage() {
                     <div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start">
                       <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
                       <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
-                        {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setPageSize(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${pageSize === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFaDigits(count)}</button>)}
+                        {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setPageSize(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${pageSize === count ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200"}`}>{toFaDigits(count)}</button>)}
                       </div>
                     </div>
                   </div>

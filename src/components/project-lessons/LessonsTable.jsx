@@ -66,7 +66,7 @@ export default function LessonsTable({
           </colgroup>
 
           <thead>
-            <tr className="border-b border-neutral-300 bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800">
+            <tr className="border-b border-[#184a6b] bg-[#184a6b] text-white">
               <th className="px-3 py-3">
                 <input
                   type="checkbox"
@@ -138,7 +138,7 @@ export default function LessonsTable({
               <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
               <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
                 {[10, 25, 100].map((count) => (
-                  <button key={count} type="button" onClick={() => pagination.onRowsPerPage(count)} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${pagination.rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toPersianDigits(count)}</button>
+                  <button key={count} type="button" onClick={() => pagination.onRowsPerPage(count)} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${pagination.rowsPerPage === count ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200"}`}>{toPersianDigits(count)}</button>
                 ))}
               </div>
             </div>
@@ -247,7 +247,7 @@ function TableMenu({ selectedCount, deleting, onEdit, onDelete }) {
         <img
           src="/images/icons/menu-table.svg"
           alt=""
-          className="h-4 w-3 dark:invert"
+          className="h-4 w-3 invert"
         />
       </button>
 

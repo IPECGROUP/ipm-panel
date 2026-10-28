@@ -1,5 +1,6 @@
 // تخصیص نقدینگی
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -353,10 +354,10 @@ export default function LiquidityAllocationPage() {
       <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.07] px-3 pb-3 pt-1 dark:border-white/10 sm:px-4 sm:pb-4 md:mb-5" dir="rtl">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+            <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-base font-bold md:text-lg">تخصیص نقدینگی</span>
+            <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">تخصیص نقدینگی</span>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
           </span>
         </div>
@@ -380,11 +381,11 @@ export default function LiquidityAllocationPage() {
               }
               setSubmitMessage("");
             }}
-            className="flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10"
+            className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${formOpen ? "ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" : "border border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`}
             title={formOpen ? "نمایش جدول" : "افزودن تخصیص"}
             aria-label={formOpen ? "نمایش جدول" : "افزودن تخصیص"}
           >
-            <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
+            {formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
           </button>
         </div>
       </div>
@@ -464,7 +465,7 @@ export default function LiquidityAllocationPage() {
           <thead className="text-neutral-700 dark:text-neutral-100">
             <tr>
               {["پروژه", "کل تخصیص", "تعهدات", "مانده", "تخصیص جدید", "نقدینگی"].map((title) => (
-                <th key={title} className={`sticky top-0 z-10 h-11 border-b border-l border-neutral-300 bg-neutral-200 px-3 text-[14px] font-semibold dark:border-neutral-700 dark:bg-neutral-800 md:text-[15px] ${title === "پروژه" ? "!text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-100" : title === "نقدینگی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>
+                <th key={title} className={`sticky top-0 z-10 h-9 border-b border-l border-white/10 bg-[#184a6b] px-3 text-[14px] font-semibold text-white md:text-[15px] ${title === "پروژه" ? "!text-right" : "text-center"}`}>{title}</th>
               ))}
             </tr>
           </thead>
@@ -544,7 +545,7 @@ export default function LiquidityAllocationPage() {
           <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
               {["ردیف", "تاریخ تخصیص", "مبلغ تخصیص", "منبع نقدینگی", "توضیحات"].map((title) => (
-                 <th key={title} className="sticky top-0 z-10 h-9 border-b border-l border-neutral-400 bg-neutral-200 px-3 text-center text-[14px] font-semibold dark:border-white/10 dark:bg-neutral-900 md:text-[15px]">{title}</th>
+                 <th key={title} className="sticky top-0 z-10 h-9 border-b border-l border-white/10 bg-[#184a6b] px-3 text-center text-[14px] font-semibold text-white md:text-[15px]">{title}</th>
               ))}
             </tr>
           </thead>
@@ -581,7 +582,7 @@ export default function LiquidityAllocationPage() {
               <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
                 {[10, 25, 100].map((count) => {
                   const active = rowsPerPage === count;
-                  return <button key={count} type="button" onClick={() => setRowsPerPage(count)} className={`min-w-10 px-3 text-sm font-semibold transition ${active ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`} aria-pressed={active}>{toFaDigits(count)}</button>;
+                  return <button key={count} type="button" onClick={() => setRowsPerPage(count)} className={`min-w-10 px-3 text-sm font-semibold transition ${active ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200"}`} aria-pressed={active}>{toFaDigits(count)}</button>;
                 })}
               </div>
             </div>

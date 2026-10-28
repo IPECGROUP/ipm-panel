@@ -2,7 +2,7 @@ import { createElement, useCallback, useEffect, useMemo, useRef, useState } from
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, ChevronLeft, ChevronRight, Pencil, Eye } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, ChevronLeft, ChevronRight, Pencil, Eye, Plus } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
@@ -482,10 +482,10 @@ export default function PettyCashPage() {
       <div className="p-2.5 sm:p-3 md:p-4">
         <header className="mb-4 flex min-w-0 flex-wrap items-center gap-3 px-0.5 pb-3 sm:mb-5 sm:pb-4">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl">
-            <img src="/images/icons/tenkhah.svg" alt="" className="h-5 w-5 dark:invert sm:h-6 sm:w-6" />
+            <span aria-hidden="true" className="h-5 w-5 bg-[#184a6b] dark:bg-[#8fc4e3] sm:h-6 sm:w-6" style={{ WebkitMask: "url('/images/icons/tenkhah.svg') center / contain no-repeat", mask: "url('/images/icons/tenkhah.svg') center / contain no-repeat" }} />
           </span>
           <span className="min-w-0">
-            <h1 className="truncate text-base font-bold tracking-tight md:text-lg">تنخواه‌گردان</h1>
+            <h1 className="truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">تنخواه‌گردان</h1>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
           </span>
           <div className="mr-auto flex shrink-0 items-center gap-3">
@@ -502,8 +502,8 @@ export default function PettyCashPage() {
             }}
               title={expenseFormOpen ? "بستن" : "افزودن"}
               aria-label={expenseFormOpen ? "بستن فرم ثبت هزینه‌ها" : "افزودن"} aria-expanded={expenseFormOpen}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-40 dark:ring-neutral-800 dark:hover:bg-white/10">
-              <img src={expenseFormOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition disabled:cursor-not-allowed disabled:opacity-40 ${expenseFormOpen ? "ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" : "border border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`}>
+              {expenseFormOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
             </button>
           </div>
         </header>
@@ -561,8 +561,8 @@ export default function PettyCashPage() {
             <div className="overflow-x-auto">
               <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1150px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
                 <colgroup><col style={{ width: 40 }} /><col style={{ width: 20 }} /><col style={{ width: 50 }} /><col style={{ width: 130 }} /><col style={{ width: 100 }} /><col style={{ width: 140 }} /><col style={{ width: 170 }} /><col style={{ width: 190 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
-                <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
-                  <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
+                <thead className="bg-[#184a6b] text-white">
+                  <tr className="h-9 border-b border-[#184a6b]">
                     <th scope="col" className="px-2"><input ref={selectAllReportsRef} type="checkbox" checked={allPageReportsSelected} onChange={toggleAllReports} aria-label="انتخاب همه گزارش‌های این صفحه" className="h-4 w-4 accent-black" /></th>
                     <th scope="col" aria-label="خوانده‌نشده" />
                     <th scope="col" className="px-2 text-center font-bold">ردیف</th>
@@ -741,7 +741,7 @@ function TablePagination({ total, rowsPerPage, page, setPage, onRowsPerPageChang
           <div className="inline-flex h-9 overflow-hidden rounded-lg border border-neutral-200 bg-white">
             {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => onRowsPerPageChange(count)}
               aria-pressed={rowsPerPage === count}
-              className={`min-w-10 px-3 font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white" : "hover:bg-neutral-100"}`}>{toFa(count)}</button>)}
+              className={`min-w-10 px-3 font-semibold transition ${rowsPerPage === count ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20"}`}>{toFa(count)}</button>)}
           </div>
         </div>
       </div>
@@ -790,7 +790,7 @@ function PettyCashTableMenu({ selectedCount, canEdit, deleting, onRead, onEdit, 
 
   return <div className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
     <button ref={triggerRef} type="button" onClick={toggleMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={open}>
-      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${open ? "scale-110" : ""} dark:invert`} />
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${open ? "scale-110" : ""} invert`} />
     </button>
     {open && position && createPortal(<div ref={popoverRef} className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>

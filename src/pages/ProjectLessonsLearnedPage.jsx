@@ -8,6 +8,7 @@ import {
   Grid2X2,
   Lightbulb,
   Paperclip,
+  Plus,
   Star,
   Tag,
   TriangleAlert,
@@ -508,14 +509,10 @@ export default function ProjectLessonsLearnedPage() {
           <div className="mb-5 flex items-center justify-between gap-3 border-b border-black/[.07] pb-4 dark:border-white/10">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-2xl border border-black/10 bg-neutral-50 dark:border-white/10 dark:bg-white/5">
-                <img
-                  src="/images/icons/darsamokhteha.svg"
-                  alt=""
-                  className="h-6 w-6 dark:invert"
-                />
+                <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: "url('/images/icons/darsamokhteha.svg') center / contain no-repeat", mask: "url('/images/icons/darsamokhteha.svg') center / contain no-repeat" }} />
               </span>
               <span>
-                <span className="block text-base font-bold md:text-lg">
+                <span className="block text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">
                   درس‌آموخته‌ها
                 </span>
                 <span className="mt-0.5 block text-xs text-neutral-500">
@@ -526,10 +523,11 @@ export default function ProjectLessonsLearnedPage() {
             <button
               type="button"
               onClick={() => (formOpen ? reset() : setFormOpen(true))}
-              className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white dark:border-white/15 dark:bg-white/5"
+              className={`grid h-10 w-10 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white dark:border-white/15 dark:bg-white/5" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`}
               title={formOpen ? "بستن فرم" : "افزودن"}
+              aria-label={formOpen ? "بستن فرم" : "افزودن"}
             >
-              <img
+              {formOpen ? <img
                 src={
                   formOpen
                     ? "/images/icons/listdarkhast.svg"
@@ -537,7 +535,7 @@ export default function ProjectLessonsLearnedPage() {
                 }
                 alt=""
                 className="h-5 w-5 dark:invert"
-              />
+              /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
             </button>
           </div>
           {!formOpen && (

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
@@ -180,12 +181,12 @@ export default function EquipmentIdentityPage() {
         <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
-              <img src="/images/icons/shenasnameh-taghizat.svg" alt="" className="h-6 w-6 dark:invert" />
+              <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: "url('/images/icons/shenasnameh-taghizat.svg') center / contain no-repeat", mask: "url('/images/icons/shenasnameh-taghizat.svg') center / contain no-repeat" }} />
             </span>
-             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight md:text-lg">شناسنامه تجهیزات</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تجهیزات</span></span>
+             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">شناسنامه تجهیزات</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تجهیزات</span></span>
           </div>
-          <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen((open) => !open); setLetterPickerOpen(false); setLibraryPickerOpen(false); setUploadOpen(false); setError(""); }} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>
-            <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
+          <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen((open) => !open); setLetterPickerOpen(false); setLibraryPickerOpen(false); setUploadOpen(false); setError(""); }} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>
+            {formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
           </button>
         </div>
 
@@ -209,7 +210,7 @@ export default function EquipmentIdentityPage() {
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[640px] table-fixed text-sm [&_td]:text-center [&_th]:text-center">
             <colgroup><col style={{ width: 44 }} /><col style={{ width: 80 }} /><col style={{ width: "25%" }} /><col /><col style={{ width: "25%" }} /></colgroup>
-            <thead className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100">
+            <thead className="border-b border-[#184a6b] bg-[#184a6b] text-white">
               <tr><th className="px-2 py-2"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه شناسنامه‌های صفحه" /></th><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th><th className="px-3 py-2 text-[14px] font-semibold">نام تجهیز</th><th className="relative py-2 pl-10 pr-3 text-[14px] font-semibold">کد تجهیز<EquipmentTableMenu selectedCount={selectedIds.size} deleting={deleting} onEdit={() => { const item = items.find((row) => selectedIds.has(String(row.id))); if (item) editItem(item); }} onDelete={deleteSelected} /></th></tr>
             </thead>
             <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={5} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} tabIndex={0} role="button" aria-label={`مشاهده شناسنامه ${identityFieldValue(item, definitions.fields, "name")}`} onClick={() => setDetailId(String(item.id))} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setDetailId(String(item.id)); } }} className="h-10 cursor-pointer bg-black/[0.02] transition-colors hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:bg-white/5 dark:hover:bg-white/10">
@@ -220,7 +221,7 @@ export default function EquipmentIdentityPage() {
               <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block break-words" dir="auto">{identityFieldValue(item, definitions.fields, "code")}</span></td>
             </tr>)}</tbody>
           </table></div>
-          <BaseTablePager total={filteredItems.length} page={safePage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
+          <BaseTablePager branded total={filteredItems.length} page={safePage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
         </div>
       </div>
     </Card>
@@ -258,7 +259,7 @@ function EquipmentTableMenu({ selectedCount, deleting, onEdit, onDelete }) {
   }, [open, updatePosition]);
 
   return <span className="absolute left-2 top-1/2 -translate-y-1/2" dir="rtl">
-    <button ref={triggerRef} type="button" onClick={() => { if (open) setOpen(false); else { updatePosition(); setOpen(true); } }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت" aria-label="مدیریت وضعیت" aria-expanded={open}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
+    <button ref={triggerRef} type="button" onClick={() => { if (open) setOpen(false); else { updatePosition(); setOpen(true); } }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت" aria-label="مدیریت وضعیت" aria-expanded={open}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 invert" /></button>
     {open && position && createPortal(<div ref={popoverRef} className="fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
       <button type="button" disabled={selectedCount !== 1 || deleting} onClick={() => { setOpen(false); onEdit(); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش</span></button>

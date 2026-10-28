@@ -11,7 +11,7 @@ import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
-import { BriefcaseBusiness, CalendarDays, FileText, UserRound } from "lucide-react";
+import { BriefcaseBusiness, CalendarDays, FileText, Plus, UserRound } from "lucide-react";
 
 const PAGE_ICON = "/images/icons/darkhast-tamin.svg";
 const REQUEST_DOC_ID = "supply_request";
@@ -1023,21 +1023,21 @@ export default function SupplyRequestPage() {
           <div className="mb-5 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]">
-                <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+                <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
               </span>
               <span className="min-w-0">
-              <span className="block truncate text-base font-bold tracking-tight md:text-lg">درخواست تامین</span>
+              <span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">درخواست تامین</span>
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تامین و پشتیبانی</span>
               </span>
             </div>
             <button
               type="button"
               onClick={formOpen ? closeForm : openFreshForm}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white transition hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`}
               title={formOpen ? "بستن فرم" : "افزودن"}
               aria-label={formOpen ? "بستن فرم" : "افزودن"}
             >
-              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
+              {formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
             </button>
           </div>
 
@@ -1270,16 +1270,16 @@ export default function SupplyRequestPage() {
                   <col style={{ width: 140 }} />
                 </colgroup>
                 <thead>
-                  <tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allPageItemsSelected} onChange={toggleAllPageItems} aria-label="انتخاب همه" /></th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" />
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">شماره</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">نوع</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
-                    <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-8 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>وضعیت</span><SupplyReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
+                  <tr className="border-b border-[#184a6b] bg-[#184a6b] text-white">
+                    <th className="sticky top-0 z-40 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allPageItemsSelected} onChange={toggleAllPageItems} aria-label="انتخاب همه" /></th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] !py-2" aria-label="خوانده‌نشده" />
+                    <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]">شماره</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]">تاریخ</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 !text-right text-[14px] font-semibold md:text-[15px]">پروژه</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]">نوع</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 !text-right text-[14px] font-semibold md:text-[15px]">موضوع</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]">درخواست‌کننده</th>
+                    <th className="sticky top-0 z-40 bg-[#184a6b] !py-2 !pl-8 text-[14px] font-semibold md:text-[15px]"><span>وضعیت</span><SupplyReadingStatusMenu tableMenuRef={tableMenuRef} tableMenuOpen={tableMenuOpen} setTableMenuOpen={setTableMenuOpen} selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
                   </tr>
                 </thead>
                 <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">
@@ -1357,7 +1357,7 @@ export default function SupplyRequestPage() {
                         key={count}
                         type="button"
                         onClick={() => setRowsPerPage(count)}
-                        className={`min-w-10 px-3 text-sm font-semibold transition ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}
+                        className={`min-w-10 px-3 text-sm font-semibold transition ${rowsPerPage === count ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200"}`}
                       >
                         {toFaDigits(count)}
                       </button>
@@ -1418,7 +1418,7 @@ export default function SupplyRequestPage() {
 function SupplyReadingStatusMenu({ tableMenuRef, tableMenuOpen, setTableMenuOpen, selectedIds, setSelectedReadStatus, canEditSelectedRequest, editSelectedRequest, deletingSelected, deleteSelectedRequests }) {
   return <div ref={tableMenuRef} className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
     <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={tableMenuOpen}>
-      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} invert`} />
     </button>
     {tableMenuOpen && <div className="table-menu-popover absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${toFaDigits(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
