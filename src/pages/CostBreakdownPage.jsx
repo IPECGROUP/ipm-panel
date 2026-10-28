@@ -118,6 +118,7 @@ export default function CostBreakdownPage() {
 
   const [editIds, setEditIds] = useState(() => new Set());
   const [editDrafts, setEditDrafts] = useState({});
+  const showRowActions = rows.some((row) => row.draft) || editIds.size > 0;
 
   const sortedProjects = useMemo(
     () =>
@@ -692,7 +693,7 @@ export default function CostBreakdownPage() {
           </button>
         </div>
 
-      <div className="rounded-2xl border border-black/10 bg-white overflow-hidden dark:bg-neutral-900 dark:border-neutral-800">
+      <div className="rounded-2xl border border-black/10 bg-white dark:bg-neutral-900 dark:border-neutral-800">
         <div className="px-[15px] py-4">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,1.15fr)_minmax(130px,0.65fr)_minmax(260px,1.45fr)] md:items-end">
             <label className="flex min-w-0 flex-col gap-1">
@@ -756,7 +757,17 @@ export default function CostBreakdownPage() {
           </div>
         </div>
 
-        <div className="px-[15px] pb-4">
+        <div className="relative px-[15px] pb-4">
+          <div ref={tableMenuRef} className="absolute left-5 top-1.5 z-40">
+            <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="عملیات انتخاب‌شده" aria-label="عملیات انتخاب‌شده" aria-expanded={tableMenuOpen}>
+              <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
+            </button>
+            {tableMenuOpen && <div className="absolute left-0 top-full mt-2 w-60 rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+              <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedRows.length ? `${toFaDigits(selectedRows.length)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+              <button type="button" disabled={!selectedRows.length || saving} onClick={editSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-white/10"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /><span className="text-sm font-semibold">ویرایش</span></button>
+              <button type="button" disabled={!selectedRows.length || saving} onClick={deleteSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /><span className="text-sm font-semibold">حذف</span></button>
+            </div>}
+          </div>
           <div className={tableWrapCls}>
             <div className="overflow-x-auto">
               <table
@@ -767,8 +778,8 @@ export default function CostBreakdownPage() {
                   <col style={{ width: 48 }} />
                   <col style={{ width: 192 }} />
                   <col />
-                  <col style={{ width: 176 }} />
-                  <col style={{ width: 136 }} />
+                  <col style={{ width: 210 }} />
+                  {showRowActions && <col style={{ width: 96 }} />}
                 </colgroup>
                 <thead>
                   <tr className={theadRowCls}>
@@ -795,40 +806,26 @@ export default function CostBreakdownPage() {
                     </th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th>
-                    <th className="relative px-3 !text-center !text-[14px] md:!text-[15px] !font-semibold">
-                      <span>عملیات</span>
-                      <div ref={tableMenuRef} className="absolute left-1 top-1/2 z-30 -translate-y-1/2">
-                        <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="عملیات انتخاب‌شده" aria-label="عملیات انتخاب‌شده" aria-expanded={tableMenuOpen}>
-                          <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${tableMenuOpen ? "scale-110" : ""} dark:invert`} />
-                        </button>
-                        {tableMenuOpen && (
-                          <div className="absolute left-0 top-[calc(100%+8px)] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
-                            <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedRows.length ? `${toFaDigits(selectedRows.length)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
-                            <button type="button" disabled={!selectedRows.length || saving} onClick={editSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-white/10"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /><span className="text-sm font-semibold">ویرایش</span></button>
-                            <button type="button" disabled={!selectedRows.length || saving} onClick={deleteSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /><span className="text-sm font-semibold">حذف</span></button>
-                          </div>
-                        )}
-                      </div>
-                    </th>
+                    {showRowActions && <th aria-label="دکمه‌های ردیف" />}
                   </tr>
                 </thead>
 
                 <tbody className={tbodyCls}>
                   {!projectId ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={showRowActions ? 5 : 4} className="py-6 text-black/60 dark:text-neutral-400">
                         پروژه را انتخاب کنید.
                       </td>
                     </tr>
                   ) : loading ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={showRowActions ? 5 : 4} className="py-6 text-black/60 dark:text-neutral-400">
                         در حال بارگذاری...
                       </td>
                     </tr>
                   ) : tableRows.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-6 text-black/60 dark:text-neutral-400">
+                      <td colSpan={showRowActions ? 5 : 4} className="py-6 text-black/60 dark:text-neutral-400">
                         موردی ثبت نشده.
                       </td>
                     </tr>
@@ -911,7 +908,7 @@ export default function CostBreakdownPage() {
                               </div>
                             </td>
                             <td className={`px-3 ${divider}`}>
-                              <div className="flex items-center justify-start" style={rowIndentStyle}>
+                              <div className="flex items-center justify-start">
                                 {isEditing ? (
                                   <input
                                     value={editDraft.baseBudget ? toFaDigits(formatMoney(editDraft.baseBudget)) : ""}
@@ -927,9 +924,9 @@ export default function CostBreakdownPage() {
                                 )}
                               </div>
                             </td>
-                            <td className={`px-3 text-center ${divider}`}>
-                              {row.draft ? <button type="button" onClick={() => setRows((current) => current.filter((entry) => entry.id !== row.id))} disabled={saving} aria-label="حذف ردیف ثبت‌نشده" className="text-red-600">×</button> : isEditing ? <div className="flex items-center justify-center gap-1"><RowActionIconBtn action="save" onClick={() => saveEdit(row.id)} disabled={saving} size={34} iconSize={15} /><RowActionIconBtn action="cancel" onClick={() => cancelEdit(row.id)} disabled={saving} size={34} iconSize={14} /></div> : <span className="text-neutral-400">—</span>}
-                            </td>
+                            {showRowActions && <td className={`px-3 text-center ${divider}`}>
+                              {row.draft ? <button type="button" onClick={() => setRows((current) => current.filter((entry) => entry.id !== row.id))} disabled={saving} aria-label="حذف ردیف ثبت‌نشده" className="text-red-600">×</button> : isEditing ? <div className="flex items-center justify-center gap-1"><RowActionIconBtn action="save" onClick={() => saveEdit(row.id)} disabled={saving} size={34} iconSize={15} /><RowActionIconBtn action="cancel" onClick={() => cancelEdit(row.id)} disabled={saving} size={34} iconSize={14} /></div> : null}
+                            </td>}
                           </tr>
                         );
                     })
