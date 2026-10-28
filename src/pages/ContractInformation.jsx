@@ -1,5 +1,6 @@
 // قراردادها
 import React from "react";
+import { Plus } from "lucide-react";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
@@ -3643,25 +3644,25 @@ export default function ContractInformation() {
           <div className="mb-5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-                <img src="/images/icons/gharadad.svg" alt="" className="h-6 w-6 dark:invert" />
+                <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: "url('/images/icons/gharadad.svg') center / contain no-repeat", mask: "url('/images/icons/gharadad.svg') center / contain no-repeat" }} />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold md:text-lg">قراردادها</span>
+                <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">قراردادها</span>
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">پروژه‌ها</span>
               </span>
             </div>
             {canContract("افزودن") && <button
               type="button"
               onClick={() => (formOpen ? closeForm() : openFreshForm())}
-              className={iconBtnCls}
+              className={formOpen ? iconBtnCls : "grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#f48120] bg-[#f48120] transition hover:bg-[#d97018]"}
               title={formOpen ? "بستن" : "افزودن"}
               aria-label={formOpen ? "بستن" : "افزودن"}
             >
-              <img
+              {!formOpen ? <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} /> : <img
                 src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"}
                 alt=""
                 className="w-5 h-5 dark:invert"
-              />
+              />}
             </button>}
           </div>
 
@@ -4960,15 +4961,15 @@ export default function ContractInformation() {
                   <col style={{ width: 190 }} />
                 </colgroup>
                 <thead>
-                  <tr className={contractsTableHeadRowCls}>
-                    <th className="sticky top-0 z-40 bg-neutral-200 dark:bg-neutral-800"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={contractsPageRows.length > 0 && contractsPageRows.every((row) => selectedContractIds.has(String(row.id)))} onChange={(event) => setSelectedContractIds(event.target.checked ? new Set(contractsPageRows.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه قراردادهای صفحه" /></th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">ردیف</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">پروژه</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">سطح / نوع</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">موضوع قرارداد</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">تاریخ</th>
-                    <th className="sticky top-0 z-30 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800">مبلغ</th>
-                    <th className="sticky top-0 z-40 bg-neutral-200 text-[14px] font-semibold dark:bg-neutral-800"><span className="pointer-events-none absolute inset-0 flex items-center justify-center">آخرین وضعیت</span><span className="absolute left-2 top-1/2 z-10 -translate-y-1/2"><button ref={contractTableMenuRef} type="button" onClick={toggleContractTableMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت قراردادها" aria-label="مدیریت قراردادها" aria-expanded={contractTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${contractTableMenuOpen ? "scale-110" : ""} dark:invert`} /></button></span>{contractTableMenuOpen ? createPortal(<div ref={contractTablePopoverRef} dir="rtl" style={{ top: contractTableMenuPosition.top, left: contractTableMenuPosition.left }} className="table-menu-popover fixed z-[10020] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedContractIds.size ? `${toFaDigits(selectedContractIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div><button type="button" disabled={selectedContractIds.size !== 1 || !canContract("ویرایش")} onClick={editSelectedContract} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش قرارداد</span></button><button type="button" disabled={!selectedContractIds.size || !canContract("حذف")} onClick={deleteSelectedContracts} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button></div>, document.body) : null}</th>
+                  <tr className={`${contractsTableHeadRowCls} !text-white`}>
+                    <th className="sticky top-0 z-40 bg-[#184a6b]"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={contractsPageRows.length > 0 && contractsPageRows.every((row) => selectedContractIds.has(String(row.id)))} onChange={(event) => setSelectedContractIds(event.target.checked ? new Set(contractsPageRows.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه قراردادهای صفحه" /></th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">ردیف</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">پروژه</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">سطح / نوع</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">موضوع قرارداد</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">تاریخ</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">مبلغ</th>
+                    <th className="sticky top-0 z-40 bg-[#184a6b] text-[14px] font-semibold"><span className="pointer-events-none absolute inset-0 flex items-center justify-center">آخرین وضعیت</span><span className="absolute left-2 top-1/2 z-10 -translate-y-1/2"><button ref={contractTableMenuRef} type="button" onClick={toggleContractTableMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت قراردادها" aria-label="مدیریت قراردادها" aria-expanded={contractTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${contractTableMenuOpen ? "scale-110" : ""} invert`} /></button></span>{contractTableMenuOpen ? createPortal(<div ref={contractTablePopoverRef} dir="rtl" style={{ top: contractTableMenuPosition.top, left: contractTableMenuPosition.left }} className="table-menu-popover fixed z-[10020] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedContractIds.size ? `${toFaDigits(selectedContractIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div><button type="button" disabled={selectedContractIds.size !== 1 || !canContract("ویرایش")} onClick={editSelectedContract} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش قرارداد</span></button><button type="button" disabled={!selectedContractIds.size || !canContract("حذف")} onClick={deleteSelectedContracts} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button></div>, document.body) : null}</th>
                   </tr>
                 </thead>
                 <tbody className={contractsTableBodyCls}>
@@ -5110,8 +5111,8 @@ export default function ContractInformation() {
                           className={
                             "min-w-10 px-3 text-sm font-semibold transition " +
                             (active
-                              ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
-                              : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10")
+                              ? "bg-[#184a6b] text-white"
+                              : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200")
                           }
                           aria-pressed={active}
                         >

@@ -1,5 +1,6 @@
 // ساختار شکست هزینه ها
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { api } from "../utils/api.js";
@@ -11,8 +12,7 @@ const tableWrapCls =
   "dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800";
 
 const theadRowCls =
-  "bg-neutral-200 text-black border-b border-neutral-300 " +
-  "dark:bg-white/10 dark:text-neutral-100 dark:border-neutral-700";
+  "bg-[#184a6b] text-white border-b border-[#184a6b]";
 
 const tbodyCls =
   "[&_td]:text-black dark:[&_td]:text-neutral-100 " +
@@ -675,10 +675,10 @@ export default function CostBreakdownPage() {
       <div className="p-3 md:p-4">
         <div className="mb-5 flex min-w-0 items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-            <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+            <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-base font-bold md:text-lg">ساختار شکست هزینه ها</span>
+            <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">ساختار شکست هزینه ها</span>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
           </span>
           <button type="button" onClick={openTemplates} disabled={!projectId || loading || saving} className="mr-auto h-10 rounded-xl border border-neutral-200 px-4 text-sm font-bold transition hover:bg-neutral-50 disabled:opacity-45 dark:border-white/15 dark:hover:bg-white/10">قالب</button>
@@ -746,11 +746,11 @@ export default function CostBreakdownPage() {
                   type="button"
                   onClick={addRow}
                   disabled={!canAddDraft}
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/15 bg-white text-black transition hover:bg-black/5 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:border-neutral-200/20"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#f48120] bg-[#f48120] text-white transition hover:bg-[#d97018] disabled:opacity-50"
                   aria-label="افزودن به جدول"
                   title="افزودن به جدول"
                 >
-                  <img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5" />
+                  <Plus aria-hidden="true" className="h-5 w-5" strokeWidth={2.5} />
                 </button>
               </span>
             </label>
@@ -760,7 +760,7 @@ export default function CostBreakdownPage() {
         <div className="relative px-[15px] pb-4">
           <div ref={tableMenuRef} className="absolute left-5 top-1.5 z-40">
             <button type="button" onClick={() => setTableMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="عملیات انتخاب‌شده" aria-label="عملیات انتخاب‌شده" aria-expanded={tableMenuOpen}>
-              <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
+              <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 invert" />
             </button>
             {tableMenuOpen && <div className="absolute left-0 top-full mt-2 w-60 rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
               <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedRows.length ? `${toFaDigits(selectedRows.length)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
@@ -798,7 +798,7 @@ export default function CostBreakdownPage() {
                     </th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">
                       <span className="flex items-center gap-1.5">
-                        <button type="button" onClick={toggleAllRowsExpanded} disabled={!expandableCodes.length} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-lg leading-none text-black transition hover:text-black/60 disabled:cursor-not-allowed disabled:opacity-35 dark:text-neutral-100 dark:hover:text-white/60" aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"} title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}>
+                        <button type="button" onClick={toggleAllRowsExpanded} disabled={!expandableCodes.length} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-lg leading-none text-white transition hover:text-white/70 disabled:cursor-not-allowed disabled:opacity-35" aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"} title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}>
                           {allRowsExpanded ? "−" : "+"}
                         </button>
                         کد بودجه
@@ -970,8 +970,8 @@ export default function CostBreakdownPage() {
                         className={
                           "min-w-10 px-3 text-sm transition " +
                           (safeRowsPerPage === size
-                            ? "bg-black text-white dark:bg-neutral-100 dark:text-neutral-900"
-                            : "bg-white text-black hover:bg-black/5 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10")
+                            ? "bg-[#184a6b] text-white"
+                            : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200")
                         }
                       >
                         {toFaDigits(size)}

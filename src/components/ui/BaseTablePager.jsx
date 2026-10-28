@@ -1,6 +1,6 @@
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 
-export default function BaseTablePager({ total, page, pageSize, onPageChange, onPageSizeChange }) {
+export default function BaseTablePager({ branded = false, total, page, pageSize, onPageChange, onPageSizeChange }) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, pageCount - 1);
   const start = safePage * pageSize;
@@ -18,7 +18,7 @@ export default function BaseTablePager({ total, page, pageSize, onPageChange, on
       <div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start">
         <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
         <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
-          {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { onPageSizeChange(count); onPageChange(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${pageSize === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}
+          {[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { onPageSizeChange(count); onPageChange(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${branded ? (pageSize === count ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200") : (pageSize === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10")}`}>{toFa(count)}</button>)}
         </div>
       </div>
     </div>
