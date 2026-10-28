@@ -293,3 +293,22 @@ td {
   -webkit-backdrop-filter: blur(18px) saturate(125%);
   backdrop-filter: blur(18px) saturate(125%);
 }
+
+.ipm-nav-subitem:not(.is-active) {
+  border-color: rgba(205, 230, 250, .15) !important;
+  background: rgba(255, 255, 255, .055) !important;
+}
+.ipm-nav-subitem:not(.is-active):hover {
+  border-color: rgba(205, 230, 250, .32) !important;
+  background: rgba(255, 255, 255, .12) !important;
+}
+.ipm-nav-flyout {
+  animation: ipm-nav-flyout-in 160ms ease-out both;
+}
+@keyframes ipm-nav-flyout-in {
+  from { opacity: 0; transform: translateX(6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ipm-nav-flyout { animation: none; }
+}

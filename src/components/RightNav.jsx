@@ -1,5 +1,6 @@
 // src/components/RightNav.jsx
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
 import MobileNav from "./MobileNav";
@@ -89,13 +90,9 @@ function RightNav() {
     }
   });
 
-  const [open, setOpen] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem("nav_open") || "{}");
-    } catch {
-      return {};
-    }
-  });
+  const [open, setOpen] = useState({});
+  const [flyoutPosition, setFlyoutPosition] = useState({ top: 0, right: 0 });
+  const flyoutRef = useRef(null);
 
   const toggleExpanded = () =>
     setExpanded((curr) => {
@@ -135,7 +132,7 @@ function RightNav() {
     if (!expanded && !hasOpenMenu) return undefined;
 
     const closeOnOutsideClick = (event) => {
-      if (navRef.current?.contains(event.target)) return;
+      if (navRef.current?.contains(event.target) || flyoutRef.current?.contains(event.target)) return;
       localStorage.setItem("nav_open", "{}");
       setOpen({});
       if (expanded) {
@@ -434,7 +431,7 @@ function RightNav() {
 
   const subItemCls = (active, compact = false) =>
     [
-      "group relative !grid !items-center !border !border-transparent !bg-transparent !shadow-none !transition-all !duration-200",
+      `ipm-nav-subitem ${active ? "is-active" : ""} group relative !grid !items-center !border !shadow-none !transition-colors !duration-150`,
       compact ? "!grid-cols-[2rem_minmax(0,1fr)] !gap-2 !rounded-lg !px-2 !py-2" : "!grid-cols-[2rem_minmax(0,1fr)] !gap-2.5 !rounded-lg !px-2.5 !py-2",
       active
         ? "!border-[#DB843D]/[0.55] !bg-[#DB843D]/[0.16] !text-white !ring-1 !ring-inset !ring-[#DB843D]/25 before:absolute before:right-0 before:top-2 before:bottom-2 before:w-[3px] before:rounded-full before:bg-[#DB843D]"
@@ -443,68 +440,28 @@ function RightNav() {
 
   const renderIcon = (icon, active) => <span className={iconShellCls(active)}>{icon}</span>;
 
-  const renderExpandedSection = (item) => {
-    const sectionOpen = !!open[item.key];
-
-    return (
-      <div key={item.key} className="space-y-1">
-        <button
-          type="button"
-          className={desktopItemCls(item.active)}
-          onClick={() => toggle(item.key)}
-          aria-expanded={sectionOpen}
-        >
-          {renderIcon(item.icon, item.active)}
-          <span className="min-w-0 flex-1 truncate py-0.5 text-right leading-6">{item.label}</span>
-          <ChevronLeft
-            className={[
-              "h-4 w-4 shrink-0 text-white/[0.45] transition-transform",
-              sectionOpen ? "-rotate-90 text-[#DB843D]" : "",
-            ].join(" ")}
-            strokeWidth={2.2}
-          />
-        </button>
-
-        {sectionOpen && (
-          <div className="ipm-nav-glass mr-3 space-y-1 rounded-xl p-1.5">
-            {item.items.map((child) => (
-              <LinkBtn
-                key={child.to}
-                to={child.to}
-                onClick={closeOpenMenus}
-                className={subItemCls(isActive(child.to))}
-              >
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/[0.06] group-hover:bg-white/[0.10]">
-                  {child.icon}
-                </span>
-                <span className="min-w-0 text-right">
-                  <span className="block truncate text-[13px] font-medium leading-5">{child.label}</span>
-                  <span className="block truncate text-[11px] leading-4 text-white/[0.42]">{child.hint}</span>
-                </span>
-              </LinkBtn>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const renderCollapsedSection = (item) => (
     <div key={item.key} className="relative flex w-full justify-center">
       <button
         type="button"
-        className={desktopItemCls(item.active, true)}
-        onClick={() => toggle(item.key)}
-        onMouseEnter={(e) => showTip(item.label, e)}
+        className={desktopItemCls(item.active, !expanded)}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const navRect = navRef.current.getBoundingClientRect();
+          setFlyoutPosition({ top: Math.max(16, Math.min(rect.top, window.innerHeight - 200)), right: window.innerWidth - navRect.left + 12 });
+          toggle(item.key);
+        }}
+        onMouseEnter={(e) => { if (!expanded) showTip(item.label, e); }}
         onMouseLeave={hideTip}
         aria-label={item.label}
         aria-expanded={!!open[item.key]}
       >
         {renderIcon(item.icon, item.active)}
+        {expanded && <><span className="min-w-0 flex-1 truncate py-0.5 text-right leading-6">{item.label}</span><ChevronLeft className="h-4 w-4 shrink-0 text-white/45" strokeWidth={2.2} /></>}
       </button>
 
-      {open[item.key] && (
-        <div className="ipm-nav-glass absolute right-[calc(100%+1rem)] top-0 z-[70] w-64 rounded-xl p-2 before:absolute before:-right-4 before:top-0 before:h-full before:w-4 before:content-['']">
+      {open[item.key] && createPortal(
+        <div ref={flyoutRef} dir="rtl" style={{ ...flyoutPosition, maxHeight: `calc(100vh - ${flyoutPosition.top + 16}px)` }} className="ipm-nav-glass ipm-nav-flyout fixed z-[250] w-64 overflow-y-auto rounded-xl p-2">
           <div className="px-2 pb-2 pt-1 text-right text-xs font-semibold text-white/50">{item.label}</div>
           <div className="space-y-1">
             {item.items.map((child) => (
@@ -524,14 +481,14 @@ function RightNav() {
               </LinkBtn>
             ))}
           </div>
-        </div>
+        </div>, document.body
       )}
     </div>
   );
 
   const renderDesktopItem = (item) => {
     if (item.type === "section") {
-      return expanded ? renderExpandedSection(item) : renderCollapsedSection(item);
+      return renderCollapsedSection(item);
     }
 
     return (
@@ -551,7 +508,7 @@ function RightNav() {
         dir="rtl"
         className={[
           "ipm-nav-background hidden lg:flex fixed right-4 top-4 bottom-4 z-[200] flex-col rounded-2xl border border-white/10 bg-[#184A6B] text-white",
-          "shadow-[0_18px_50px_rgba(0,0,0,0.26)] backdrop-blur-xl transition-all duration-300",
+          "shadow-[0_18px_50px_rgba(0,0,0,0.26)] transition-[width,padding] duration-200 ease-out",
           "overflow-visible",
           expanded ? "w-[280px] py-3 pl-5 pr-3" : "w-[76px] px-2.5 py-3",
         ].join(" ")}
@@ -581,6 +538,7 @@ function RightNav() {
         )}
 
         <div
+          onScroll={closeOpenMenus}
           className={[
             "mt-5 min-h-0 flex-1",
             expanded
