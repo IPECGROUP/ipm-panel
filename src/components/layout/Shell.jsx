@@ -273,7 +273,7 @@ export default function Shell() {
           <div className="mx-auto max-w-[1400px] flex min-w-0 items-center justify-between gap-2">
           <Link
             to="/"
-            className="flex min-w-0 shrink-0 items-center justify-start hover:opacity-95 transition"
+            className="flex min-w-0 shrink-0 items-center justify-start hover:opacity-95 transition sm:translate-x-5"
             aria-label="خانه"
             title="خانه"
           >
