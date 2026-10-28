@@ -5,13 +5,17 @@ import { ArrowLeft, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import { api } from "../utils/api.js";
 import { useAuth } from "../components/AuthProvider.jsx";
 import "./ModernLogin.css";
+import { captchaSiteKeyForHostname } from "../utils/captcha.js";
 
 export default function ModernLogin({ onBack, testMode = false }) {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const captchaRef = useRef(null);
-  const siteKey = import.meta.env.VITE_ARCAPTCHA_SITE_KEY;
+  const siteKey = captchaSiteKeyForHostname(window.location.hostname, {
+    external: import.meta.env.VITE_ARCAPTCHA_SITE_KEY,
+    internal: import.meta.env.VITE_ARCAPTCHA_SITE_KEY_INTERNAL,
+  });
   const [captchaToken, setCaptchaToken] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
