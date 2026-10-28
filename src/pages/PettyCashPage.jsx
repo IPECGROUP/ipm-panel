@@ -763,6 +763,19 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     return () => { controller.abort(); previousFocus?.focus(); };
   }, [managerOpen, user?.id]);
 
+  const deleteReport = async () => {
+    if (!report.canDelete || saving || !window.confirm(`????? ?${report.reportName}? ? ??? ???????? ?? ??? ????`)) return;
+    setSaving(true); onBusyChange(true); setError("");
+    try {
+      const response = await fetch("/api/petty-cash-expenses", { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(user?.id || "") }, body: JSON.stringify({ action: "delete_report", reportId: report.id, expectedVersion: report.version }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      onReviewed();
+      window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
+    } catch (reason) { setError(reason.message === "workflow_changed" ? "????? ????? ???? ???? ?? ?? ?????? ??? ????." : "??? ????? ????? ???? ?????? ???? ????."); }
+    finally { setSaving(false); onBusyChange(false); }
+  };
+
   const submitDecision = async (recipientId = "") => {
     if (inFlightRef.current || !readyToSubmit) return;
     if (reportDecision === "approve" && !recipientId && actionable.some((item) => item.stage === "planning")) {
@@ -916,7 +929,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </aside>
       </div>
     </div>
-     {(report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
+     {(report.canDelete || report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
+       {report.canDelete && <button type="button" disabled={saving} onClick={deleteReport} className={`${actionClass} border-red-200 bg-red-50 text-red-700`}>??? ???? ?????</button>}
        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
        {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"}</button></div>}
     </footer>}
@@ -1348,7 +1362,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
   };
 
   const deleteReport = async () => {
-    if (!(initialReport?.canRevise || initialReport?.initialStage === "draft") || saving) return;
+    if (!initialReport?.canDelete || saving) return;
     const originalAmount = (initialReport.items || []).reduce((sum, item) => sum + amount(item.amount), 0n);
     if (!window.confirm(initialReport.initialStage === "draft" ? `پیش‌نویس «${initialReport.reportName}» و همه ردیف‌های آن حذف شود؟`
       : `گزارش «${initialReport.reportName}» و همه ردیف‌های آن حذف شود؟ مبلغ ${money(originalAmount)} ریال به باقی‌مانده هزینه‌های ثبت‌نشده برمی‌گردد.`)) return;
@@ -1562,8 +1576,8 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
         onRowsPerPageChange={(count) => { setRowsPerPage(count); setPage(0); }} />
     </div>
     <hr className="my-4 border-neutral-200" />
-    <div className={`flex items-center gap-3 ${initialReport?.canRevise || initialReport?.initialStage === "draft" ? "justify-between" : "justify-end"}`}>
-      {(initialReport?.canRevise || initialReport?.initialStage === "draft") && <button type="button" onClick={deleteReport} disabled={saving}
+    <div className={`flex items-center gap-3 ${initialReport?.canDelete ? "justify-between" : "justify-end"}`}>
+      {initialReport?.canDelete && <button type="button" onClick={deleteReport} disabled={saving}
         className="h-11 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50">حذف کامل گزارش</button>}
       <div className="flex items-center gap-3">
         {(!initialReport || initialReport.initialStage === "draft") && <button type="button" onClick={() => { if (!projectId) return setError("ابتدا پروژه را انتخاب کنید."); setError(""); setDraftConfirmOpen(true); }} disabled={saving}
