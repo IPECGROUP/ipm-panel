@@ -6,6 +6,7 @@ import ContractManagementSection from "./ContractManagementSection.jsx";
 import FinancialManagementSection from "./FinancialManagementSection.jsx";
 import EquipmentManagementSection from "./EquipmentManagementSection.jsx";
 import ProjectLessonCategoryDescriptionsTable from "./ProjectLessonCategoryDescriptionsTable.jsx";
+import SampleCostBreakdown from "./SampleCostBreakdown.jsx";
 
 const tabs = [
   { id: "documents", label: "مدیریت اسناد" },
@@ -90,7 +91,7 @@ export default function BaseInformationPage() {
                   ساختار نمونه
                 </button>
               </div>
-              {activeProjectTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : null}
+              {activeProjectTab === "worksheet" ? <BaseOptionsTable title="بابت دریافتی" endpoint="/api/base/financial-options?category=worksheet-receipt" /> : <SampleCostBreakdown />}
             </div>
           ) : activeTab === "finance" ? <FinancialManagementSection /> : activeTab === "supply" ? <BaseOptionsTable title="نوع درخواست" endpoint="/api/base/supply-request-types" /> : activeTab === "equipment" ? <EquipmentManagementSection /> : (
             <div>
