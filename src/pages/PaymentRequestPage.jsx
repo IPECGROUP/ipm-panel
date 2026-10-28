@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
-import { CalendarDays, ExternalLink, FileText, UserRound } from "lucide-react";
+import { CalendarDays, ExternalLink, FileText, Plus, UserRound } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { Card } from "../components/ui/Card";
 import { useAuth } from "../components/AuthProvider";
@@ -1319,16 +1319,16 @@ export default function PaymentRequestPage() {
         <div className="mb-4 flex min-w-0 items-center justify-between gap-2 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:gap-3 sm:pb-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl">
-              <img src={PAGE_ICON} alt="" className="h-5 w-5 dark:invert sm:h-6 sm:w-6" />
+              <span aria-hidden="true" className="h-5 w-5 bg-[#184a6b] dark:bg-[#8fc4e3] sm:h-6 sm:w-6" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-base font-bold tracking-tight md:text-lg">درخواست پرداخت</span>
+              <span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">درخواست پرداخت</span>
               <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => { if (!showForm) setForm(emptyForm()); setShowForm((old) => !old); setError(""); setSuccess(""); }} className="flex h-10 w-10 items-center justify-center rounded-xl ring-1 ring-black/15 transition hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={showForm ? "نمایش لیست" : "افزودن درخواست"}>
-              <img src={showForm ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />
+            <button type="button" onClick={() => { if (!showForm) setForm(emptyForm()); setShowForm((old) => !old); setError(""); setSuccess(""); }} className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${showForm ? "ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" : "border border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={showForm ? "نمایش لیست" : "افزودن درخواست"}>
+              {showForm ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
             </button>
           </div>
         </div>
@@ -1477,15 +1477,15 @@ export default function PaymentRequestPage() {
           <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr">
             <table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
             <colgroup><col style={{ width: 40 }} /><col style={{ width: 18 }} /><col style={{ width: 90 }} /><col style={{ width: 100 }} /><col style={{ width: 205 }} /><col /><col style={{ width: 165 }} /><col style={{ width: 130 }} /><col style={{ width: 140 }} /></colgroup>
-            <thead><tr className="border-b border-neutral-300 bg-neutral-200 text-black dark:border-neutral-700 dark:bg-white/10 dark:text-neutral-100">
-              <th className="sticky top-0 z-40 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 dark:bg-neutral-800" aria-label="خوانده‌نشده" /><th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><button type="button" onClick={() => { setNumberSortDir((old) => old === "asc" ? "desc" : "asc"); setPage(0); }} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90" title={numberSortDir === "desc" ? "نمایش قدیمی‌ترین موارد" : "نمایش جدیدترین موارد"}><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">تاریخ</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">پروژه</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 !text-right text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">موضوع</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">مبلغ</th>
-              <th className="sticky top-0 z-30 bg-neutral-200 !py-2 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]">درخواست‌کننده</th>
-              <th className="sticky top-0 z-40 bg-neutral-200 !py-2 !pl-4 text-[14px] font-semibold dark:bg-neutral-800 md:text-[15px]"><span>وضعیت</span><ReadingStatusMenu selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
+            <thead><tr className="border-b border-[#184a6b] bg-[#184a6b] text-white">
+              <th className="sticky top-0 z-40 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]"><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></th>
+              <th className="sticky top-0 z-30 bg-[#184a6b] !py-2" aria-label="خوانده‌نشده" /><th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]"><button type="button" onClick={() => { setNumberSortDir((old) => old === "asc" ? "desc" : "asc"); setPage(0); }} className="mx-auto inline-flex items-center gap-1 transition hover:opacity-90" title={numberSortDir === "desc" ? "نمایش قدیمی‌ترین موارد" : "نمایش جدیدترین موارد"}><span>شماره</span><img src={numberSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 invert" /></button></th>
+              <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]">تاریخ</th>
+              <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 !text-right text-[14px] font-semibold md:text-[15px]">پروژه</th>
+              <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 !text-right text-[14px] font-semibold md:text-[15px]">موضوع</th>
+              <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]">مبلغ</th>
+              <th className="sticky top-0 z-30 bg-[#184a6b] !py-2 text-[14px] font-semibold md:text-[15px]">درخواست‌کننده</th>
+              <th className="sticky top-0 z-40 bg-[#184a6b] !py-2 !pl-4 text-[14px] font-semibold md:text-[15px]"><span>وضعیت</span><ReadingStatusMenu selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} /></th>
             </tr></thead>
             <tbody className="text-[13px] text-black [&>tr]:h-9 [&>tr>td]:!py-0 dark:text-neutral-100">
               {loading ? <tr><td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">در حال دریافت...</td></tr> : pageItems.length === 0 ? <tr><td colSpan={9} className="py-8 text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</td></tr> : pageItems.map((item) => <tr key={item.id} onClick={() => item.requestType === "tenkhah" ? setSelectedTenkhah(item) : openPreview(item)} className={`group cursor-pointer transition-colors ${item.requestType === "tenkhah" ? "bg-violet-50/90 hover:bg-violet-100/80 dark:bg-violet-500/[0.12] dark:hover:bg-violet-500/[0.18]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}>
@@ -1527,7 +1527,7 @@ export default function PaymentRequestPage() {
           </div>
           <div className="border-t border-neutral-300 px-2.5 py-2.5 dark:border-neutral-800 sm:px-3"><div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="flex items-center justify-between gap-2 text-sm md:justify-start"><div className="flex items-center gap-2"><button type="button" onClick={() => setPage((old) => Math.max(0, old - 1))} disabled={safePage <= 0} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه قبل"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 18l6-6-6-6" /></svg></button><button type="button" onClick={() => setPage((old) => Math.min(pageCount - 1, old + 1))} disabled={safePage >= pageCount - 1} className="inline-grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.04] disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="صفحه بعد"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M15 18l-6-6 6-6" /></svg></button></div><div className="whitespace-nowrap text-black/70 dark:text-neutral-400">{total === 0 ? "۰ از ۰" : `${toFa(startIndex + 1)}–${toFa(endIndex)} از ${toFa(total)}`}</div></div>
-            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFa(count)}</button>)}</div></div>
+            <div className="flex items-center justify-between gap-2 text-xs sm:text-sm md:justify-start"><span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span><div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">{[10, 25, 100].map((count) => <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200"}`}>{toFa(count)}</button>)}</div></div>
           </div></div>
         </div>
       </div>
@@ -1600,7 +1600,7 @@ function ReadingStatusMenu({ selectedIds, setSelectedReadStatus, canEditSelected
 
   return <div className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
     <button ref={triggerRef} type="button" onClick={toggleMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={open}>
-      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${open ? "scale-110" : ""} dark:invert`} />
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${open ? "scale-110" : ""} invert`} />
     </button>
     {open && position && createPortal(<div ref={popoverRef} className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedIds.size ? `${toFa(selectedIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>

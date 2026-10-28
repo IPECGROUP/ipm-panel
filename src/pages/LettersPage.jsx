@@ -6337,7 +6337,7 @@ aria-invalid={fieldHasError(formKind, "subject")}
   dir="rtl"
   className="w-full min-w-full table-fixed text-sm
     [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center
-    [&_th]:!py-2 [&_td]:!py-2"
+    [&_th]:py-2 [&_td]:!py-2"
 >
 <colgroup>
   <col style={{ width: 48 }} />   {/* checkbox */}

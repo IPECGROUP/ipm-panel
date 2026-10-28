@@ -798,7 +798,7 @@ export default function CostBreakdownPage() {
                     </th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">
                       <span className="flex items-center gap-1.5">
-                        <button type="button" onClick={toggleAllRowsExpanded} disabled={!expandableCodes.length} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-transparent text-lg leading-none text-white transition hover:text-white/70 disabled:cursor-not-allowed disabled:opacity-35" aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"} title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}>
+                        <button type="button" onClick={toggleAllRowsExpanded} disabled={!expandableCodes.length} className="grid h-5 w-5 shrink-0 place-items-center rounded-lg bg-transparent text-lg leading-none text-white transition hover:text-white/70 disabled:cursor-not-allowed disabled:opacity-35" aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"} title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}>
                           {allRowsExpanded ? "−" : "+"}
                         </button>
                         کد بودجه
