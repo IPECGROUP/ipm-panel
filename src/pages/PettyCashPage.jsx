@@ -572,7 +572,7 @@ export default function PettyCashPage() {
                     <th scope="col" className="px-4 text-center font-bold">نام گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">پروژه</th>
                     <th scope="col" className="px-4 text-center font-bold">مبلغ</th>
-                    <th scope="col" className="px-2 text-center font-bold"><span>وضعیت</span><PettyCashTableMenu selectedCount={selectedReportIds.size} canEdit={Boolean(editableReport)} deleting={deletingReports}
+                    <th scope="col" className="relative px-2 text-center font-bold"><span>وضعیت</span><PettyCashTableMenu selectedCount={selectedReportIds.size} canEdit={Boolean(editableReport)} deleting={deletingReports}
                       onRead={(unread) => { updateReadState([...selectedReportIds], unread); setSelectedReportIds(new Set()); }}
                       onEdit={() => { if (!editableReport) return; openReport(editableReport); setEditingReport(editableReport); setSelectedReportIds(new Set()); }} onDelete={deleteSelectedReports} /></th>
                   </tr>
@@ -756,26 +756,50 @@ const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳�
 const english = (value) => toEnglishDigits(String(value ?? "")).replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
 
 function PettyCashTableMenu({ selectedCount, canEdit, deleting, onRead, onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
   const [position, setPosition] = useState(null);
-  const trigger = useRef(null), menu = useRef(null);
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 });
+  }, []);
   useEffect(() => {
-    if (!position) return;
-    const close = (event) => { if (!menu.current?.contains(event.target) && !trigger.current?.contains(event.target)) setPosition(null); };
-    const escape = (event) => { if (event.key === "Escape") setPosition(null); };
-    const reposition = () => setPosition(null);
-    document.addEventListener("pointerdown", close); document.addEventListener("keydown", escape); window.addEventListener("scroll", reposition, true); window.addEventListener("resize", reposition);
-    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", escape); window.removeEventListener("scroll", reposition, true); window.removeEventListener("resize", reposition); };
-  }, [position]);
-  const run = (action) => { setPosition(null); action(); };
-  const buttonClass = "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed";
-  return <span className="inline-block align-middle"><button ref={trigger} type="button" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={Boolean(position)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-black/10" onClick={() => { const rect = trigger.current.getBoundingClientRect(); setPosition(position ? null : { left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 }); }}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
-    {position && createPortal(<div ref={menu} dir="rtl" className="fixed z-[100] w-60 rounded-2xl border border-black/10 bg-white p-2 text-neutral-900 shadow-xl" style={position}>
-      <div className="px-3 py-2 text-xs text-neutral-500">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
-      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(false))}>✓　خوانده شده</button>
-      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(true))}>●　خوانده نشده</button>
-      <button type="button" className={buttonClass} disabled={!canEdit} onClick={() => run(onEdit)}>✎　ویرایش گزارش</button>
-      <button type="button" className={`${buttonClass} text-red-700`} disabled={!selectedCount || deleting} onClick={() => run(onDelete)}>×　{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</button>
-    </div>, document.body)}</span>;
+    if (!open) return undefined;
+    const closeOnOutsideClick = (event) => {
+      if (!triggerRef.current?.contains(event.target) && !popoverRef.current?.contains(event.target)) setOpen(false);
+    };
+    const closeOnEscape = (event) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+  const toggleMenu = () => {
+    if (open) setOpen(false);
+    else { updatePosition(); setOpen(true); }
+  };
+  const closeAnd = (action) => () => { action(); setOpen(false); };
+
+  return <div className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
+    <button ref={triggerRef} type="button" onClick={toggleMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت خواندن" aria-label="مدیریت وضعیت خواندن" aria-expanded={open}>
+      <img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${open ? "scale-110" : ""} dark:invert`} />
+    </button>
+    {open && position && createPortal(<div ref={popoverRef} className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
+      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+      <button type="button" disabled={!selectedCount} onClick={closeAnd(() => onRead(false))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-emerald-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-emerald-100 text-emerald-700 transition group-hover:scale-105 dark:bg-emerald-500/15 dark:text-emerald-300">✓</span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده شده</span></button>
+      <button type="button" disabled={!selectedCount} onClick={closeAnd(() => onRead(true))} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-sky-500/10"><span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700 transition group-hover:scale-105 dark:bg-sky-500/15 dark:text-sky-300"><span className="h-2.5 w-2.5 rounded-full bg-sky-500 ring-2 ring-sky-200 dark:ring-sky-400/30" /></span><span className="min-w-0 flex-1 text-sm font-semibold">خوانده نشده</span></button>
+      <button type="button" disabled={!canEdit} onClick={closeAnd(onEdit)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10" title={canEdit ? "ویرایش گزارش انتخاب‌شده" : "برای ویرایش، یک گزارش متعلق به خودتان را انتخاب کنید"}><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش گزارش</span></button>
+      <button type="button" disabled={!selectedCount || deleting} onClick={closeAnd(onDelete)} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
+    </div>, document.body)}
+  </div>;
 }
 
 function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onRefresh }) {
