@@ -194,7 +194,7 @@ function LegacyLogin({ onShowModern }) {
 }
 
 export default function LoginPage() {
-  const [showModern, setShowModern] = useState(false);
+  const [showModern, setShowModern] = useState(true);
   return showModern ? (
     <ModernLogin onBack={() => setShowModern(false)} />
   ) : (

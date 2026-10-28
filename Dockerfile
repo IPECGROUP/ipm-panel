@@ -16,6 +16,7 @@ RUN set -eux; \
 COPY . .
 ARG VITE_ARCAPTCHA_SITE_KEY
 ARG VITE_ARCAPTCHA_SITE_KEY_INTERNAL
+RUN test -n "$VITE_ARCAPTCHA_SITE_KEY" && test -n "$VITE_ARCAPTCHA_SITE_KEY_INTERNAL" || (echo "Both ARCaptcha site keys are required for the frontend build" >&2; exit 1)
 RUN npm run build
 
 FROM node:22-bookworm-slim
