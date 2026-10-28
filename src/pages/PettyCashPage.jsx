@@ -327,6 +327,27 @@ export default function PettyCashPage() {
   const [reportsPerPage, setReportsPerPage] = useState(10);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [reports, setReports] = useState([]);
+  const [selectedReportIds, setSelectedReportIds] = useState(new Set());
+  const [readState, setReadState] = useState({ seen: [], unread: [] });
+  const [deletingReports, setDeletingReports] = useState(false);
+  const selectAllReportsRef = useRef(null);
+  useEffect(() => {
+    try { const saved = JSON.parse(localStorage.getItem(`petty_cash_report_read:u${userId}`) || "{}"); setReadState({ seen: Array.isArray(saved.seen) ? saved.seen : [], unread: Array.isArray(saved.unread) ? saved.unread : [] }); }
+    catch { setReadState({ seen: [], unread: [] }); }
+    setSelectedReportIds(new Set());
+  }, [userId]);
+  const updateReadState = (ids, unread) => {
+    setReadState((previous) => {
+      const seen = new Set(previous.seen), manual = new Set(previous.unread);
+      ids.forEach((id) => { const key = String(id); if (unread) manual.add(key); else { manual.delete(key); seen.add(key); } });
+      const next = { seen: [...seen], unread: [...manual] };
+      try { localStorage.setItem(`petty_cash_report_read:u${userId}`, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  const isReportUnread = (report) => readState.unread.includes(String(report.id)) || ((report.canAct || report.wasSentToMe) && !readState.seen.includes(String(report.id)));
+  const openReport = (report) => { updateReadState([report.id], false); setSelectedReport(report); };
+
   const [reportError, setReportError] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
   const [selectedLegacyExpense, setSelectedLegacyExpense] = useState(null);
@@ -411,6 +432,26 @@ export default function PettyCashPage() {
   const reportStartIndex = safeReportPage * reportsPerPage;
   const reportEndIndex = Math.min(reportStartIndex + reportsPerPage, visibleReports.length);
   const pageReports = visibleReports.slice(reportStartIndex, reportEndIndex);
+  const allPageReportsSelected = pageReports.length > 0 && pageReports.every((report) => selectedReportIds.has(String(report.id)));
+  const selectedReports = reports.filter((report) => selectedReportIds.has(String(report.id)));
+  const editableReport = selectedReports.length === 1 && (selectedReports[0].canRevise || (selectedReports[0].initialStage === "draft" && Number(selectedReports[0].createdById) === Number(userId))) ? selectedReports[0] : null;
+  useEffect(() => { if (selectAllReportsRef.current) selectAllReportsRef.current.indeterminate = pageReports.some((report) => selectedReportIds.has(String(report.id))) && !allPageReportsSelected; }, [pageReports, selectedReportIds, allPageReportsSelected]);
+  const toggleAllReports = () => setSelectedReportIds((previous) => { const next = new Set(previous); pageReports.forEach((report) => { if (allPageReportsSelected) next.delete(String(report.id)); else next.add(String(report.id)); }); return next; });
+  const deleteSelectedReports = async () => {
+    if (!selectedReports.length || deletingReports || !window.confirm(`??? ${toFa(selectedReports.length)} ????? ?????????? ??? ???? ??? ?????? ???? ?????? ????.`)) return;
+    setDeletingReports(true); setReportError("");
+    try {
+      const results = await Promise.allSettled(selectedReports.map(async (report) => {
+        const response = await fetch("/api/petty-cash-expenses", { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(userId || "") }, body: JSON.stringify({ action: report.initialStage === "draft" ? "delete_draft_report" : "delete_report", reportId: report.id, expectedVersion: report.version }) });
+        const data = await response.json(); if (!response.ok) throw new Error(data.error); return report.id;
+      }));
+      const deleted = new Set(results.filter((result) => result.status === "fulfilled").map((result) => String(result.value)));
+      setReports((previous) => previous.filter((report) => !deleted.has(String(report.id))));
+      setSelectedReportIds((previous) => new Set([...previous].filter((id) => !deleted.has(id))));
+      if (deleted.size !== selectedReports.length) setReportError("???? ???????? ??? ?????? ?????? ?? ????? ????? ?? ????? ????.");
+      loadExpenseAccess(); window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
+    } finally { setDeletingReports(false); }
+  };
   const closeDialog = () => { if (!reviewBusyRef.current) { setSummaryOpen(false); setSelectedReport(null); setSelectedLegacyExpense(null); setEditingReport(null); } };
 
   useEffect(() => {
@@ -519,7 +560,7 @@ export default function PettyCashPage() {
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
               <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1200px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
-                <colgroup><col className="w-16" /><col className="w-28" /><col className="w-32" /><col className="w-44" /><col className="w-52" /><col className="w-48" /><col className="w-44" /><col className="w-52" /></colgroup>
+                <colgroup><col className="w-12" /><col className="w-6" /><col className="w-16" /><col className="w-28" /><col className="w-32" /><col className="w-44" /><col className="w-52" /><col className="w-48" /><col className="w-44" /><col className="w-52" /></colgroup>
                 <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/10 dark:text-white">
                   <tr className="h-12 border-b border-neutral-300 dark:border-white/10">
                     <th scope="col" className="w-16 px-4 text-center font-bold">ردیف</th>
@@ -535,10 +576,12 @@ export default function PettyCashPage() {
                 <tbody className="text-[13px] [&>tr]:h-11">
                   {pageReports.map((report, index) => {
                      const state = expenseReportState(report);
-                    return <tr key={report.id} tabIndex={0} onClick={() => setSelectedReport(report)}
-                      onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedReport(report); } }}
+                    return <tr key={report.id} tabIndex={0} onClick={() => openReport(report)}
+                      onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openReport(report); } }}
                       aria-label={`مشاهده گزارش ${report.reportName}`}
                       className="cursor-pointer border-t border-neutral-200 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
+                      <td className="px-2"><input type="checkbox" className="h-4 w-4 accent-black" checked={selectedReportIds.has(String(report.id))} onClick={(event) => event.stopPropagation()} onChange={() => setSelectedReportIds((previous) => { const next = new Set(previous), id = String(report.id); if (next.has(id)) next.delete(id); else next.add(id); return next; })} aria-label={`?????? ????? ${report.reportName}`} /></td>
+                      <td>{isReportUnread(report) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100" title="???????????" aria-label="???????????" />}</td>
                       <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
                       <td className="px-4 py-2">{report.reportNumber ? toFa(report.reportNumber) : "—"}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
@@ -707,6 +750,29 @@ const expenseAttachments = (item) => Array.isArray(item.files) && item.files.len
   : item.fileUrl ? [{ name: item.fileName, url: item.fileUrl, file: item.attachmentFile }] : [];
 const toFa = (value) => String(value ?? "").replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[digit]);
 const english = (value) => toEnglishDigits(String(value ?? "")).replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660));
+
+function PettyCashTableMenu({ selectedCount, canEdit, deleting, onRead, onEdit, onDelete }) {
+  const [position, setPosition] = useState(null);
+  const trigger = useRef(null), menu = useRef(null);
+  useEffect(() => {
+    if (!position) return;
+    const close = (event) => { if (!menu.current?.contains(event.target) && !trigger.current?.contains(event.target)) setPosition(null); };
+    const escape = (event) => { if (event.key === "Escape") setPosition(null); };
+    const reposition = () => setPosition(null);
+    document.addEventListener("pointerdown", close); document.addEventListener("keydown", escape); window.addEventListener("scroll", reposition, true); window.addEventListener("resize", reposition);
+    return () => { document.removeEventListener("pointerdown", close); document.removeEventListener("keydown", escape); window.removeEventListener("scroll", reposition, true); window.removeEventListener("resize", reposition); };
+  }, [position]);
+  const run = (action) => { setPosition(null); action(); };
+  const buttonClass = "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-right text-sm font-semibold hover:bg-neutral-100 disabled:opacity-40 disabled:cursor-not-allowed";
+  return <span className="inline-block align-middle"><button ref={trigger} type="button" title="?????? ????? ??????" aria-label="?????? ????? ??????" aria-expanded={Boolean(position)} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-black/10" onClick={() => { const rect = trigger.current.getBoundingClientRect(); setPosition(position ? null : { left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 }); }}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" /></button>
+    {position && createPortal(<div ref={menu} dir="rtl" className="fixed z-[100] w-60 rounded-2xl border border-black/10 bg-white p-2 text-neutral-900 shadow-xl" style={position}>
+      <div className="px-3 py-2 text-xs text-neutral-500">{selectedCount ? `${toFa(selectedCount)} ???? ?????? ???` : "????? ????? ??????? ?? ?????? ????"}</div>
+      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(false))}>???????? ???</button>
+      <button type="button" className={buttonClass} disabled={!selectedCount} onClick={() => run(() => onRead(true))}>???????? ????</button>
+      <button type="button" className={buttonClass} disabled={!canEdit} onClick={() => run(onEdit)}>???????? ?????</button>
+      <button type="button" className={`${buttonClass} text-red-700`} disabled={!selectedCount || deleting} onClick={() => run(onDelete)}>??{deleting ? "?? ??? ???..." : "??? ????? ??????????"}</button>
+    </div>, document.body)}</span>;
+}
 
 function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onRefresh }) {
   const { user } = useAuth();
