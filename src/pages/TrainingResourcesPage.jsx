@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
-import { Copy, File } from "lucide-react";
+import { Copy, File, Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -480,7 +480,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
               </span>
             </div>
             <button type="button" onClick={() => formOpen ? closeForm() : openFreshForm()} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${isLibrary && !formOpen ? "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]" : "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"}`} title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"}>
-              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className={`h-5 w-5 ${isLibrary && !formOpen ? "invert" : "dark:invert"}`} />
+              {isLibrary && !formOpen ? <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} /> : <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="h-5 w-5 dark:invert" />}
             </button>
           </div>
 
