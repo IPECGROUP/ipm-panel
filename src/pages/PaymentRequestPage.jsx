@@ -904,6 +904,10 @@ export default function PaymentRequestPage() {
       setSelected((current) => current && Number(current.id) === Number(actionItem.id) ? { ...actionItem } : current);
       setActionError(["forbidden", "reject_not_allowed_for_step", "return_not_allowed_for_step"].includes(err?.message)
         ? "شما اجازه انجام این اقدام را ندارید."
+         : err?.message === "active_project_not_found" ? "پروژه انتخاب‌شده فعال نیست."
+         : err?.message === "budget_code_not_found" ? "کد بودجه برای پروژه انتخاب‌شده معتبر نیست."
+         : err?.message === "serial_conflict" ? "شماره درخواست برای پروژه جدید تکراری است."
+         : err?.message === "invalid_serial" ? "شماره درخواست قابل تغییر نیست."
         : err?.message === "amount_exceeds_project_liquidity"
           ? "تعهدات پروژه از نقدینگی قابل استفاده بیشتر است؛ ابتدا مانده پروژه را بررسی کنید."
           : err?.message === "request_changed"
@@ -2327,6 +2331,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [editUploadOpen, editAttachmentEditor, onClose]);
   const canDecide = item.status === "pending" && item.canAct === true && !item.__actionLocked && !actionBusy;
+  const canReviewPlanning = canDecide && currentStepRoleKey === "project_control" && item.canEditPlanning === true && item.requestType !== "tenkhah";
   const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
   const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
   const [isEditing, setIsEditing] = useState(!!item.__editing);
@@ -2337,6 +2342,10 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const currentStepIndex = Number(item.currentStepIndex || 0);
   const finalAccounting = currentStepRoleKey === "accounting" && currentStepIndex >= 5;
   const [editForm, setEditForm] = useState(() => formFromItem(item));
+  const [reviewProjectId, setReviewProjectId] = useState(String(item.projectId || ""));
+  const [reviewBudgetCode, setReviewBudgetCode] = useState(String(item.budgetCode || ""));
+  const [reviewBudgetItems, setReviewBudgetItems] = useState([]);
+  const [reviewBudgetLoading, setReviewBudgetLoading] = useState(false);
   const [editBudgetItems, setEditBudgetItems] = useState([]);
   const [editBudgetLoading, setEditBudgetLoading] = useState(false);
   const [editUploading, setEditUploading] = useState(false);
@@ -2364,6 +2373,17 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const liquidityMinorUnits = decimalMinorUnits(liquidityRemaining);
   const hasEnoughLiquidity = liquidityMinorUnits > 0n && amountMinorUnits <= liquidityMinorUnits;
   const editProject = projects.find((row) => String(row.id) === String(editForm.projectId));
+  const reviewProject = projects.find((row) => String(row.id) === reviewProjectId);
+  const reviewProjectCode = normalizeProjectCode(reviewProject?.code || (reviewProjectId === String(item.projectId) ? project?.code || item.projectCode : ""));
+  const reviewBudgetOptions = reviewBudgetItems.map((row) => ({
+    code: budgetCodeForProject(row.budgetCode ?? row.budget_code ?? row.code, reviewProjectCode),
+    name: String(row.budgetName ?? row.budget_name ?? row.name ?? ""),
+  })).filter((row) => row.code);
+  const reviewValuesValid = !canReviewPlanning || (Boolean(reviewProjectCode) &&
+    reviewBudgetOptions.some((row) => row.code === reviewBudgetCode));
+  const reviewSerial = canReviewPlanning && reviewProjectId !== String(item.projectId)
+    ? normalizeDigits(String(item.serial || "")).replace(/^(\d{2})\/(?:\d{3}\/)?(\d{4,})$/, (_, year, sequence) => `${year}/${reviewProjectCode}/${sequence}`)
+    : displayPaymentSerial(item, projects);
   const editCurrency = currencyTypes.find((row) => String(row.id) === String(editForm.currencyTypeId));
   const editCurrencyName = editCurrency ? itemLabel(editCurrency) : "ریال";
   const canEditReturnedAmount = canEditRequest && canEditReturned;
@@ -2373,7 +2393,20 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     : editAmountMinorUnits;
 
   useEffect(() => {
-    const projectId = canEditRequest ? editForm.projectId : item.projectId;
+    if (!canReviewPlanning || !reviewProjectId) { setReviewBudgetItems([]); return undefined; }
+    const controller = new AbortController();
+    setReviewBudgetLoading(true);
+    setReviewBudgetItems([]);
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(reviewProjectId)}`, { credentials: "include", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then((data) => { if (!controller.signal.aborted) setReviewBudgetItems(Array.isArray(data.items) ? data.items : []); })
+      .catch(() => { if (!controller.signal.aborted) setReviewBudgetItems([]); })
+      .finally(() => { if (!controller.signal.aborted) setReviewBudgetLoading(false); });
+    return () => controller.abort();
+  }, [canReviewPlanning, reviewProjectId]);
+
+  useEffect(() => {
+    const projectId = canEditRequest ? editForm.projectId : canReviewPlanning ? reviewProjectId : item.projectId;
     if (!projectId) {
       setLiquidityRemaining("");
       return;
@@ -2394,11 +2427,11 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
       })
       .catch(() => { if (!cancelled) setLiquidityRemaining(""); });
     return () => { cancelled = true; };
-  }, [canEditRequest, editForm.projectId, item.projectId, userId]);
+  }, [canEditRequest, canReviewPlanning, editForm.projectId, reviewProjectId, item.projectId, userId]);
   const editAttachments = Array.isArray(editForm.attachments) ? editForm.attachments : [];
-  const previewBudgetProjectId = canEditRequest ? editForm.projectId : item.projectId;
-  const previewBudgetCode = canEditRequest ? editForm.budgetCode : item.budgetCode;
-  const previewProjectCode = canEditRequest ? editProject?.code : (project?.code || item.projectCode || "");
+  const previewBudgetProjectId = canEditRequest ? editForm.projectId : canReviewPlanning ? reviewProjectId : item.projectId;
+  const previewBudgetCode = canEditRequest ? editForm.budgetCode : canReviewPlanning ? reviewBudgetCode : item.budgetCode;
+  const previewProjectCode = canEditRequest ? editProject?.code : canReviewPlanning ? reviewProjectCode : (project?.code || item.projectCode || "");
   const editBudgetOptions = useMemo(() => {
     const rows = Array.isArray(editBudgetItems) ? editBudgetItems : [];
     const hasCurrent = rows.some((row) => normalizeBudgetCode(row.code || row.center_code) === normalizeBudgetCode(editForm.budgetCode));
@@ -2575,6 +2608,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
 
   const submitWorkflow = () => {
     if (!choice && !finalAccounting) return;
+    if (canReviewPlanning && choice === "approve" && !reviewValuesValid) return;
     const note = buildWorkflowNote({
       stepKey: currentStepRoleKey,
       stepIndex: currentStepIndex,
@@ -2591,6 +2625,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     const status = finalAccounting ? "approved" : choice === "reject" || choice === "stop" ? "rejected" : choice === "return" ? "returned" : "approved";
     onAction(status, note, {
       targetAssigneeUserId: targetAssigneeUserId || null,
+      ...(canReviewPlanning && choice === "approve" ? { projectId: Number(reviewProjectId), budgetCode: reviewBudgetCode } : {}),
       ...(finalAccounting ? {
         cashAmount: paymentActionAmount(cashPayAmount, cashPayCurrencyId),
         cashCurrencyTypeId: cashPayCurrencyId || null,
@@ -2968,13 +3003,18 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
           <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-5">
-            <PaymentMetadata label="شماره درخواست" value={toFa(displayPaymentSerial(item, projects))} Icon={FileText} />
+             <PaymentMetadata label="شماره درخواست" value={toFa(reviewSerial)} Icon={FileText} />
             <PaymentMetadata label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
             <PaymentMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} Icon={UserRound} />
             <div className="col-span-2 flex min-w-0 items-center gap-2 border-b border-neutral-200 px-3 py-2 dark:border-white/10 md:border-b-0">
               <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900"><img src="/images/icons/modiriat-projects.svg" alt="" className="h-4 w-4 dark:invert" /></span>
               <div className="grid min-w-0 flex-1 grid-cols-2 items-center">
-                <div className="min-w-0 pl-3"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">پروژه</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{canEditRequest ? (
+                <div className="min-w-0 pl-3"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">پروژه</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{canReviewPlanning ? (
+                   <select aria-label="پروژه درخواست پرداخت" className={`${inputClass} font-[Vazir]`} value={reviewProjectId} disabled={actionBusy} onChange={(event) => { setReviewProjectId(event.target.value); setReviewBudgetCode(""); }}>
+                     <option value="">انتخاب پروژه</option>
+                     {projects.filter((row) => isActiveProject(row)).map((row) => <option key={row.id} value={row.id}>{toFa(projectLabel(row))}</option>)}
+                   </select>
+                 ) : canEditRequest ? (
                   <select className={`${inputClass} font-[Vazir]`} value={editForm.projectId} onChange={(event) => setEditForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}>
                     <option value="">انتخاب پروژه</option>
                     {projects.map((row) => <option key={row.id} value={row.id}>{toFa(projectLabel(row))}</option>)}
@@ -2994,7 +3034,12 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
               <PreviewSection title="جزئیات درخواست پرداخت" flush>
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:divide-white/10 dark:md:[&>*+*]:border-white/15">
                   <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
-                  <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="کد بودجه" value={canEditRequest ? (
+                  <PreviewRow compact editing={canEditRequest || canReviewPlanning} colon leader={!canEditRequest && !canReviewPlanning} label="کد بودجه" value={canReviewPlanning ? (
+                    <select className={inputClass} value={reviewBudgetCode} disabled={!reviewProjectId || reviewBudgetLoading || actionBusy} onChange={(event) => setReviewBudgetCode(event.target.value)}>
+                      <option value="">{reviewBudgetLoading ? "در حال دریافت..." : "انتخاب کد بودجه"}</option>
+                      {reviewBudgetOptions.map((row) => <option key={row.code} value={row.code}>{toFa(row.code)}{row.name ? ` - ${row.name}` : ""}</option>)}
+                    </select>
+                  ) : canEditRequest ? (
                     <select className={inputClass} value={editForm.budgetCode} disabled={!editForm.projectId || editBudgetLoading} onChange={(event) => setEditField("budgetCode", event.target.value)}>
                       <option value="">{editBudgetLoading ? "در حال دریافت..." : editForm.projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید"}</option>
                       {editBudgetOptions.map((row) => {
@@ -3125,7 +3170,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           <ActionFooter actionBusy={actionBusy} actionError={actionError}
             disabled={canEditRequest
               ? editUploading || (canEditReturned && nextRecipients.users?.length > 0 && !targetAssigneeUserId)
-              : finalAccounting ? !cashPayAmount && !creditPayAmount : !choice || (choice === "approve" && nextRecipients.users?.length > 0 && !targetAssigneeUserId)}
+               : finalAccounting ? !cashPayAmount && !creditPayAmount : !choice || (choice === "approve" && ((!reviewValuesValid) || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)))}
             onSubmit={canEditRequest
               ? canEditReturned ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null }) : () => onEdit(item, editForm)
               : submitWorkflow} />
