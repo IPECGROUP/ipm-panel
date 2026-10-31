@@ -962,14 +962,14 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   return <>
     <div inert={managerOpen ? true : undefined} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 md:grid-cols-3 xl:grid-cols-5">
-        {metadata.map(({ label, value, secondary, recipient, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-neutral-200 sm:last:border-l-0">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
-          {recipient ? <div className="relative grid w-full min-w-0 grid-cols-2 items-center before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-neutral-300">
-            <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 whitespace-nowrap text-xs font-bold">{value}</p></div>
-            <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-neutral-500">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
-          </div> : <div className="min-w-0"><p className="text-[11px] text-neutral-500">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
-            {secondary && <p className="mt-1 text-[10px] text-neutral-500">{secondary}</p>}
+      <div className="mb-3 grid grid-cols-2 rounded-xl border border-[#5d92b7] bg-[#5d92b7] text-white md:grid-cols-3 xl:grid-cols-5">
+        {metadata.map(({ label, value, secondary, recipient, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-white/30 sm:last:border-l-0">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/40 bg-white/15">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
+          {recipient ? <div className="relative grid w-full min-w-0 grid-cols-2 items-center before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-white/40">
+            <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-white/80">{label}</p><p className="mt-0.5 whitespace-nowrap text-xs font-bold">{value}</p></div>
+            <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-white/80">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
+          </div> : <div className="min-w-0"><p className="text-[11px] text-white/80">{label}</p><p className="mt-0.5 break-words text-xs font-bold">{value}</p>
+            {secondary && <p className="mt-1 text-[10px] text-white/80">{secondary}</p>}
           </div>}
         </div>)}
       </div>
@@ -991,7 +991,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <section className="min-w-0 overflow-hidden">
-            <h3 className="flex items-center gap-2 bg-neutral-50/60 px-3 py-3 text-sm font-bold"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات گزارش تنخواه</h3>
+            <h3 className="flex items-center gap-2 bg-[#184a6b] px-3 py-3 text-sm font-bold text-white"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[294px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[336px]">
               <table className="w-full min-w-[700px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
                  <colgroup><col className="w-12" /><col /><col className="w-52" /><col className="w-32" /></colgroup>
@@ -1029,7 +1029,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </div>
 
         <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
-          <h3 className="flex items-center gap-2 px-3 py-3 text-sm font-bold"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست‌ها</h3>
+          <h3 className="flex items-center gap-2 bg-[#184a6b] px-3 py-3 text-sm font-bold text-white"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست‌ها</h3>
           <div className="px-3">
             <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-64 xl:h-[min(34vh,400px)]">
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
@@ -1139,7 +1139,7 @@ function PettyCashSettlementTimeline({ report }) {
   if (!events.get("created")?.length) addEvent("created", { at: report.createdAt, actor: report.createdByName || report.createdByUsername || "—", label: "ثبت گزارش", result: "approved" });
 
   return <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white pb-4">
-    <h3 className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-bold">فرآیند تسویه تنخواه</h3>
+    <h3 className="bg-[#184a6b] px-4 py-3 text-sm font-bold text-white">فرآیند تسویه تنخواه</h3>
     <ol className="space-y-0 p-4">{stages.map(([stage, title], index) => {
       const stageEvents = events.get(stage) || [];
       const last = stageEvents.at(-1);
