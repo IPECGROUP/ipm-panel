@@ -269,7 +269,7 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="px-2 sm:px-3 md:px-6 py-1.5 md:py-2 lg:pr-[var(--right-nav-space)] lg:pl-8 transition-[padding] duration-300 ease-in-out">
+        <div className="px-2 sm:px-3 md:px-6 py-1 lg:pr-[var(--right-nav-space)] lg:pl-8 transition-[padding] duration-300 ease-in-out">
           <div className="mx-auto max-w-[1400px] flex min-w-0 items-center justify-between gap-2">
           <Link
             to="/"
