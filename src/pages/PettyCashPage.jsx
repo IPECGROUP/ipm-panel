@@ -560,7 +560,7 @@ export default function PettyCashPage() {
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
               <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1150px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
-                <colgroup><col style={{ width: 40 }} /><col style={{ width: 20 }} /><col style={{ width: 50 }} /><col style={{ width: 130 }} /><col style={{ width: 100 }} /><col style={{ width: 140 }} /><col style={{ width: 170 }} /><col style={{ width: 190 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
+                <colgroup><col style={{ width: 40 }} /><col style={{ width: 20 }} /><col style={{ width: 130 }} /><col style={{ width: 100 }} /><col style={{ width: 140 }} /><col style={{ width: 190 }} /><col style={{ width: 170 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
                 <thead className="bg-[#184a6b] text-white">
                   <tr className="h-9 border-b border-[#184a6b]">
                     <th scope="col" className="px-2"><input ref={selectAllReportsRef} type="checkbox" checked={allPageReportsSelected} onChange={toggleAllReports} aria-label="انتخاب همه گزارش‌های این صفحه" className="h-4 w-4 accent-black" /></th>
@@ -577,8 +577,8 @@ export default function PettyCashPage() {
                       onEdit={() => { if (!editableReport) return; openReport(editableReport); setEditingReport(editableReport); setSelectedReportIds(new Set()); }} onDelete={deleteSelectedReports} /></th>
                   </tr>
                 </thead>
-                <tbody className="text-[13px] [&>tr]:h-11">
-                  {pageReports.map((report, index) => {
+                <tbody className="text-[13px] [&>tr]:h-9 [&>tr>td]:!py-0">
+                  {pageReports.map((report) => {
                      const state = expenseReportState(report);
                     return <tr key={report.id} tabIndex={0} onClick={() => openReport(report)}
                       onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openReport(report); } }}
@@ -586,12 +586,11 @@ export default function PettyCashPage() {
                       className="cursor-pointer border-t border-neutral-200 bg-black/[0.02] transition hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-neutral-400">
                       <td className="px-2"><input type="checkbox" className="h-4 w-4 accent-black" checked={selectedReportIds.has(String(report.id))} onClick={(event) => event.stopPropagation()} onChange={() => setSelectedReportIds((previous) => { const next = new Set(previous), id = String(report.id); if (next.has(id)) next.delete(id); else next.add(id); return next; })} aria-label={`انتخاب گزارش ${report.reportName}`} /></td>
                       <td>{isReportUnread(report) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100" title="خوانده‌نشده" aria-label="خوانده‌نشده" />}</td>
-                      <td className="px-4 py-2">{toFa(reportStartIndex + index + 1)}</td>
                       <td className="px-4 py-2">{report.reportNumber ? toFa(report.reportNumber) : "—"}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
                       <td className="truncate px-4 py-2" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
+                      <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode ? `${toFa(report.projectCode)} - ` : ""}{report.projectName}</td>
                       <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
-                       <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode ? `${toFa(report.projectCode)} - ` : ""}{report.projectName}</td>
                       <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
                       <td className="relative px-4 py-2">
                         <span className={`inline-flex max-w-full items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusBadgeClass(state.statusKey)}`}>{state.statusKey === "pending" && state.waiting !== "—" ? state.waiting : state.status}</span>
@@ -1026,7 +1025,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
      {(report.canDelete || report.canRevise || (!isCreatorView && canAct)) && <footer inert={managerOpen ? true : undefined} className="shrink-0 border-t border-neutral-100 px-3 py-3 sm:px-5 sm:py-4">
        {report.canDelete && <button type="button" disabled={saving} onClick={deleteReport} className={`${actionClass} border-red-200 bg-red-50 text-red-700`}>حذف کامل گزارش</button>}
        {report.canRevise && <button type="button" disabled={saving} onClick={onRevise} className={`${actionClass} border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100`}><Pencil className="h-4 w-4" />ویرایش موارد برگشتی</button>}
-       {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <RefreshCw className="h-5 w-5" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"}</button></div>}
+       {!isCreatorView && canAct && <div className="flex justify-end"><button type="button" disabled={saving || !readyToSubmit} onClick={() => submitDecision()} aria-label={reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"} title={!readyToSubmit && reportDecision === "revision" ? "دلیل بازگشت کل گزارش را وارد کنید" : undefined} className={`${actionClass} border-black bg-black px-5 text-white hover:bg-neutral-800`}>{reportDecision === "revision" ? <img src="/images/icons/bazgasht.svg" alt="" className="h-5 w-5 invert" /> : <Check className="h-5 w-5" />}{reportDecision === "revision" ? "ثبت بازگشت تنخواه گردان" : "تأیید تنخواه گردان"}</button></div>}
     </footer>}
     {managerOpen && <div className="absolute inset-0 z-20 grid place-items-center bg-black/35 p-4 backdrop-blur-[2px]">
       <div ref={managerDialogRef} data-manager-dialog="true" role="dialog" aria-modal="true" aria-labelledby="petty-cash-manager-title"
