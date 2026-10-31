@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
-import { Copy, File, Plus } from "lucide-react";
+import { Copy, File, Image, Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -76,6 +76,7 @@ function fileKind(file) {
   if (/\.(xlsx?|xlsm|csv)$/.test(name)) return "excel";
   if (/\.(docx?|rtf)$/.test(name)) return "word";
   if (/\.pdf$/.test(name)) return "pdf";
+  if (/\.(jpe?g|png|webp|heic|heif)$/.test(name)) return "image";
   return "file";
 }
 
@@ -87,6 +88,7 @@ function FileTypeIcon({ file }) {
     pdf: { src: "/images/pdf.png", alt: "PDF" },
   };
   if (icons[kind]) return <img src={icons[kind].src} alt={icons[kind].alt} className="h-6 w-6 object-contain" />;
+  if (kind === "image") return <Image aria-label="تصویر" className="h-5 w-5 text-violet-600 dark:text-violet-400" />;
   return <File className="h-5 w-5 text-neutral-500" />;
 }
 
@@ -270,7 +272,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
         body.append("file", file);
         const response = await fetch(isLibrary ? "/api/library-items/upload" : "/api/training-resources/upload", { method: "POST", credentials: "include", headers: requestHeaders, body });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error === "unsupported_file_type" ? (isLibrary ? "فقط فایل‌های اکسل، ورد و PDF مجاز هستند." : "فقط فایل‌های اکسل، ورد، PDF و تصاویر JPG، PNG یا WebP مجاز هستند.") : data.error || "بارگذاری فایل انجام نشد.");
+        if (!response.ok) throw new Error(data.error === "unsupported_file_type" ? "فقط فایل‌های اکسل، ورد، PDF و تصاویر JPG، PNG یا WebP مجاز هستند." : data.error || "بارگذاری فایل انجام نشد.");
         uploaded.push(data.file);
       }
       setForm((previous) => ({ ...previous, files: replaceIndex == null ? [...previous.files, ...uploaded] : previous.files.map((item, index) => index === replaceIndex ? uploaded[0] : item) }));
@@ -431,7 +433,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
     const value = String(id);
     return previous.map(String).includes(value)
       ? previous.map(String).filter((current) => current !== value)
-      : [...previous.map(String), value];
+      : isLibrary ? [value] : [...previous.map(String), value];
   });
 
   const exportFilteredItems = async () => {
@@ -539,7 +541,7 @@ export default function TrainingResourcesPage({ variant = "training" }) {
 
       {pickerOpen && <LetterPicker query={pickerQuery} setQuery={setPickerQuery} letters={filteredLetters} selectedIds={pickerIds} setSelectedIds={setPickerIds} onClose={() => setPickerOpen(false)} onConfirm={() => { setForm((old) => ({ ...old, relatedLetterIds: pickerIds })); setPickerOpen(false); }} />}
       {tagPickerOpen && <UnifiedTagPicker selectedIds={tagPickerDraftIds} onClose={() => setTagPickerOpen(false)} onConfirm={applyTagPicker} />}
-      {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onSelectFiles={selectUploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onEditFile={!isLibrary ? openImageEditor : undefined} isEditableFile={!isLibrary ? (file) => /\.(jpe?g|png|webp)$/i.test(file.name || file.url || "") : undefined} accept={isLibrary ? ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" : ".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp"} allowedTypes={isLibrary ? "PDF، Word و Excel" : "PDF، Word، Excel و تصویر (JPG، PNG، WebP)"} multiple={!isLibrary} selectionHint={isLibrary ? "" : "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."} onClose={() => setUploadOpen(false)} />}
+      {uploadOpen && <AdvancedFileUploadModal title={isLibrary ? "بارگذاری فایل‌های کتابخانه" : "بارگذاری فایل‌های منبع آموزشی"} files={form.files} uploading={uploading} onUpload={uploadFiles} onSelectFiles={selectUploadFiles} onRemove={(index) => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} onEditFile={!isLibrary ? openImageEditor : undefined} isEditableFile={!isLibrary ? (file) => /\.(jpe?g|png|webp)$/i.test(file.name || file.url || "") : undefined} accept=".pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv,.jpg,.jpeg,.png,.webp" allowedTypes="PDF، Word، Excel و تصویر (JPG، PNG، WebP)" multiple={!isLibrary} selectionHint={isLibrary ? "" : "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."} onClose={() => setUploadOpen(false)} />}
       {imageEditorOpen && editingImage ? <AttachmentImageEditor initialUrl={editingImage.file.url} initialName={editingImage.file.name} onClose={() => { setEditingImage(null); setImageEditorOpen(false); setUploadOpen(true); }} onConfirm={confirmEditedExistingImage} onAddImages={addImagesToQueue} onViewFiles={() => { setEditingImage(null); setImageEditorOpen(false); setUploadOpen(true); }} /> : imageEditorOpen && imageQueue[0] && <AttachmentImageEditor initialFile={imageQueue[0]} onClose={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} onConfirm={confirmEditedImage} onAddImages={addImagesToQueue} onViewFiles={() => { setImageEditorOpen(false); setImageQueue([]); setUploadOpen(true); }} />}
     </div>
   );
