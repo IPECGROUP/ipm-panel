@@ -157,6 +157,16 @@ export default function ProjectLessonsLearnedPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [filterTagIds, setFilterTagIds] = useState([]);
+  const [pinnedFilterTagIds, setPinnedFilterTagIds] = useState([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(`lesson_filter_tags:u${user.id}`) || "[]");
+      setPinnedFilterTagIds(Array.isArray(saved) ? saved.map(String) : []);
+    } catch { setPinnedFilterTagIds([]); }
+    setFilterTagIds([]);
+  }, [user?.id]);
   const [filterImportances, setFilterImportances] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -291,7 +301,7 @@ export default function ProjectLessonsLearnedPage() {
     pageItems.every((item) => selectedIds.has(String(item.id)));
 
   const openTags = (target) => {
-    const selectedTags = target === "form" ? form.tagIds : filterTagIds;
+    const selectedTags = target === "form" ? form.tagIds : pinnedFilterTagIds;
     setTagFor(target);
     setTagDraft(selectedTags.map(String));
     setTagOpen(true);
@@ -546,7 +556,7 @@ export default function ProjectLessonsLearnedPage() {
               setFrom={setFrom}
               to={to}
               setTo={setTo}
-              tags={tags}
+              tags={tags.filter((tag) => pinnedFilterTagIds.includes(String(tag.id)))}
               selected={filterTagIds}
               onToggleTag={(id) => setFilterTagIds((current) => current.map(String).includes(String(id)) ? current.map(String).filter((value) => value !== String(id)) : [...current.map(String), String(id)])}
               selectedImportances={filterImportances}
@@ -729,7 +739,12 @@ export default function ProjectLessonsLearnedPage() {
           onClose={() => setTagOpen(false)}
           onConfirm={(selectedIds) => {
             const ids = [...new Set(selectedIds.map(String))];
-            if (tagFor === "filter") setFilterTagIds(ids);
+            if (tagFor === "filter") {
+              const pinned = ids.map(String);
+              setPinnedFilterTagIds(pinned);
+              setFilterTagIds((current) => current.filter((id) => pinned.includes(String(id))));
+              try { localStorage.setItem(`lesson_filter_tags:u${user.id}`, JSON.stringify(pinned)); } catch {}
+            }
             else setForm((x) => ({ ...x, tagIds: ids }));
             setTagOpen(false);
           }}

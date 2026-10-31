@@ -3,11 +3,16 @@ import { createPortal } from "react-dom";
 import { Info } from "lucide-react";
 import { dayjs } from "../../utils/date.js";
 
-const IMPORTANCE_LABELS = new Map([
-  ["low", "کم"],
-  ["medium", "متوسط"],
-  ["high", "زیاد"],
-]);
+const CATEGORY_TONES = [
+  "bg-sky-50 text-sky-700 ring-sky-200 dark:bg-sky-500/10 dark:text-sky-200 dark:ring-sky-400/20",
+  "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-400/20",
+  "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20",
+  "bg-violet-50 text-violet-700 ring-violet-200 dark:bg-violet-500/10 dark:text-violet-200 dark:ring-violet-400/20",
+];
+function categoryTone(value) {
+  const hash = Array.from(String(value || "")).reduce((sum, char) => (sum * 31 + char.codePointAt(0)) >>> 0, 0);
+  return CATEGORY_TONES[hash % CATEGORY_TONES.length];
+}
 
 function toPersianDigits(value = "") {
   return String(value ?? "").replace(
@@ -25,7 +30,7 @@ function formatJalaliDate(value) {
 function EmptyRow({ children }) {
   return (
     <tr>
-      <td colSpan={7} className="p-8 text-center text-neutral-500">
+      <td colSpan={6} className="p-8 text-center text-neutral-500">
         {children}
       </td>
     </tr>
@@ -60,9 +65,8 @@ export default function LessonsTable({
             <col style={{ width: 70 }} />
             <col style={{ width: 135 }} />
             <col style={{ width: 180 }} />
-            <col />
             <col style={{ width: 220 }} />
-            <col style={{ width: 150 }} />
+            <col />
           </colgroup>
 
           <thead>
@@ -77,10 +81,9 @@ export default function LessonsTable({
               <th className="px-3 py-3">ردیف</th>
               <th className="px-3 py-3">تاریخ</th>
               <th className="px-3 py-3">پروژه</th>
-              <th className="px-3 py-3">دسته‌بندی</th>
               <th className="px-3 py-3">دانش‌آفرین</th>
               <th className="relative px-3 py-3">
-                <span>اهمیت</span>
+                <span>دسته‌بندی</span>
                 {canReview && (
                   <TableMenu
                     selectedCount={selectedIds.size}
@@ -187,10 +190,6 @@ function LessonRow({
       <td className="px-3">{toPersianDigits(index + 1)}</td>
       <td className="px-3">{formatJalaliDate(item.createdAt)}</td>
       <td className="truncate px-3" title={`${item.projectCode || ""} ${item.projectName || ""}`}>{item.projectCode ? `${item.projectCode} - ` : ""}{item.projectName || "—"}</td>
-      <td className="truncate px-3" title={item.category}>
-        <span>{item.category}</span>
-      </td>
-
       <td className="px-3">
         <span className="inline-flex items-center justify-center gap-1.5">
           <span>{item.authorName}</span>
@@ -211,7 +210,7 @@ function LessonRow({
         </span>
       </td>
 
-      <td className="px-3"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${item.importance === "low" ? "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/20" : item.importance === "medium" ? "bg-orange-50 text-orange-700 ring-orange-200 dark:bg-orange-500/10 dark:text-orange-200 dark:ring-orange-400/20" : item.importance === "high" ? "bg-red-50 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/20" : "bg-neutral-50 text-neutral-600 ring-neutral-200"}`}>{IMPORTANCE_LABELS.get(item.importance) || "—"}</span></td>
+      <td className="px-3" title={item.category || ""}><span className={`inline-block max-w-full truncate rounded-full px-2.5 py-1 align-middle text-[10px] font-bold ring-1 ${categoryTone(item.category)}`}>{item.category || "?"}</span></td>
     </tr>
   );
 }
