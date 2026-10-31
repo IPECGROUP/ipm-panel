@@ -64,9 +64,9 @@ export default function LessonsTable({
             <col style={{ width: 52 }} />
             <col style={{ width: 70 }} />
             <col style={{ width: 135 }} />
-            <col style={{ width: 180 }} />
-            <col style={{ width: 220 }} />
             <col />
+            <col style={{ width: 220 }} />
+            <col style={{ width: 150 }} />
           </colgroup>
 
           <thead>
