@@ -399,14 +399,14 @@ export default function CostBreakdownPage() {
   const openTemplates = async () => {
     if (!projectId) { setErr("ابتدا پروژه را انتخاب کنید."); return; }
     setTemplateOpen(true); setTemplateLoading(true); setErr("");
-    try { setTemplate(await api("/base/sample-cost-structure")); }
+    try { setTemplate(await Promise.all(["engineering", "procurement", "execution"].map((type) => api(`/base/sample-cost-structure?type=${type}`)))); }
     catch { setTemplate(null); setErr("دریافت قالب انجام نشد."); }
     finally { setTemplateLoading(false); }
   };
 
-  const importTemplate = () => {
+  const importTemplate = (selectedTemplate) => {
     const existing = new Set(rows.map((row) => projectBudgetCode((editDrafts[row.id] || row).budgetCode)));
-    const items = (template?.rows || []).map((row) => ({ ...row, budgetCode: `${selectedProjectCode}-${normalizeCode(row.budgetCode).split("-").slice(1).join("-")}` }));
+    const items = (selectedTemplate?.rows || []).map((row) => ({ ...row, budgetCode: `${selectedProjectCode}-${normalizeCode(row.budgetCode).split("-").slice(1).join("-")}` }));
     if (!items.length) { setErr("قالب ردیفی برای وارد کردن ندارد."); return; }
     if (items.some((row) => existing.has(row.budgetCode))) { setErr("برخی کدهای قالب در جدول وجود دارند. برای جلوگیری از ثبت تکراری، قالب وارد نشد."); setTemplateOpen(false); return; }
     const drafts = items.map((row) => ({ ...row, id: `draft-${crypto.randomUUID()}`, draft: true }));
@@ -681,7 +681,7 @@ export default function CostBreakdownPage() {
             <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">ساختار شکست هزینه ها</span>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
           </span>
-          <button type="button" onClick={openTemplates} disabled={!projectId || loading || saving} className="mr-auto h-10 rounded-xl border border-neutral-200 px-4 text-sm font-bold transition hover:bg-neutral-50 disabled:opacity-45 dark:border-white/15 dark:hover:bg-white/10">قالب</button>
+          <button type="button" onClick={openTemplates} disabled={!projectId || loading || saving} className="mr-auto h-10 rounded-xl border border-neutral-200 px-4 text-sm font-bold transition hover:bg-neutral-50 disabled:opacity-45 dark:border-white/15 dark:hover:bg-white/10">فراخوانی از ساختار نمونه قالب</button>
           <button
             type="button"
             onClick={exportExcel}
@@ -987,7 +987,7 @@ export default function CostBreakdownPage() {
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
       <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="button" onClick={saveDraftRows} disabled={saving || !rows.some((row) => row.draft)} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white disabled:opacity-40 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert dark:invert-0" /></button></div>
-      {templateOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="template-title"><div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"><div className="flex items-center justify-between"><h2 id="template-title" className="text-sm font-bold">انتخاب قالب</h2><button type="button" onClick={() => setTemplateOpen(false)} aria-label="بستن" className="text-xl">×</button></div>{templateLoading ? <p className="mt-5 text-sm">در حال دریافت...</p> : template ? <button type="button" onClick={importTemplate} className="mt-5 w-full rounded-xl border border-black/10 p-4 text-right text-sm font-semibold hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">ساختار نمونه — {template.project}</button> : <p className="mt-5 text-sm text-red-600">دریافت قالب انجام نشد.</p>}</div></div>}
+      {templateOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="template-title"><div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"><div className="flex items-center justify-between"><h2 id="template-title" className="text-sm font-bold">انتخاب قالب</h2><button type="button" onClick={() => setTemplateOpen(false)} aria-label="بستن" className="text-xl">×</button></div>{templateLoading ? <p className="mt-5 text-sm">در حال دریافت...</p> : template ? <div className="mt-5 space-y-2">{template.map((item) => <button key={item.type} type="button" onClick={() => importTemplate(item)} className="w-full rounded-xl border border-black/10 p-4 text-right text-sm font-semibold hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">{item.project}</button>)}</div> : <p className="mt-5 text-sm text-red-600">دریافت قالب انجام نشد.</p>}</div></div>}
       </div>
     </Card>
   );
