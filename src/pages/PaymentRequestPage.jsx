@@ -313,10 +313,8 @@ function escapePdfHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
-// Keep a PDF suffix adjacent to the filename in RTL print layouts. The stored
-// filename and its URL remain unchanged; this is only the printed label.
 function pdfAttachmentLabel(value) {
-  return String(value ?? "").replace(/\.pdf$/i, "pdf");
+  return String(value ?? "");
 }
 
 function isHeicAttachment(file) {
@@ -2684,7 +2682,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             ? `<object class="attachment-pdf" data="${escapePdfHtml(url)}#view=FitH&toolbar=1" type="application/pdf"><iframe title="${value(name)}" src="${escapePdfHtml(url)}#view=FitH&toolbar=1"></iframe></object><a class="original-file" href="${escapePdfHtml(url)}" target="_blank" rel="noreferrer">باز کردن و چاپ فایل PDF اصلی</a>`
             : `<div class="no-preview">پیش‌نمایش این نوع فایل در مرورگر پشتیبانی نمی‌شود.</div><a class="original-file" href="${escapePdfHtml(url)}" target="_blank" rel="noreferrer">باز کردن فایل اصلی</a>`;
       return `<article class="sheet attachment-preview-page">
-        <div class="attachment-preview-header"><span>پیوست ${toFa(index + 1)}</span><strong>${value(name)}</strong></div>
+        <div class="attachment-preview-header"><span>پیوست ${toFa(index + 1)}</span><strong><bdi dir="auto">${value(name)}</bdi></strong></div>
         <div class="attachment-preview-body">${preview}</div>
         <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>پیش‌نمایش پیوست ${toFa(index + 1)}</span></footer>
       </article>`;
@@ -2749,7 +2747,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     .attachment-list li { display: grid; grid-template-columns: 9mm 1fr; gap: 6px; padding: 4px 8px; border-bottom: 1px solid #e4e8eb; }
     .attachment-list li:last-child { border-bottom: 0; }
     .attachment-list .number { color: #1b6c91; font-weight: 700; }
-    .attachment-file-name { direction: ltr; unicode-bidi: isolate; }
+    .attachment-file-name { unicode-bidi: isolate; }
     .attachment-preview-page { break-before: page; page-break-before: always; display: flex; flex-direction: column; }
     .attachment-preview-header { display: grid; grid-template-columns: 28mm 1fr; align-items: center; gap: 10px; min-height: 15mm; padding: 8px 11px; border: 1px solid #d6dee4; border-radius: 11px; background: #f4f7f9; }
     .attachment-preview-header span { color: #1b6c91; font-weight: 700; }
@@ -2834,7 +2832,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     <section>
       <h2 class="section-title">پیوست‌های درخواست پرداخت</h2>
       <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
-      ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong class="attachment-file-name">${value(name)}</strong></li>`).join("")}</ul>` : ""}
+      ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong class="attachment-file-name"><bdi dir="auto">${value(name)}</bdi></strong></li>`).join("")}</ul>` : ""}
     </section>
     <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapePdfHtml(reportDateTime)}</span></footer>
   </article>
@@ -2881,7 +2879,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                   for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
                     const page = await pdf.getPage(pageNumber);
                     const viewport = page.getViewport({ scale: 2 });
-                    const canvas = pdfWindow.document.createElement("canvas");
+                    // PDF.js installs fonts in the document that loaded it. Render there
+                    // so the canvas can use those fonts.
+                    const canvas = document.createElement("canvas");
                     canvas.width = Math.ceil(viewport.width);
                     canvas.height = Math.ceil(viewport.height);
                     await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
