@@ -973,7 +973,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   return <>
     <div inert={managerOpen ? true : undefined} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      <div className="mb-3 grid grid-cols-2 rounded-xl border border-[#9fc5dc] bg-[#9fc5dc] text-[#153d56] md:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-3 grid grid-cols-2 rounded-xl border border-[#e4e2da] bg-[#f8f7f2] text-[#153d56] md:grid-cols-3 xl:grid-cols-5">
         {metadata.map(({ label, value, secondary, recipient, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-[#153d56]/20 sm:last:border-l-0">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#153d56]/20 bg-white/35">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
           {recipient ? <div className="relative grid w-full min-w-0 grid-cols-2 items-center before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-[#153d56]/20">
