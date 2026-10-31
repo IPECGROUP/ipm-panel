@@ -559,8 +559,8 @@ export default function PettyCashPage() {
           {reportError && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{reportError}</p>}
           <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
             <div className="overflow-x-auto">
-              <table className="[&_td]:!text-center [&_th]:!text-center w-full min-w-[1150px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
-                <colgroup><col style={{ width: 40 }} /><col style={{ width: 20 }} /><col style={{ width: 130 }} /><col style={{ width: 100 }} /><col style={{ width: 140 }} /><col style={{ width: 190 }} /><col style={{ width: 170 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
+              <table className="[&_th]:text-center [&_td]:text-center w-full min-w-[1000px] table-fixed border-collapse text-center text-sm" aria-label="گزارش‌های تنخواه">
+                <colgroup><col style={{ width: 40 }} /><col style={{ width: 18 }} /><col style={{ width: 110 }} /><col style={{ width: 100 }} /><col style={{ width: 135 }} /><col /><col style={{ width: 185 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
                 <thead className="bg-[#184a6b] text-white">
                   <tr className="h-9 border-b border-[#184a6b]">
                     <th scope="col" className="px-2"><input ref={selectAllReportsRef} type="checkbox" checked={allPageReportsSelected} onChange={toggleAllReports} aria-label="انتخاب همه گزارش‌های این صفحه" className="h-4 w-4 accent-black" /></th>
@@ -587,9 +587,9 @@ export default function PettyCashPage() {
                       <td>{isReportUnread(report) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100" title="خوانده‌نشده" aria-label="خوانده‌نشده" />}</td>
                       <td className="px-4 py-2">{report.reportNumber ? toFa(report.reportNumber) : "—"}</td>
                       <td className="px-4 py-2">{reportDate(report.createdAt)}</td>
-                      <td className="truncate px-4 py-2" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
-                      <td className="truncate px-4 py-2" title={report.projectName}>{report.projectCode ? `${toFa(report.projectCode)} - ` : ""}{report.projectName}</td>
-                      <td className="truncate px-4 py-2" title={report.reportName}>{report.reportName}</td>
+                      <td className="truncate px-3 py-2 !text-right" title={report.createdByName || report.createdByUsername || ""}>{report.createdByName || report.createdByUsername || "—"}</td>
+                      <td className="truncate px-3 py-2 !text-right" title={report.projectName}>{report.projectCode ? `${toFa(report.projectCode)} - ` : ""}{report.projectName}</td>
+                      <td className="truncate px-3 py-2 !text-right" title={report.reportName}>{report.reportName}</td>
                       <td className="whitespace-nowrap px-4 py-2 tabular-nums">{money((report.items || []).reduce((sum, item) => sum + amount(item.amount), 0n))} ریال</td>
                       <td className="relative px-4 py-2">
                         <span className={`inline-flex max-w-full items-center justify-center rounded-full border px-3 py-1 text-xs font-semibold ${reportStatusBadgeClass(state.statusKey)}`}>{state.statusKey === "pending" && state.waiting !== "—" ? state.waiting : state.status}</span>
