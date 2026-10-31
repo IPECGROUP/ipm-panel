@@ -54,7 +54,7 @@ export default function BaseInformationPage() {
                   role="tab"
                   aria-selected={active}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`min-w-0 flex-1 border px-2 py-3 text-xs font-bold transition first:rounded-tr-2xl last:rounded-tl-2xl sm:px-3 md:px-5 md:text-sm ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-white/5"}`}
+                  className={`min-w-0 flex-1 border px-2 py-3 text-xs font-bold transition first:rounded-tr-2xl last:rounded-tl-2xl sm:px-3 md:px-5 md:text-sm ${active ? "border-[#184a6b] bg-[#184a6b] text-white dark:border-[#184a6b] dark:bg-[#184a6b] dark:text-white" : "border-black/10 bg-white text-neutral-800 hover:bg-neutral-50 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200 dark:hover:bg-white/5"}`}
                 >
                   {tab.label}
                 </button>
