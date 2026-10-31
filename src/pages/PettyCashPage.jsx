@@ -820,7 +820,12 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const [viewedRowIds, setViewedRowIds] = useState(() => new Set());
   const [preview, setPreview] = useState({ loading: false, url: "", size: null, error: "" });
   const [budgetItems, setBudgetItems] = useState([]);
-  const budgetNames = useMemo(() => new Map(budgetItems.map((item) => [fullBudgetCode(item.budgetCode, report.projectCode), item.budgetName])), [budgetItems, report.projectCode]);
+  const [projects, setProjects] = useState([]);
+  const [reviewProjectId, setReviewProjectId] = useState(String(report.projectId));
+  const [reviewBudgetCodes, setReviewBudgetCodes] = useState(() => Object.fromEntries(entries.map((item) => [item.id, item.budgetCode])));
+  const reviewProject = projects.find((project) => String(project.id) === reviewProjectId);
+  const reviewProjectCode = reviewProject?.code || (reviewProjectId === String(report.projectId) ? report.projectCode : "");
+  const budgetNames = useMemo(() => new Map(budgetItems.map((item) => [fullBudgetCode(item.budgetCode, reviewProjectCode), item.budgetName])), [budgetItems, reviewProjectCode]);
   const selectedAttachmentRow = entries.find((item) => String(item.id) === String(selectedAttachmentRowId))
     || entries.find((item) => expenseAttachments(item).some((file) => file.url));
   const attachments = selectedAttachmentRow ? expenseAttachments(selectedAttachmentRow)
@@ -828,19 +833,38 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const attachment = attachments[attachmentIndex];
   const actionable = entries.filter((item) => item.canAct === true);
   const canAct = entries.length > 0 && actionable.length === entries.length && entries.every((item) => item.stage === entries[0].stage) && !outdated;
-  const readyToSubmit = canAct && (reportDecision === "revision" ? Boolean(returnNote.trim()) : reportDecision === "approve");
+  const canEditPlanning = !isCreatorView && canAct && entries[0]?.stage === "planning";
+  const reviewBudgetOptions = budgetItems.length ? budgetPickerItems(budgetItems, reviewProject || { code: reviewProjectCode }, true) : [];
+  const planningValuesValid = !canEditPlanning || (Boolean(reviewProjectCode) && entries.every((item) =>
+    reviewBudgetOptions.some((budget) => budget.value === reviewBudgetCodes[item.id])));
+  const readyToSubmit = canAct && (reportDecision === "revision" ? Boolean(returnNote.trim()) : reportDecision === "approve" && planningValuesValid);
+  const reviewReportNumber = reviewProjectCode && report.reportNumber
+    ? String(report.reportNumber).replace(/^(\d{2}\/)[^/]+(\/\d+)$/, (_, year, sequence) => `${year}${english(reviewProjectCode).replace(/\D/g, "")}${sequence}`)
+    : report.reportNumber;
 
   useEffect(() => {
-    if (!report.projectId) return;
+    if (!canEditPlanning) return;
     const controller = new AbortController();
-    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(report.projectId)}`, {
+    fetch("/api/projects?isActive=true", { credentials: "include", headers: { "x-user-id": String(user?.id || "") }, signal: controller.signal })
+      .then((response) => { if (!response.ok) throw new Error(); return response.json(); })
+      .then((data) => setProjects((data.items || data.projects || []).filter((project) =>
+        project.isActive !== false && /^\d{3}$/.test(english(project.code).trim()))))
+      .catch((reason) => { if (reason.name !== "AbortError") setError("دریافت فهرست پروژه‌ها انجام نشد."); });
+    return () => controller.abort();
+  }, [canEditPlanning, user?.id]);
+
+  useEffect(() => {
+    if (!reviewProjectId) return;
+    const controller = new AbortController();
+    setBudgetItems([]);
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(reviewProjectId)}`, {
       credentials: "include", headers: { "x-user-id": String(user?.id || "") }, signal: controller.signal,
     })
       .then((response) => { if (!response.ok) throw new Error(); return response.json(); })
       .then((data) => setBudgetItems(data.items || []))
       .catch((reason) => { if (reason.name !== "AbortError") setBudgetItems([]); });
     return () => controller.abort();
-  }, [report.projectId, user?.id]);
+  }, [reviewProjectId, user?.id]);
 
   useEffect(() => {
     if (!managerOpen) return;
@@ -880,7 +904,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", "x-user-id": String(user?.id || "") },
         body: JSON.stringify({ action: "review_report", reportId: report.id, expectedVersion: report.version,
           decision: reportDecision, reportWide: true,
-          note: reportDecision === "revision" ? returnNote.trim() : "", projectManagerId: recipientId || undefined }),
+          note: reportDecision === "revision" ? returnNote.trim() : "", projectManagerId: recipientId || undefined,
+          ...(canEditPlanning && reportDecision === "approve" ? { projectId: Number(reviewProjectId), budgetCodes: reviewBudgetCodes } : {}) }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || "internal_error");
@@ -889,7 +914,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
       onReviewed();
     } catch (reason) {
       const messages = { invalid_project_manager: "یکی از اعضای مدیریت پروژه‌ها را انتخاب کنید.", not_allowed: "شما مجاز به اقدام در مرحله فعلی نیستید.",
-        workflow_changed: "این گزارش توسط فرد دیگری بررسی شده است. مودال را ببندید و دوباره باز کنید.", workflow_recipients_missing: "هیچ عضو فعالی برای واحد مرحله بعد تعریف نشده است.", internal_error: "ثبت تصمیم انجام نشد؛ دوباره تلاش کنید." };
+        workflow_changed: "این گزارش توسط فرد دیگری بررسی شده است. مودال را ببندید و دوباره باز کنید.", workflow_recipients_missing: "هیچ عضو فعالی برای واحد مرحله بعد تعریف نشده است.",
+        active_project_not_found: "پروژه انتخاب‌شده فعال نیست.", budget_code_not_found: "کد بودجه انتخاب‌شده برای این پروژه معتبر نیست.",
+        invalid_report_number: "شماره گزارش قابل تغییر نیست؛ گزارش را دوباره باز کنید.", report_number_conflict: "شماره گزارش برای پروژه جدید تکراری است.",
+        internal_error: "ثبت تصمیم انجام نشد؛ دوباره تلاش کنید." };
       setError(messages[reason.message] || "ثبت تصمیم انجام نشد.");
       if (["workflow_changed", "not_allowed"].includes(reason.message)) { setOutdated(true); onRefresh(); }
     } finally { inFlightRef.current = false; setSaving(false); onBusyChange(false); }
@@ -924,10 +952,10 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     { decision: "revision", label: "بازگشت تنخواه گردان", description: "بازگشت کل گزارش جهت اصلاح", icon: "/images/icons/bazgasht.svg", iconClass: "bg-amber-100", selectedClass: "border-amber-300 bg-amber-50/60 shadow-[0_0_0_2px_rgba(245,158,11,.12)]" },
   ];
   const metadata = [
-    { label: "شماره گزارش", value: report.reportNumber ? toFa(report.reportNumber) : "—", Icon: FileText },
+    { label: "شماره گزارش", value: reviewReportNumber ? toFa(reviewReportNumber) : "—", Icon: FileText },
     { label: "تاریخ", value: reportDate(report.createdAt), recipient: report.createdByName || report.createdByUsername || "—", Icon: CalendarDays },
     { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
-    { label: "پروژه", value: report.projectCode ? `${toFa(report.projectCode)} - ${report.projectName}` : report.projectName || "—", Icon: BriefcaseBusiness },
+    { label: "پروژه", value: reviewProject ? `${toFa(reviewProject.code)} - ${reviewProject.name}` : report.projectCode ? `${toFa(report.projectCode)} - ${report.projectName}` : report.projectName || "—", Icon: BriefcaseBusiness },
     { label: "مبلغ گزارش", value: `${money(entries.reduce((sum, item) => sum + amount(item.amount), 0n))} ریال`, Icon: FileText },
   ];
 
@@ -946,6 +974,19 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         </div>)}
       </div>
 
+      {canEditPlanning && <div className="mb-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
+        <label htmlFor="petty-cash-review-project" className="mb-1 block text-xs font-semibold">پروژه گزارش</label>
+        <select id="petty-cash-review-project" value={reviewProjectId} disabled={saving} onChange={(event) => {
+          setReviewProjectId(event.target.value);
+          setReviewBudgetCodes(Object.fromEntries(entries.map((item) => [item.id, ""])));
+          setError("");
+        }} className={`${inputClass} w-full max-w-md`}>
+          {!projects.some((project) => String(project.id) === reviewProjectId) && <option value={reviewProjectId}>{report.projectCode} - {report.projectName}</option>}
+          {projects.map((project) => <option key={project.id} value={project.id}>{toFa(project.code)} - {project.name}</option>)}
+        </select>
+        <p className="mt-1 text-xs text-neutral-500">پس از تغییر پروژه، کد بودجه هر ردیف را دوباره انتخاب کنید.</p>
+      </div>}
+
       <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[284px_minmax(0,1fr)_393px]">
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
@@ -962,7 +1003,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
                     className={`h-13 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2">{toFa(index + 1)}</td>
-                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-words px-2 py-2 leading-5"><span className="block" dir="ltr">{toFa(fullBudgetCode(item.budgetCode, report.projectCode) || "—")}</span>{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode)) && <span className="block text-[11px] text-neutral-600">{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode))}</span>}</td>
+                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-words px-2 py-2 leading-5">{canEditPlanning ? <select aria-label={`کد بودجه ردیف ${index + 1}`} value={reviewBudgetCodes[item.id] || ""} disabled={saving || !reviewProjectCode} onClick={(event) => event.stopPropagation()} onChange={(event) => setReviewBudgetCodes((current) => ({ ...current, [item.id]: event.target.value }))} className="h-9 w-full rounded-lg border border-neutral-300 bg-white px-1 text-xs"><option value="">انتخاب کد بودجه</option>{reviewBudgetOptions.map((budget) => <option key={budget.value} value={budget.value}>{toFa(budget.code)}{budget.center_desc ? ` - ${budget.center_desc}` : ""}</option>)}</select> : <><span className="block" dir="ltr">{toFa(fullBudgetCode(item.budgetCode, report.projectCode) || "—")}</span>{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode)) && <span className="block text-[11px] text-neutral-600">{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode))}</span>}</>}</td>
                     <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
                   </tr>;
                 })}</tbody>
