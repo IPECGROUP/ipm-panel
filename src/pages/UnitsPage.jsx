@@ -867,7 +867,7 @@ function OrgStructurePage() {
       index === total - 1 ? "md:rounded-tl-2xl" : "",
       "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
       isActive
-        ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+        ? "bg-[#184a6b] text-white shadow-sm dark:bg-[#184a6b] dark:text-white"
         : "bg-white text-[#1f2937] hover:bg-neutral-50 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:after:bg-neutral-700 dark:hover:bg-neutral-800",
     ].join(" ");
 

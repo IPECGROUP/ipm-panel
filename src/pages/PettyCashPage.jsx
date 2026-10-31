@@ -567,9 +567,9 @@ export default function PettyCashPage() {
                     <th scope="col" aria-label="خوانده‌نشده" />
                     <th scope="col" className="px-4 text-center font-bold">شماره گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">تاریخ</th>
-                    <th scope="col" className="px-4 text-center font-bold">تنخواه‌گیرنده</th>
-                    <th scope="col" className="px-4 text-center font-bold">پروژه</th>
-                    <th scope="col" className="px-4 text-center font-bold">نام گزارش</th>
+                    <th scope="col" className="px-3 !text-right font-bold">تنخواه‌گیرنده</th>
+                    <th scope="col" className="px-3 !text-right font-bold">پروژه</th>
+                    <th scope="col" className="px-3 !text-right font-bold">نام گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">مبلغ</th>
                     <th scope="col" className="relative px-2 text-center font-bold"><span>وضعیت</span><PettyCashTableMenu selectedCount={selectedReportIds.size} canEdit={Boolean(editableReport)} deleting={deletingReports}
                       onRead={(unread) => { updateReadState([...selectedReportIds], unread); setSelectedReportIds(new Set()); }}
