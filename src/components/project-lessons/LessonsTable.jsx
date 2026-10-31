@@ -61,12 +61,12 @@ export default function LessonsTable({
           className="w-full min-w-[700px] table-fixed text-sm [&_td]:text-center [&_th]:text-center [&_th]:!py-2 [&_td]:!py-0"
         >
           <colgroup>
-            <col style={{ width: 52 }} />
-            <col style={{ width: 70 }} />
-            <col style={{ width: 135 }} />
+            <col style={{ width: "calc(52px + 3%)" }} />
+            <col style={{ width: "calc(70px + 3%)" }} />
+            <col style={{ width: "calc(135px + 3%)" }} />
             <col />
-            <col style={{ width: 220 }} />
-            <col style={{ width: 150 }} />
+            <col style={{ width: "calc(220px + 3%)" }} />
+            <col style={{ width: "calc(150px + 3%)" }} />
           </colgroup>
 
           <thead>
