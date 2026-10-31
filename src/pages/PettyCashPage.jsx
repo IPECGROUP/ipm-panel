@@ -565,12 +565,11 @@ export default function PettyCashPage() {
                   <tr className="h-9 border-b border-[#184a6b]">
                     <th scope="col" className="px-2"><input ref={selectAllReportsRef} type="checkbox" checked={allPageReportsSelected} onChange={toggleAllReports} aria-label="انتخاب همه گزارش‌های این صفحه" className="h-4 w-4 accent-black" /></th>
                     <th scope="col" aria-label="خوانده‌نشده" />
-                    <th scope="col" className="px-2 text-center font-bold">ردیف</th>
                     <th scope="col" className="px-4 text-center font-bold">شماره گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">تاریخ</th>
                     <th scope="col" className="px-4 text-center font-bold">تنخواه‌گیرنده</th>
-                    <th scope="col" className="px-4 text-center font-bold">نام گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">پروژه</th>
+                    <th scope="col" className="px-4 text-center font-bold">نام گزارش</th>
                     <th scope="col" className="px-4 text-center font-bold">مبلغ</th>
                     <th scope="col" className="relative px-2 text-center font-bold"><span>وضعیت</span><PettyCashTableMenu selectedCount={selectedReportIds.size} canEdit={Boolean(editableReport)} deleting={deletingReports}
                       onRead={(unread) => { updateReadState([...selectedReportIds], unread); setSelectedReportIds(new Set()); }}
