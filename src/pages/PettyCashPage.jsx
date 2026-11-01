@@ -1050,7 +1050,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                   <img src={preview.url} alt={attachment?.fileName || "پیوست هزینه"}
                     onError={() => setPreview((current) => ({ ...current, url: "", error: "پیش‌نمایش این فایل در دسترس نیست." }))} className="h-full w-full object-contain" /></>
                 : <p className="px-4 text-center text-xs text-neutral-500">{preview.error || "پیوستی برای نمایش وجود ندارد."}</p>}
-              {preview.url && attachment?.fileUrl && !/\.pdf(?:$|[?#])/i.test(attachment.fileUrl) && <a href={attachment.fileUrl} target="_blank" rel="noopener" aria-label="باز کردن پیوست در تب جدید" title="باز کردن پیوست در تب جدید" className="absolute inset-0 z-10 cursor-zoom-in" />}
+              {preview.url && <a href={preview.url} target="_blank" rel="noopener noreferrer" aria-label="باز کردن پیوست در تب جدید" title="باز کردن پیوست در تب جدید" className="absolute inset-0 z-10 cursor-zoom-in" />}
               {attachments.length > 1 && <div dir="ltr" className="pointer-events-none absolute inset-x-2 top-1/2 z-20 flex -translate-y-1/2 justify-between">
                 <button type="button" disabled={attachmentIndex === 0} onClick={() => setAttachmentIndex((current) => current - 1)} aria-label="پیوست قبلی"
                   className="pointer-events-auto grid h-9 w-9 place-items-center rounded-full border border-neutral-200 bg-white/95 shadow-sm transition hover:bg-white disabled:opacity-35"><ChevronLeft className="h-5 w-5" /></button>
