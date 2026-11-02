@@ -11,7 +11,7 @@ import { todayJalaliYmd } from "../utils/date.js";
 import { toEnglishDigits } from "../utils/format.js";
 import DocumentPreviewModal from "../components/DocumentPreviewModal.jsx";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
-import { BriefcaseBusiness, CalendarDays, FileText, Plus, UserRound } from "lucide-react";
+import { CalendarDays, FileText, Plus, UserRound } from "lucide-react";
 
 const PAGE_ICON = "/images/icons/darkhast-tamin.svg";
 const REQUEST_DOC_ID = "supply_request";
@@ -841,6 +841,29 @@ export default function SupplyRequestPage() {
     }
   };
 
+  const savePlanningEdit = async (item, updates) => {
+    if (!item || actionBusy) return false;
+    setActionBusy(true);
+    setActionError("");
+    try {
+      const data = await api(`/supply-requests?id=${encodeURIComponent(item.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ planningEdit: true, projectId: updates.projectId, budgetCode: updates.budgetCode }),
+      });
+      if (data?.item) {
+        setSelected(data.item);
+        setItems((prev) => prev.map((row) => String(row.id) === String(data.item.id) ? data.item : row));
+      }
+      await loadItems();
+      return true;
+    } catch (ex) {
+      setActionError(ex?.message === "budget_code_not_found" ? "کد بودجه برای پروژه انتخاب‌شده معتبر نیست." : ex?.message === "serial_conflict" ? "شماره درخواست با درخواست دیگری تداخل دارد." : ex?.message === "forbidden" ? "فقط اعضای واحد برنامه‌ریزی و کنترل پروژه اجازه این تغییر را دارند." : "ذخیره پروژه و کد بودجه انجام نشد.");
+      return false;
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
   const filteredItems = useMemo(() => {
     const q = normalizeDigits(filterQuery).trim().toLowerCase();
     const quickStart = quickStartDate(filterQuick);
@@ -1382,6 +1405,7 @@ export default function SupplyRequestPage() {
           actionError={actionError}
           onAction={recordWorkflowAction}
           onEdit={saveOwnRequestEdit}
+          onPlanningEdit={savePlanningEdit}
           onSupplyActionsChanged={loadItems}
           onClose={() => {
             setSelected(null);
@@ -1443,44 +1467,9 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, requestTypes, bu
     description: item.description || "",
     attachments: Array.isArray(item.attachments) ? item.attachments : [],
   }));
-  const [budgetItems, setBudgetItems] = useState([]);
-  const [budgetLoading, setBudgetLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const setField = (name, value) => setForm((current) => ({ ...current, [name]: value }));
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!form.projectId) {
-      setBudgetItems([]);
-      return undefined;
-    }
-
-    const project = projects.find((row) => String(row.id) === String(form.projectId));
-    const projectCode = normalizeBudgetCode(project?.code);
-    setBudgetLoading(true);
-    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(form.projectId)}`, { credentials: "include" })
-      .then((response) => (response.ok ? response.json() : { items: [] }))
-      .then((data) => {
-        if (cancelled) return;
-        const byCode = new Map();
-        (Array.isArray(data?.items) ? data.items : []).forEach((budgetItem) => {
-          const code = budgetCodeForProject(budgetItem?.budgetCode ?? budgetItem?.budget_code ?? budgetItem?.code, projectCode);
-          if (!code) return;
-          byCode.set(code, { ...budgetItem, code });
-        });
-        if (form.budgetCode && !byCode.has(form.budgetCode)) byCode.set(form.budgetCode, { code: form.budgetCode });
-        setBudgetItems(Array.from(byCode.values()).sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true })));
-      })
-      .catch(() => {
-        if (!cancelled) setBudgetItems(form.budgetCode ? [{ code: form.budgetCode }] : []);
-      })
-      .finally(() => {
-        if (!cancelled) setBudgetLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [form.projectId, projects]);
 
   const uploadFiles = async (fileList) => {
     const files = Array.from(fileList || []);
@@ -1514,8 +1503,8 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, requestTypes, bu
   return <form dir="rtl" onSubmit={async (event) => { event.preventDefault(); if (await onSave(item, form)) onCancel(); }} className="space-y-4 py-4">
         <div className="flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2></div>
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setForm((current) => ({ ...current, projectId: event.target.value, budgetCode: "" }))}><option value="">انتخاب پروژه</option>{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field>
-          <Field label="کد بودجه"><select dir="rtl" className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} disabled={!form.projectId || budgetLoading}><option value="">{!form.projectId ? "ابتدا پروژه را انتخاب کنید" : budgetLoading ? "در حال دریافت..." : "انتخاب کنید"}</option>{budgetItems.map((budgetItem) => { const code = normalizeBudgetCode(budgetItem.code ?? budgetItem.budgetCode ?? budgetItem.budget_code ?? budgetItem.center_code); const name = budgetNameOf(budgetItem); return <option key={budgetItem.id || code} value={code}>{toFaDigits(code)}{name ? ` - ${name}` : ""}</option>; })}</select></Field>
+          <ReadOnlyBox label="پروژه" value={projectLabel(projects.find((project) => String(project.id) === form.projectId)) || item.projectName || "—"} />
+          <ReadOnlyBox label="کد بودجه" value={form.budgetCode || "—"} />
           <Field label="نوع درخواست"><select className={inputCls} value={form.requestTypeId} onChange={(event) => setField("requestTypeId", event.target.value)}><option value="">انتخاب کنید</option>{requestTypes.map((type) => <option key={type.id} value={type.id}>{type.title}</option>)}</select></Field>
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
           <Field label="برآورد هزینه"><div className="relative"><select value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)} className="absolute left-1 top-1 z-10 h-9 w-16 cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"><option value="">ریال</option>{(currencyTypes || []).filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}</select><input dir="ltr" inputMode="numeric" className={`${inputCls} pl-[72px] text-left font-sans tabular-nums`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></div></Field>
@@ -1528,7 +1517,7 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, requestTypes, bu
       </form>;
 }
 
-export function SupplyRequestPreview({ item, projects, currencyTypes = [], requestTypes = [], letters = [], actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onSupplyActionsChanged, onClose }) {
+export function SupplyRequestPreview({ item, projects, currencyTypes = [], requestTypes = [], letters = [], actionNote, setActionNote, actionBusy, actionError, onAction, onEdit, onPlanningEdit, onSupplyActionsChanged, onClose }) {
   const { user } = useAuth();
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
@@ -1558,7 +1547,10 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   const canResubmitReturned = stepKey === "requester" && latestAction?.type === "returned" && canAct;
   const meta = item.workflowMeta || {};
   const [choice, setChoice] = useState("");
-  const [budgetCodeDraft, setBudgetCodeDraft] = useState(item.budgetCode || "");
+  const [planningProjectId, setPlanningProjectId] = useState(String(item.projectId || ""));
+  const [planningBudgetCode, setPlanningBudgetCode] = useState(item.budgetCode || "");
+  const [planningBudgetItems, setPlanningBudgetItems] = useState([]);
+  const [planningBudgetLoading, setPlanningBudgetLoading] = useState(false);
   const [actionBudgetItems, setActionBudgetItems] = useState([]);
   const [finalAmount, setFinalAmount] = useState(formatMoney(meta.finalAmount ?? item.amount ?? ""));
   const [deadlineDate, setDeadlineDate] = useState(meta.deadlineDate || "");
@@ -1579,12 +1571,38 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   useEffect(() => {
     setIsEditing(!!item.__editing);
     setChoice("");
-    setBudgetCodeDraft(item.budgetCode || "");
+    setPlanningProjectId(String(item.projectId || ""));
+    setPlanningBudgetCode(item.budgetCode || "");
     setFinalAmount(formatMoney(item.workflowMeta?.finalAmount ?? item.amount ?? ""));
     setDeadlineDate(item.workflowMeta?.deadlineDate || "");
     setCcUserIds(Array.isArray(item.ccUserIds) ? item.ccUserIds.map(String) : []);
     setTargetAssigneeUserId("");
   }, [item.id, item.budgetCode, item.amount, item.workflowMeta, item.ccUserIds, item.__editing]);
+
+  useEffect(() => {
+    if (!item.canEditPlanning || !planningProjectId) {
+      setPlanningBudgetItems([]);
+      return undefined;
+    }
+    let cancelled = false;
+    setPlanningBudgetLoading(true);
+    const selectedProject = projects.find((row) => String(row.id) === planningProjectId);
+    fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(planningProjectId)}`, { credentials: "include" })
+      .then((response) => response.ok ? response.json() : { items: [] })
+      .then((data) => {
+        if (cancelled) return;
+        const byCode = new Map();
+        (Array.isArray(data?.items) ? data.items : []).forEach((budgetItem) => {
+          const code = budgetCodeForProject(budgetItem?.budgetCode ?? budgetItem?.budget_code ?? budgetItem?.code, selectedProject?.code);
+          if (code) byCode.set(code, { ...budgetItem, code });
+        });
+        if (planningProjectId === String(item.projectId) && item.budgetCode && !byCode.has(item.budgetCode)) byCode.set(item.budgetCode, { code: item.budgetCode });
+        setPlanningBudgetItems(Array.from(byCode.values()).sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true })));
+      })
+      .catch(() => { if (!cancelled) setPlanningBudgetItems([]); })
+      .finally(() => { if (!cancelled) setPlanningBudgetLoading(false); });
+    return () => { cancelled = true; };
+  }, [item.canEditPlanning, item.projectId, item.budgetCode, planningProjectId, projects]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1676,7 +1694,6 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
       stepKey === "project_manager"
           ? {
               finalAmount: parseMoney(finalAmount),
-              budgetCode: budgetCodeDraft,
             }
           : {};
     onAction(choice, choice === "approve" ? { ...payload, targetAssigneeUserId: targetAssigneeUserId || null } : payload);
@@ -1695,7 +1712,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
     !choice ||
         (noteRequired && !actionNote.trim()) ||
     (choice === "approve" &&
-      ((stepKey === "project_manager" && (parseMoney(finalAmount) <= 0 || !budgetCodeDraft || !targetAssigneeUserId)) ||
+      ((stepKey === "project_manager" && (parseMoney(finalAmount) <= 0 || !targetAssigneeUserId)) ||
         (targetRequired && !targetAssigneeUserId)));
 
   const toggleCcUser = (id) => {
@@ -1806,7 +1823,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
               <SupplyMetadata label="شماره درخواست" value={toFaDigits(item.serial || "—")} Icon={FileText} />
               <SupplyMetadata label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
               <SupplyMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} Icon={UserRound} />
-              <SupplyMetadata label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} Icon={BriefcaseBusiness} />
+              <SupplyMetadata label="پروژه" value={project ? projectLabel(project) : item.projectName || item.projectCode || "—"} iconSrc="/images/icons/modiriat-projects.svg" />
             </div>
             <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
               <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
@@ -1837,6 +1854,27 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </div>
                 </PreviewSection>
 
+                {item.canEditPlanning && onPlanningEdit && (
+                  <PreviewSection title="ویرایش پروژه و کد بودجه (برنامه‌ریزی و کنترل پروژه)">
+                    <div className="grid gap-3 py-3 md:grid-cols-2">
+                      <Field label="پروژه" required>
+                        <select className={inputCls} value={planningProjectId} onChange={(event) => { setPlanningProjectId(event.target.value); setPlanningBudgetCode(""); }}>
+                          <option value="">انتخاب پروژه</option>
+                          {projects.filter(isActiveProject).map((projectOption) => <option key={projectOption.id} value={projectOption.id}>{projectLabel(projectOption)}</option>)}
+                        </select>
+                      </Field>
+                      <Field label="کد بودجه" required>
+                        <select className={inputCls} value={planningBudgetCode} disabled={!planningProjectId || planningBudgetLoading} onChange={(event) => setPlanningBudgetCode(event.target.value)}>
+                          <option value="">{planningBudgetLoading ? "در حال دریافت..." : "انتخاب کد بودجه"}</option>
+                          {planningBudgetItems.map((budgetItem) => <option key={budgetItem.code} value={budgetItem.code}>{toFaDigits(budgetItem.code)}{budgetNameOf(budgetItem) ? ` - ${budgetNameOf(budgetItem)}` : ""}</option>)}
+                        </select>
+                      </Field>
+                    </div>
+                    {actionError && <p className="mb-2 text-sm text-red-600">{actionError}</p>}
+                    <div className="flex justify-end"><button type="button" className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black" disabled={actionBusy || !planningProjectId || !planningBudgetCode || (planningProjectId === String(item.projectId) && planningBudgetCode === item.budgetCode)} onClick={() => onPlanningEdit(item, { projectId: planningProjectId, budgetCode: planningBudgetCode })}>ذخیره تغییرات</button></div>
+                  </PreviewSection>
+                )}
+
                 <SupplyActionHistory actions={commercialActions} loading={commercialActionsLoading} onSelectAttachments={selectActionAttachments} />
 
                 {canAct ? (
@@ -1857,16 +1895,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                             </div>
                           </div>
                           <div className="grid gap-3 md:grid-cols-2">
-                            <Field label="کد بودجه" required labelClassName={budgetLabelCls}>
-                              <select dir="rtl" value={budgetCodeDraft} onChange={(event) => setBudgetCodeDraft(event.target.value)} className={inputCls}>
-                                <option value="">انتخاب کنید</option>
-                                {actionBudgetItems.map((budgetItem) => {
-                                  const code = normalizeBudgetCode(budgetItem.code ?? budgetItem.budgetCode ?? budgetItem.budget_code ?? budgetItem.center_code);
-                                  const name = budgetNameOf(budgetItem);
-                                  return <option key={budgetItem.id || code} value={code}>{toFaDigits(code)}{name ? ` - ${name}` : ""}</option>;
-                                })}
-                              </select>
-                            </Field>
+                            <ReadOnlyBox label="کد بودجه" value={item.budgetCode || "—"} labelClassName={budgetLabelCls} />
                             <ReadOnlyBox label="باقی مانده نقدینگی تخصیص یافته" value="—" ltr labelClassName={budgetLabelCls} />
                           </div>
                           <div className="grid gap-3 md:grid-cols-3">
@@ -1921,9 +1950,9 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   );
 }
 
-function SupplyMetadata({ label, value, Icon }) {
+function SupplyMetadata({ label, value, Icon, iconSrc }) {
   return <div className="flex min-w-0 items-center gap-2 border-b border-l border-neutral-200 px-3 py-2 last:border-l-0 dark:border-white/10 md:border-b-0">
-    <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200"><Icon className="h-4 w-4 stroke-[1.6]" /></span>
+    <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200">{iconSrc ? <img src={iconSrc} alt="" className="h-4 w-4 dark:invert" /> : <Icon className="h-4 w-4 stroke-[1.6]" />}</span>
     <div className="min-w-0 flex-1"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-0.5 min-w-0 break-words text-xs font-bold">{value}</div></div>
   </div>;
 }

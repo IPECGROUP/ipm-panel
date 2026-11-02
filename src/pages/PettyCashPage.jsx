@@ -1615,7 +1615,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
       </div>
     </div>
 
-    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className={`mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 ${entryMode === "return" ? "xl:grid-cols-[150px_minmax(180px,1fr)_170px_auto]" : "xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]"}`}>
+    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className={`mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 ${entryMode === "return" ? "xl:grid-cols-[150px_minmax(180px,1fr)_230px_auto]" : "xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_230px_auto]"}`}>
       <Field label="تاریخ" required>
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
