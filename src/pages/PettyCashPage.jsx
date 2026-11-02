@@ -1156,18 +1156,19 @@ function PettyCashSettlementTimeline({ report }) {
       const stageEvents = events.get(stage) || [];
       const last = stageEvents.at(-1);
       const current = entries.some((item) => item.stage === stage);
-      const rejected = last?.result === "rejected" || last?.result === "revision";
+      const rejected = last?.result === "rejected";
+      const returned = last?.result === "revision";
        return <li key={stage} className="relative grid grid-cols-[minmax(0,1fr)_32px] gap-3 pb-5 last:pb-0">
         <div className="min-w-0 pt-1"><h4 className="text-sm font-bold leading-5">{title}</h4>
           {stageEvents.length ? <div className="mt-2 space-y-2">{stageEvents.map((event, eventIndex) => <div key={`${event.at || stage}-${eventIndex}`} className="border-t border-neutral-100 pt-2 text-xs text-neutral-600 first:border-t-0 first:pt-0">
-            <p><span className="font-semibold">{event.actor}</span>، {event.label}، {reportDateTime(event.at)}</p>
+            <p>{event.result === "revision" && <img src="/images/icons/bazgasht.svg" alt="" className="ml-1 inline-block h-3.5 w-3.5 align-middle" />}<span className="font-semibold">{event.actor}</span>، {event.label}، {reportDateTime(event.at)}</p>
             {event.note && <p className="mt-1 break-words text-neutral-500">توضیح: {event.note}</p>}
           </div>)}</div> : <p className="mt-1 text-xs text-neutral-400">{current ? "در انتظار اقدام" : "در انتظار شروع مرحله"}</p>}
         </div>
          <div className="relative flex justify-center" aria-hidden="true">
            {index < stages.length - 1 && <span className="absolute bottom-[-20px] top-8 w-px bg-neutral-200" />}
-           <span className={`relative z-10 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold ${rejected ? "border-rose-500 bg-white text-rose-500" : last ? "border-emerald-500 bg-emerald-500 text-white" : current ? "border-sky-500 bg-sky-50 text-sky-700" : "border-neutral-300 bg-white text-neutral-400"}`}>
-             {rejected ? "×" : last ? "✓" : toFa(index + 1)}
+           <span className={`relative z-10 grid h-8 w-8 place-items-center rounded-full border text-xs font-bold ${rejected ? "border-rose-500 bg-white text-rose-500" : returned ? "border-amber-500 bg-white text-amber-600" : last ? "border-emerald-500 bg-emerald-500 text-white" : current ? "border-sky-500 bg-sky-50 text-sky-700" : "border-neutral-300 bg-white text-neutral-400"}`}>
+             {rejected ? "×" : returned ? <img src="/images/icons/bazgasht.svg" alt="" className="h-4 w-4" /> : last ? "✓" : toFa(index + 1)}
            </span>
          </div>
       </li>;

@@ -260,19 +260,7 @@ function plainFilterTagClass(active) {
     : "bg-white text-neutral-900 ring-black/10 hover:bg-neutral-50 dark:bg-white/5 dark:text-white dark:ring-white/15 dark:hover:bg-white/10";
 }
 
-function supplyRequestTagClass(tag, active) {
-  const palettes = [
-    ["border-[#D5E6F1] bg-[#D5E6F1] text-[#036499] hover:brightness-95", "border-[#036499] bg-[#036499] text-[#D5E6F1]"],
-    ["border-[#DDF6E8] bg-[#DDF6E8] text-[#247A4D] hover:brightness-95", "border-[#247A4D] bg-[#247A4D] text-[#DDF6E8]"],
-    ["border-[#EEE4FF] bg-[#EEE4FF] text-[#7042A6] hover:brightness-95", "border-[#7042A6] bg-[#7042A6] text-[#EEE4FF]"],
-    ["border-[#FFF0D8] bg-[#FFF0D8] text-[#A65D00] hover:brightness-95", "border-[#A65D00] bg-[#A65D00] text-[#FFF0D8]"],
-    ["border-[#FCE2E5] bg-[#FCE2E5] text-[#B4233C] hover:brightness-95", "border-[#B4233C] bg-[#B4233C] text-[#FCE2E5]"],
-    ["border-[#DDF4F2] bg-[#DDF4F2] text-[#08756D] hover:brightness-95", "border-[#08756D] bg-[#08756D] text-[#DDF4F2]"],
-  ];
-  const id = String(tag?.id ?? tagLabelOf(tag));
-  const hash = [...id].reduce((value, char) => (value * 31 + char.charCodeAt(0)) >>> 0, 0);
-  return palettes[hash % palettes.length][active ? 1 : 0];
-}
+const filterChipClass = "inline-flex h-7 items-center justify-center whitespace-nowrap rounded-full px-2.5 text-xs transition";
 
 function StatusBadge({ status }) {
   return <span className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs ${statusBadgeClass(status)}`}>{statusLabels[status] || "—"}</span>;
@@ -1284,10 +1272,10 @@ export default function SupplyRequestPage() {
                 <colgroup>
                   <col style={{ width: 40 }} />
                   <col style={{ width: 16 }} />
-                  <col style={{ width: 130 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 180 }} />
-                  <col style={{ width: 100 }} />
+                  <col style={{ width: 105 }} />
+                  <col style={{ width: 105 }} />
+                  <col style={{ width: 165 }} />
+                  <col style={{ width: 165 }} />
                   <col />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 140 }} />
@@ -1319,12 +1307,12 @@ export default function SupplyRequestPage() {
                       <tr key={item.id} onClick={() => openPreview(item)} className="group cursor-pointer bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب درخواست ${item.serial || item.id}`} /></td>
                         <td className="border-b border-neutral-300 px-0 dark:border-neutral-700">{isUnreadForUser(item) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="درخواست خوانده‌نشده" aria-label="درخواست خوانده‌نشده" />}</td>
-                        <td dir="ltr" className="border-b border-neutral-300 px-3 font-sans tabular-nums dark:border-neutral-700">
+                        <td dir="ltr" className="border-b border-neutral-300 px-1.5 font-sans tabular-nums dark:border-neutral-700">
                           <button type="button" onClick={(event) => { event.stopPropagation(); openPreview(item); }} className="mx-auto inline-flex underline-offset-4 transition hover:underline" title="نمایش درخواست">
                             {toFaDigits(item.serial || "—")}
                           </button>
                         </td>
-                        <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
+                        <td className="border-b border-neutral-300 px-2 dark:border-neutral-700">{toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))}</td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{itemProjectLabel(item, projects)}</span></td>
                         <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block truncate">{item.requestTypeTitle || "—"}</span></td>
                         <td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate text-right">{item.title || "—"}</span></td>
@@ -1819,7 +1807,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
-            <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-4">
+            <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-[#f8f7f2] dark:border-white/10 dark:bg-white/5 md:grid-cols-4">
               <SupplyMetadata label="شماره درخواست" value={toFaDigits(item.serial || "—")} Icon={FileText} />
               <SupplyMetadata label="تاریخ درخواست" value={toFaDigits(String(item.dateJalali || item.dateFa || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
               <SupplyMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFaDigits(item.createdById)}`} Icon={UserRound} />
@@ -1827,7 +1815,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
             </div>
             <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
               <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
-                <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند تامین</div>
+                <div className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">فرآیند تامین</div>
                 <div className="px-3">
                   <SupplyWorkflowTimeline history={history} item={item} />
                 </div>
@@ -1967,7 +1955,7 @@ function SupplyAttachmentPreview({ files, selectedIndex, onSelect, onOpenPdf }) 
   const isImage = mime.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg)(?:[?#]|$)/i.test(name) || /\.(png|jpe?g|webp|gif|bmp|svg)(?:[?#]|$)/i.test(url);
   return <div className="min-w-0 space-y-3">
     <aside className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
-      <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
+      <h3 className="bg-[#5d92b7] px-3 py-3 text-sm font-bold text-white">پیش‌نمایش پیوست‌ها</h3>
       <div className="p-3">
         <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 xl:h-[min(44vh,430px)]">
           {!url ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p>
@@ -2122,7 +2110,7 @@ function SupplyUploadModal({ fileRef, files, uploading, onUpload, onRemove, onCl
 function PreviewSection({ title, children, flush = false }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10">
-      <div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div>
+      <div className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">{title}</div>
       <div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div>
     </section>
   );
@@ -2155,7 +2143,7 @@ function ActionOptionRow({ kind, checked, disabled, onClick, label, showNote, no
   }[kind] || {};
   return (
     <div role="button" tabIndex={disabled ? -1 : 0} onClick={() => !disabled && onClick()} onKeyDown={(event) => { if (!disabled && (event.key === "Enter" || event.key === " ")) onClick(); }} className={`relative min-h-[168px] cursor-pointer rounded-2xl border p-4 text-center transition ${checked ? appearance.ring : "border-black/10 bg-white hover:border-black/20 hover:shadow-sm dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/20"} ${disabled ? "cursor-not-allowed opacity-55" : ""}`}>
-      <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}>{kind === "approve" || kind === "reject" ? <img src={kind === "approve" ? "/images/icons/finishing-check.svg" : "/images/icons/rad.svg"} alt="" className="h-5 w-5" /> : appearance.icon}</div>
+      <div className={`mx-auto grid h-10 w-10 place-items-center rounded-full text-2xl font-bold ${appearance.iconClass}`}><img src={kind === "approve" ? "/images/icons/finishing-check.svg" : kind === "reject" ? "/images/icons/rad.svg" : "/images/icons/bazgasht.svg"} alt="" className="h-5 w-5" /></div>
       <div className="mt-2 text-sm font-bold text-neutral-800 dark:text-neutral-100">{label}</div>
       <p className="mt-1 min-h-8 text-[11px] leading-5 text-neutral-500 dark:text-neutral-400">{appearance.description}</p>
       {showNote && (
@@ -2400,7 +2388,7 @@ function workflowStageDescription(stage, state, item) {
 function WorkflowMarker({ kind, index }) {
   if (kind === "completed" || kind === "final_completed") return <span className="text-base font-bold leading-none">✓</span>;
   if (kind === "rejected") return <span className="text-base font-bold leading-none">×</span>;
-  if (kind === "returned") return <span className="text-sm font-bold leading-none">↶</span>;
+  if (kind === "returned") return <img src="/images/icons/bazgasht.svg" alt="" className="h-3.5 w-3.5" />;
   if (kind === "active") return <span className="h-2.5 w-2.5 rounded-full bg-white" />;
   return <span className="text-[11px] font-bold leading-none">{toFaDigits(index + 1)}</span>;
 }
@@ -2541,11 +2529,11 @@ function RequestFilterBar({
       <div>
         <div className={labelCls}>برچسب ها</div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${plainFilterTagClass(ownership === "mine")}`}>درخواست‌های من</button>
-          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${plainFilterTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
-          <button type="button" onClick={() => setUnread(!unread)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${plainFilterTagClass(unread)}`}>خوانده نشده</button>
+          <button type="button" onClick={() => setOwnership(ownership === "mine" ? "" : "mine")} className={`${filterChipClass} font-medium shadow-sm ring-1 ${plainFilterTagClass(ownership === "mine")}`}>درخواست‌های من</button>
+          <button type="button" onClick={() => setOwnership(ownership === "incoming" ? "" : "incoming")} className={`${filterChipClass} font-medium shadow-sm ring-1 ${plainFilterTagClass(ownership === "incoming")}`}>موارد ارسال‌شده به من</button>
+          <button type="button" onClick={() => setUnread(!unread)} className={`${filterChipClass} font-medium shadow-sm ring-1 ${plainFilterTagClass(unread)}`}>خوانده نشده</button>
           {STATUS_FILTERS.map(([key, label]) => (
-            <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs transition ${statusBadgeClass(key, status === key)} `}>
+            <button key={key} type="button" onClick={() => setStatus(status === key ? "" : key)} className={`${filterChipClass} ${statusBadgeClass(key, status === key)}`}>
               {label}
             </button>
           ))}
@@ -2558,7 +2546,7 @@ function RequestFilterBar({
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveRequestTypeIds((current) => isActive ? current.filter((value) => value !== id) : [...current, id])}
-                className={`h-9 rounded-full border px-4 text-xs shadow-sm transition ${supplyRequestTagClass({ id: `request-type-${id}` }, isActive)}`}
+                className={`${filterChipClass} font-medium shadow-sm ring-1 ${plainFilterTagClass(isActive)}`}
               >
                 {type.title}
               </button>
@@ -2568,12 +2556,12 @@ function RequestFilterBar({
             const id = String(tag?.id ?? "");
             const isActive = active.has(id);
             return (
-              <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`h-9 rounded-full border px-4 text-xs shadow-sm transition ${supplyRequestTagClass(tag, isActive)} `}>
+              <button key={id} type="button" onClick={() => toggleActiveTag(id)} className={`${filterChipClass} font-medium shadow-sm ring-1 ${plainFilterTagClass(isActive)}`}>
                 {tagLabelOf(tag)}
               </button>
             );
           })}
-          <button type="button" onClick={() => setTagPickOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 bg-white text-lg dark:border-white/15 dark:bg-white/5" aria-label="انتخاب برچسب" title="انتخاب برچسب">•••</button>
+          <button type="button" onClick={() => setTagPickOpen(true)} className="grid h-7 w-7 place-items-center rounded-full border border-black/10 bg-white text-sm dark:border-white/15 dark:bg-white/5" aria-label="انتخاب برچسب" title="انتخاب برچسب">•••</button>
         </div>
       </div>
       {tagPickOpen && <TagPicker tags={tags} selectedIds={pinnedTagIds} onToggle={togglePinnedTag} query={tagPickSearch} setQuery={setTagPickSearch} onClose={() => setTagPickOpen(false)} />}
