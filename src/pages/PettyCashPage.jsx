@@ -838,7 +838,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
   const canEditPlanning = !isCreatorView && canAct && entries[0]?.stage === "planning";
   const reviewBudgetOptions = budgetItems.length ? budgetPickerItems(budgetItems, reviewProject || { code: reviewProjectCode }, true) : [];
   const planningValuesValid = !canEditPlanning || (Boolean(reviewProjectCode) && entries.every((item) =>
-    reviewBudgetOptions.some((budget) => budget.value === reviewBudgetCodes[item.id])));
+    !item.budgetCode || reviewBudgetOptions.some((budget) => budget.value === reviewBudgetCodes[item.id])));
   const readyToSubmit = canAct && (reportDecision === "revision" ? Boolean(returnNote.trim()) : reportDecision === "approve" && planningValuesValid);
   const reviewReportNumber = reviewProjectCode && report.reportNumber
     ? String(report.reportNumber).replace(/^(\d{2}\/)[^/]+(\/\d+)$/, (_, year, sequence) => `${year}${english(reviewProjectCode).replace(/\D/g, "")}${sequence}`)
@@ -1015,7 +1015,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
                     onKeyDown={(event) => { if (event.target === event.currentTarget && ["Enter", " "].includes(event.key)) { event.preventDefault(); viewRow(item); } }}
                     className={`h-13 cursor-pointer border-t border-neutral-200 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200 ${viewedRowIds.has(item.id) ? "bg-neutral-200/70 hover:bg-neutral-200" : "bg-neutral-50/40 hover:bg-neutral-100"}`}>
                     <td className="px-2">{toFa(index + 1)}</td>
-                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-words px-2 py-2 leading-5">{canEditPlanning ? <select aria-label={`کد بودجه ردیف ${index + 1}`} value={reviewBudgetCodes[item.id] || ""} disabled={saving || !reviewProjectCode} onClick={(event) => event.stopPropagation()} onChange={(event) => setReviewBudgetCodes((current) => ({ ...current, [item.id]: event.target.value }))} className="h-9 w-full rounded-lg border border-neutral-300 bg-white px-1 text-xs"><option value="">انتخاب کد بودجه</option>{reviewBudgetOptions.map((budget) => <option key={budget.value} value={budget.value}>{toFa(budget.code)}{budget.center_desc ? ` - ${budget.center_desc}` : ""}</option>)}</select> : <><span className="block" dir="ltr">{toFa(fullBudgetCode(item.budgetCode, report.projectCode) || "—")}</span>{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode)) && <span className="block text-[11px] text-neutral-600">{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode))}</span>}</>}</td>
+                     <td className="break-words px-3 py-2 text-right leading-5"><span className="block text-[11px] text-neutral-500">{toFa(item.expenseDate)}</span>{toFa(item.description)}</td><td className="break-words px-2 py-2 leading-5">{!item.budgetCode ? "عودت" : canEditPlanning ? <select aria-label={`کد بودجه ردیف ${index + 1}`} value={reviewBudgetCodes[item.id] || ""} disabled={saving || !reviewProjectCode} onClick={(event) => event.stopPropagation()} onChange={(event) => setReviewBudgetCodes((current) => ({ ...current, [item.id]: event.target.value }))} className="h-9 w-full rounded-lg border border-neutral-300 bg-white px-1 text-xs"><option value="">انتخاب کد بودجه</option>{reviewBudgetOptions.map((budget) => <option key={budget.value} value={budget.value}>{toFa(budget.code)}{budget.center_desc ? ` - ${budget.center_desc}` : ""}</option>)}</select> : <><span className="block" dir="ltr">{toFa(fullBudgetCode(item.budgetCode, report.projectCode) || "—")}</span>{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode)) && <span className="block text-[11px] text-neutral-600">{budgetNames.get(fullBudgetCode(item.budgetCode, report.projectCode))}</span>}</>}</td>
                     <td className="px-2 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
                   </tr>;
                 })}</tbody>
@@ -1260,6 +1260,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
       : reportItems.find((item) => String(item.id) === String(initialReport?.draftPayload?.editingExpenseId)) || null;
   });
   const [manualEntryOpen, setManualEntryOpen] = useState(Boolean(initialReport?.draftPayload?.manualEntryOpen));
+  const [entryMode, setEntryMode] = useState(initialReport?.draftPayload?.entryMode === "return" || (initialReport?.draftPayload?.editingExpenseId && !initialReport?.draftPayload?.form?.budgetCode) ? "return" : "expense");
   const [draftConfirmOpen, setDraftConfirmOpen] = useState(false);
   const [draftPickerOpen, setDraftPickerOpen] = useState(false);
   const [draftOptions, setDraftOptions] = useState([]);
@@ -1355,8 +1356,8 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
     if (form.currencyTypeId && !selectedCurrency) return setError("ارز انتخاب‌شده معتبر نیست. فهرست ارزها را دوباره دریافت کنید.");
     const rowAmount = rialEquivalent(form.amount, form.currencyTypeId, form.exchangeRate);
     if (form.currencyTypeId && amount(toEnglishDigits(form.exchangeRate).replace(/[^\d]/g, "")) <= 0n) return setError("نرخ تبدیل به ریال را وارد کنید.");
-    if (!form.expenseDate || !form.description.trim() || !form.budgetCode || rowAmount <= 0n) {
-      return setError("تاریخ، شرح، کد بودجه و مبلغ مثبت را تکمیل کنید.");
+    if (!form.expenseDate || !form.description.trim() || (entryMode !== "return" && !form.budgetCode) || rowAmount <= 0n) {
+      return setError(entryMode === "return" ? "تاریخ، شرح و مبلغ مثبت را تکمیل کنید." : "تاریخ، شرح، کد بودجه و مبلغ مثبت را تکمیل کنید.");
     }
     const otherRowsAmount = items.reduce((sum, item) => item.id === editingExpense?.id ? sum : sum + amount(item.amount), 0n);
     if (!initialReport && availableBalance !== null && (availableBalance <= 0n || otherRowsAmount + rowAmount > availableBalance)) {
@@ -1370,7 +1371,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
       if (entry.file && !entry.url) previewUrlsRef.current.add(url);
       return { ...entry, url };
     });
-    const item = { ...form, description: form.description.trim(), amount: rowAmount.toString(),
+    const item = { ...form, budgetCode: entryMode === "return" ? "" : form.budgetCode, description: form.description.trim(), amount: rowAmount.toString(),
       currencyTypeId: form.currencyTypeId || null, currencyName: selectedCurrency ? currencyLabel(selectedCurrency) : "ریال",
       currencyAmount: form.currencyTypeId ? foreignAmount(form.amount) : rowAmount.toString(),
       exchangeRate: form.currencyTypeId ? toEnglishDigits(form.exchangeRate).replace(/[^\d]/g, "") : "1",
@@ -1392,7 +1393,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
     if (editingExpense || form.description.trim() || form.budgetCode || form.amount || attachments.length) {
       return "ابتدا ردیف در حال ورود یا ویرایش را با دکمه افزودن ردیف ثبت کنید.";
     }
-    if (items.some((item) => !item.expenseDate || !item.description.trim() || !item.budgetCode || amount(item.amount) <= 0n || !expenseAttachments(item).length)) {
+    if (items.some((item) => !item.expenseDate || !item.description.trim() || amount(item.amount) <= 0n || !expenseAttachments(item).length)) {
       return "همه فیلدها و پیوست هر ردیف باید تکمیل باشند.";
     }
     return "";
@@ -1451,7 +1452,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
         if (!response.ok || !data.file?.url) throw new Error(data.error || "بارگذاری پیوست انجام نشد.");
         draftAttachments.push(data.file);
       }
-      const draftPayload = { reportName: reportName.trim(), form, attachments: draftAttachments, manualEntryOpen,
+      const draftPayload = { reportName: reportName.trim(), form, attachments: draftAttachments, manualEntryOpen, entryMode,
         editingExpenseId: editingExpense?.id || null,
         editingExpenseIndex: editingExpense ? items.findIndex((item) => item.id === editingExpense.id) : null };
       const data = await api("/petty-cash-expenses", { method: "POST", body: JSON.stringify({
@@ -1551,6 +1552,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
   const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || initialReport.initialStage === "draft" || item.stage === "revision" || !Number.isInteger(Number(item.id)));
   const beginEdit = (item) => {
     setManualEntryOpen(true);
+    setEntryMode(item.budgetCode ? "expense" : "return");
     setEditingExpense(item);
     setSelectedIds(new Set([item.id]));
     setForm({ expenseDate: item.expenseDate, description: item.description, budgetCode: item.budgetCode,
@@ -1599,8 +1601,12 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
          </div>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => setManualEntryOpen((current) => !current)} aria-expanded={manualEntryOpen}
-          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
+        <button type="button" onClick={() => { setEntryMode("return"); setManualEntryOpen((current) => entryMode === "return" ? !current : true); cancelEdit(); }} aria-expanded={manualEntryOpen && entryMode === "return"}
+          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen && entryMode === "return" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
+          عودت
+        </button>
+        <button type="button" onClick={() => { setEntryMode("expense"); setManualEntryOpen((current) => entryMode === "expense" ? !current : true); cancelEdit(); }} aria-expanded={manualEntryOpen && entryMode === "expense"}
+          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen && entryMode === "expense" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
           ثبت موردی
         </button>
         <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
@@ -1609,7 +1615,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
       </div>
     </div>
 
-    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className="mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]">
+    {manualEntryOpen && <div id="petty-cash-manual-entry" ref={formRef} className={`mb-3 grid grid-cols-1 items-end gap-3 rounded-2xl border border-neutral-200 bg-neutral-100 p-3 sm:grid-cols-2 ${entryMode === "return" ? "xl:grid-cols-[150px_minmax(180px,1fr)_170px_auto]" : "xl:grid-cols-[150px_minmax(180px,1fr)_minmax(180px,1fr)_170px_auto]"}`}>
       <Field label="تاریخ" required>
         <JalaliPopupDatePicker value={form.expenseDate} onChange={(expenseDate) => setForm((current) => ({ ...current, expenseDate }))}
           buttonClassName={`${inputClass} flex items-center justify-between`} />
@@ -1617,7 +1623,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
       <Field label="شرح" required>
         <input required value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} className={inputClass} />
       </Field>
-      <Field label="کد بودجه" required>
+      {entryMode !== "return" && <Field label="کد بودجه" required>
         <button type="button" disabled={!projectId} onClick={() => { setBudgetPickerQuery(""); setBudgetPickerOpen(true); }}
           className={`${inputClass} flex items-center justify-between gap-2 text-right disabled:opacity-50`}>
           <span className={`min-w-0 truncate ${form.budgetCode ? "" : "text-neutral-400"}`}>{form.budgetCode ? (() => {
@@ -1625,7 +1631,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
             return `${toFa(item?.code || form.budgetCode)}${item?.center_desc ? ` - ${item.center_desc}` : ""}`;
           })() : (projectId ? "انتخاب کد بودجه" : "ابتدا پروژه را انتخاب کنید")}</span><span className="shrink-0">⌄</span>
         </button>
-      </Field>
+      </Field>}
       <Field label="مبلغ" required>
         <div className="relative min-w-0">
           <input required dir="ltr" inputMode={form.currencyTypeId ? "decimal" : "numeric"} value={toFa(form.amount)}
@@ -1707,7 +1713,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
               <td className="px-3">{toFa(startIndex + index + 1)}</td>
               <td className="px-3">{toFa(item.expenseDate)}</td>
               <td className="truncate px-3 text-right" title={item.description}>{item.description}</td>
-              <td className="px-3" title={fullBudgetCode(item.budgetCode, selectedProjectCode)}>{toFa(fullBudgetCode(item.budgetCode, selectedProjectCode) || "—")}</td>
+              <td className="px-3" title={item.budgetCode ? fullBudgetCode(item.budgetCode, selectedProjectCode) : "عودت"}>{item.budgetCode ? toFa(fullBudgetCode(item.budgetCode, selectedProjectCode) || "—") : "عودت"}</td>
               <td className="px-3 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
               <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
                {initialReport && <td className="px-2"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.stage === "draft" ? "bg-orange-50 text-orange-700" : item.stage === "revision" ? "bg-amber-50 text-amber-800" : item.stage === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>{item.stage === "draft" ? "درحال تکمیل" : item.stage === "revision" ? "درخواست اصلاح" : item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span></td>}

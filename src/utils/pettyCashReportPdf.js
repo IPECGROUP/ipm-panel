@@ -38,7 +38,7 @@ export function openPettyCashReportPdf(report) {
   const info = (label, value) => `<div class="info-card"><div class="label">${escapeHtml(label)}</div><div class="value">${text(value)}</div></div>`;
   const itemRows = rows.map((item, index) => `<tr>
     <td>${text(index + 1)}</td><td>${text(item.expenseDate)}</td><td>${text(item.description)}</td>
-    <td dir="ltr">${text(fullBudgetCode(item.budgetCode, report.projectCode))}</td><td class="amount">${item.currencyTypeId ? `${text(item.currencyAmount)} ${text(item.currencyName)}<br><small>${escapeHtml(amount(item.amount))} ریال</small>` : `${escapeHtml(amount(item.amount))} ریال`}</td>
+    <td dir="ltr">${item.budgetCode ? text(fullBudgetCode(item.budgetCode, report.projectCode)) : "عودت"}</td><td class="amount">${item.currencyTypeId ? `${text(item.currencyAmount)} ${text(item.currencyName)}<br><small>${escapeHtml(amount(item.amount))} ریال</small>` : `${escapeHtml(amount(item.amount))} ریال`}</td>
     <td><span class="status">تأیید شده</span></td><td>${text(item.fileName)}</td>
   </tr>`).join("");
   const attachmentPages = rows.map((item, index) => {
