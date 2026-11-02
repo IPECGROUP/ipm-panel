@@ -1003,7 +1003,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
         <PettyCashSettlementTimeline report={report} />
         <div className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200">
           <section className="min-w-0 overflow-hidden">
-            <h3 className="flex items-center gap-2 bg-[#184a6b] px-3 py-3 text-sm font-bold text-white"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات گزارش تنخواه</h3>
+            <h3 className="flex items-center gap-2 bg-[#5d92b7] px-3 py-3 text-sm font-bold text-white"><ListChecks className="h-5 w-5 stroke-[1.6]" />جزئیات گزارش تنخواه</h3>
             <div role="region" aria-label="جدول جزئیات قابل پیمایش" tabIndex={0} className="h-[294px] overflow-auto overscroll-contain touch-pan-x touch-pan-y sm:h-[336px]">
               <table className="w-full min-w-[700px] table-fixed text-center text-[13px]" aria-label="هزینه‌های گزارش">
                  <colgroup><col className="w-12" /><col /><col className="w-52" /><col className="w-32" /></colgroup>
@@ -1040,8 +1040,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
           </div></div>}
         </div>
 
-        <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50">
-          <h3 className="flex items-center gap-2 bg-[#184a6b] px-3 py-3 text-sm font-bold text-white"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست‌ها</h3>
+        <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+          <h3 className="flex items-center gap-2 bg-[#5d92b7] px-3 py-3 text-sm font-bold text-white"><FileText className="h-5 w-5 stroke-[1.6]" />پیش‌نمایش پیوست‌ها</h3>
           <div className="px-3">
             <div className="relative grid h-60 place-items-center overflow-hidden rounded-xl bg-neutral-100 sm:h-64 xl:h-[min(34vh,400px)]">
               {preview.loading ? <LoaderCircle className="h-6 w-6 animate-spin text-neutral-400" />
@@ -1151,7 +1151,7 @@ function PettyCashSettlementTimeline({ report }) {
   if (!events.get("created")?.length) addEvent("created", { at: report.createdAt, actor: report.createdByName || report.createdByUsername || "—", label: "ثبت گزارش", result: "approved" });
 
   return <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white pb-4">
-    <h3 className="bg-[#184a6b] px-4 py-3 text-sm font-bold text-white">فرآیند تسویه تنخواه</h3>
+    <h3 className="bg-[#5d92b7] px-4 py-3 text-sm font-bold text-white">فرآیند تسویه تنخواه</h3>
     <ol className="space-y-0 p-4">{stages.map(([stage, title], index) => {
       const stageEvents = events.get(stage) || [];
       const last = stageEvents.at(-1);

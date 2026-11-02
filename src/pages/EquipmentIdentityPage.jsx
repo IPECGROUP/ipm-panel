@@ -15,6 +15,17 @@ const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 
 const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300";
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 const emptyForm = () => ({ categoryId: "", fieldValues: {}, relatedLetterIds: [], libraryItemIds: [], files: [] });
+const CATEGORY_TONES = [
+  "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200",
+  "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200",
+  "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200",
+  "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-200",
+  "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200",
+];
+function categoryTone(value) {
+  const hash = Array.from(String(value || "")).reduce((sum, char) => (sum * 31 + char.codePointAt(0)) >>> 0, 0);
+  return CATEGORY_TONES[hash % CATEGORY_TONES.length];
+}
 
 function identityFieldValue(item, fields, kind) {
   const field = fields.find((candidate) => String(candidate.categoryId) === String(item.categoryId) && (kind === "name"
@@ -51,6 +62,7 @@ export default function EquipmentIdentityPage() {
   const [editingId, setEditingId] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [query, setQuery] = useState("");
+  const [filterCategoryId, setFilterCategoryId] = useState("");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [error, setError] = useState("");
@@ -84,16 +96,42 @@ export default function EquipmentIdentityPage() {
   const filteredItems = useMemo(() => {
     const terms = query.trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
     return items.filter((item) => {
+      if (filterCategoryId && String(item.categoryId) !== filterCategoryId) return false;
       const values = item.fieldValues && typeof item.fieldValues === "object" ? Object.values(item.fieldValues) : [];
-       const text = [item.category, identityFieldValue(item, definitions.fields, "name"), identityFieldValue(item, definitions.fields, "code"), ...values].join(" ").toLocaleLowerCase("fa");
+      const text = [item.category, identityFieldValue(item, definitions.fields, "name"), identityFieldValue(item, definitions.fields, "code"), ...values].join(" ").toLocaleLowerCase("fa");
       return terms.every((term) => text.includes(term));
     });
-  }, [items, query, definitions.fields]);
+  }, [items, query, filterCategoryId, definitions.fields]);
   const safePage = Math.min(page, Math.max(0, Math.ceil(filteredItems.length / pageSize) - 1));
   const pageItems = filteredItems.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const visibleIds = pageItems.map((item) => String(item.id));
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
   const detailItem = items.find((item) => String(item.id) === String(detailId));
+
+  async function exportExcel() {
+    if (!filteredItems.length) { setError("موردی برای خروجی اکسل وجود ندارد."); return; }
+    setError("");
+    try {
+      const xlsxModule = await import("xlsx");
+      const XLSX = xlsxModule.default || xlsxModule;
+      const fields = definitions.fields.filter((field) => filteredItems.some((item) => String(item.categoryId) === String(field.categoryId)));
+      const headers = ["ردیف", "دسته‌بندی", "نام تجهیز", "کد تجهیز", ...fields.map((field) => field.name || field.persianName || "مشخصات")];
+      const rows = filteredItems.map((item, index) => [
+        index + 1,
+        definitions.categories.find((category) => String(category.id) === String(item.categoryId))?.name || item.category || "",
+        identityFieldValue(item, definitions.fields, "name"),
+        identityFieldValue(item, definitions.fields, "code"),
+        ...fields.map((field) => String(field.categoryId) === String(item.categoryId) ? String(item.fieldValues?.[String(field.id)] ?? "") : ""),
+      ]);
+      const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      sheet["!cols"] = headers.map((header) => ({ wch: Math.min(48, Math.max(14, String(header).length + 4)) }));
+      sheet["!autofilter"] = { ref: `A1:${XLSX.utils.encode_col(headers.length - 1)}${rows.length + 1}` };
+      const workbook = XLSX.utils.book_new();
+      workbook.Workbook = { Views: [{ RTL: true }] };
+      XLSX.utils.book_append_sheet(workbook, sheet, "تجهیزات");
+      XLSX.writeFile(workbook, "equipment-identities.xlsx", { bookType: "xlsx", compression: true });
+    } catch (err) { setError(err.message || "ساخت خروجی اکسل انجام نشد."); }
+  }
 
   function editItem(item) {
     setForm({ categoryId: String(item.categoryId || ""), fieldValues: { ...item.fieldValues }, relatedLetterIds: [...(item.relatedLetterIds || [])], libraryItemIds: [...(item.libraryItemIds || [])], files: [...(item.files || [])] });
@@ -204,7 +242,14 @@ export default function EquipmentIdentityPage() {
             <label className="block"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
             <button type="submit" disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : editingId ? "ذخیره تغییرات" : "ثبت تجهیز"} aria-label={editingId ? "ذخیره تغییرات" : "ثبت تجهیز"}><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
-          <label className="block"><span className={`block ${labelClass}`}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در دسته‌بندی و اطلاعات ثبت‌شده تجهیز..." /></label>
+          <div className="flex items-end gap-2">
+            <label className="min-w-0 flex-1"><span className={`block ${labelClass}`}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در همه فیلدها (دسته‌بندی، نام، کد و مشخصات تجهیز...)" /></label>
+            <button type="button" onClick={exportExcel} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" aria-label="خروجی اکسل" title="خروجی اکسل"><img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" /></button>
+          </div>
+          <div className="mt-3"><div className={labelClass}>برچسب ها</div><div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => { setFilterCategoryId(""); setPage(0); }} aria-pressed={!filterCategoryId} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${!filterCategoryId ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:text-neutral-200"}`}>همه</button>
+            {availableCategories.map((category) => { const active = filterCategoryId === String(category.id); return <button key={category.id} type="button" onClick={() => { setFilterCategoryId(active ? "" : String(category.id)); setPage(0); }} aria-pressed={active} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${categoryTone(category.id)} ${active ? "ring-2 ring-current ring-offset-2 dark:ring-offset-neutral-900" : "hover:brightness-95"}`}>{category.name}</button>; })}
+          </div></div>
         </div>}
 
         {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
@@ -217,7 +262,7 @@ export default function EquipmentIdentityPage() {
             <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={5} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} tabIndex={0} role="button" aria-label={`مشاهده شناسنامه ${identityFieldValue(item, definitions.fields, "name")}`} onClick={() => setDetailId(String(item.id))} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setDetailId(String(item.id)); } }} className="h-10 cursor-pointer bg-black/[0.02] transition-colors hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:bg-white/5 dark:hover:bg-white/10">
               <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب شناسنامه ${identityFieldValue(item, definitions.fields, "name")}`} /></td>
               <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(safePage * pageSize + index + 1)}</td>
-              <td className="border-b border-neutral-300 px-3 font-medium dark:border-neutral-700">{definitions.categories.find((category) => String(category.id) === String(item.categoryId))?.name || item.category || "—"}</td>
+               <td className="border-b border-neutral-300 px-3 font-medium dark:border-neutral-700"><span className={`inline-block max-w-full truncate rounded-full border px-2.5 py-1 align-middle text-xs ${categoryTone(item.categoryId || item.category)}`}>{definitions.categories.find((category) => String(category.id) === String(item.categoryId))?.name || item.category || "—"}</span></td>
               <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block break-words" dir="auto">{identityFieldValue(item, definitions.fields, "name")}</span></td>
               <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block break-words" dir="auto">{identityFieldValue(item, definitions.fields, "code")}</span></td>
             </tr>)}</tbody>
