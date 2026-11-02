@@ -2875,6 +2875,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         ${item.cashDescription ? infoCard("شرح پرداخت نقدی", item.cashDescription) : ""}
         ${infoCard("تاریخ پرداخت نقدی", toFa(item.cashDate || item.cashDateJalali || "—"))}
         ${infoCard("پرداخت اعتباری ثبت‌شده", amount(item.creditSection || item.creditAmount))}
+        ${item.creditDescription ? infoCard("شرح پرداخت اعتباری", item.creditDescription) : ""}
       </div>
     </section>
 
