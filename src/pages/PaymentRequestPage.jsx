@@ -2350,6 +2350,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const [cashPayAmount, setCashPayAmount] = useState("");
   const [cashPayCurrencyId, setCashPayCurrencyId] = useState(item.currencyTypeId || "");
   const [paymentMethod, setPaymentMethod] = useState(PAYMENT_METHOD_OPTIONS[0]);
+  const [cashPayDesc, setCashPayDesc] = useState("");
   const [creditPayAmount, setCreditPayAmount] = useState("");
   const [creditPayCurrencyId, setCreditPayCurrencyId] = useState(item.currencyTypeId || "");
   const [creditPayDesc, setCreditPayDesc] = useState("");
@@ -2637,6 +2638,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
       cashPayAmount,
       cashPayCurrency: currencyNameOf(cashPayCurrencyId, currencyTypes),
       paymentMethod,
+      cashPayDesc,
       creditPayAmount,
       creditPayCurrency: currencyNameOf(creditPayCurrencyId, currencyTypes),
       creditPayDesc,
@@ -2649,6 +2651,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         cashAmount: paymentActionAmount(cashPayAmount, cashPayCurrencyId),
         cashCurrencyTypeId: cashPayCurrencyId || null,
         paymentMethod,
+        cashDescription: cashPayDesc,
         creditAmount: paymentActionAmount(creditPayAmount, creditPayCurrencyId),
         creditCurrencyTypeId: creditPayCurrencyId || null,
         creditDescription: creditPayDesc,
@@ -2869,6 +2872,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         ${infoCard("شماره شبا", toFa(item.bankInfo))}
         ${infoCard("شرایط پرداخت", item.creditPay)}
         ${infoCard("پرداخت نقدی ثبت‌شده", amount(item.cashText || item.cashAmount))}
+        ${item.cashDescription ? infoCard("شرح پرداخت نقدی", item.cashDescription) : ""}
         ${infoCard("تاریخ پرداخت نقدی", toFa(item.cashDate || item.cashDateJalali || "—"))}
         ${infoCard("پرداخت اعتباری ثبت‌شده", amount(item.creditSection || item.creditAmount))}
       </div>
@@ -3147,6 +3151,8 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 setCashPayCurrencyId={setCashPayCurrencyId}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
+                cashPayDesc={cashPayDesc}
+                setCashPayDesc={setCashPayDesc}
                 creditPayAmount={creditPayAmount}
                 setCreditPayAmount={setCreditPayAmount}
                 creditPayCurrencyId={creditPayCurrencyId}
@@ -3274,7 +3280,7 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
 function WorkflowPanel({
   stepKey, stepIndex, choice, setChoice, actionNote, setActionNote, actionBusy,
   hasEnoughLiquidity, urgentCash, setUrgentCash,
-  cashPayAmount, setCashPayAmount, cashPayCurrencyId, setCashPayCurrencyId, paymentMethod, setPaymentMethod,
+  cashPayAmount, setCashPayAmount, cashPayCurrencyId, setCashPayCurrencyId, paymentMethod, setPaymentMethod, cashPayDesc, setCashPayDesc,
   creditPayAmount, setCreditPayAmount, creditPayCurrencyId, setCreditPayCurrencyId, creditPayDesc, setCreditPayDesc,
   paymentReceipts, onOpenReceiptUpload, onRemoveReceipt, receiptUploading,
   currencyTypes, nextRecipients, nextRecipientsLoading, targetAssigneeUserId, setTargetAssigneeUserId,
@@ -3291,10 +3297,11 @@ function WorkflowPanel({
             <Field label="روش پرداخت"><select className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
             <PaymentReceiptField files={paymentReceipts.cash} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("cash")} onRemove={(index) => onRemoveReceipt("cash", index)} />
           </div>
+          <div className="mt-3"><Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-11 resize-y py-2.5`} rows={1} value={cashPayDesc} onChange={(event) => setCashPayDesc(event.target.value)} /></Field></div>
         </div>
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(80px,auto)_minmax(0,1.5fr)]">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,14rem)_5rem_minmax(0,1fr)]">
             <Field label="مبلغ"><div className="relative"><MoneyInput className="pl-28" decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /><div className="absolute left-2 top-1/2 w-24 -translate-y-1/2"><CurrencySelect className="h-8 py-1 text-xs" value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></div></div></Field>
             <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} centered />
             <Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-11 resize-y py-2.5`} rows={1} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field>
@@ -3410,11 +3417,11 @@ function currencyNameOf(id, currencyTypes) {
   return item ? itemLabel(item) : "ریال";
 }
 
-function buildWorkflowNote({ stepKey, stepIndex, choice, note, urgentCash, cashPayAmount, cashPayCurrency, paymentMethod, creditPayAmount, creditPayCurrency, creditPayDesc }) {
+function buildWorkflowNote({ stepKey, stepIndex, choice, note, urgentCash, cashPayAmount, cashPayCurrency, paymentMethod, cashPayDesc, creditPayAmount, creditPayCurrency, creditPayDesc }) {
   const finalAccounting = stepKey === "accounting" && Number(stepIndex) >= 5;
   if (finalAccounting) {
     const parts = [];
-    if (cashPayAmount) parts.push(`پرداخت نقدی: ${cashPayAmount} ${cashPayCurrency}، روش پرداخت: ${paymentMethod}`);
+    if (cashPayAmount) parts.push(`پرداخت نقدی: ${cashPayAmount} ${cashPayCurrency}، روش پرداخت: ${paymentMethod}${cashPayDesc ? `، شرح: ${cashPayDesc}` : ""}`);
     if (creditPayAmount) parts.push(`پرداخت اعتباری: ${creditPayAmount} ${creditPayCurrency}${creditPayDesc ? `، شرح: ${creditPayDesc}` : ""}`);
     return parts.join(" | ") || "پرداخت ثبت شد";
   }
