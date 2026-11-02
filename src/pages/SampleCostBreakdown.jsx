@@ -81,13 +81,13 @@ export default function SampleCostBreakdown() {
   return (
     <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
       <h2 className="text-sm font-bold">ساختار نمونه شکست هزینه‌ها</h2>
-      <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,2fr)] md:items-stretch">
-        <form onSubmit={addTemplate} className="rounded-xl border border-black/10 p-2 dark:border-white/10">
-          <label htmlFor="new-sample-template" className="block text-sm">نام نوع پروژه جدید</label>
-          <div className="mt-1 flex gap-2"><input id="new-sample-template" value={newTemplateName} onChange={(event) => setNewTemplateName(event.target.value)} disabled={saving} maxLength={100} className="h-10 min-w-0 flex-1 rounded-xl border border-black/10 bg-white px-3 dark:border-white/10 dark:bg-neutral-900" /><button type="submit" disabled={saving || !newTemplateName.trim()} className="h-10 rounded-xl border border-[#184a6b] px-4 text-sm font-bold text-[#184a6b] disabled:opacity-40 dark:text-[#8fc4e3]">افزودن</button></div>
-        </form>
-        <div className="rounded-xl border border-black/10 p-2 dark:border-white/10">
-          {templatesLoading ? <div className="h-[60px] animate-pulse rounded-xl bg-neutral-100 dark:bg-white/10" aria-label="در حال دریافت نوع پروژه‌ها" /> : <label className="flex flex-col gap-1 text-sm">نوع پروژه<select value={selectedTemplate} disabled={saving} onChange={(event) => { setSelectedTemplate(event.target.value); setCode(""); setName(""); }} className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm dark:border-white/10 dark:bg-neutral-900">{templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>}
+      <div className="mt-4 grid gap-3 md:grid-cols-2 md:items-stretch">
+        <div className="grid gap-2 rounded-xl border border-black/10 p-2 sm:grid-cols-2 sm:items-end dark:border-white/10">
+          <form onSubmit={addTemplate} className="min-w-0">
+            <label htmlFor="new-sample-template" className="block text-sm">نام نوع پروژه جدید</label>
+            <div className="mt-1 flex gap-2"><input id="new-sample-template" value={newTemplateName} onChange={(event) => setNewTemplateName(event.target.value)} disabled={saving} maxLength={100} className="h-10 min-w-0 flex-1 rounded-xl border border-black/10 bg-white px-3 dark:border-white/10 dark:bg-neutral-900" /><button type="submit" disabled={saving || !newTemplateName.trim()} aria-label="افزودن نوع پروژه" title="افزودن نوع پروژه" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F48120] transition hover:bg-[#d96b0e] disabled:opacity-40"><img src="/images/icons/afzodan.svg" alt="" className="h-5 w-5 invert" /></button></div>
+          </form>
+          {templatesLoading ? <div className="h-[60px] animate-pulse rounded-xl bg-neutral-100 dark:bg-white/10" aria-label="در حال دریافت نوع پروژه‌ها" /> : <label className="flex min-w-0 flex-col gap-1 text-sm">نوع پروژه<select value={selectedTemplate} disabled={saving} onChange={(event) => { setSelectedTemplate(event.target.value); setCode(""); setName(""); }} className="h-10 min-w-0 rounded-xl border border-black/10 bg-white px-3 dark:border-white/10 dark:bg-neutral-900">{templates.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}</select></label>}
         </div>
         <form onSubmit={addRow} className="grid gap-2 rounded-xl border border-black/10 p-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.4fr)] sm:items-end dark:border-white/10">
           <label className="flex min-w-0 flex-col gap-1 text-sm">کد بودجه<input value={code} onChange={(event) => setCode(event.target.value)} disabled={loading || saving} dir="ltr" maxLength={80} className="h-10 min-w-0 rounded-xl border border-black/10 bg-white px-3 dark:border-white/10 dark:bg-white/5" /></label>
