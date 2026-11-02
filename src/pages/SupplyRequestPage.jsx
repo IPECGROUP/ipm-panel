@@ -1768,7 +1768,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
       const letter = relatedLetterMap.get(String(id));
       return `<tr><td>${value(toFaDigits(index + 1))}</td><td>${value(toFaDigits(letter ? letterNoOf(letter) || id : id))}</td><td>${value(letter ? toFaDigits(letterDateOf(letter)) : "—")}</td><td>${value(letter ? subjectOf(letter) : "—")}</td><td>${value(letter ? fromToOf(letter) : "—")}</td></tr>`;
     }).join("");
-    const logoUrl = `${window.location.origin}/images/light%20mode.png`;
+    const logoUrl = `${window.location.origin}/images/IPEC%20Persian%20Energy%20Process%20Logo.webp`;
     const fontRegularUrl = `${window.location.origin}/fonts/Vazir.woff2`;
     const fontBoldUrl = `${window.location.origin}/fonts/Vazir-Bold.woff2`;
     const html = `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>درخواست تامین ${value(item.serial, "")}</title><style>

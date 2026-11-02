@@ -32,7 +32,7 @@ export function openPettyCashReportPdf(report) {
   }
   const rows = report.items;
   const total = rows.reduce((sum, item) => { try { return sum + BigInt(item.amount || 0); } catch { return sum; } }, 0n);
-  const logoUrl = `${window.location.origin}/images/light%20mode.png`;
+  const logoUrl = `${window.location.origin}/images/IPEC%20Persian%20Energy%20Process%20Logo.webp`;
   const fontUrl = `${window.location.origin}/fonts/Vazir.woff2`;
   const boldFontUrl = `${window.location.origin}/fonts/Vazir-Bold.woff2`;
   const info = (label, value) => `<div class="info-card"><div class="label">${escapeHtml(label)}</div><div class="value">${text(value)}</div></div>`;

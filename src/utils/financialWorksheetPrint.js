@@ -79,7 +79,7 @@ export function openFinancialWorksheetPrintPreview({ title, project, contract, h
   <div class="toolbar"><button id="print-document" type="button">چاپ / ذخیره PDF</button><button id="close-preview" class="secondary" type="button">بستن پیش‌نمایش</button></div>
   <article class="sheet">
     <header class="header">
-      <div class="logo"><img src="${origin}/images/light%20mode.png" alt="IPEC" /></div>
+      <div class="logo"><img src="${origin}/images/IPEC%20Persian%20Energy%20Process%20Logo.webp" alt="IPEC" /></div>
       <div class="title"><h1>فرم کاربرگ مالی</h1><p>گزارش رسمی اطلاعات ${safeTitle}</p></div>
       <div class="document-meta"><div><span>تاریخ:</span><strong>${escapeHtml(reportDate)}</strong></div><div><span>ساعت:</span><strong>${escapeHtml(reportTime)}</strong></div></div>
     </header>

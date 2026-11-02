@@ -2763,7 +2763,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
       </article>`;
     }).join("");
     const infoCard = (label, content, className = "") => `<div class="info-card ${className}"><div class="label">${escapePdfHtml(label)}</div><div class="value">${value(content)}</div></div>`;
-    const logoUrl = `${window.location.origin}/images/light%20mode.png`;
+    const logoUrl = `${window.location.origin}/images/IPEC%20Persian%20Energy%20Process%20Logo.webp`;
     const fontRegularUrl = `${window.location.origin}/fonts/Vazir.woff2`;
     const fontBoldUrl = `${window.location.origin}/fonts/Vazir-Bold.woff2`;
 
