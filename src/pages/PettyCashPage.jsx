@@ -2,7 +2,7 @@ import { createElement, useCallback, useEffect, useMemo, useRef, useState } from
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, BriefcaseBusiness, CalendarDays, ListChecks, ChevronLeft, ChevronRight, Pencil, Eye, Plus } from "lucide-react";
+import { Crop, ImagePlus, RotateCcw, RotateCw, Check, X, RefreshCw, LoaderCircle, FileText, CalendarDays, ListChecks, ChevronLeft, ChevronRight, Pencil, Eye, Plus } from "lucide-react";
 import { useAuth } from "../components/AuthProvider.jsx";
 import BudgetTreePickerModal from "../components/BudgetTreePickerModal.jsx";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
@@ -966,7 +966,7 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     { label: "شماره گزارش", value: reviewReportNumber ? toFa(reviewReportNumber) : "—", Icon: FileText },
     { label: "تاریخ", value: reportDate(report.createdAt), recipient: report.createdByName || report.createdByUsername || "—", Icon: CalendarDays },
     { label: "نام گزارش", value: report.reportName || "—", Icon: FileText },
-    { label: "پروژه", value: reviewProject ? `${toFa(reviewProject.code)} - ${reviewProject.name}` : report.projectCode ? `${toFa(report.projectCode)} - ${report.projectName}` : report.projectName || "—", Icon: BriefcaseBusiness },
+    { label: "پروژه", value: reviewProject ? `${toFa(reviewProject.code)} - ${reviewProject.name}` : report.projectCode ? `${toFa(report.projectCode)} - ${report.projectName}` : report.projectName || "—", iconSrc: "/images/icons/modiriat-projects.svg" },
     { label: "مبلغ گزارش", value: `${money(entries.reduce((sum, item) => sum + amount(item.amount), 0n))} ریال`, Icon: FileText },
   ];
 
@@ -974,8 +974,8 @@ function PettyCashReportReview({ report, onReviewed, onRevise, onBusyChange, onR
     <div inert={managerOpen ? true : undefined} className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-4">
       {error && !managerOpen && <p role="alert" className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       <div className="mb-3 grid grid-cols-2 rounded-xl border border-[#e4e2da] bg-[#f8f7f2] text-black md:grid-cols-3 xl:grid-cols-5">
-        {metadata.map(({ label, value, secondary, recipient, Icon }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-[#153d56]/20 sm:last:border-l-0">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#153d56]/20 bg-white/35">{createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
+        {metadata.map(({ label, value, secondary, recipient, Icon, iconSrc }) => <div key={label} className="flex min-w-0 items-center gap-2 px-2.5 py-2 sm:px-3 sm:border-l sm:border-[#153d56]/20 sm:last:border-l-0">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#153d56]/20 bg-white/35">{iconSrc ? <img src={iconSrc} alt="" className="h-4 w-4" /> : createElement(Icon, { className: "h-4 w-4 stroke-[1.6]" })}</span>
           {recipient ? <div className="relative grid w-full min-w-0 grid-cols-2 items-center before:absolute before:inset-y-0 before:left-1/2 before:w-px before:bg-[#153d56]/20">
             <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-black">{label}</p><p className="mt-0.5 whitespace-nowrap text-xs font-bold">{value}</p></div>
             <div className="min-w-0 px-3 text-center"><p className="text-[11px] text-black">تنخواه‌گیرنده</p><p className="mt-0.5 break-words text-xs font-bold">{recipient}</p></div>
