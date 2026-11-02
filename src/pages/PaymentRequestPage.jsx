@@ -2706,7 +2706,12 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     const supplyRequestName = item.hasSupplyRequest === "yes"
       ? (supplyRequests.find((row) => String(row.id) === String(item.supplyRequestId))?.serial || `#${item.supplyRequestId || "—"}`)
       : "ندارد";
-    const attachmentNames = attachments.map((file, index) =>
+    const reportAttachments = [
+      ...attachments.map((file) => ({ file, label: "پیوست درخواست" })),
+      ...(Array.isArray(item.cashReceipts) ? item.cashReceipts : []).map((file) => ({ file, label: "رسید پرداخت نقدی" })),
+      ...(Array.isArray(item.creditReceipts) ? item.creditReceipts : []).map((file) => ({ file, label: "رسید پرداخت اعتباری" })),
+    ];
+    const attachmentNames = reportAttachments.map(({ file }, index) =>
       pdfAttachmentLabel(file?.name || file?.originalName || file?.filename || `فایل ${toFa(index + 1)}`)
     );
     const now = new Date();
@@ -2730,7 +2735,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         <td>${state.entry?.at ? value(formatPdfDateTime(state.entry.at)) : "—"}</td>
       </tr>`;
     }).join("");
-    const attachmentPreviewPages = attachments.map((file, index) => {
+    const attachmentPreviewPages = reportAttachments.map(({ file, label }, index) => {
       const name = attachmentNames[index];
       const rawUrl = String(file?.url || file?.path || "").trim();
       let url = "";
@@ -2752,9 +2757,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             ? `<object class="attachment-pdf" data="${escapePdfHtml(url)}#view=FitH&toolbar=1" type="application/pdf"><iframe title="${value(name)}" src="${escapePdfHtml(url)}#view=FitH&toolbar=1"></iframe></object><a class="original-file" href="${escapePdfHtml(url)}" target="_blank" rel="noreferrer">باز کردن و چاپ فایل PDF اصلی</a>`
             : `<div class="no-preview">پیش‌نمایش این نوع فایل در مرورگر پشتیبانی نمی‌شود.</div><a class="original-file" href="${escapePdfHtml(url)}" target="_blank" rel="noreferrer">باز کردن فایل اصلی</a>`;
       return `<article class="sheet attachment-preview-page">
-        <div class="attachment-preview-header"><span>پیوست ${toFa(index + 1)}</span><strong><bdi dir="auto">${value(name)}</bdi></strong></div>
+        <div class="attachment-preview-header"><span>${value(label)} ${toFa(index + 1)}</span><strong><bdi dir="auto">${value(name)}</bdi></strong></div>
         <div class="attachment-preview-body">${preview}</div>
-        <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>پیش‌نمایش پیوست ${toFa(index + 1)}</span></footer>
+        <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${value(label)} ${toFa(index + 1)}</span></footer>
       </article>`;
     }).join("");
     const infoCard = (label, content, className = "") => `<div class="info-card ${className}"><div class="label">${escapePdfHtml(label)}</div><div class="value">${value(content)}</div></div>`;
@@ -2812,7 +2817,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     .status-returned { background: #fff0d8; color: #965b00; }
     .status-completed { background: #e3f5ea; color: #15713a; }
     .status-active { background: #e1f1fa; color: #126087; }
-    .attachment-state { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 7px; background: ${attachments.length ? "#e4f5eb" : "#f1f3f5"}; color: ${attachments.length ? "#176c3a" : "#53606b"}; font-weight: 700; }
+    .attachment-state { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 7px; background: ${reportAttachments.length ? "#e4f5eb" : "#f1f3f5"}; color: ${reportAttachments.length ? "#176c3a" : "#53606b"}; font-weight: 700; }
     .attachment-list { margin: 5px 0 0; padding: 0; list-style: none; border: 1px solid #d9e0e5; border-radius: 8px; overflow: hidden; }
     .attachment-list li { display: grid; grid-template-columns: 9mm 1fr; gap: 6px; padding: 4px 8px; border-bottom: 1px solid #e4e8eb; }
     .attachment-list li:last-child { border-bottom: 0; }
@@ -2900,9 +2905,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
       </table>
     </section>
     <section>
-      <h2 class="section-title">پیوست‌های درخواست پرداخت</h2>
-      <div class="attachment-state">پیوست: ${attachments.length ? "دارد" : "ندارد"}</div>
-      ${attachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong class="attachment-file-name"><bdi dir="auto">${value(name)}</bdi></strong></li>`).join("")}</ul>` : ""}
+      <h2 class="section-title">پیوست‌ها و رسیدهای پرداخت</h2>
+      <div class="attachment-state">پیوست: ${reportAttachments.length ? "دارد" : "ندارد"}</div>
+      ${reportAttachments.length ? `<ul class="attachment-list">${attachmentNames.map((name, index) => `<li><span class="number">${value(index + 1)}</span><strong class="attachment-file-name">${value(reportAttachments[index].label)}: <bdi dir="auto">${value(name)}</bdi></strong></li>`).join("")}</ul>` : ""}
     </section>
     <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapePdfHtml(reportDateTime)}</span></footer>
   </article>
@@ -2928,7 +2933,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             const sheets = [mainSheet.outerHTML];
             const attachmentSheets = [...pdfWindow.document.querySelectorAll("article.attachment-preview-page")];
             let pdfjs;
-            for (const [index, file] of attachments.entries()) {
+            for (const [index, { file, label }] of reportAttachments.entries()) {
               const sheet = attachmentSheets[index];
               if (!sheet) continue;
               const rawUrl = String(file?.url || file?.path || "").trim();
@@ -2956,7 +2961,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                     canvas.height = Math.ceil(viewport.height);
                     await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
                     const printableSheet = sheet.cloneNode(true);
-                    printableSheet.querySelector(".attachment-preview-header span").textContent = `پیوست ${toFa(index + 1)}، صفحه ${toFa(pageNumber)} از ${toFa(pdf.numPages)}`;
+                    printableSheet.querySelector(".attachment-preview-header span").textContent = `${label} ${toFa(index + 1)}، صفحه ${toFa(pageNumber)} از ${toFa(pdf.numPages)}`;
                     const previewBody = printableSheet.querySelector(".attachment-preview-body");
                     const image = pdfWindow.document.createElement("img");
                     image.className = "attachment-image";
@@ -3304,7 +3309,7 @@ function WorkflowPanel({
           <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(80px,auto)_minmax(0,1.5fr)]">
             <Field label="مبلغ"><div className="relative"><MoneyInput className="pl-28" decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /><div className="absolute left-2 top-1/2 w-24 -translate-y-1/2"><CurrencySelect className="h-8 py-1 text-xs" value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></div></div></Field>
-            <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} />
+            <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} centered />
             <Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-11 resize-y py-2.5`} rows={1} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field>
           </div>
         </div>
@@ -3358,8 +3363,8 @@ function WorkflowPanel({
   </PreviewSection>;
 }
 
-function PaymentReceiptField({ files, uploading, onOpen, onRemove }) {
-  return <Field label="رسید پرداخت"><div className="flex min-h-11 flex-wrap items-center gap-2">
+function PaymentReceiptField({ files, uploading, onOpen, onRemove, centered = false }) {
+  return <Field label="رسید پرداخت"><div className={`flex min-h-11 flex-wrap items-center gap-2 ${centered ? "justify-center" : ""}`}>
     {files.map((file, index) => <span key={file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
       <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name || `رسید ${toFa(index + 1)}`}</a>
       <button type="button" onClick={() => onRemove(index)} aria-label="حذف رسید" title="حذف رسید" className="grid h-5 w-5 place-items-center rounded hover:bg-black/5 dark:hover:bg-white/10">×</button>
