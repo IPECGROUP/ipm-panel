@@ -3301,9 +3301,9 @@ function WorkflowPanel({
         </div>
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,14rem)_5rem_minmax(0,1fr)]">
-            <Field label="مبلغ"><div className="relative"><MoneyInput className="pl-28" decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /><div className="absolute left-2 top-1/2 w-24 -translate-y-1/2"><CurrencySelect className="h-8 py-1 text-xs" value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></div></div></Field>
-            <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} centered />
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,14rem)_4.5rem_minmax(0,1fr)]">
+            <Field label="مبلغ"><div className="relative min-w-0"><MoneyInput className="!pl-[72px]" decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /><CurrencySelect compact value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></div></Field>
+            <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} />
             <Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-11 resize-y py-2.5`} rows={1} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field>
           </div>
         </div>
@@ -3357,8 +3357,8 @@ function WorkflowPanel({
   </PreviewSection>;
 }
 
-function PaymentReceiptField({ files, uploading, onOpen, onRemove, centered = false }) {
-  return <Field label="رسید پرداخت"><div className={`flex min-h-11 flex-wrap items-center gap-2 ${centered ? "justify-center" : ""}`}>
+function PaymentReceiptField({ files, uploading, onOpen, onRemove }) {
+  return <Field label="رسید پرداخت"><div className="flex min-h-11 flex-wrap items-center gap-2">
     {files.map((file, index) => <span key={file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
       <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name || `رسید ${toFa(index + 1)}`}</a>
       <button type="button" onClick={() => onRemove(index)} aria-label="حذف رسید" title="حذف رسید" className="grid h-5 w-5 place-items-center rounded hover:bg-black/5 dark:hover:bg-white/10">×</button>
@@ -3405,8 +3405,8 @@ function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
   </div>;
 }
 
-function CurrencySelect({ value, onChange, currencyTypes, className = "" }) {
-  return <select className={`${inputClass} ${className}`} value={value || ""} onChange={(event) => onChange(event.target.value)}>
+function CurrencySelect({ value, onChange, currencyTypes, compact = false }) {
+  return <select aria-label={compact ? "ارز مبلغ پرداخت اعتباری" : undefined} className={compact ? "absolute left-1 top-1 h-9 w-16 cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10" : inputClass} value={value || ""} onChange={(event) => onChange(event.target.value)}>
     <option value="">ریال</option>
     {uniqueCurrencyTypes(currencyTypes).filter((item) => currencyOptionKey(item) !== "rial").map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
   </select>;
