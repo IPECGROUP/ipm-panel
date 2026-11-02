@@ -3042,14 +3042,14 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
-          <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-[#f9f7f2] dark:border-white/10 dark:bg-white/5 md:grid-cols-5">
+          <div className="mb-3 grid grid-cols-2 rounded-xl border border-[#184a6b] bg-[#184a6b] text-white md:grid-cols-5">
              <PaymentMetadata label="شماره درخواست" value={toFa(reviewSerial)} Icon={FileText} />
             <PaymentMetadata label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
             <PaymentMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} Icon={UserRound} />
-            <div className="col-span-2 flex min-w-0 items-center gap-2 border-b border-neutral-200 px-3 py-2 dark:border-white/10 md:border-b-0">
+            <div className="col-span-2 flex min-w-0 items-center gap-2 border-b border-white/20 px-3 py-2 md:border-b-0">
               <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900"><img src="/images/icons/modiriat-projects.svg" alt="" className="h-4 w-4 dark:invert" /></span>
               <div className="grid min-w-0 flex-1 grid-cols-2 items-center">
-                <div className="min-w-0 pl-3"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">پروژه</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{canReviewPlanning ? (
+                <div className="min-w-0 pl-3"><div className="text-[11px] text-white/75">پروژه</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{canReviewPlanning ? (
                    <select aria-label="پروژه درخواست پرداخت" className={`${inputClass} font-[Vazir]`} value={reviewProjectId} disabled={actionBusy} onChange={(event) => { setReviewProjectId(event.target.value); setReviewBudgetCode(""); }}>
                      <option value="">انتخاب پروژه</option>
                      {projects.filter((row) => isActiveProject(row)).map((row) => <option key={row.id} value={row.id}>{toFa(projectLabel(row))}</option>)}
@@ -3060,7 +3060,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                     {projects.map((row) => <option key={row.id} value={row.id}>{toFa(projectLabel(row))}</option>)}
                   </select>
                 ) : toFa(project ? projectLabel(project) : (item.projectName || item.projectCode || item.projectId || "—"))}</div></div>
-                <div className="min-w-0 border-r border-neutral-300 pr-3 dark:border-white/15"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">نقدینگی پروژه</div><div className="mt-0.5 break-words font-[Vazir] text-xs font-bold">{liquidityRemaining ? `${toFa(liquidityRemaining)} ریال` : "—"}</div></div>
+                <div className="min-w-0 border-r border-white/20 pr-3"><div className="text-[11px] text-white/75">نقدینگی پروژه</div><div className="mt-0.5 break-words font-[Vazir] text-xs font-bold">{liquidityRemaining ? `${toFa(liquidityRemaining)} ریال` : "—"}</div></div>
               </div>
             </div>
           </div>
@@ -3234,9 +3234,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
 }
 
 function PaymentMetadata({ label, value, Icon }) {
-  return <div className="flex min-w-0 items-center gap-2 border-l border-b border-neutral-200 px-3 py-2 last:border-l-0 dark:border-white/10 md:border-b-0">
+  return <div className="flex min-w-0 items-center gap-2 border-l border-b border-white/20 px-3 py-2 last:border-l-0 md:border-b-0">
     <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200"><Icon className="h-4 w-4 stroke-[1.6]" /></span>
-    <div className="min-w-0 flex-1"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{value}</div></div>
+    <div className="min-w-0 flex-1"><div className="text-[11px] text-white/75">{label}</div><div className="mt-0.5 min-w-0 break-words font-[Vazir] text-xs font-bold">{value}</div></div>
   </div>;
 }
 
