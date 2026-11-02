@@ -361,7 +361,7 @@ function EquipmentIdentityDetail({ item, definitions, letters, libraryItems, onC
                        const isGroup = /^\d+$/.test(String(field.code || ""));
                        const label = field.persianName || field.name;
                        return <tr key={field.id} className={`min-h-10 border-b border-neutral-200 dark:border-neutral-700 ${isGroup ? "border-t-2 border-t-neutral-300 bg-[#5d92b7] font-semibold text-white dark:border-t-neutral-600" : hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
-                         <th scope="row" className="px-3 py-2 text-right font-normal"><div style={{ paddingRight: Math.min(depth, 5) * 16 }} className={isGroup || hasChildren ? "font-semibold" : ""}>{isGroup && <span className="ml-1">{toFa(field.code)}</span>}{label}</div></th>
+                         <th scope="row" className="px-3 py-2 text-right font-normal"><div style={{ paddingRight: Math.min(depth, 5) * 16 }} className={isGroup || hasChildren ? "font-semibold" : ""}>{label}</div></th>
                          <td dir="auto" className="whitespace-pre-wrap break-words px-3 py-2 text-center font-medium">{isGroup ? "" : item.fieldValues?.[String(field.id)] || "—"}</td>
                          <td dir="ltr" className={`break-words px-3 py-2 text-left ${isGroup || hasChildren ? "font-semibold" : ""}`}>{field.englishName || "—"}</td>
                        </tr>;
