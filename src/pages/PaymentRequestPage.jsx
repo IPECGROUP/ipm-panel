@@ -2365,6 +2365,10 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const [creditPayAmount, setCreditPayAmount] = useState("");
   const [creditPayCurrencyId, setCreditPayCurrencyId] = useState(item.currencyTypeId || "");
   const [creditPayDesc, setCreditPayDesc] = useState("");
+  const [paymentReceipts, setPaymentReceipts] = useState({ cash: [], credit: [] });
+  const [receiptUploadKind, setReceiptUploadKind] = useState(null);
+  const [receiptUploading, setReceiptUploading] = useState(false);
+  const [receiptUploadError, setReceiptUploadError] = useState("");
   const [nextRecipients, setNextRecipients] = useState({ targetRoleKey: null, users: [] });
   const [nextRecipientsLoading, setNextRecipientsLoading] = useState(false);
   const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
@@ -2580,6 +2584,35 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     setEditForm((old) => ({ ...old, attachments: old.attachments.filter((_, i) => i !== index) }));
   };
 
+  const uploadPaymentReceipts = async (fileList) => {
+    const files = Array.from(fileList || []);
+    if (!files.length || !receiptUploadKind) return;
+    setReceiptUploading(true);
+    setReceiptUploadError("");
+    try {
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await fetch("/api/upload/payment-doc", {
+          method: "POST", credentials: "include",
+          headers: userId != null ? { "x-user-id": String(userId) } : {}, body,
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "upload_failed");
+        const uploaded = data.file || data;
+        setPaymentReceipts((current) => ({ ...current, [receiptUploadKind]: [...current[receiptUploadKind], uploaded] }));
+      }
+    } catch {
+      setReceiptUploadError("بارگذاری رسید انجام نشد.");
+    } finally {
+      setReceiptUploading(false);
+    }
+  };
+
+  const removePaymentReceipt = (kind, index) => {
+    setPaymentReceipts((current) => ({ ...current, [kind]: current[kind].filter((_, position) => position !== index) }));
+  };
+
   useEffect(() => {
     let cancelled = false;
     setBaseBudget("");
@@ -2633,6 +2666,8 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         creditAmount: paymentActionAmount(creditPayAmount, creditPayCurrencyId),
         creditCurrencyTypeId: creditPayCurrencyId || null,
         creditDescription: creditPayDesc,
+        cashReceipts: cashPayAmount ? paymentReceipts.cash : [],
+        creditReceipts: creditPayAmount ? paymentReceipts.credit : [],
       } : {}),
     });
   };
@@ -3096,6 +3131,14 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={toFa(editForm.bankInfo || "IR")} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (toFa(item.bankInfo) || "—")} />
                 </div>
               </PreviewSection>
+              {(item.cashReceipts?.length > 0 || item.creditReceipts?.length > 0) && <PreviewSection title="رسیدهای پرداخت">
+                <div className="grid gap-3 py-3 md:grid-cols-2">
+                  {[["نقدی", item.cashReceipts], ["اعتباری", item.creditReceipts]].map(([label, files]) => files?.length > 0 && <div key={label} className="rounded-xl border border-black/10 p-3 dark:border-white/10">
+                    <div className="mb-2 text-xs font-semibold">پرداخت {label}</div>
+                    <div className="flex flex-wrap gap-2">{files.map((file, index) => <a key={file.serverId || file.url || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `رسید ${toFa(index + 1)}`}</a>)}</div>
+                  </div>)}
+                </div>
+              </PreviewSection>}
               {canDecide && <WorkflowPanel
                 stepKey={currentStepRoleKey}
                 stepIndex={currentStepIndex}
@@ -3119,6 +3162,10 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 setCreditPayCurrencyId={setCreditPayCurrencyId}
                 creditPayDesc={creditPayDesc}
                 setCreditPayDesc={setCreditPayDesc}
+                paymentReceipts={paymentReceipts}
+                onOpenReceiptUpload={setReceiptUploadKind}
+                onRemoveReceipt={removePaymentReceipt}
+                receiptUploading={receiptUploading}
                 currencyTypes={currencyTypes}
                 nextRecipients={nextRecipients}
                 nextRecipientsLoading={nextRecipientsLoading}
@@ -3149,6 +3196,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             isEditableFile={(file) => /\.(jpe?g|png|webp|pdf)$/i.test(file.name || file.url || "")}
             accept="image/*,.pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" allowedTypes="تصویر، PDF، Word و Excel" multiple selectionHint="می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید."
             zIndex={10000} onClose={() => setEditUploadOpen(false)} />}
+          {receiptUploadKind && <AdvancedFileUploadModal title={`بارگذاری رسید پرداخت ${receiptUploadKind === "cash" ? "نقدی" : "اعتباری"}`} files={paymentReceipts[receiptUploadKind]} uploading={receiptUploading} onSelectFiles={uploadPaymentReceipts} onRemove={(index) => removePaymentReceipt(receiptUploadKind, index)} accept="image/*,.pdf,.doc,.docx,.rtf,.xls,.xlsx,.xlsm,.csv" allowedTypes="تصویر، PDF، Word و Excel" multiple selectionHint="می‌توانید چند رسید را هم‌زمان انتخاب یا رها کنید." zIndex={10000} onClose={() => setReceiptUploadKind(null)} />}
           {editAttachmentEditor && <AttachmentImageEditor
             key={editAttachmentEditor.file ? `${editAttachmentEditor.file.name}-${editAttachmentEditor.file.lastModified}-${editAttachmentEditor.sequence}` : `${editAttachmentEditor.existing?.url}-${editAttachmentEditor.index}`}
             title="پیوست درخواست پرداخت" initialFile={editAttachmentEditor.file} initialUrl={editAttachmentEditor.existing?.url} initialName={editAttachmentEditor.existing?.name}
@@ -3167,10 +3215,10 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           />}
         </div>
         {(canDecide || canEditRequest) && <footer className="shrink-0 border-t border-neutral-100 px-3 py-3 dark:border-white/10 sm:px-5">
-          <ActionFooter actionBusy={actionBusy} actionError={actionError}
+          <ActionFooter actionBusy={actionBusy} actionError={actionError || receiptUploadError}
             disabled={canEditRequest
               ? editUploading || (canEditReturned && nextRecipients.users?.length > 0 && !targetAssigneeUserId)
-               : finalAccounting ? !cashPayAmount && !creditPayAmount : !choice || (choice === "approve" && ((!reviewValuesValid) || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)))}
+                : finalAccounting ? receiptUploading || (!cashPayAmount && !creditPayAmount) : !choice || (choice === "approve" && ((!reviewValuesValid) || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)))}
             onSubmit={canEditRequest
               ? canEditReturned ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null }) : () => onEdit(item, editForm)
               : submitWorkflow} />
@@ -3236,6 +3284,7 @@ function WorkflowPanel({
   hasEnoughLiquidity, urgentCash, setUrgentCash,
   cashPayAmount, setCashPayAmount, cashPayCurrencyId, setCashPayCurrencyId, paymentMethod, setPaymentMethod,
   creditPayAmount, setCreditPayAmount, creditPayCurrencyId, setCreditPayCurrencyId, creditPayDesc, setCreditPayDesc,
+  paymentReceipts, onOpenReceiptUpload, onRemoveReceipt, receiptUploading,
   currencyTypes, nextRecipients, nextRecipientsLoading, targetAssigneeUserId, setTargetAssigneeUserId,
 }) {
   const finalAccounting = stepKey === "accounting" && Number(stepIndex) >= 5;
@@ -3244,17 +3293,18 @@ function WorkflowPanel({
       <div className="space-y-4 py-4">
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت نقدی</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <Field label="مبلغ"><MoneyInput decimals={cashPayCurrencyId ? 2 : 0} value={cashPayAmount} onChange={setCashPayAmount} /></Field>
             <Field label="ارز"><CurrencySelect value={cashPayCurrencyId} onChange={setCashPayCurrencyId} currencyTypes={currencyTypes} /></Field>
             <Field label="روش پرداخت"><select className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
+            <PaymentReceiptField files={paymentReceipts.cash} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("cash")} onRemove={(index) => onRemoveReceipt("cash", index)} />
           </div>
         </div>
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Field label="مبلغ"><MoneyInput decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /></Field>
-            <Field label="ارز"><CurrencySelect value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></Field>
+            <Field label="مبلغ"><div className="relative"><MoneyInput className="pl-28" decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /><div className="absolute left-2 top-1/2 w-24 -translate-y-1/2"><CurrencySelect className="h-8 py-1 text-xs" value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></div></div></Field>
+            <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} />
           </div>
           <div className="mt-3"><Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-24 py-3`} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field></div>
         </div>
@@ -3308,6 +3358,18 @@ function WorkflowPanel({
   </PreviewSection>;
 }
 
+function PaymentReceiptField({ files, uploading, onOpen, onRemove }) {
+  return <Field label="رسید پرداخت"><div className="flex min-h-11 flex-wrap items-center gap-2">
+    {files.map((file, index) => <span key={file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
+      <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name || `رسید ${toFa(index + 1)}`}</a>
+      <button type="button" onClick={() => onRemove(index)} aria-label="حذف رسید" title="حذف رسید" className="grid h-5 w-5 place-items-center rounded hover:bg-black/5 dark:hover:bg-white/10">×</button>
+    </span>)}
+    <button type="button" disabled={uploading} onClick={onOpen} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
+      <img src="/images/icons/upload.svg" alt="" className={`h-4 w-4 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
+    </button>
+  </div></Field>;
+}
+
 function ActionOption({ kind = "approve", checked, disabled, onClick, label, children }) {
   const appearance = {
     approve: { icon: "✓", iconClass: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300", selected: "border-emerald-300 bg-emerald-50/60 shadow-[0_0_0_2px_rgba(52,211,153,.12)] dark:border-emerald-400/40 dark:bg-emerald-500/10", description: "تایید و ارسال به مرحله بعد" },
@@ -3344,8 +3406,8 @@ function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
   </div>;
 }
 
-function CurrencySelect({ value, onChange, currencyTypes }) {
-  return <select className={inputClass} value={value || ""} onChange={(event) => onChange(event.target.value)}>
+function CurrencySelect({ value, onChange, currencyTypes, className = "" }) {
+  return <select className={`${inputClass} ${className}`} value={value || ""} onChange={(event) => onChange(event.target.value)}>
     <option value="">ریال</option>
     {uniqueCurrencyTypes(currencyTypes).filter((item) => currencyOptionKey(item) !== "rial").map((item) => <option key={item.id} value={item.id}>{itemLabel(item)}</option>)}
   </select>;
