@@ -229,18 +229,18 @@ export default function EquipmentIdentityPage() {
         </div>
 
         {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
-          <h2 className="mb-3 text-sm font-semibold">{editingId ? "ویرایش شناسنامه تجهیز" : "افزودن شناسنامه تجهیز"}</h2>
           <div className="flex flex-wrap items-end gap-3">
             <label className="block w-full sm:w-80"><span className={`block ${labelClass}`}>دسته‌بندی *</span><select required disabled={definitionsLoading} value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, fieldValues: {} }))} className={inputClass}><option value="">{definitionsLoading ? "در حال دریافت دسته‌بندی‌ها..." : "انتخاب دسته‌بندی"}</option>{availableCategories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
           </div>
           {form.files.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{form.files.map((file, index) => <span key={file.url} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs dark:border-white/15 dark:bg-white/5"><a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name}</a><button type="button" onClick={() => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} aria-label="حذف فایل">×</button></span>)}</div>}
            <EquipmentFieldsForm sections={categorySections} values={form.fieldValues}
              onValueChange={(id, value) => setForm((old) => ({ ...old, fieldValues: { ...old.fieldValues, [id]: value } }))} />
-          <div className="mt-4 flex flex-wrap items-end justify-end gap-3 border-t border-black/10 pt-4 dark:border-white/10">
+          <div className="mt-4 flex flex-wrap items-end justify-end gap-3">
             <label className="block"><span className={`block ${labelClass}`}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></label>
             <label className="block"><span className={`block ${labelClass}`}>کتابخانه</span><button type="button" onClick={() => { setDraftLibraryItemIds(form.libraryItemIds.map(String)); setLibraryQuery(""); setLibraryPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از کتابخانه‌ها"><img src="/images/icons/ketabkhane.svg" alt="" className="h-5 w-5 dark:invert" />{form.libraryItemIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.libraryItemIds.length)}</span>}</button></label>
             <label className="block"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
-            <button type="submit" disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : editingId ? "ذخیره تغییرات" : "ثبت تجهیز"} aria-label={editingId ? "ذخیره تغییرات" : "ثبت تجهیز"}><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
+          </div>
+          <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : editingId ? "ذخیره تغییرات" : "ثبت تجهیز"} aria-label={editingId ? "ذخیره تغییرات" : "ثبت تجهیز"}><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
           <div className="flex items-end gap-2">
             <label className="min-w-0 flex-1"><span className={`block ${labelClass}`}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در همه فیلدها (دسته‌بندی، نام، کد و مشخصات تجهیز...)" /></label>
@@ -253,7 +253,7 @@ export default function EquipmentIdentityPage() {
         </div>}
 
         {error && <div role="alert" className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">{error}</div>}
-        <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+        {!formOpen && <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[640px] table-fixed text-sm [&_td]:text-center [&_th]:text-center">
             <colgroup><col style={{ width: 44 }} /><col style={{ width: 80 }} /><col style={{ width: "25%" }} /><col /><col style={{ width: "25%" }} /></colgroup>
             <thead className="border-b border-[#184a6b] bg-[#184a6b] text-white">
@@ -268,7 +268,7 @@ export default function EquipmentIdentityPage() {
             </tr>)}</tbody>
           </table></div>
           <BaseTablePager branded total={filteredItems.length} page={safePage} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={setPageSize} />
-        </div>
+        </div>}
       </div>
     </Card>
     {detailItem && <EquipmentIdentityDetail item={detailItem} definitions={definitions} letters={letters} libraryItems={libraryItems} onClose={() => setDetailId(null)} />}
@@ -363,22 +363,22 @@ function EquipmentFieldsForm({ sections, values, onValueChange }) {
   return <div className="mt-4 overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-700 dark:bg-neutral-900">
     <div className="max-h-[60vh] overflow-auto">
       <table className="w-full min-w-[760px] table-fixed text-sm" dir="rtl">
-        <colgroup><col className="w-36" /><col /><col className="w-1/2" /></colgroup>
-        <thead className="sticky top-0 z-10 bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
-          <tr><th className="border-b border-neutral-300 px-3 py-3 text-center font-semibold dark:border-neutral-700">کد مشخصات</th><th className="border-b border-neutral-300 px-3 py-3 text-center font-semibold dark:border-neutral-700">مشخصات (فارسی - انگلیسی)</th><th className="border-b border-neutral-300 px-3 py-3 text-center font-semibold dark:border-neutral-700">مقدار</th></tr>
+        <colgroup><col className="w-[35%]" /><col className="w-[30%]" /><col className="w-[35%]" /></colgroup>
+        <thead className="sticky top-0 z-10 bg-[#184a6b] text-white">
+          <tr className="h-10"><th className="px-3 py-2 text-center font-semibold">مشخصات</th><th className="px-3 py-2 text-center font-semibold">مقدار</th><th className="px-3 py-2 text-center font-semibold">Specifications</th></tr>
         </thead>
         {sections.map(({ title, fields }) => <tbody key={title.id}>
-          <tr className="bg-neutral-100 font-semibold text-neutral-800 dark:bg-white/10 dark:text-neutral-100"><th colSpan={3} className="border-b border-neutral-300 px-3 py-2 text-right dark:border-neutral-700">{title.name}</th></tr>
+          {title.name !== "مشخصات تجهیزات" && <tr className="h-10 bg-neutral-100 font-semibold text-neutral-800 dark:bg-white/10 dark:text-neutral-100"><th colSpan={3} className="border-b border-neutral-300 px-3 py-2 text-right dark:border-neutral-700">{title.name}</th></tr>}
           {fields.map((field) => {
             const id = String(field.id);
             const depth = field.code ? String(field.code).split("-").length - 1 : 0;
             const hasChildren = Boolean(field.code && fields.some((candidate) => candidate !== field && String(candidate.code || "").startsWith(`${field.code}-`)));
             const isGroup = /^\d+$/.test(String(field.code || ""));
             const label = field.persianName || field.name;
-            return <tr key={id} className={`border-b border-neutral-200 last:border-b-0 dark:border-neutral-700 ${isGroup || hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
-              <td className="px-3 py-1.5 font-semibold tabular-nums"><div className="text-center" style={depth ? { transform: `translateX(-${Math.min(depth, 4) * 20}px)` } : undefined}>{field.code ? toFa(field.code) : "—"}</div></td>
-              <td className="px-3 py-1.5"><div id={`equipment-label-${id}`} className="min-w-0 text-right" style={{ paddingRight: Math.min(depth, 5) * 16 }}><span className={isGroup || hasChildren ? "font-semibold" : ""}>{label}</span>{field.englishName && <span className="mr-1 text-xs font-normal text-neutral-400 dark:text-neutral-500">- <bdi dir="ltr">{field.englishName}</bdi></span>}</div></td>
-              <td className="px-3 py-1.5 text-right">{!isGroup && <input type="text" dir="ltr" aria-labelledby={`equipment-label-${id}`} value={values[id] || ""} onChange={(event) => onValueChange(id, event.target.value)} maxLength={10000} className="h-9 w-full rounded-lg border border-black/10 bg-white px-3 text-left text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100" />}</td>
+            return <tr key={id} className={`h-10 border-b border-neutral-200 last:border-b-0 dark:border-neutral-700 ${isGroup ? "bg-[#5d92b7] text-white" : hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
+              <td className="px-3 py-1"><div id={`equipment-label-${id}`} className="min-w-0 truncate text-right" title={label} style={{ paddingRight: Math.min(depth, 5) * 16 }}><span className={isGroup || hasChildren ? "font-semibold" : ""}>{label}</span></div></td>
+              <td className="px-3 py-1 text-right">{!isGroup && <input type="text" dir="ltr" aria-labelledby={`equipment-label-${id}`} value={values[id] || ""} onChange={(event) => onValueChange(id, event.target.value)} maxLength={10000} className="h-8 w-full rounded-lg border border-black/10 bg-white px-3 text-left text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100" />}</td>
+              <td dir="ltr" className={`truncate px-3 py-1 text-left ${isGroup || hasChildren ? "font-semibold" : ""}`} title={field.englishName || undefined}>{field.englishName || "—"}</td>
             </tr>;
           })}
         </tbody>)}
