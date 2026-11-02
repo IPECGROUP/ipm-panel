@@ -183,6 +183,22 @@ export default function CostBreakdownPage() {
     return map;
   }, [projectBudgetCode, tableRows]);
 
+  const budgetTotalsByCode = useMemo(() => {
+    const totals = new Map();
+    const calculate = (item) => {
+      const code = projectBudgetCode(item.row?.budgetCode);
+      if (totals.has(code)) return totals.get(code);
+      const children = childRowsByParentCode.get(code) || [];
+      const amount = children.length
+        ? children.reduce((sum, child) => sum + calculate(child), 0n)
+        : BigInt(parseMoney(editDrafts[item.row.id]?.baseBudget ?? item.row.baseBudget));
+      totals.set(code, amount);
+      return amount;
+    };
+    tableRows.forEach(calculate);
+    return totals;
+  }, [childRowsByParentCode, editDrafts, projectBudgetCode, tableRows]);
+
   const expandableCodes = useMemo(() => Array.from(childRowsByParentCode.keys()), [childRowsByParentCode]);
   const allRowsExpanded = expandableCodes.length > 0 && expandableCodes.every((code) => expandedCodes.has(code));
 
@@ -614,7 +630,8 @@ export default function CostBreakdownPage() {
       cell.border = { top: border, left: border, bottom: border, right: border };
     });
     rows.forEach((row, index) => {
-      const excelRow = worksheet.addRow([index + 1, projectBudgetCode(row.budgetCode), row.budgetName || "—", Number(parseMoney(row.baseBudget))]);
+      const code = projectBudgetCode(row.budgetCode);
+      const excelRow = worksheet.addRow([index + 1, code, row.budgetName || "—", Number(budgetTotalsByCode.get(code) ?? 0n)]);
       excelRow.height = 22;
       excelRow.eachCell((cell, column) => {
         cell.font = { name: "Vazirmatn", size: 11, color: { argb: "1F2937" } };
@@ -909,7 +926,7 @@ export default function CostBreakdownPage() {
                             </td>
                             <td className={`px-3 ${divider}`}>
                               <div className="flex items-center justify-start">
-                                {isEditing ? (
+                                {isEditing && !isParentRow ? (
                                   <input
                                     value={editDraft.baseBudget ? toFaDigits(formatMoney(editDraft.baseBudget)) : ""}
                                     onChange={(e) =>
@@ -920,7 +937,7 @@ export default function CostBreakdownPage() {
                                     inputMode="numeric"
                                   />
                                 ) : (
-                                  <span className={parentWeightCls}>{toFaDigits(formatMoney(row.baseBudget || 0))}</span>
+                                  <span className={parentWeightCls}>{toFaDigits(formatMoney(budgetTotalsByCode.get(displayBudgetCode) ?? 0n))}</span>
                                 )}
                               </div>
                             </td>
