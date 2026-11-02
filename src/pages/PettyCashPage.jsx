@@ -245,7 +245,7 @@ function RegisteredExpenseDetailsDialog({ userId, onClose }) {
       .then(([expenses, tenkhah]) => {
         const currentExpenses = (expenses.items || []).filter((item) => Number(item.createdById) === Number(userId)).map((item) => ({
           key: `expense-${item.id}`, date: item.expenseDate, projectCode: item.projectCode, projectName: item.projectName || item.projectCode,
-          description: item.description, budgetCode: item.budgetCode, amount: item.amount, source: "گزارش هزینه",
+          description: item.description, budgetCode: item.budgetCode, amount: item.amount, source: item.budgetCode ? "گزارش هزینه" : "عودت",
         }));
         const legacyEntries = (tenkhah.items || []).filter((request) => Number(request.beneficiaryUserId) === Number(userId))
           .flatMap((request) => (request.settlements || []).filter((settlement) => Number(settlement.createdById) === Number(userId))
@@ -689,7 +689,7 @@ function LegacyExpenseReview({ item, onBusyChange, onReviewed }) {
     <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-50 p-4 text-sm sm:grid-cols-2">
       <div><span className="text-neutral-500">پروژه</span><p className="mt-1 font-semibold">{item.projectName || item.projectCode || "—"}</p></div>
       <div><span className="text-neutral-500">تاریخ</span><p className="mt-1 font-semibold">{toFa(item.expenseDate || "—")}</p></div>
-      <div><span className="text-neutral-500">کد بودجه</span><p className="mt-1 font-semibold">{toFa(item.budgetCode || "—")}</p></div>
+      <div><span className="text-neutral-500">کد بودجه</span><p className="mt-1 font-semibold">{item.budgetCode ? toFa(item.budgetCode) : "عودت"}</p></div>
       <div><span className="text-neutral-500">مبلغ</span><p className="mt-1 font-semibold">{money(item.amount)} ریال</p></div>
       <div className="sm:col-span-2"><span className="text-neutral-500">شرح</span><p className="mt-1 break-words font-semibold">{item.description || "—"}</p></div>
       <div className="sm:col-span-2"><span className="text-neutral-500">پیوست</span><p className="mt-1"><ExpenseAttachmentLink item={item} /></p></div>
@@ -1602,11 +1602,11 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => { setEntryMode("return"); setManualEntryOpen((current) => entryMode === "return" ? !current : true); cancelEdit(); }} aria-expanded={manualEntryOpen && entryMode === "return"}
-          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen && entryMode === "return" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
+          className={`h-11 rounded-xl border border-[#5d92b7] bg-[#5d92b7] px-4 text-sm font-semibold text-white transition hover:bg-[#4d80a4] ${manualEntryOpen && entryMode === "return" ? "ring-2 ring-[#5d92b7]/35 ring-offset-2" : ""}`}>
           عودت
         </button>
         <button type="button" onClick={() => { setEntryMode("expense"); setManualEntryOpen((current) => entryMode === "expense" ? !current : true); cancelEdit(); }} aria-expanded={manualEntryOpen && entryMode === "expense"}
-          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen && entryMode === "expense" ? "border-neutral-900 bg-neutral-900 text-white" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
+          className={`h-11 rounded-xl border border-[#5d92b7] bg-[#5d92b7] px-4 text-sm font-semibold text-white transition hover:bg-[#4d80a4] ${manualEntryOpen && entryMode === "expense" ? "ring-2 ring-[#5d92b7]/35 ring-offset-2" : ""}`}>
           ثبت موردی
         </button>
         <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
@@ -1655,7 +1655,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
             {attachments.length > 0 && <span className="absolute -left-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">{toFa(attachments.length)}</span>}
           </button>
         </Field>
-        <button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-black text-2xl text-white disabled:opacity-50"
+        <button type="button" onClick={addExpense} disabled={saving} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#f48120] text-2xl text-white transition hover:bg-[#db6f11] disabled:opacity-50"
           title={editingExpense ? "ذخیره ویرایش" : "افزودن ردیف"} aria-label={editingExpense ? "ذخیره ویرایش" : "افزودن ردیف"}>
           {editingExpense ? <Check className="h-5 w-5 text-white" aria-hidden="true" /> : "+"}
         </button>
