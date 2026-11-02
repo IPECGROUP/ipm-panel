@@ -1602,11 +1602,11 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" onClick={() => { setEntryMode("return"); setManualEntryOpen((current) => entryMode === "return" ? !current : true); cancelEdit(); }} aria-expanded={manualEntryOpen && entryMode === "return"}
-          className={`h-11 rounded-xl border border-[#5d92b7] bg-[#5d92b7] px-4 text-sm font-semibold text-white transition hover:bg-[#4d80a4] ${manualEntryOpen && entryMode === "return" ? "ring-2 ring-[#5d92b7]/35 ring-offset-2" : ""}`}>
+          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen && entryMode === "return" ? "border-[#5d92b7] bg-[#5d92b7] text-white hover:bg-[#4d80a4]" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
           عودت
         </button>
         <button type="button" onClick={() => { setEntryMode("expense"); setManualEntryOpen((current) => entryMode === "expense" ? !current : true); cancelEdit(); }} aria-expanded={manualEntryOpen && entryMode === "expense"}
-          className={`h-11 rounded-xl border border-[#5d92b7] bg-[#5d92b7] px-4 text-sm font-semibold text-white transition hover:bg-[#4d80a4] ${manualEntryOpen && entryMode === "expense" ? "ring-2 ring-[#5d92b7]/35 ring-offset-2" : ""}`}>
+          className={`h-11 rounded-xl border px-4 text-sm font-semibold transition ${manualEntryOpen && entryMode === "expense" ? "border-[#5d92b7] bg-[#5d92b7] text-white hover:bg-[#4d80a4]" : "border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50"}`}>
           ثبت موردی
         </button>
         <button type="button" disabled className="h-11 rounded-xl border border-neutral-300 bg-neutral-100 px-4 text-sm font-semibold text-neutral-500 opacity-65">
