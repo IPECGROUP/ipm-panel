@@ -3042,7 +3042,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
-          <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-neutral-50/60 dark:border-white/10 dark:bg-white/5 md:grid-cols-5">
+          <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-[#f9f7f2] dark:border-white/10 dark:bg-white/5 md:grid-cols-5">
              <PaymentMetadata label="شماره درخواست" value={toFa(reviewSerial)} Icon={FileText} />
             <PaymentMetadata label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
             <PaymentMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} Icon={UserRound} />
@@ -3066,7 +3066,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           </div>
           <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
           <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
-            <div className="border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">فرآیند پرداخت</div>
+             <div className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">فرآیند پرداخت</div>
             <div className="px-3"><PaymentWorkflowTimeline history={history} item={item} /></div>
           </aside>
           <main className="min-w-0 space-y-4">
@@ -3267,8 +3267,8 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
   }, [url, storedSize]);
   const displaySize = storedSize > 0 ? storedSize : measuredSize.url === url ? measuredSize.size : null;
   return <div className="min-w-0">
-    <aside className="overflow-hidden rounded-2xl border border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-white/5">
-      <h3 className="border-b border-neutral-200 px-3 py-3 text-sm font-bold dark:border-white/10">پیش‌نمایش پیوست‌ها</h3>
+    <aside className="overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900">
+      <h3 className="bg-[#5d92b7] px-3 py-3 text-sm font-bold text-white">پیش‌نمایش پیوست‌ها</h3>
       <div className="p-3">
       <div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 xl:h-[min(44vh,430px)]">
         {!url ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p>
@@ -3488,7 +3488,7 @@ function PaymentWorkflowTimeline({ history, item }) {
   </ol>;
 }
 
-function PreviewSection({ title, children, flush = false }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="border-b border-black/10 bg-neutral-50 px-4 py-3 text-sm font-semibold dark:border-white/10 dark:bg-white/5">{title}</div><div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div></section>; }
+function PreviewSection({ title, children, flush = false }) { return <section className="overflow-hidden rounded-2xl border border-black/10 dark:border-white/10"><div className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">{title}</div><div className={`divide-y divide-black/10 dark:divide-white/10 ${flush ? "" : "px-4"}`}>{children}</div></section>; }
 function PreviewRow({ label, value, ltr, compact = false, valueClassName = "", colon = false, fixedLabel = false, editing = false }) { return <div className={`min-w-0 ${compact ? `grid items-start gap-2 px-3 py-3 text-xs ${fixedLabel ? "grid-cols-[minmax(74px,92px)_minmax(0,1fr)]" : "grid-cols-[auto_minmax(0,1fr)]"}` : "grid grid-cols-1 gap-1.5 px-3 py-2.5 text-sm sm:grid-cols-[135px_1fr] sm:gap-3 sm:px-4"} ${editing ? "[&_input]:h-8 [&_select]:h-8 [&_input]:rounded-lg [&_select]:rounded-lg [&_textarea]:rounded-lg [&_input]:border-transparent [&_select]:border-transparent [&_textarea]:border-transparent [&_input]:bg-neutral-50 [&_select]:bg-neutral-50 [&_textarea]:bg-neutral-50 [&_input]:px-2 [&_select]:px-2 focus-within:[&_input]:border-black/20 focus-within:[&_select]:border-black/20 focus-within:[&_textarea]:border-black/20 dark:[&_input]:bg-white/5 dark:[&_select]:bg-white/5 dark:[&_textarea]:bg-white/5" : ""}`}><div className={`text-neutral-500 dark:text-neutral-400 ${compact ? "whitespace-nowrap" : ""}`}>{label}{colon ? ":" : ""}</div><div dir={ltr ? "ltr" : "rtl"} className={`min-w-0 break-words font-medium ${ltr ? "text-left" : "text-right"} ${valueClassName}`}>{value}</div></div>; }
 function historyLabel(value) { return ({ created: "ثبت درخواست", approved: "تأیید", rejected: "رد", returned: "برگشت", edited: "ویرایش" })[value] || value || "—"; }
 function formatDateTime(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); } catch { return "—"; } }
