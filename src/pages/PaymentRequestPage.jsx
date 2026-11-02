@@ -3293,7 +3293,7 @@ function WorkflowPanel({
       <div className="space-y-4 py-4">
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت نقدی</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))_minmax(80px,auto)]">
             <Field label="مبلغ"><MoneyInput decimals={cashPayCurrencyId ? 2 : 0} value={cashPayAmount} onChange={setCashPayAmount} /></Field>
             <Field label="ارز"><CurrencySelect value={cashPayCurrencyId} onChange={setCashPayCurrencyId} currencyTypes={currencyTypes} /></Field>
             <Field label="روش پرداخت"><select className={inputClass} value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>{PAYMENT_METHOD_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}</select></Field>
@@ -3302,11 +3302,11 @@ function WorkflowPanel({
         </div>
         <div className="rounded-xl border border-black/10 p-3 dark:border-white/10">
           <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(80px,auto)_minmax(0,1.5fr)]">
             <Field label="مبلغ"><div className="relative"><MoneyInput className="pl-28" decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /><div className="absolute left-2 top-1/2 w-24 -translate-y-1/2"><CurrencySelect className="h-8 py-1 text-xs" value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></div></div></Field>
             <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} />
+            <Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-11 resize-y py-2.5`} rows={1} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field>
           </div>
-          <div className="mt-3"><Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-24 py-3`} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field></div>
         </div>
       </div>
     </PreviewSection>;
@@ -3364,8 +3364,8 @@ function PaymentReceiptField({ files, uploading, onOpen, onRemove }) {
       <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name || `رسید ${toFa(index + 1)}`}</a>
       <button type="button" onClick={() => onRemove(index)} aria-label="حذف رسید" title="حذف رسید" className="grid h-5 w-5 place-items-center rounded hover:bg-black/5 dark:hover:bg-white/10">×</button>
     </span>)}
-    <button type="button" disabled={uploading} onClick={onOpen} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
-      <img src="/images/icons/upload.svg" alt="" className={`h-4 w-4 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
+    <button type="button" disabled={uploading} onClick={onOpen} className="grid h-11 w-11 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={uploading ? "در حال آپلود" : "بارگذاری"} aria-label={uploading ? "در حال آپلود" : "بارگذاری"}>
+      <img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse opacity-60" : ""}`} />
     </button>
   </div></Field>;
 }
