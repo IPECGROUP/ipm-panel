@@ -921,40 +921,16 @@ export default function PaymentRequestPage() {
 
   const resubmitReturned = async (item, updates, note = "", extraPayload = {}) => {
     if (!item || actionBusy) return;
-    if (!updates.projectId) return setActionError("پروژه را انتخاب کنید.");
-    if (!updates.budgetCode) return setActionError("کد بودجه را انتخاب کنید.");
-    if (!String(updates.title || "").trim()) return setActionError("موضوع درخواست را وارد کنید.");
-    const amount = updates.currencyTypeId ? decimalRequestValue(updates.amount) : amountDigits(updates.amount);
-    const amountMinorUnits = updates.currencyTypeId ? decimalMinorUnits(updates.amount) : BigInt(amount || "0") * 100n;
-    const exchangeRate = updates.currencyTypeId ? amountDigits(updates.exchangeRate) : "1";
-    if (amountMinorUnits <= 0n) return setActionError("مبلغ درخواست باید بیشتر از صفر باشد.");
-    if (BigInt(exchangeRate || "0") <= 0n) return setActionError("نرخ ارز را وارد کنید.");
-    if (updates.hasSupplyRequest === "yes" && !updates.supplyRequestId) return setActionError("درخواست تامین را انتخاب کنید.");
 
     setActionBusy(true);
     setActionError("");
     try {
-      const patchPayload = {
-        ...updates,
-        amount,
-        exchangeRate,
-        scope: "projects",
-        cashAmount: null,
-        creditAmount: null,
-        currencyTypeId: updates.currencyTypeId || null,
-        currencySourceId: updates.currencySourceId || null,
-        projectId: updates.projectId || null,
-      };
-      const patched = await api(`/requests/${item.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(patchPayload),
-      });
-      const finalNote = String(note || "").trim() || "اصلاح و ارسال مجدد درخواست";
+      const finalNote = String(note || "").trim() || "ارسال مجدد درخواست";
       const submitted = await api("/requests/status", {
         method: "POST",
         body: JSON.stringify({ id: item.id, status: "approved", note: finalNote, ...extraPayload }),
       });
-      setSelected((current) => current ? { ...current, ...(submitted.item || patched.item || {}) } : current);
+      setSelected((current) => current ? { ...current, ...(submitted.item || {}) } : current);
       setActionNote("");
       setSubmitNotice({
         dateJalali: normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())),
@@ -984,6 +960,11 @@ export default function PaymentRequestPage() {
     if (!updates.budgetCode) return setActionError("کد بودجه را انتخاب کنید.");
     if (!String(updates.title || "").trim()) return setActionError("موضوع درخواست را وارد کنید.");
     if (updates.hasSupplyRequest === "yes" && !updates.supplyRequestId) return setActionError("درخواست تامین را انتخاب کنید.");
+    const amount = updates.currencyTypeId ? decimalRequestValue(updates.amount) : amountDigits(updates.amount);
+    const amountMinorUnits = updates.currencyTypeId ? decimalMinorUnits(updates.amount) : BigInt(amount || "0") * 100n;
+    const exchangeRate = updates.currencyTypeId ? amountDigits(updates.exchangeRate) : "1";
+    if (amountMinorUnits <= 0n) return setActionError("مبلغ درخواست باید بیشتر از صفر باشد.");
+    if (BigInt(exchangeRate || "0") <= 0n) return setActionError("نرخ ارز را وارد کنید.");
 
     setActionBusy(true);
     setActionError("");
@@ -992,6 +973,8 @@ export default function PaymentRequestPage() {
         method: "PATCH",
         body: JSON.stringify({
           ...updates,
+          amount,
+          exchangeRate,
           scope: "projects",
           cashAmount: null,
           creditAmount: null,
@@ -1003,9 +986,14 @@ export default function PaymentRequestPage() {
       setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
       await loadItems();
     } catch (err) {
+      if (["request_changed", "request_already_processed"].includes(err?.message)) {
+        const latest = await api(`/requests/${item.id}`).catch(() => null);
+        if (latest?.item) setSelected((current) => current ? { ...current, ...latest.item, canEdit: false, __editing: false } : current);
+        await loadItems();
+      }
       setActionError(err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید."
         : err?.message === "amount_exceeds_project_liquidity" ? paymentRequestCreateErrorMessage(err.message)
-        : err?.message === "request_changed" ? "این درخواست تغییر کرده است. صفحه را تازه‌سازی و دوباره تلاش کنید."
+        : ["request_changed", "request_already_processed"].includes(err?.message) ? "این درخواست پیش از ثبت ویرایش تغییر کرده یا روی آن اقدام شده است. ویرایش متوقف شد."
         : "ویرایش درخواست انجام نشد.");
     } finally {
       setActionBusy(false);
@@ -1223,7 +1211,7 @@ export default function PaymentRequestPage() {
   const canEditSelectedRequest = Boolean(selectedEditableRequest)
     && (selectedEditableRequest.requestType === "tenkhah"
       ? selectedEditableRequest.canEdit === true
-      : (selectedEditableRequest.canEdit === true || Number(selectedEditableRequest.createdById) === Number(user?.id)));
+      : selectedEditableRequest.canEdit === true);
   const selectAllRef = useRef(null);
   useEffect(() => { if (selectAllRef.current) selectAllRef.current.indeterminate = someVisibleSelected; }, [someVisibleSelected]);
   useEffect(() => { if (page !== safePage) setPage(safePage); }, [page, safePage]);
@@ -2333,12 +2321,12 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const canDecide = item.status === "pending" && item.canAct === true && !item.__actionLocked && !actionBusy;
   const canReviewPlanning = canDecide && currentStepRoleKey === "project_control" && item.canEditPlanning === true && item.requestType !== "tenkhah";
   const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
-  const isOwner = item.canEdit === true || Number(item.createdById) === Number(userId);
+  const isOwner = item.canEdit === true;
   const [isEditing, setIsEditing] = useState(!!item.__editing);
-  const canEditRequest = isOwner && isEditing;
+  const canEditRequest = isOwner && isEditing && item.__editing === true;
   // Related documents belong to the requester. Even an administrator may not
   // change another user's references from this dialog.
-  const canEditRelatedDocuments = Number(item.createdById) === Number(userId) && isEditing;
+  const canEditRelatedDocuments = Number(item.createdById) === Number(userId) && canEditRequest;
   const currentStepIndex = Number(item.currentStepIndex || 0);
   const finalAccounting = currentStepRoleKey === "accounting" && currentStepIndex >= 5;
   const [editForm, setEditForm] = useState(() => formFromItem(item));
@@ -2388,9 +2376,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const reviewSerial = canReviewPlanning && reviewProjectId !== String(item.projectId)
     ? normalizeDigits(String(item.serial || "")).replace(/^(\d{2})\/(?:\d{3}\/)?(\d{4,})$/, (_, year, sequence) => `${year}/${reviewProjectCode}/${sequence}`)
     : displayPaymentSerial(item, projects);
-  const editCurrency = currencyTypes.find((row) => String(row.id) === String(editForm.currencyTypeId));
-  const editCurrencyName = editCurrency ? itemLabel(editCurrency) : "ریال";
-  const canEditReturnedAmount = canEditRequest && canEditReturned;
+  const canEditReturnedAmount = canEditRequest;
   const editAmountMinorUnits = editForm.currencyTypeId ? decimalMinorUnits(editForm.amount) : BigInt(amountDigits(editForm.amount) || "0") * 100n;
   const editRialMinorUnits = editForm.currencyTypeId
     ? editAmountMinorUnits * BigInt(amountDigits(editForm.exchangeRate) || "0")
@@ -3044,7 +3030,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
           <div className="mb-3 grid grid-cols-2 rounded-xl border border-neutral-200 bg-[#f8f7f2] dark:border-white/10 dark:bg-white/5 md:grid-cols-5">
              <PaymentMetadata label="شماره درخواست" value={toFa(reviewSerial)} Icon={FileText} />
-            <PaymentMetadata label="تاریخ درخواست" value={toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
+            <PaymentMetadata label="تاریخ درخواست" value={canEditRequest ? <JalaliPopupDatePicker value={editForm.dateJalali} onChange={(value) => setEditField("dateJalali", value)} /> : toFa(String(item.dateFa || item.date_jalali || "—").replaceAll("-", "/"))} Icon={CalendarDays} />
             <PaymentMetadata label="درخواست‌کننده" value={item.createdByName || `کاربر #${toFa(item.createdById)}`} Icon={UserRound} />
             <div className="col-span-2 flex min-w-0 items-center gap-2 border-b border-neutral-200 px-3 py-2 dark:border-white/10 md:border-b-0">
               <span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900"><img src="/images/icons/modiriat-projects.svg" alt="" className="h-4 w-4 dark:invert" /></span>
@@ -3092,7 +3078,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 </div>
                 <PreviewRow compact editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
-                  <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="مبلغ درخواست" ltr={!canEditReturnedAmount} value={canEditReturnedAmount ? <div className="flex items-center gap-2"><MoneyInput decimals={editForm.currencyTypeId ? 2 : 0} value={editForm.amount} onChange={(value) => setEditField("amount", value)} /><span className="shrink-0 text-xs">{editCurrencyName}</span></div> : <span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />
+                  <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="مبلغ درخواست" ltr={!canEditReturnedAmount} value={canEditReturnedAmount ? <div className="flex items-center gap-2"><MoneyInput decimals={editForm.currencyTypeId ? 2 : 0} value={editForm.amount} onChange={(value) => setEditField("amount", value)} /><select aria-label="ارز مبلغ درخواست" className={`${inputClass} !w-24 shrink-0`} value={editForm.currencyTypeId} onChange={(event) => setEditForm((old) => ({ ...old, currencyTypeId: event.target.value, amount: event.target.value ? decimalMoney(old.amount) : money(String(old.amount).split(".")[0]), exchangeRate: event.target.value ? old.exchangeRate : "" }))}><option value="">ریال</option>{currencyTypes.filter((currency) => currencyOptionKey(currency) !== "rial").map((currency) => <option key={currency.id} value={currency.id}>{itemLabel(currency)}</option>)}</select></div> : <span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />
                   <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="نرخ" ltr={!canEditReturnedAmount} value={canEditReturnedAmount && editForm.currencyTypeId ? <MoneyInput value={editForm.exchangeRate} onChange={(value) => setEditField("exchangeRate", value)} /> : item.currencyTypeId ? toFa(Number(item.exchangeRate || 0).toLocaleString("en-US")) : "—"} />
                   <PreviewRow compact colon leader={!canEditReturnedAmount} label="مبلغ ریالی درخواست" ltr={!canEditReturnedAmount} value={<span dir="ltr" className="inline-flex items-center gap-1"><span>ریال</span><span>{toFa(canEditReturnedAmount ? exactRialMoney(minorUnitsToDecimal(editRialMinorUnits)) : exactRialMoney(item.rialAmount || item.amount || 0))}</span></span>} />
                 </div>
@@ -3177,13 +3163,13 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 targetAssigneeUserId={targetAssigneeUserId}
                 setTargetAssigneeUserId={setTargetAssigneeUserId}
               />}
-              {canEditRequest && <>
+              {(canEditRequest || canEditReturned) && <>
                 {editUploadError && <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">{editUploadError}</div>}
                 {canEditReturned ? <>
                   <NextRecipientSelect recipients={nextRecipients} loading={nextRecipientsLoading} value={targetAssigneeUserId} onChange={setTargetAssigneeUserId} />
                 </> : null}
               </>}
-              {!canDecide && !canEditRequest && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
+              {!canDecide && !canEditRequest && !canEditReturned && !isOwner && <div className="rounded-2xl border border-black/10 p-4 text-sm text-neutral-500 dark:border-white/10 dark:text-neutral-400">در این مرحله اقدامی برای شما فعال نیست.</div>}
             </div>
           </main>
           <PaymentAttachmentPreview
@@ -3219,14 +3205,15 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
             onClose={() => setEditLetterPickerOpen(false)}
           />}
         </div>
-        {(canDecide || canEditRequest) && <footer className="shrink-0 border-t border-neutral-100 px-3 py-3 dark:border-white/10 sm:px-5">
+        {(canDecide || canEditRequest || canEditReturned) && <footer className="shrink-0 border-t border-neutral-100 px-3 py-3 dark:border-white/10 sm:px-5">
           <ActionFooter actionBusy={actionBusy} actionError={actionError || receiptUploadError}
-            disabled={canEditRequest
-              ? editUploading || (canEditReturned && nextRecipients.users?.length > 0 && !targetAssigneeUserId)
+            disabled={canEditReturned
+              ? nextRecipients.users?.length > 0 && !targetAssigneeUserId
+              : canEditRequest ? editUploading
                 : finalAccounting ? receiptUploading || (!cashPayAmount && !creditPayAmount) : !choice || (choice === "approve" && ((!reviewValuesValid) || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)))}
-            onSubmit={canEditRequest
-              ? canEditReturned ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null }) : () => onEdit(item, editForm)
-              : submitWorkflow} />
+            onSubmit={canEditReturned
+              ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })
+              : canEditRequest ? () => onEdit(item, editForm) : submitWorkflow} />
         </footer>}
       </div>
     </div>
