@@ -1272,10 +1272,10 @@ export default function SupplyRequestPage() {
                 <colgroup>
                   <col style={{ width: 40 }} />
                   <col style={{ width: 16 }} />
-                  <col style={{ width: 105 }} />
-                  <col style={{ width: 105 }} />
+                  <col style={{ width: 98 }} />
+                  <col style={{ width: 98 }} />
                   <col style={{ width: 165 }} />
-                  <col style={{ width: 165 }} />
+                  <col style={{ width: 210 }} />
                   <col />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 140 }} />
