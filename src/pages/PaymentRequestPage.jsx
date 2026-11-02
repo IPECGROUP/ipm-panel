@@ -3303,7 +3303,7 @@ function WorkflowPanel({
           <div className="mb-3 text-sm font-semibold">پرداخت اعتباری</div>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,14rem)_4.5rem_minmax(0,1fr)]">
             <Field label="مبلغ"><div className="relative min-w-0"><MoneyInput className="!pl-[72px]" decimals={creditPayCurrencyId ? 2 : 0} value={creditPayAmount} onChange={setCreditPayAmount} /><CurrencySelect compact value={creditPayCurrencyId} onChange={setCreditPayCurrencyId} currencyTypes={currencyTypes} /></div></Field>
-            <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} />
+            <PaymentReceiptField files={paymentReceipts.credit} uploading={receiptUploading} onOpen={() => onOpenReceiptUpload("credit")} onRemove={(index) => onRemoveReceipt("credit", index)} centered />
             <Field label="شرح پرداخت"><textarea className={`${inputClass} min-h-11 resize-y py-2.5`} rows={1} value={creditPayDesc} onChange={(event) => setCreditPayDesc(event.target.value)} /></Field>
           </div>
         </div>
@@ -3357,8 +3357,8 @@ function WorkflowPanel({
   </PreviewSection>;
 }
 
-function PaymentReceiptField({ files, uploading, onOpen, onRemove }) {
-  return <Field label="رسید پرداخت"><div className="flex min-h-11 flex-wrap items-center gap-2">
+function PaymentReceiptField({ files, uploading, onOpen, onRemove, centered = false }) {
+  return <Field label="رسید پرداخت"><div className={`flex min-h-11 flex-wrap items-center gap-2 ${centered ? "justify-center" : ""}`}>
     {files.map((file, index) => <span key={file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-1 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
       <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name || `رسید ${toFa(index + 1)}`}</a>
       <button type="button" onClick={() => onRemove(index)} aria-label="حذف رسید" title="حذف رسید" className="grid h-5 w-5 place-items-center rounded hover:bg-black/5 dark:hover:bg-white/10">×</button>
