@@ -415,7 +415,10 @@ export default function CostBreakdownPage() {
   const openTemplates = async () => {
     if (!projectId) { setErr("ابتدا پروژه را انتخاب کنید."); return; }
     setTemplateOpen(true); setTemplateLoading(true); setErr("");
-    try { setTemplate(await Promise.all(["engineering", "procurement", "execution"].map((type) => api(`/base/sample-cost-structure?type=${type}`)))); }
+    try {
+      const list = await api("/base/sample-cost-structure?list=1");
+      setTemplate(await Promise.all((list.templates || []).map((item) => api(item.id === "execution" ? "/base/sample-cost-structure?type=execution" : `/base/sample-cost-structure?templateId=${item.id}`))));
+    }
     catch { setTemplate(null); setErr("دریافت قالب انجام نشد."); }
     finally { setTemplateLoading(false); }
   };
@@ -1004,7 +1007,7 @@ export default function CostBreakdownPage() {
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
       <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="button" onClick={saveDraftRows} disabled={saving || !rows.some((row) => row.draft)} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white disabled:opacity-40 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert dark:invert-0" /></button></div>
-      {templateOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="template-title"><div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"><div className="flex items-center justify-between"><h2 id="template-title" className="text-sm font-bold">انتخاب قالب</h2><button type="button" onClick={() => setTemplateOpen(false)} aria-label="بستن" className="text-xl">×</button></div>{templateLoading ? <p className="mt-5 text-sm">در حال دریافت...</p> : template ? <div className="mt-5 space-y-2">{template.map((item) => <button key={item.type} type="button" onClick={() => importTemplate(item)} className="w-full rounded-xl border border-black/10 p-4 text-right text-sm font-semibold hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">{item.project}</button>)}</div> : <p className="mt-5 text-sm text-red-600">دریافت قالب انجام نشد.</p>}</div></div>}
+      {templateOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="template-title"><div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"><div className="flex items-center justify-between"><h2 id="template-title" className="text-sm font-bold">انتخاب قالب</h2><button type="button" onClick={() => setTemplateOpen(false)} aria-label="بستن" className="text-xl">×</button></div>{templateLoading ? <p className="mt-5 text-sm">در حال دریافت...</p> : template ? <div className="mt-5 space-y-2">{template.map((item) => <button key={item.templateId || item.type} type="button" onClick={() => importTemplate(item)} className="w-full rounded-xl border border-black/10 p-4 text-right text-sm font-semibold hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">{item.project}</button>)}</div> : <p className="mt-5 text-sm text-red-600">دریافت قالب انجام نشد.</p>}</div></div>}
       </div>
     </Card>
   );
