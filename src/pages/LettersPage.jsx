@@ -8,6 +8,7 @@ import { useAuth } from "../components/AuthProvider";
 import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import AdvancedFileUploadModal from "../components/AdvancedFileUploadModal.jsx";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
+import useLetterAutoTags from "../hooks/useLetterAutoTags.js";
 import { readableFileName } from "../utils/fileName.js";
 import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 
@@ -2890,6 +2891,7 @@ const toggleFilterTag = (id) => {
 const toggleFormTag = (sid) => {
   const cleanId = String(sid || "").trim();
   if (!cleanId) return;
+  if (formSelectedTagIds.map(String).includes(cleanId)) dismissAutoTags([cleanId]);
 
   if (formKind === "incoming") {
     setIncomingTagIds((prev) => {
@@ -4686,79 +4688,32 @@ const tagById = useMemo(() => {
   return m;
 }, [allTags]);
 
-useEffect(() => {
-  if (!formOpen) return undefined;
-
-  const timer = window.setTimeout(() => {
-    const normalizeText = (value) => normFa(toEnDigits(String(value || ""))).replace(/[^\p{L}\p{N}]+/gu, " ").trim();
-    const selectedProject = (Array.isArray(projectsTopOnly) ? projectsTopOnly : []).find(
-      (p) => String(p?.id) === String(getForm(formKind).projectId || "")
-    );
-    const projectCandidates = selectedProject
-      ? [
-          selectedProject?.code,
-          selectedProject?.__baseCode,
-          selectedProject?.name,
-          selectedProject?.title,
-          selectedProject?.label,
-          projectOptionLabel(selectedProject),
-        ]
-      : [];
-    const fieldCandidates =
-      formKind === "incoming"
-        ? [...projectCandidates, incomingForm.subject, incomingForm.orgName]
-        : formKind === "internal"
-        ? [...projectCandidates, internalForm.subject]
-        : [...projectCandidates, outgoingForm.orgName, outgoingForm.subject];
-
-    const candidates = fieldCandidates.map(normalizeText).filter((x) => x.length >= 3);
-    if (!candidates.length || !Array.isArray(allTags) || !allTags.length) return;
-
-    const matchesCandidate = (candidate, label) => {
-      if (!candidate || !label) return false;
-      return label === candidate || label.includes(candidate);
-    };
-
-    const matchedIds = allTags
-      .filter((tag) => {
-        const label = normalizeText(tagLabelOf(tag));
-        if (label.length < 3) return false;
-        return candidates.some((candidate) => matchesCandidate(candidate, label));
-      })
-      .map((tag) => String(tag?.id || "").trim())
-      .filter(Boolean);
-
-    if (!matchedIds.length) return;
-
-    const mergeAutoTags = (current) => {
-      const next = normalizeIdList([...(Array.isArray(current) ? current : []), ...matchedIds]).slice(0, TAG_PREFS_LIMIT);
-      return next.length === normalizeIdList(current).length && next.every((id, index) => id === normalizeIdList(current)[index])
-        ? current
-        : next;
-    };
-
-    if (formKind === "incoming") setIncomingTagIds(mergeAutoTags);
-    else if (formKind === "internal") setInternalTagIds(mergeAutoTags);
-    else setOutgoingTagIds(mergeAutoTags);
-    clearFieldError(formKind, "formTags");
-  }, 2000);
-
-  return () => window.clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [
-  formOpen,
-  formKind,
-  allTags,
-  projectsTopOnly,
-  incomingForm.projectId,
-  incomingForm.subject,
-  incomingForm.orgName,
-  internalForm.projectId,
-  internalForm.subject,
-  outgoingForm.projectId,
-  outgoingForm.subject,
-  outgoingForm.orgName,
-]);
+// Match each visible value separately; unrelated fields cannot form a fake phrase.
+const activeTagForm = getForm(formKind);
+const selectedTagProject = projectsTopOnly.find((project) => String(project.id) === String(activeTagForm.projectId));
+const autoTagFields = [
+  ...Object.entries(activeTagForm).filter(([key]) => key !== "projectId").map(([, value]) => value),
+  ...(selectedTagProject ? [selectedTagProject.code, selectedTagProject.__baseCode, selectedTagProject.name,
+    selectedTagProject.title, selectedTagProject.label, projectOptionLabel(selectedTagProject)] : []),
+  formKind === "incoming" ? incomingSecretariatDate : formKind === "outgoing" ? outgoingSecretariatDate : internalSecretariatDate,
+  getSecretariatNoForKind(formKind),
+  hasAttachment ? "دارد" : "ندارد",
+  formKind === "incoming" ? incomingSecretariatNote : formKind === "outgoing" ? outgoingSecretariatNote : internalSecretariatNote,
+  formKind === "incoming" ? incomingReceiverName : formKind === "outgoing" ? outgoingReceiverName : internalReceiverName,
+  formKind === "internal" ? unitOptions.find((unit) => String(unit.id) === String(internalUnitId))?.label : "",
+  ...[...returnToIds, ...piroIds].map((id) => letterNoOf(letterById.get(String(id)))),
+  ...(docFilesByType[formKind] || []).map((file) => file.name),
+];
+const [autoTagsReady, setAutoTagsReady] = useState(false);
+const dismissAutoTags = useLetterAutoTags({
+  enabled: formOpen && autoTagsReady,
+  sessionKey: editingId || "new",
+  kind: formKind,
+  fields: autoTagFields,
+  tags: allTags,
+  setSelectedIds: formKind === "incoming" ? setIncomingTagIds : formKind === "outgoing" ? setOutgoingTagIds : setInternalTagIds,
+  onMatch: () => clearFieldError(formKind, "formTags"),
+});
 
 const _latestAllTags = useMemo(() => {
   const arr = Array.isArray(allTags) ? allTags.slice() : [];
@@ -4813,6 +4768,7 @@ setFilterTagIds((prev) => {
 });
    } else {
     // ✅ همیشه روی همون تبِ فرم که بازه اعمال کن
+      dismissAutoTags(formSelectedTagIds.map(String).filter((id) => !ids.includes(id)));
       setFormTagsAllAndPersist(ids);
       clearFieldError(formKind, "formTags");
   }
@@ -4852,6 +4808,19 @@ setFilterTagIds((prev) => {
     }
   }
 };
+
+// Use the same three catalog scopes as TagsPage, refreshed for every form session.
+useEffect(() => {
+  let active = true;
+  setAutoTagsReady(false);
+  if (formOpen) {
+    Promise.all(["letters", "projects", "execution"].map(refreshTags))
+      .then(() => { if (active) setAutoTagsReady(true); });
+  }
+  return () => { active = false; };
+  // refreshTags only reads the API and writes catalog state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [formOpen]);
 
 const ensureTagsForKind = async (kind) => {
   const scope = SCOPE_BY_KIND[kind] || "letters";
