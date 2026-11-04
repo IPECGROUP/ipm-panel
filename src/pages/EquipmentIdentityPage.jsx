@@ -17,15 +17,15 @@ const labelClass = "mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-
 const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
 const emptyForm = () => ({ categoryId: "", fieldValues: {}, relatedLetterIds: [], libraryItemIds: [], files: [] });
 const CATEGORY_TONES = [
-  "border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200",
-  "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200",
-  "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200",
-  "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-200",
-  "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200",
+  ["border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200", "border-sky-700 bg-sky-700 text-sky-50 dark:border-sky-200 dark:bg-sky-200 dark:text-sky-950"],
+  ["border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200", "border-emerald-700 bg-emerald-700 text-emerald-50 dark:border-emerald-200 dark:bg-emerald-200 dark:text-emerald-950"],
+  ["border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-400/30 dark:bg-amber-500/10 dark:text-amber-200", "border-amber-700 bg-amber-700 text-amber-50 dark:border-amber-200 dark:bg-amber-200 dark:text-amber-950"],
+  ["border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-200", "border-violet-700 bg-violet-700 text-violet-50 dark:border-violet-200 dark:bg-violet-200 dark:text-violet-950"],
+  ["border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-400/30 dark:bg-rose-500/10 dark:text-rose-200", "border-rose-700 bg-rose-700 text-rose-50 dark:border-rose-200 dark:bg-rose-200 dark:text-rose-950"],
 ];
-function categoryTone(value) {
+function categoryTone(value, active = false) {
   const hash = Array.from(String(value || "")).reduce((sum, char) => (sum * 31 + char.codePointAt(0)) >>> 0, 0);
-  return CATEGORY_TONES[hash % CATEGORY_TONES.length];
+  return CATEGORY_TONES[hash % CATEGORY_TONES.length][active ? 1 : 0];
 }
 
 function identityFieldValue(item, fields, kind) {
@@ -235,12 +235,12 @@ export default function EquipmentIdentityPage() {
           </div>
           <EquipmentFieldsForm sections={categorySections} values={form.fieldValues}
              onValueChange={(id, value) => setForm((old) => ({ ...old, fieldValues: { ...old.fieldValues, [id]: value } }))} />
-          <div className="mt-4 flex items-end justify-start gap-1 overflow-x-auto pb-1">
+          {form.categoryId && <div className="mt-4 flex items-end justify-start gap-1 overflow-x-auto pb-1">
             <label className="block w-16 shrink-0 text-center"><span className={`block ${labelClass}`}>اسناد مرتبط</span><button type="button" onClick={() => { setDraftLetterIds(form.relatedLetterIds.map(String)); setLetterQuery(""); setLetterPickerOpen(true); }} className="relative mx-auto grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط"><img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />{form.relatedLetterIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.relatedLetterIds.length)}</span>}</button></label>
             <label className="block w-16 shrink-0 text-center"><span className={`block ${labelClass}`}>کتابخانه</span><button type="button" onClick={() => { setDraftLibraryItemIds(form.libraryItemIds.map(String)); setLibraryQuery(""); setLibraryPickerOpen(true); }} className="relative mx-auto grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب از کتابخانه‌ها"><img src="/images/icons/ketabkhane.svg" alt="" className="h-5 w-5 dark:invert" />{form.libraryItemIds.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.libraryItemIds.length)}</span>}</button></label>
             <label className="block w-16 shrink-0 text-center"><span className={`block ${labelClass}`}>بارگذاری</span><button type="button" onClick={() => setUploadOpen(true)} className="relative mx-auto grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="بارگذاری فایل"><img src="/images/icons/upload.svg" alt="" className={`h-5 w-5 dark:invert ${uploading ? "animate-pulse" : ""}`} />{form.files.length > 0 && <span className="absolute -left-1 -top-1 rounded-full bg-black px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></label>
             {form.files.length > 0 && <div className="flex h-11 shrink-0 items-center gap-2" aria-label="فایل‌های بارگذاری‌شده">{form.files.map((file, index) => <span key={`${file.url}-${index}`} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs dark:border-white/15 dark:bg-white/5"><a href={file.url} target="_blank" rel="noreferrer" className="max-w-40 truncate hover:underline">{file.name}</a><button type="button" onClick={() => setForm((old) => ({ ...old, files: old.files.filter((_, position) => position !== index) }))} aria-label="حذف فایل">×</button></span>)}</div>}
-          </div>
+          </div>}
           <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : editingId ? "ذخیره تغییرات" : "ثبت تجهیز"} aria-label={editingId ? "ذخیره تغییرات" : "ثبت تجهیز"}><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
         </form> : <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
           <div className="flex items-end gap-2">
@@ -249,7 +249,7 @@ export default function EquipmentIdentityPage() {
           </div>
           <div className="mt-3"><div className={labelClass}>برچسب ها</div><div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => { setFilterCategoryId(""); setPage(0); }} aria-pressed={!filterCategoryId} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${!filterCategoryId ? "border-neutral-900 bg-neutral-900 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50 dark:border-white/15 dark:bg-white/5 dark:text-neutral-200"}`}>همه</button>
-            {availableCategories.map((category) => { const active = filterCategoryId === String(category.id); return <button key={category.id} type="button" onClick={() => { setFilterCategoryId(active ? "" : String(category.id)); setPage(0); }} aria-pressed={active} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${categoryTone(category.id)} ${active ? "ring-2 ring-current ring-offset-2 dark:ring-offset-neutral-900" : "hover:brightness-95"}`}>{category.name}</button>; })}
+            {availableCategories.map((category) => { const active = filterCategoryId === String(category.id); return <button key={category.id} type="button" onClick={() => { setFilterCategoryId(active ? "" : String(category.id)); setPage(0); }} aria-pressed={active} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${categoryTone(category.id, active)} ${active ? "" : "hover:brightness-95"}`}>{category.name}</button>; })}
           </div></div>
         </div>}
 
