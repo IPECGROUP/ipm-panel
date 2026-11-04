@@ -930,7 +930,7 @@ export default function PaymentRequestPage() {
         method: "POST",
         body: JSON.stringify({ id: item.id, status: "approved", note: finalNote, ...extraPayload }),
       });
-      setSelected((current) => current ? { ...current, ...(submitted.item || {}) } : current);
+      setSelected(null);
       setActionNote("");
       setSubmitNotice({
         dateJalali: normalizeDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())),
@@ -983,12 +983,12 @@ export default function PaymentRequestPage() {
           projectId: updates.projectId || null,
         }),
       });
-      setSelected((current) => current ? { ...current, ...(data.item || {}) } : current);
+      setSelected((current) => current ? { ...current, ...(data.item || {}), __editing: false } : current);
       await loadItems();
     } catch (err) {
       if (["request_changed", "request_already_processed"].includes(err?.message)) {
         const latest = await api(`/requests/${item.id}`).catch(() => null);
-        if (latest?.item) setSelected((current) => current ? { ...current, ...latest.item, canEdit: false, __editing: false } : current);
+        if (latest?.item) setSelected((current) => current ? { ...current, ...latest.item, __editing: false } : current);
         await loadItems();
       }
       setActionError(err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید."
@@ -3214,13 +3214,13 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         </div>
         {(canDecide || canEditRequest || canEditReturned) && <footer className="shrink-0 border-t border-neutral-100 px-3 py-3 dark:border-white/10 sm:px-5">
           <ActionFooter actionBusy={actionBusy} actionError={actionError || receiptUploadError}
-            disabled={canEditReturned
-              ? nextRecipients.users?.length > 0 && !targetAssigneeUserId
-              : canEditRequest ? editUploading
+            label={canEditRequest ? "ذخیره ویرایش" : canEditReturned ? "ارسال مجدد درخواست" : "ثبت"}
+            disabled={canEditRequest ? editUploading
+              : canEditReturned ? nextRecipients.users?.length > 0 && !targetAssigneeUserId
                 : finalAccounting ? receiptUploading || (!cashPayAmount && !creditPayAmount) : !choice || (choice === "approve" && ((!reviewValuesValid) || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)))}
-            onSubmit={canEditReturned
-              ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })
-              : canEditRequest ? () => onEdit(item, editForm) : submitWorkflow} />
+            onSubmit={canEditRequest ? () => onEdit(item, editForm)
+              : canEditReturned ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })
+                : submitWorkflow} />
         </footer>}
       </div>
     </div>
@@ -3397,10 +3397,10 @@ function NextRecipientSelect({ recipients, loading, value, onChange, visible = t
   </Field>;
 }
 
-function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
+function ActionFooter({ actionBusy, actionError, disabled, onSubmit, label = "ثبت" }) {
   return <div className="flex items-center justify-end gap-3">
     {actionError && <div role="alert" className="ml-auto text-xs text-red-600 dark:text-red-400">{actionError}</div>}
-    <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت">
+    <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title={label} aria-label={label}>
       <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
     </button>
   </div>;
