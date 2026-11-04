@@ -31,7 +31,7 @@ export default function useLetterAutoTags({ enabled, sessionKey, kind, fields, t
         return additions.length ? [...current, ...additions] : current;
       });
       onMatchRef.current?.();
-    }, 2000);
+    }, 1000);
     return () => clearTimeout(timer);
   }, [enabled, sessionKey, kind, signature, index, setSelectedIds]);
 
