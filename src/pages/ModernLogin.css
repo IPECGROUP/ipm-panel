@@ -34,7 +34,7 @@
 
 .modern-login__content { position: relative; width: min(100%, 400px); }
 .modern-login__brand { text-align: center; margin: 0 auto 16px; }
-.modern-login__mark { position: relative; width: 194px; height: 106px; margin: -5px auto 8px; overflow: hidden; transform: translateY(-12px); }
+.modern-login__mark { position: relative; width: 148px; height: 81px; margin: 8px auto 0; overflow: hidden; }
 .modern-login__mark img { position: absolute; left: 50%; top: 50%; display: block; width: 212%; max-width: none; height: auto; transform: translate(-50%, -49.4%); }
 .modern-login__brand h2 { margin: 0; font-size: clamp(19px, 2.2vw, 23px); font-weight: 700; line-height: 1.5; }
 .modern-login__brand p { margin: 1px 0 0; color: #f48120; font-size: clamp(14px, 1.7vw, 15px); font-weight: 700; }
@@ -104,6 +104,7 @@
 .modern-login__submit:hover:not(:disabled) { background: #f48120; }
 .modern-login__submit:disabled { opacity: .67; cursor: wait; }
 .modern-login__help { position: relative; margin: 16px 0 0; color: #e2edf5; font-size: 13px; line-height: 1.6; }
+.modern-login__divider { position: relative; height: 1px; margin-top: 15px; background: rgba(226, 237, 245, .5); }
 .modern-login__version { margin: 10px 4px 0; color: #d8e9f5; font-size: 12px; text-align: right; }
 .modern-login__back:focus-visible, .modern-login__visibility:focus-visible, .modern-login__submit:focus-visible { outline: 3px solid #f8f7f2; outline-offset: 3px; }
 

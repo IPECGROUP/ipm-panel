@@ -69,9 +69,6 @@ export default function ModernLogin({ testMode = false }) {
       </svg>
       <div className="modern-login__content">
         <header className="modern-login__brand">
-          <div className="modern-login__mark">
-            <img src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-12.png" alt="نشان PEC" />
-          </div>
           <h2>سامانه فرآیندهای یکپارچه (IPS)</h2>
         </header>
 
@@ -130,6 +127,10 @@ export default function ModernLogin({ testMode = false }) {
             </button>
           </form>
           <p className="modern-login__help">اگر حساب ندارید، با ادمین تماس بگیرید.</p>
+          <div className="modern-login__divider" aria-hidden="true" />
+          <div className="modern-login__mark">
+            <img src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-12.png" alt="نشان شرکت ایده پویان انرژی" />
+          </div>
         </section>
         <p className="modern-login__version">نسخه: <span dir="ltr">v2.0.0</span></p>
       </div>
