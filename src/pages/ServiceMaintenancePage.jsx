@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { createPortal } from "react-dom";
+import { CalendarDays, ExternalLink, FileText, FolderOpen, Plus, Tag } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -34,6 +35,7 @@ export default function ServiceMaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [detailId, setDetailId] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [attachmentEditorOpen, setAttachmentEditorOpen] = useState(false);
   const [photoEditIndex, setPhotoEditIndex] = useState(null);
@@ -69,6 +71,7 @@ export default function ServiceMaintenancePage() {
   })).values()], [definitions.categories, equipment]);
   const categoryEquipment = useMemo(() => equipment.filter((item) => String(item.categoryId) === String(form.categoryId)), [equipment, form.categoryId]);
   const selectedEquipment = equipmentById.get(String(form.equipmentId));
+  const detailItem = items.find((item) => String(item.id) === String(detailId));
   const lastServiceDate = useMemo(() => items
     .filter((item) => String(item.equipmentId) === String(form.equipmentId))
     .map((item) => toEn(String(item.serviceDate || "").replaceAll("-", "/")))
@@ -157,7 +160,7 @@ export default function ServiceMaintenancePage() {
             <thead className="border-b border-[#184a6b] bg-[#184a6b] text-white"><tr>{["ردیف", "تاریخ سرویس", "کد تجهیز", "نام تجهیز", "دسته‌بندی"].map((heading) => <th key={heading} className="px-3 py-2 text-[14px] font-semibold md:text-[15px]">{heading}</th>)}</tr></thead>
             <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={5} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق جست‌وجو پیدا نشد." : "هنوز سرویسی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => {
               const selected = equipmentById.get(String(item.equipmentId));
-              return <tr key={item.id} className="h-10 bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10">
+              return <tr key={item.id} tabIndex={0} role="button" aria-label={`مشاهده سرویس ${selected ? equipmentValue(selected, definitions.fields, "name") : "تجهیز"}`} onClick={() => setDetailId(String(item.id))} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setDetailId(String(item.id)); } }} className="h-10 cursor-pointer bg-black/[0.02] transition-colors hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:bg-white/5 dark:hover:bg-white/10">
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(safePage * pageSize + index + 1)}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700">{toFa(String(item.serviceDate || "").replaceAll("-", "/"))}</td>
                 <td className="border-b border-neutral-300 px-3 dark:border-neutral-700"><span className="block break-words" dir="auto">{selected ? equipmentValue(selected, definitions.fields, "code") : "—"}</span></td>
@@ -170,6 +173,7 @@ export default function ServiceMaintenancePage() {
         </div>
       </div>
     </Card>
+    {detailItem && <ServiceMaintenancePreview item={detailItem} equipment={equipmentById.get(String(detailItem.equipmentId))} definitions={definitions} onClose={() => setDetailId(null)} />}
     {attachmentEditorOpen && <AdvancedFileUploadModal title="بارگذاری پیوست‌های سرویس" files={form.files} multiple accept=".pdf,.jpg,.jpeg,.png,.webp" allowedTypes="PDF، JPG، PNG و WebP" selectionHint={error || "می‌توانید چند فایل را هم‌زمان انتخاب یا رها کنید. حداکثر ۲۰ فایل."} onUpload={(fileList) => {
       const selected = Array.from(fileList || []);
       if (form.files.length + selected.length > 20) return setError("حداکثر ۲۰ فایل انتخاب کنید.");
@@ -180,4 +184,49 @@ export default function ServiceMaintenancePage() {
     }} onRemove={(index) => setForm((current) => ({ ...current, files: current.files.filter((_, position) => position !== index) }))} isEditableFile={(file) => /\.(jpe?g|png|webp)$/i.test(file.name || "")} onEditFile={(_, index) => { setPhotoEditIndex(index); setAttachmentEditorOpen(false); }} onClose={() => setAttachmentEditorOpen(false)} />}
     {photoEditIndex !== null && form.files[photoEditIndex] && <AttachmentImageEditor initialFile={form.files[photoEditIndex].file} initialUrl={form.files[photoEditIndex].file ? undefined : form.files[photoEditIndex].url} initialName={form.files[photoEditIndex].name} onClose={() => { setPhotoEditIndex(null); setAttachmentEditorOpen(true); }} onConfirm={(file) => { setForm((current) => ({ ...current, files: current.files.map((entry, index) => index === photoEditIndex ? { name: file.name, file } : entry) })); setPhotoEditIndex(null); setAttachmentEditorOpen(true); }} />}
   </div>;
+}
+
+function ServiceMaintenancePreview({ item, equipment, definitions, onClose }) {
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0);
+  useEffect(() => {
+    const closeOnEscape = (event) => { if (event.key === "Escape") onClose(); };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+  const files = Array.isArray(item.files) ? item.files : [];
+  const selectedFile = files[Math.min(selectedFileIndex, Math.max(files.length - 1, 0))];
+  const selectedFileName = selectedFile?.name || `پیوست ${toFa(selectedFileIndex + 1)}`;
+  const isPdf = /\.pdf(?:[?#]|$)/i.test(selectedFile?.name || selectedFile?.url || "");
+  const isImage = /\.(?:jpe?g|png|webp|gif)(?:[?#]|$)/i.test(selectedFile?.name || selectedFile?.url || "");
+  const categoryName = definitions.categories.find((category) => String(category.id) === String(equipment?.categoryId))?.name || equipment?.category || "—";
+  const formatDate = (value) => value ? toFa(String(value).replaceAll("-", "/")) : "—";
+  const details = [["تاریخ سرویس", formatDate(item.serviceDate)], ["تاریخ آخرین سرویس", formatDate(item.lastServiceDate)]];
+
+  return createPortal(<div dir="rtl" className="fixed inset-0 z-[10000] flex items-end justify-center sm:items-center sm:p-3 md:p-6">
+    <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
+    <section role="dialog" aria-modal="true" aria-label="جزئیات سرویس و نگهداری" className="relative flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:h-[min(90vh,860px)] sm:w-[min(1680px,calc(100vw-32px))] sm:rounded-2xl">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
+        <h2 className="truncate text-sm font-bold sm:text-base">سرویس و نگهداری تجهیز</h2>
+        <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-4">
+        <div className="mb-3 grid overflow-hidden rounded-xl border border-neutral-200 bg-[#f8f7f2] dark:border-white/10 dark:bg-white/5 sm:grid-cols-3">
+          {[[FileText, "نام تجهیز", equipment ? equipmentValue(equipment, definitions.fields, "name") : "—"], [Tag, "کد تجهیز", equipment ? equipmentValue(equipment, definitions.fields, "code") : "—"], [FolderOpen, "دسته‌بندی", categoryName]].map(([Icon, label, value]) => <div key={label} className="flex min-w-0 items-center gap-2 border-b border-neutral-200 px-3 py-2 last:border-b-0 dark:border-white/10 sm:border-b-0 sm:border-l sm:last:border-l-0"><span aria-hidden="true" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-700 dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-200"><Icon className="h-4 w-4 stroke-[1.6]" /></span><div className="min-w-0"><div className="text-[11px] text-neutral-500 dark:text-neutral-400">{label}</div><div dir="auto" className="mt-0.5 break-words text-xs font-bold">{value}</div></div></div>)}
+        </div>
+        <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <main className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
+            <h3 className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">جزئیات سرویس</h3>
+            <div className="grid sm:grid-cols-2">{details.map(([label, value]) => <div key={label} className="flex min-w-0 items-center gap-3 border-b border-neutral-200 px-4 py-3 dark:border-white/10 sm:border-l sm:last:border-l-0"><CalendarDays className="h-5 w-5 shrink-0 text-[#5d92b7]" aria-hidden="true" /><div className="min-w-0"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-1 text-sm font-semibold">{value}</div></div></div>)}</div>
+          </main>
+          <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-900">
+            <h3 className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">پیش‌نمایش پیوست‌ها</h3>
+            <div className="p-3"><div className="relative grid h-64 place-items-center overflow-hidden rounded-xl bg-neutral-100 dark:bg-white/5 lg:h-[min(44vh,430px)]">{!selectedFile?.url ? <p className="px-4 text-center text-xs text-neutral-500">پیوستی برای نمایش وجود ندارد.</p> : isPdf ? <iframe key={selectedFile.url} src={selectedFile.url} title={`پیش‌نمایش ${selectedFileName}`} className="h-full w-full border-0" /> : isImage ? <a href={selectedFile.url} target="_blank" rel="noopener noreferrer" className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={selectedFile.url} alt={selectedFileName} className="max-h-full max-w-full object-contain" /></a> : <p className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</p>}</div>
+              {selectedFile && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><p dir="auto" className="min-w-0 truncate text-xs font-semibold" title={selectedFileName}>{selectedFileName}</p><a href={selectedFile.url} target="_blank" rel="noopener noreferrer" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5" title="باز کردن فایل" aria-label="باز کردن فایل"><ExternalLink className="h-4 w-4" /></a></div>}
+              {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((file, index) => <button key={`${file.url}-${index}`} type="button" onClick={() => setSelectedFileIndex(index)} aria-current={index === selectedFileIndex ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${index === selectedFileIndex ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(index + 1)}</button>)}</div>}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </div>, document.body);
 }
