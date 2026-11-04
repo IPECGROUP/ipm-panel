@@ -13,7 +13,7 @@ const toFa = (value) => String(value).replace(/\d/g, (digit) => "۰۱۲۳۴۵۶�
 const toEn = (value) => String(value).replace(/[۰-۹]/g, (digit) => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit)).replace(/[٠-٩]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".indexOf(digit));
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
 const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-300";
-const emptyForm = () => ({ serviceDate: "", categoryId: "", equipmentId: "", lastServiceDate: "", files: [] });
+const emptyForm = () => ({ serviceDate: "", categoryId: "", equipmentId: "", files: [] });
 
 function equipmentValue(item, fields, kind) {
   const field = fields.find((candidate) => String(candidate.categoryId) === String(item.categoryId) && (kind === "name"
@@ -69,6 +69,12 @@ export default function ServiceMaintenancePage() {
   })).values()], [definitions.categories, equipment]);
   const categoryEquipment = useMemo(() => equipment.filter((item) => String(item.categoryId) === String(form.categoryId)), [equipment, form.categoryId]);
   const selectedEquipment = equipmentById.get(String(form.equipmentId));
+  const lastServiceDate = useMemo(() => items
+    .filter((item) => String(item.equipmentId) === String(form.equipmentId))
+    .map((item) => toEn(String(item.serviceDate || "").replaceAll("-", "/")))
+    .filter((date) => /^\d{4}\/\d{2}\/\d{2}$/.test(date))
+    .sort()
+    .at(-1) || "", [items, form.equipmentId]);
   const filteredItems = useMemo(() => {
     const terms = toEn(query).trim().toLocaleLowerCase("fa").split(/\s+/).filter(Boolean);
     return items.filter((item) => {
@@ -107,7 +113,7 @@ export default function ServiceMaintenancePage() {
       const result = await api("/equipment/service-maintenance", {
         method: "POST",
         headers: user?.id != null ? { "x-user-id": String(user.id) } : {},
-        body: JSON.stringify({ serviceDate: form.serviceDate, equipmentId: form.equipmentId, lastServiceDate: form.lastServiceDate, files }),
+        body: JSON.stringify({ serviceDate: form.serviceDate, equipmentId: form.equipmentId, files }),
       });
       setItems((current) => [result.item, ...current]);
       setForm(emptyForm());
@@ -132,12 +138,12 @@ export default function ServiceMaintenancePage() {
         </div>
 
         {formOpen && <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[190px_240px_220px_minmax(0,1fr)]">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[190px_280px_220px_minmax(0,1fr)]">
             <div className="block"><span className={labelClass}>تاریخ سرویس *</span><JalaliPopupDatePicker value={form.serviceDate} onChange={(serviceDate) => { setForm((old) => ({ ...old, serviceDate })); setServiceDateError(false); setError(""); }} placeholder="انتخاب تاریخ سرویس" buttonClassName={`${inputClass} flex items-center justify-between ${serviceDateError ? "!border-red-500" : ""}`} />{serviceDateError && <span role="alert" className="mt-1 block text-xs text-red-600">تاریخ سرویس الزامی است.</span>}</div>
             <label className="block"><span className={labelClass}>دسته‌بندی *</span><select required value={form.categoryId} onChange={(event) => setForm((old) => ({ ...old, categoryId: event.target.value, equipmentId: "" }))} className={inputClass}><option value="">انتخاب دسته‌بندی</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
             <label className="block"><span className={labelClass}>کد تجهیز *</span><select required disabled={!form.categoryId} value={form.equipmentId} onChange={(event) => setForm((old) => ({ ...old, equipmentId: event.target.value }))} className={`${inputClass} disabled:opacity-50`}><option value="">انتخاب کد تجهیز</option>{categoryEquipment.map((item) => <option key={item.id} value={item.id}>{equipmentValue(item, definitions.fields, "code")}</option>)}</select></label>
-            <label className="block"><span className={labelClass}>نام تجهیز</span><input readOnly value={selectedEquipment ? equipmentValue(selectedEquipment, definitions.fields, "name") : ""} className={`${inputClass} bg-neutral-50 dark:bg-white/[0.03]`} placeholder="پس از انتخاب کد تجهیز نمایش داده می‌شود" /></label>
-            <label className="block"><span className={labelClass}>تاریخ آخرین سرویس</span><JalaliPopupDatePicker value={form.lastServiceDate} onChange={(lastServiceDate) => setForm((old) => ({ ...old, lastServiceDate }))} placeholder="انتخاب تاریخ آخرین سرویس" /></label>
+            <label className="block min-w-0"><span className={labelClass}>نام تجهیز</span><input readOnly value={selectedEquipment ? equipmentValue(selectedEquipment, definitions.fields, "name") : ""} className={`${inputClass} !bg-neutral-100 dark:!bg-white/10`} placeholder="پس از انتخاب کد تجهیز نمایش داده می‌شود" /></label>
+            <label className="block"><span className={labelClass}>تاریخ آخرین سرویس</span><input readOnly value={toFa(lastServiceDate)} className={`${inputClass} !bg-neutral-100 dark:!bg-white/10`} placeholder="سرویس قبلی ثبت نشده است" /></label>
             <div className="block"><span className={labelClass}>بارگذاری</span><button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving} className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl border bg-white outline-none focus:border-neutral-400 disabled:opacity-50 dark:bg-white/5 ${form.files.length ? "border-emerald-400 bg-emerald-50" : "border-neutral-200 dark:border-white/15"}`} title={form.files.length ? `${toFa(form.files.length)} فایل پیوست‌شده` : "بارگذاری"} aria-label="بارگذاری پیوست"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />{form.files.length > 0 && <span className="absolute -left-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></div>
           </div>
           <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || loading || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت سرویس"} aria-label="ثبت سرویس"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
