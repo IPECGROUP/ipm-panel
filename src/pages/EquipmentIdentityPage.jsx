@@ -348,19 +348,18 @@ function EquipmentIdentityDetail({ item, definitions, letters, libraryItems, onC
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <main className="min-w-0 space-y-4">
              {sections.length > 0 && <section className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
-               <h3 className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">مشخصات تجهیزات</h3>
                <div className="overflow-x-auto">
                  <table dir="rtl" className="w-full min-w-[760px] table-fixed text-sm">
                    <colgroup><col className="w-[35%]" /><col className="w-[30%]" /><col className="w-[35%]" /></colgroup>
-                   <thead className="border-b border-neutral-200 bg-white text-neutral-900"><tr className="h-10"><th scope="col" className="px-3 py-2 text-right font-semibold">مشخصات</th><th scope="col" className="px-3 py-2 text-center font-semibold">مقدار</th><th scope="col" dir="ltr" className="px-3 py-2 text-left font-semibold">Specifications</th></tr></thead>
+                   <thead className="border-b border-neutral-200 bg-[#5d92b7] text-white"><tr className="h-10"><th scope="col" className="px-3 py-2 text-right font-semibold">مشخصات</th><th scope="col" className="px-3 py-2 text-center font-semibold">مقدار</th><th scope="col" dir="ltr" className="px-3 py-2 text-left font-semibold">Specifications</th></tr></thead>
                    {sections.map(({ title, fields }) => <tbody key={title.id}>
-                     {title.name !== "مشخصات تجهیزات" && <tr className="h-10 bg-neutral-100 font-semibold text-neutral-800 dark:bg-white/10 dark:text-neutral-100"><th colSpan={3} className="border-b border-neutral-300 px-3 py-2 text-right dark:border-neutral-700">{title.name}</th></tr>}
+                     {title.name !== "مشخصات تجهیزات" && <tr className="h-10 bg-[#f8f7f2] font-semibold text-neutral-800 dark:bg-white/10 dark:text-neutral-100"><th colSpan={3} className="border-b border-neutral-300 px-3 py-2 text-right dark:border-neutral-700">{title.name}</th></tr>}
                      {fields.map((field) => {
                        const depth = field.code ? String(field.code).split("-").length - 1 : 0;
                        const hasChildren = Boolean(field.code && fields.some((candidate) => candidate !== field && String(candidate.code || "").startsWith(`${field.code}-`)));
                        const isGroup = /^\d+$/.test(String(field.code || ""));
                        const label = field.persianName || field.name;
-                       return <tr key={field.id} className={`min-h-10 border-b border-neutral-200 dark:border-neutral-700 ${isGroup ? "border-t-2 border-t-neutral-300 bg-[#5d92b7] font-semibold text-white dark:border-t-neutral-600" : hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
+                       return <tr key={field.id} className={`min-h-10 border-b border-neutral-200 dark:border-neutral-700 ${isGroup ? "border-t-2 border-t-neutral-300 bg-[#f8f7f2] font-semibold text-neutral-900 dark:border-t-neutral-600 dark:bg-white/10 dark:text-neutral-100" : hasChildren ? "bg-neutral-50/80 dark:bg-white/5" : "bg-white dark:bg-neutral-900"}`}>
                          <th scope="row" className="px-3 py-2 text-right font-normal"><div style={{ paddingRight: Math.min(depth, 5) * 16 }} className={isGroup || hasChildren ? "font-semibold" : ""}>{label}</div></th>
                          <td dir="auto" className="whitespace-pre-wrap break-words px-3 py-2 text-center font-medium">{isGroup ? "" : item.fieldValues?.[String(field.id)] || "—"}</td>
                          <td dir="ltr" className={`break-words px-3 py-2 text-left ${isGroup || hasChildren ? "font-semibold" : ""}`}>{field.englishName || "—"}</td>
