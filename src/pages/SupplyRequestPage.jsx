@@ -1540,6 +1540,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   const [planningBudgetItems, setPlanningBudgetItems] = useState([]);
   const [planningBudgetLoading, setPlanningBudgetLoading] = useState(false);
   const [actionBudgetItems, setActionBudgetItems] = useState([]);
+  const [actionBudgetStatus, setActionBudgetStatus] = useState("loading");
   const [finalAmount, setFinalAmount] = useState(formatMoney(meta.finalAmount ?? item.amount ?? ""));
   const [deadlineDate, setDeadlineDate] = useState(meta.deadlineDate || "");
   const [ccOpen, setCcOpen] = useState(false);
@@ -1594,10 +1595,11 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
 
   useEffect(() => {
     let cancelled = false;
-    if (!item.projectId) { setActionBudgetItems([]); return undefined; }
+    if (!item.projectId) { setActionBudgetItems([]); setActionBudgetStatus("unavailable"); return undefined; }
     setActionBudgetItems([]);
+    setActionBudgetStatus("loading");
     fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`, { credentials: "include" })
-      .then((response) => (response.ok ? response.json() : { items: [] }))
+      .then((response) => { if (!response.ok) throw new Error("budget_fetch_failed"); return response.json(); })
       .then((data) => {
         if (cancelled) return;
         const projectCode = normalizeBudgetCode(project?.code || item.projectCode || "");
@@ -1608,8 +1610,9 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
           byCode.set(code, { ...budgetItem, code });
         });
         setActionBudgetItems(Array.from(byCode.values()).sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true })));
+        setActionBudgetStatus("loaded");
       })
-      .catch(() => { if (!cancelled) setActionBudgetItems(item.budgetCode ? [{ code: item.budgetCode }] : []); });
+      .catch(() => { if (!cancelled) { setActionBudgetItems([]); setActionBudgetStatus("unavailable"); } });
     return () => { cancelled = true; };
   }, [item.budgetCode, item.projectId, item.projectCode, project?.code]);
 
@@ -1830,7 +1833,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </PreviewSection>
                 ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
-                  <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={currentBudgetCode || item.budgetCode} name={currentBudgetName} />} />
+                  <PreviewRow compact label="کد بودجه" value={<><BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />{item.budgetCode && actionBudgetStatus === "loaded" && !currentBudgetItem && <span className="mr-2 text-amber-700 dark:text-amber-300">این کد در ساختار بودجه پروژه یافت نشد.</span>}{item.budgetCode && actionBudgetStatus === "unavailable" && <span className="mr-2 text-neutral-500">بررسی شرح کد بودجه امکان‌پذیر نیست.</span>}</>} />
                   <PreviewRow compact label="موضوع" value={item.title || "—"} />
                   <PreviewRow compact label="نوع درخواست" value={item.requestTypeTitle || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
