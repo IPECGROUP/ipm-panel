@@ -97,12 +97,12 @@ function CurrencyAmount({ value, currencyName = "ریال", empty = "—" }) {
 }
 
 function budgetNameOf(item) {
-  return String(item?.center_desc ?? item?.last_desc ?? item?.budgetName ?? item?.budget_name ?? item?.name ?? item?.description ?? "").trim();
+  return [item?.center_desc, item?.last_desc, item?.budgetName, item?.budget_name, item?.name, item?.description].map((value) => String(value ?? "").trim()).find(Boolean) || "";
 }
 
 function BudgetCodeValue({ code, name = "" }) {
   if (!code) return "—";
-  return <span dir="rtl" className="inline-flex max-w-full items-center justify-end gap-1.5"><span dir="ltr" className="shrink-0 font-sans tabular-nums">{toFaDigits(code)}</span>{name ? <span className="min-w-0 truncate">- {name}</span> : null}</span>;
+  return <span dir="rtl" className="inline-flex max-w-full flex-wrap items-baseline gap-1.5"><span dir="ltr" className="font-sans tabular-nums">{toFaDigits(code)}</span>{name ? <span className="min-w-0 break-words">- {name}</span> : null}</span>;
 }
 
 function isRialCurrency(currency) {
@@ -1594,7 +1594,8 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
 
   useEffect(() => {
     let cancelled = false;
-    if (!item.projectId) return undefined;
+    if (!item.projectId) { setActionBudgetItems([]); return undefined; }
+    setActionBudgetItems([]);
     fetch(`/api/cost-breakdown?project_id=${encodeURIComponent(item.projectId)}`, { credentials: "include" })
       .then((response) => (response.ok ? response.json() : { items: [] }))
       .then((data) => {
@@ -1606,7 +1607,6 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
           if (!code) return;
           byCode.set(code, { ...budgetItem, code });
         });
-        if (item.budgetCode && !byCode.has(item.budgetCode)) byCode.set(item.budgetCode, { code: item.budgetCode });
         setActionBudgetItems(Array.from(byCode.values()).sort((a, b) => String(a.code).localeCompare(String(b.code), "fa", { numeric: true })));
       })
       .catch(() => { if (!cancelled) setActionBudgetItems(item.budgetCode ? [{ code: item.budgetCode }] : []); });
@@ -1708,8 +1708,9 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
     setCcUserIds((prev) => (prev.includes(sid) ? prev.filter((x) => x !== sid) : [...prev, sid]));
   };
 
+  const currentBudgetCode = budgetCodeForProject(item.budgetCode, project?.code || item.projectCode);
   const currentBudgetItem = actionBudgetItems.find((budgetItem) =>
-    normalizeBudgetCode(budgetItem?.code ?? budgetItem?.budgetCode ?? budgetItem?.budget_code ?? budgetItem?.center_code) === normalizeBudgetCode(item.budgetCode)
+    budgetCodeForProject(budgetItem?.code ?? budgetItem?.budgetCode ?? budgetItem?.budget_code ?? budgetItem?.center_code, project?.code || item.projectCode) === currentBudgetCode
   );
   const currentBudgetName = budgetNameOf(currentBudgetItem);
 
@@ -1829,10 +1830,8 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
                   </PreviewSection>
                 ) : <>
                 <PreviewSection title="جزئیات درخواست تامین" flush>
-                  <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/10 dark:divide-white/10 dark:md:[&>*+*]:border-white/10">
-                    <PreviewRow compact label="موضوع" value={item.title || "—"} />
-                    <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={item.budgetCode} name={currentBudgetName} />} />
-                  </div>
+                  <PreviewRow compact label="کد بودجه" value={<BudgetCodeValue code={currentBudgetCode || item.budgetCode} name={currentBudgetName} />} />
+                  <PreviewRow compact label="موضوع" value={item.title || "—"} />
                   <PreviewRow compact label="نوع درخواست" value={item.requestTypeTitle || "—"} />
                   <PreviewRow label="شرح" value={item.description || "—"} />
                   <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-x md:divide-y-0 dark:divide-white/10">

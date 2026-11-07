@@ -1,5 +1,6 @@
 // تخصیص نقدینگی
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
@@ -78,8 +79,35 @@ function quickHistoryStartDate(key) {
 
 const tableCellClass = "h-10 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-neutral-700";
 const moneyTableCellClass = tableCellClass + " !text-right font-[Vazir]";
-const historyTableCellClass = "h-9 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
+const historyTableCellClass = "h-9 border-b border-neutral-300 px-3 text-center align-middle dark:border-neutral-700";
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
+
+function HistoryActionMenu({ open, setOpen, selectedCount, deleting, onDelete }) {
+  const triggerRef = useRef(null);
+  const popoverRef = useRef(null);
+  const [position, setPosition] = useState(null);
+  const updatePosition = useCallback(() => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (rect) setPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - 248)), top: rect.bottom + 8 });
+  }, []);
+  useEffect(() => {
+    if (!open) return undefined;
+    const outside = (event) => { if (!triggerRef.current?.contains(event.target) && !popoverRef.current?.contains(event.target)) setOpen(false); };
+    const escape = (event) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", escape);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => { document.removeEventListener("mousedown", outside); document.removeEventListener("keydown", escape); window.removeEventListener("resize", updatePosition); window.removeEventListener("scroll", updatePosition, true); };
+  }, [open, setOpen, updatePosition]);
+  return <div className="absolute left-2 top-1/2 z-50 -translate-y-1/2" dir="rtl">
+    <button ref={triggerRef} type="button" onClick={() => { if (!open) updatePosition(); setOpen(!open); }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت موارد انتخاب‌شده" aria-label="مدیریت موارد انتخاب‌شده" aria-expanded={open}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${open ? "scale-110" : ""} invert`} /></button>
+    {open && position && createPortal(<div ref={popoverRef} dir="rtl" className="table-menu-popover fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
+      <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
+      <button type="button" disabled={!selectedCount || deleting} onClick={() => { setOpen(false); onDelete(); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
+    </div>, document.body)}
+  </div>;
+}
 
 export default function LiquidityAllocationPage() {
   useFeatureVisibility("تخصیص نقدینگی", { "افزودن": "افزودن" });
@@ -605,17 +633,10 @@ export default function LiquidityAllocationPage() {
           </div>
         </div>
         <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-300 bg-[#fbfbf8] shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
-        {canDeleteHistory && <div className="relative flex items-center justify-between border-b border-neutral-300 px-3 py-2 dark:border-white/10">
-          <span className="text-xs text-neutral-500">{selectedHistory.size ? `${toFaDigits(selectedHistory.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</span>
-          <div className="relative">
-            <button type="button" onClick={() => setHistoryMenuOpen((open) => !open)} aria-label="مدیریت موارد انتخاب‌شده" aria-expanded={historyMenuOpen} className="grid h-8 w-8 place-items-center rounded-lg text-lg hover:bg-black/5 dark:hover:bg-white/10">•••</button>
-            {historyMenuOpen && <div className="absolute left-0 top-full z-30 w-56 rounded-xl border border-black/10 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-neutral-800"><button type="button" disabled={!selectedHistory.size || deletingHistory} onClick={deleteSelectedHistory} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" />حذف موارد انتخاب‌شده</button></div>}
-          </div>
-        </div>}
         <div dir="ltr" className="max-h-[55vh] overflow-y-auto overflow-x-auto">
         <table dir="rtl" className="w-full min-w-[760px] table-fixed border-collapse text-[13px] text-neutral-800 dark:text-neutral-100">
           <colgroup>
-            {canDeleteHistory && <col style={{ width: 44 }} />}
+            {canDeleteHistory && <col style={{ width: 40 }} />}
             <col className="w-[8%]" />
             <col className="w-[18%]" />
             <col className="w-[20%]" />
@@ -624,16 +645,16 @@ export default function LiquidityAllocationPage() {
           </colgroup>
           <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
-              {canDeleteHistory && <th className="sticky top-0 z-10 bg-[#184a6b] text-white"><input type="checkbox" aria-label="انتخاب همه ردیف‌های این صفحه" className="h-4 w-4" checked={allPageSelected} onChange={() => setSelectedHistory((current) => { const next = new Set(current); pagedHistory.forEach((item) => allPageSelected ? next.delete(String(item.id)) : next.add(String(item.id))); return next; })} /></th>}
+              {canDeleteHistory && <th className="sticky top-0 z-40 bg-[#184a6b] text-white"><input type="checkbox" aria-label="انتخاب همه ردیف‌های این صفحه" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allPageSelected} onChange={() => setSelectedHistory((current) => { const next = new Set(current); pagedHistory.forEach((item) => allPageSelected ? next.delete(String(item.id)) : next.add(String(item.id))); return next; })} /></th>}
               {["ردیف", "تاریخ تخصیص", "مبلغ تخصیص", "منبع نقدینگی", "توضیحات"].map((title) => (
-                 <th key={title} className="sticky top-0 z-10 h-9 border-b border-l border-white/10 bg-[#184a6b] px-3 text-center text-[14px] font-semibold text-white md:text-[15px]">{title}</th>
+                 <th key={title} className="sticky top-0 z-10 h-9 bg-[#184a6b] px-3 text-center text-[14px] font-semibold text-white md:text-[15px]">{title}{title === "توضیحات" && canDeleteHistory && <HistoryActionMenu open={historyMenuOpen} setOpen={setHistoryMenuOpen} selectedCount={selectedHistory.size} deleting={deletingHistory} onDelete={deleteSelectedHistory} />}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {pagedHistory.length ? pagedHistory.map((item, index) => (
-               <tr key={item.id} onClick={() => setPreviewAllocation(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPreviewAllocation(item); } }} tabIndex={0} aria-label={`نمایش جزئیات تخصیص ${item.allocationDate || ""}`} className="cursor-pointer bg-[#fbfbf8] transition-colors hover:bg-neutral-100/80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:bg-neutral-900 dark:hover:bg-white/[0.06]">
-                {canDeleteHistory && <td className={historyTableCellClass} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`انتخاب تخصیص ${item.allocationDate || ""}`} checked={selectedHistory.has(String(item.id))} onChange={() => setSelectedHistory((current) => { const next = new Set(current); next.has(String(item.id)) ? next.delete(String(item.id)) : next.add(String(item.id)); return next; })} className="h-4 w-4" /></td>}
+               <tr key={item.id} onClick={() => setPreviewAllocation(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPreviewAllocation(item); } }} tabIndex={0} aria-label={`نمایش جزئیات تخصیص ${item.allocationDate || ""}`} className="cursor-pointer bg-black/[0.02] transition-colors hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:bg-white/5 dark:hover:bg-white/10">
+                {canDeleteHistory && <td className="border-b border-neutral-300 px-3 text-center dark:border-neutral-700" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`انتخاب تخصیص ${item.allocationDate || ""}`} checked={selectedHistory.has(String(item.id))} onChange={() => setSelectedHistory((current) => { const next = new Set(current); next.has(String(item.id)) ? next.delete(String(item.id)) : next.add(String(item.id)); return next; })} className="h-4 w-4 accent-black dark:accent-neutral-200" /></td>}
                 <td className={historyTableCellClass}>{toFaDigits(historyStartIndex + index + 1)}</td>
                 <td className={historyTableCellClass}>{toFaDigits(item.allocationDate || "—")}</td>
                 <td className={historyTableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
