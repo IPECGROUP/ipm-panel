@@ -8,6 +8,7 @@ const normalize = (value) => value.replace(/[ي]/g, "ی").replace(/ك/g, "ک").r
 
 export default function MobileNav({ groups, user, logout, isActive }) {
   const dialog = useRef(null);
+  const closeButton = useRef(null);
   const [panel, setPanel] = useState(null);
   const [query, setQuery] = useState("");
   const [sheetHeight, setSheetHeight] = useState(60);
@@ -37,7 +38,10 @@ export default function MobileNav({ groups, user, logout, isActive }) {
 
   useEffect(() => {
     if (!panel) { dialog.current?.close(); return; }
-    dialog.current?.showModal();
+    if (!dialog.current?.open) {
+      dialog.current?.showModal();
+      closeButton.current?.focus({ preventScroll: true });
+    }
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const desktop = window.matchMedia("(min-width: 1024px)");
@@ -78,7 +82,7 @@ export default function MobileNav({ groups, user, logout, isActive }) {
           </div>
           <header className="mobile-menu-heading">
             <div>{section && <h2>{section.label}</h2>}</div>
-            <button type="button" className="mobile-round-button" onClick={close} aria-label="بستن منو" autoFocus><X size={20} /></button>
+            <button ref={closeButton} type="button" className="mobile-round-button" onClick={close} aria-label="بستن منو" autoFocus><X size={20} /></button>
           </header>
           <div className="mobile-menu-scroll">
             {panel === "more" && <>

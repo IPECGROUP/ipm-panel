@@ -123,3 +123,24 @@
 }
 
 .modern-login__success { margin: 0; padding: 9px 12px; background: rgba(12, 100, 56, .8); border-radius: 9px; color: white; font-size: 14px; }
+
+/* On short landscape screens, place the form controls side by side and let
+   the page scroll normally when the keyboard or an error reduces the space. */
+@media (orientation: landscape) and (max-height: 600px) and (min-width: 560px) {
+  .modern-login { align-items: safe center; padding: 12px 18px; }
+  .modern-login__content { width: min(100%, 720px); margin: auto; }
+  .modern-login__brand { margin-bottom: 6px; }
+  .modern-login__brand h2 { font-size: 17px; }
+  .modern-login__panel { padding: 10px 18px 12px; border-radius: 20px; }
+  .modern-login__panel h1 { margin-bottom: 6px; font-size: 19px; }
+  .modern-login__form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "user captcha" "password submit" "message message"; gap: 7px 16px; align-items: center; }
+  .modern-login__field:nth-of-type(1) { grid-area: user; }
+  .modern-login__field:nth-of-type(2) { grid-area: password; }
+  .modern-login__field { min-height: 44px; }
+  .modern-login__captcha { grid-area: captcha; min-width: 0; }
+  .modern-login__submit { grid-area: submit; min-height: 44px; margin: 0; }
+  .modern-login__error, .modern-login__success { grid-column: 1 / -1; }
+  .modern-login__help { margin-top: 7px; font-size: 11px; }
+  .modern-login__divider, .modern-login__mark { display: none; }
+  .modern-login__version { margin-top: 3px; }
+}
