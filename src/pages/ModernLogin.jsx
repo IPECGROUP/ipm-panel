@@ -61,7 +61,7 @@ export default function ModernLogin({ testMode = false }) {
     <main className="modern-login" dir="rtl">
       <div className="modern-login__content">
         <header className="modern-login__brand">
-          <div className="modern-login__mark"><img src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-13.png" alt="IPEC" /></div>
+          <div className="modern-login__mark"><img src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-12.png" alt="IPEC" /></div>
         </header>
 
         <section className="modern-login__panel" aria-labelledby="modern-login-title">
@@ -120,7 +120,7 @@ export default function ModernLogin({ testMode = false }) {
             </button>
           </form>
         </section>
-        <footer className="modern-login__footer"><p>2026 ? تمامی حقوق متعلق به شرکت ایده پویان انرژی می باشد.</p><p className="modern-login__version">نسخه: <span dir="ltr">v2.0.0</span></p></footer>
+        <footer className="modern-login__footer"><p>2026 {"\u00a9"} تمامی حقوق متعلق به شرکت ایده پویان انرژی می باشد.</p><p className="modern-login__version">نسخه: <span dir="ltr">v2.0.0</span></p></footer>
       </div>
     </main>
   );
