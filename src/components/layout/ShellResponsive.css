@@ -5,3 +5,16 @@
 @media (prefers-reduced-motion: reduce) {
   .shell-header { transition: none; }
 }
+
+@media (max-width: 767px) {
+  .shell-logo { flex: 1 1 auto; min-width: 0; transform: none; }
+  .shell-logo-image { width: min(45vw, 208px); max-width: 100%; }
+  .shell-logo-image img { transform: none; }
+  .shell-mobile-date { flex: 0 1 auto; padding-inline: 6px; }
+  .shell-jalali-date { max-width: none; }
+  .shell-gregorian-date { display: none; }
+}
+@media (max-width: 340px) {
+  .shell-logo-image { width: 39vw; }
+  .shell-mobile-date { font-size: 10px; }
+}

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { Glass } from "glisse";
 import { ChevronLeft, LogOut, MoreHorizontal, Search, X } from "lucide-react";
 import "./MobileNav.css";
 
@@ -40,20 +41,20 @@ export default function MobileNav({ groups, user, logout, isActive }) {
 
   return (
     <div className="ipm-mobile-nav" dir="rtl">
-      <nav className="mobile-dock" aria-label="منوی اصلی موبایل" style={{ "--dock-count": primary.length + 1 }}>
+      <Glass role="navigation" className="mobile-dock" aria-label="منوی اصلی موبایل" style={{ "--dock-count": primary.length + 1 }}>
         {primary.map((item) => item.type === "section" ? (
           <button key={item.key} type="button" aria-label={item.label} aria-haspopup="dialog" aria-expanded={panel === item.key} className={item.items.some((child) => isActive(child.to)) ? "is-active" : ""} onClick={() => open(item.key)}>
             {item.icon}<span>{item.key === "contracts" ? "قراردادها" : "پروژه‌ها"}</span>
           </button>
         ) : <Link key={item.to} to={item.to} aria-current={item.active ? "page" : undefined} onClick={close}>{item.icon}<span>{item.label}</span></Link>)}
         <button type="button" className={panel === "more" || moreActive ? "is-active" : ""} aria-haspopup="dialog" aria-expanded={panel === "more"} onClick={() => open("more")}><MoreHorizontal size={25} /><span>بیشتر</span></button>
-      </nav>
+      </Glass>
 
-      <dialog ref={dialog} className="mobile-menu-dialog" aria-labelledby="mobile-menu-title" onCancel={close} onClose={close} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+      <dialog ref={dialog} className="mobile-menu-dialog" aria-label={section?.label || "منوی بخش‌ها"} onCancel={close} onClose={close} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
         <div className="mobile-menu-sheet">
           <div className="mobile-sheet-handle" aria-hidden="true" />
           <header className="mobile-menu-heading">
-            <div><span className="mobile-menu-eyebrow">دسترسی سریع</span><h2 id="mobile-menu-title">{section?.label || "میانبرهای من"}</h2>{section && <p>بخش مورد نظر خود را انتخاب کنید.</p>}</div>
+            <div>{section && <h2>{section.label}</h2>}</div>
             <button type="button" className="mobile-round-button" onClick={close} aria-label="بستن منو" autoFocus><X size={20} /></button>
           </header>
           <div className="mobile-menu-scroll">

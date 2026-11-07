@@ -294,11 +294,11 @@ export default function Shell() {
           <div className="mx-auto max-w-[1400px] flex min-w-0 items-center justify-between gap-2">
           <Link
             to="/"
-            className="flex min-w-0 shrink-0 items-center justify-start hover:opacity-95 transition sm:translate-x-5"
+            className="shell-logo flex min-w-0 shrink-0 items-center justify-start hover:opacity-95 transition sm:translate-x-5"
             aria-label="خانه"
             title="خانه"
           >
-            <span className="relative block h-10 w-52 shrink-0 sm:h-12 sm:w-96">
+            <span className="shell-logo-image relative block h-10 w-52 shrink-0 sm:h-12 sm:w-96">
               <img
                 src="/images/header%20logo.webp"
                 alt="لوگوی شرکت ایده پویان انرژی"
@@ -328,20 +328,20 @@ export default function Shell() {
             {/* تاریخ داخل هدر موبایل */}
             <div
               className={
-                "flex md:hidden min-w-0 h-8 sm:h-9 items-center gap-1.5 px-2.5 rounded-xl border text-[11px] leading-none " +
+                "shell-mobile-date flex md:hidden min-w-0 h-8 sm:h-9 items-center gap-1.5 px-2.5 rounded-xl border text-[11px] leading-none " +
                 (theme === "dark"
                   ? "border-white/10 bg-white/5 text-white/80"
                   : "border-black/10 bg-white/70 text-neutral-700")
               }
               title="تاریخ امروز"
             >
-              <span className="min-w-0 max-w-[5.75rem] truncate whitespace-nowrap">
+              <span className="shell-jalali-date min-w-0 max-w-[5.75rem] truncate whitespace-nowrap">
                 {jalaliDate || "—"}
               </span>
               <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
                 •
               </span>
-              <span className="hidden min-[380px]:inline shrink-0 whitespace-nowrap">
+              <span className="shell-gregorian-date hidden min-[380px]:inline shrink-0 whitespace-nowrap">
                 {gregorianDate || "—"}
               </span>
             </div>

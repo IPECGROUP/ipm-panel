@@ -23,6 +23,7 @@
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
     "exceljs": "^4.4.0",
+    "glisse": "^0.5.0",
     "jalaliday": "^3.1.1",
     "lucide-react": "^0.562.0",
     "pdfjs-dist": "^6.4.299",
