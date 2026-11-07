@@ -606,15 +606,16 @@ export default function LiquidityAllocationPage() {
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-3 sm:p-6">
             {selectedOverviewProject && <section className="shrink-0 space-y-3">
-              <div><h3 className="font-bold">{selectedOverviewProject.label}</h3><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(selectedOverviewProject.allocations.length)} نوبت تخصیص</p></div>
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                 {[["کل تخصیص", selectedOverviewProject.total, "bg-sky-100 dark:bg-sky-900/60"], ["تعهدات", selectedOverviewProject.committed, "bg-neutral-50 dark:bg-white/[0.04]"], ["مصرف", selectedOverviewProject.spent, "bg-red-100 dark:bg-red-900/60"], ["مانده نقدینگی", selectedOverviewProject.remaining, "bg-emerald-100 dark:bg-emerald-900/60"]].map(([label, value, background]) => <div key={label} className={`rounded-xl border border-black/10 p-3 dark:border-white/10 ${background}`}><div className="text-xs">{label}</div><div className="mt-1 text-sm font-bold tabular-nums">{displayOverviewMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
               </div>
             </section>}
-            <div className="grid min-h-0 shrink-0 grid-cols-2 items-start gap-3 sm:gap-5">
-            <section>
-              <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-bold">کل تخصیص پروژه‌ها</h3><span className="text-xs text-neutral-500 dark:text-neutral-400">ریال</span></div>
-              {projectOverview.length ? <div className="h-[clamp(80px,23vh,256px)] space-y-2 overflow-y-auto rounded-xl border border-black/10 p-3 dark:border-white/10">
+            <div className="grid min-h-0 shrink-0 grid-cols-2 items-start gap-x-3 gap-y-2 sm:gap-x-5">
+              <div aria-hidden="true" />
+              <div className="min-w-0"><h3 className="truncate font-bold" title={selectedOverviewProject.label}>{selectedOverviewProject.label}</h3><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(selectedOverviewProject.allocations.length)} نوبت تخصیص</p></div>
+            <section className="min-w-0">
+              <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-bold text-[#184a6b] dark:text-sky-300">کل تخصیص پروژه‌ها</h3><span className="text-xs text-neutral-500 dark:text-neutral-400">ریال</span></div>
+              {projectOverview.length ? <div className="h-[clamp(80px,28vh,300px)] space-y-2 overflow-y-auto rounded-xl border border-black/10 p-3 dark:border-white/10">
                 {projectOverview.map((project) => <button key={project.id} type="button" onClick={() => setSelectedOverviewProjectId(project.id)} className={`grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg px-2 py-2 text-right transition ${selectedOverviewProject?.id === project.id ? "bg-sky-50 dark:bg-sky-500/10" : "hover:bg-neutral-50 dark:hover:bg-white/5"}`} aria-pressed={selectedOverviewProject?.id === project.id}>
                   <span className="min-w-0 truncate text-xs font-medium sm:text-sm" title={project.label}>{project.label}</span>
                   <span className="whitespace-nowrap text-xs font-semibold tabular-nums sm:text-sm">{displayOverviewMoney(project.total)}</span>
@@ -623,8 +624,8 @@ export default function LiquidityAllocationPage() {
               </div> : <div className="rounded-xl border border-black/10 p-8 text-center text-sm text-neutral-500 dark:border-white/10">پروژه‌ای برای نمایش وجود ندارد.</div>}
             </section>
               {selectedOverviewProject?.allocations.length > 0 ? <section className="min-w-0">
-                <h3 className="mb-3 text-sm font-bold">روند تخصیص پروژه</h3>
-                <div className="h-[clamp(80px,23vh,256px)] rounded-xl border border-black/10 px-2 pb-2 pt-4 dark:border-white/10" dir="ltr">
+                <h3 className="mb-3 text-sm font-bold text-[#184a6b] dark:text-sky-300">روند تخصیص پروژه</h3>
+                <div className="h-[clamp(80px,28vh,300px)] rounded-xl border border-black/10 px-2 pb-2 pt-4 dark:border-white/10" dir="ltr">
                   <ResponsiveContainer width="100%" height="100%"><AreaChart data={[{ sequence: 0, cumulative: 0 }, ...selectedOverviewProject.allocations]} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#d4d4d8" vertical={false} />
                     <XAxis dataKey="sequence" tickFormatter={toFaDigits} tickLine={false} axisLine={false} fontSize={11} />
@@ -636,9 +637,9 @@ export default function LiquidityAllocationPage() {
               </section> : selectedOverviewProject && <div className="rounded-xl border border-black/10 p-6 text-center text-sm text-neutral-500 dark:border-white/10">برای این پروژه تخصیصی ثبت نشده است.</div>}
             </div>
             {selectedOverviewProject?.allocations.length > 0 && <section className="flex min-h-0 flex-1 flex-col">
-              <h3 className="mb-3 text-sm font-bold">ریز تخصیص‌ها</h3>
+              <h3 className="mb-3 text-sm font-bold text-[#184a6b] dark:text-sky-300">ریز تخصیص‌ها</h3>
                 <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-black/10 dark:border-white/10">
-                  <table className="w-full min-w-[680px] text-right text-xs sm:text-sm"><thead className="sticky top-0 z-10 bg-neutral-100 dark:bg-neutral-800"><tr>{["نوبت", "تاریخ", "منبع نقدینگی", "مبلغ این نوبت", "جمع تا این نوبت", "توضیحات"].map((title) => <th key={title} className="border-b border-black/10 px-3 py-2 font-semibold dark:border-white/10">{title}</th>)}</tr></thead>
+                  <table className="w-full min-w-[680px] text-right text-xs sm:text-sm"><thead className="sticky top-0 z-10 bg-[#184a6b] text-white"><tr>{["نوبت", "تاریخ", "منبع نقدینگی", "مبلغ این نوبت", "جمع تا این نوبت", "توضیحات"].map((title) => <th key={title} className="border-b border-white/10 px-3 py-2 font-semibold">{title}</th>)}</tr></thead>
                     <tbody>{[...selectedOverviewProject.allocations].reverse().map((entry) => <tr key={entry.id} className="border-b border-black/10 last:border-b-0 dark:border-white/10"><td className="px-3 py-2">{toFaDigits(entry.sequence)}</td><td className="whitespace-nowrap px-3 py-2">{toFaDigits(entry.date)}</td><td className="px-3 py-2">{entry.source}</td><td className="whitespace-nowrap px-3 py-2 font-semibold tabular-nums">{displayOverviewMoney(entry.amount)}</td><td className="whitespace-nowrap px-3 py-2 tabular-nums">{displayOverviewMoney(entry.cumulative)}</td><td className="max-w-48 truncate px-3 py-2" title={entry.description}>{entry.description || "—"}</td></tr>)}</tbody>
                   </table>
                 </div>
