@@ -2362,9 +2362,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const [nextRecipientsLoading, setNextRecipientsLoading] = useState(false);
   const [targetAssigneeUserId, setTargetAssigneeUserId] = useState("");
   const [liquidityRemaining, setLiquidityRemaining] = useState("");
+  const [liquidityAvailableForRequest, setLiquidityAvailableForRequest] = useState(null);
   const amountMinorUnits = decimalMinorUnits(item.rialAmount || item.amount || 0);
-  const liquidityMinorUnits = decimalMinorUnits(liquidityRemaining);
-  const hasEnoughLiquidity = liquidityMinorUnits > 0n && amountMinorUnits <= liquidityMinorUnits;
+  const hasEnoughLiquidity = liquidityAvailableForRequest != null && amountMinorUnits <= liquidityAvailableForRequest;
   const editProject = projects.find((row) => String(row.id) === String(editForm.projectId));
   const reviewProject = projects.find((row) => String(row.id) === reviewProjectId);
   const reviewProjectCode = normalizeProjectCode(reviewProject?.code || (reviewProjectId === String(item.projectId) ? project?.code || item.projectCode : ""));
@@ -2398,6 +2398,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
 
   useEffect(() => {
     const projectId = canEditRequest ? editForm.projectId : canReviewPlanning ? reviewProjectId : item.projectId;
+    setLiquidityAvailableForRequest(null);
     if (!projectId) {
       setLiquidityRemaining("");
       return;
@@ -2413,12 +2414,16 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         const key = String(projectId);
         const totalBudgetMinorUnits = decimalMinorUnits(data?.allocations?.[key] || 0);
         const commitmentMinorUnits = decimalMinorUnits(data?.committed?.[key] || 0);
-        const remainingMinorUnits = totalBudgetMinorUnits > commitmentMinorUnits ? totalBudgetMinorUnits - commitmentMinorUnits : 0n;
-        if (!cancelled) setLiquidityRemaining(exactRialMoney(minorUnitsToDecimal(remainingMinorUnits)));
+        const balance = totalBudgetMinorUnits - commitmentMinorUnits;
+        const alreadyCommitted = String(projectId) === String(item.projectId) && ["pending", "approved"].includes(String(item.status || "").trim().toLowerCase());
+        if (!cancelled) {
+          setLiquidityRemaining(exactRialMoney(minorUnitsToDecimal(balance > 0n ? balance : 0n)));
+          setLiquidityAvailableForRequest(balance + (alreadyCommitted ? amountMinorUnits : 0n));
+        }
       })
-      .catch(() => { if (!cancelled) setLiquidityRemaining(""); });
+    .catch(() => { if (!cancelled) { setLiquidityRemaining(""); setLiquidityAvailableForRequest(null); } });
     return () => { cancelled = true; };
-  }, [canEditRequest, canReviewPlanning, editForm.projectId, reviewProjectId, item.projectId, userId]);
+  }, [canEditRequest, canReviewPlanning, editForm.projectId, reviewProjectId, item.projectId, item.status, amountMinorUnits, userId]);
   const editAttachments = Array.isArray(editForm.attachments) ? editForm.attachments : [];
   const previewBudgetProjectId = canEditRequest ? editForm.projectId : canReviewPlanning ? reviewProjectId : item.projectId;
   const previewBudgetCode = canEditRequest ? editForm.budgetCode : canReviewPlanning ? reviewBudgetCode : item.budgetCode;
