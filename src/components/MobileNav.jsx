@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { Glass } from "glisse";
+import { Link, useNavigate } from "react-router-dom";
+import { TabBar } from "glisse";
 import { ChevronLeft, LogOut, MoreHorizontal, Search, X } from "lucide-react";
 import "./MobileNav.css";
 
 const normalize = (value) => value.replace(/[ي]/g, "ی").replace(/ك/g, "ک").replace(/‌/g, " ").trim();
 
 export default function MobileNav({ groups, user, logout, isActive }) {
+  const navigate = useNavigate();
   const dialog = useRef(null);
   const closeButton = useRef(null);
   const [panel, setPanel] = useState(null);
@@ -34,7 +35,12 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   const unique = destinations.filter((item, index) => destinations.findIndex((other) => other.to === item.to) === index);
   const section = items.find((item) => item.key === panel);
   const primary = [items.find((item) => item.to === "/"), items.find((item) => item.to === "/letters"), items.find((item) => item.key === "contracts"), items.find((item) => item.key === "projects")].filter(Boolean);
-  const moreActive = !primary.some((item) => item.type === "section" ? item.items.some((child) => isActive(child.to)) : item.active);
+  const currentPrimary = primary.find((item) => item.type === "section" ? item.items.some((child) => isActive(child.to)) : item.active);
+  const keyOf = (item) => item.type === "section" ? item.key : item.to;
+  const selectedTab = panel || (currentPrimary ? keyOf(currentPrimary) : "more");
+  // Glisse positions its lens from the left. Reverse the items for RTL while
+  // keeping its coordinate system left-to-right for pointer tracking.
+  const dockItems = [{ value: "more", label: "\u0628\u06cc\u0634\u062a\u0631", icon: <MoreHorizontal size={25} /> }, ...primary.map((item) => ({ value: keyOf(item), label: item.key === "contracts" ? "\u0642\u0631\u0627\u0631\u062f\u0627\u062f\u0647\u0627" : item.key === "projects" ? "\u067e\u0631\u0648\u0698\u0647\u200c\u0647\u0627" : item.label, icon: item.icon })).reverse()];
 
   useEffect(() => {
     if (!panel) { dialog.current?.close(); return; }
@@ -63,14 +69,14 @@ export default function MobileNav({ groups, user, logout, isActive }) {
 
   return (
     <div className="ipm-mobile-nav" dir="rtl">
-      <Glass role="navigation" className="mobile-dock" aria-label="منوی اصلی موبایل" style={{ "--dock-count": primary.length + 1 }}>
-        {primary.map((item) => item.type === "section" ? (
-          <button key={item.key} type="button" aria-label={item.label} aria-haspopup="dialog" aria-expanded={panel === item.key} className={item.items.some((child) => isActive(child.to)) ? "is-active" : ""} onClick={() => open(item.key)}>
-            {item.icon}<span>{item.key === "contracts" ? "قراردادها" : "پروژه‌ها"}</span>
-          </button>
-        ) : <Link key={item.to} to={item.to} aria-current={item.active ? "page" : undefined} onClick={close}>{item.icon}<span>{item.label}</span></Link>)}
-        <button type="button" className={panel === "more" || moreActive ? "is-active" : ""} aria-haspopup="dialog" aria-expanded={panel === "more"} onClick={() => open("more")}><MoreHorizontal size={25} /><span>بیشتر</span></button>
-      </Glass>
+      <TabBar className="mobile-glass-tabs" dir="ltr" aria-label={"\u0645\u0646\u0648\u06cc \u0627\u0635\u0644\u06cc \u0645\u0648\u0628\u0627\u06cc\u0644"} items={dockItems} value={selectedTab}
+        onValueChange={(value) => {
+          if (value === "more") { open("more"); return; }
+          const item = primary.find((entry) => keyOf(entry) === value);
+          if (!item) return;
+          if (item.type === "section") open(item.key);
+          else { close(); navigate(item.to); }
+        }} />
 
       <dialog ref={dialog} className="mobile-menu-dialog" style={{ "--sheet-height": `${sheetHeight}dvh` }} aria-label={section?.label || "منوی بخش‌ها"} onCancel={close} onClose={close} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
         <div className="mobile-menu-sheet">
