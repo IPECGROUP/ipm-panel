@@ -3025,7 +3025,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   return createPortal(<div className="fixed inset-0 z-[9999]">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
     <div className="absolute inset-0 flex items-end justify-center sm:items-center sm:p-3 md:p-6">
-      <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(90vh,860px)] sm:w-[min(1680px,calc(100vw-32px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+      <div dir="rtl" className="flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-white sm:h-[min(88vh,820px)] sm:w-[min(1500px,calc(100vw-32px))] sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2.5 dark:border-white/10 sm:gap-3 sm:px-4 sm:py-3">
           <div className="flex min-w-0 items-center gap-2">
             <div className="text-sm font-bold">اقدامات پرداخت</div>
@@ -3055,7 +3055,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
               </div>
             </div>
           </div>
-          <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[270px_minmax(0,1fr)_360px]">
+          <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[240px_minmax(0,1fr)_minmax(400px,30%)]">
           <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
              <div className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">فرآیند پرداخت</div>
             <div className="px-3"><PaymentWorkflowTimeline history={history} item={item} /></div>
