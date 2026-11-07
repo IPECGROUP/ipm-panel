@@ -553,7 +553,7 @@ export default function LiquidityAllocationPage() {
             {pagedHistory.length ? pagedHistory.map((item, index) => (
                <tr key={item.id} onClick={() => setPreviewAllocation(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPreviewAllocation(item); } }} tabIndex={0} aria-label={`نمایش جزئیات تخصیص ${item.allocationDate || ""}`} className="cursor-pointer bg-[#fbfbf8] transition-colors hover:bg-neutral-100/80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:bg-neutral-900 dark:hover:bg-white/[0.06]">
                 <td className={historyTableCellClass}>{toFaDigits(historyStartIndex + index + 1)}</td>
-                <td className={historyTableCellClass}>{item.allocationDate || "—"}</td>
+                <td className={historyTableCellClass}>{toFaDigits(item.allocationDate || "—")}</td>
                 <td className={historyTableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
                 <td className={historyTableCellClass + " truncate"} title={item.source}>{item.source || "—"}</td>
                 <td className={historyTableCellClass}>
@@ -618,7 +618,7 @@ export default function LiquidityAllocationPage() {
             {selectedOverviewProject && <section className="space-y-4 border-t border-black/10 pt-5 dark:border-white/10">
               <div><h3 className="font-bold">{selectedOverviewProject.label}</h3><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(selectedOverviewProject.allocations.length)} نوبت تخصیص</p></div>
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                {[["کل تخصیص", selectedOverviewProject.total], ["تعهدات", selectedOverviewProject.committed], ["مصرف", selectedOverviewProject.spent], ["مانده نقدینگی", selectedOverviewProject.remaining]].map(([label, value]) => <div key={label} className="rounded-xl border border-black/10 bg-neutral-50 p-3 dark:border-white/10 dark:bg-white/[0.04]"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-1 text-sm font-bold tabular-nums">{displayOverviewMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
+                {[["کل تخصیص", selectedOverviewProject.total, "text-sky-700 dark:text-sky-300"], ["تعهدات", selectedOverviewProject.committed, ""], ["مصرف", selectedOverviewProject.spent, "text-red-700 dark:text-red-300"], ["مانده نقدینگی", selectedOverviewProject.remaining, "text-emerald-700 dark:text-emerald-300"]].map(([label, value, color]) => <div key={label} className="rounded-xl border border-black/10 bg-neutral-50 p-3 dark:border-white/10 dark:bg-white/[0.04]"><div className={`text-xs ${color || "text-neutral-500 dark:text-neutral-400"}`}>{label}</div><div className={`mt-1 text-sm font-bold tabular-nums ${color}`}>{displayOverviewMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
               </div>
               {selectedOverviewProject.allocations.length ? <>
                 <div className="h-56 rounded-xl border border-black/10 px-2 pb-2 pt-4 dark:border-white/10" dir="ltr">
@@ -632,7 +632,7 @@ export default function LiquidityAllocationPage() {
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
                   <table className="w-full min-w-[680px] text-right text-xs sm:text-sm"><thead className="bg-neutral-100 dark:bg-white/5"><tr>{["نوبت", "تاریخ", "منبع نقدینگی", "مبلغ این نوبت", "جمع تا این نوبت", "توضیحات"].map((title) => <th key={title} className="border-b border-black/10 px-3 py-2 font-semibold dark:border-white/10">{title}</th>)}</tr></thead>
-                    <tbody>{[...selectedOverviewProject.allocations].reverse().map((entry) => <tr key={entry.id} className="border-b border-black/10 last:border-b-0 dark:border-white/10"><td className="px-3 py-2">{toFaDigits(entry.sequence)}</td><td className="whitespace-nowrap px-3 py-2">{entry.date}</td><td className="px-3 py-2">{entry.source}</td><td className="whitespace-nowrap px-3 py-2 font-semibold tabular-nums">{displayOverviewMoney(entry.amount)}</td><td className="whitespace-nowrap px-3 py-2 tabular-nums">{displayOverviewMoney(entry.cumulative)}</td><td className="max-w-48 truncate px-3 py-2" title={entry.description}>{entry.description || "—"}</td></tr>)}</tbody>
+                    <tbody>{[...selectedOverviewProject.allocations].reverse().map((entry) => <tr key={entry.id} className="border-b border-black/10 last:border-b-0 dark:border-white/10"><td className="px-3 py-2">{toFaDigits(entry.sequence)}</td><td className="whitespace-nowrap px-3 py-2">{toFaDigits(entry.date)}</td><td className="px-3 py-2">{entry.source}</td><td className="whitespace-nowrap px-3 py-2 font-semibold tabular-nums">{displayOverviewMoney(entry.amount)}</td><td className="whitespace-nowrap px-3 py-2 tabular-nums">{displayOverviewMoney(entry.cumulative)}</td><td className="max-w-48 truncate px-3 py-2" title={entry.description}>{entry.description || "—"}</td></tr>)}</tbody>
                   </table>
                 </div>
               </> : <div className="rounded-xl border border-black/10 p-6 text-center text-sm text-neutral-500 dark:border-white/10">برای این پروژه تخصیصی ثبت نشده است.</div>}
@@ -646,7 +646,7 @@ export default function LiquidityAllocationPage() {
           <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
             <div className="min-w-0">
               <div id="liquidity-detail-title" className="font-bold">جزئیات تخصیص نقدینگی</div>
-              <div className="mt-1 truncate text-xs text-neutral-500 dark:text-neutral-400">{previewAllocation.allocationDate} • {previewAllocation.source}</div>
+              <div className="mt-1 truncate text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(previewAllocation.allocationDate)} • {previewAllocation.source}</div>
             </div>
             <button type="button" onClick={() => setPreviewAllocation(null)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
           </div>
@@ -660,7 +660,7 @@ export default function LiquidityAllocationPage() {
             <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
             <table className="w-full min-w-[860px] table-fixed border-collapse text-xs sm:text-sm">
               <thead className="bg-neutral-100 text-neutral-700 dark:bg-white/[0.08] dark:text-neutral-100">
-                <tr>{["پروژه", "کل تخصیص", "تعهدات", "مانده", "تخصیص این نوبت", "نقدینگی فعلی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" ? "bg-orange-100 text-orange-950 dark:bg-orange-500/20 dark:text-orange-100" : title === "نقدینگی فعلی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>)}</tr>
+                <tr>{["پروژه", "کل تخصیص", "تعهدات", "مانده", "تخصیص این نوبت", "نقدینگی فعلی"].map((title) => <th key={title} className={`h-12 border-b border-l border-black/10 px-2 font-semibold dark:border-white/10 ${title === "پروژه" ? "text-right" : "text-center"} ${title === "کل تخصیص" ? "bg-sky-100 text-sky-950 dark:bg-sky-500/20 dark:text-sky-100" : title === "مانده" || title === "نقدینگی فعلی" ? "bg-emerald-100 text-emerald-950 dark:bg-emerald-500/20 dark:text-emerald-100" : ""}`}>{title}</th>)}</tr>
               </thead>
               <tbody>
                 {(previewAllocation.details || []).map((detail, index) => {
@@ -674,7 +674,7 @@ export default function LiquidityAllocationPage() {
                     <td className={tableCellClass + " truncate !text-right font-medium"} title={label}>{label}</td>
                     <td className={moneyTableCellClass + " bg-sky-50/80 font-medium text-sky-950 dark:bg-sky-500/[0.08] dark:text-sky-100"}>{displayMoneyWithRial(totalBudget)}</td>
                      <td className={moneyTableCellClass}>{displayMoneyWithRial(committed)}</td>
-                    <td className={moneyTableCellClass + " bg-orange-50/80 font-medium text-orange-950 dark:bg-orange-500/[0.08] dark:text-orange-100"}>{displayMoneyWithRial(budgetRemaining)}</td>
+                    <td className={moneyTableCellClass + " bg-emerald-50/80 font-medium text-emerald-950 dark:bg-emerald-500/[0.08] dark:text-emerald-100"}>{displayMoneyWithRial(budgetRemaining)}</td>
                     <td className={moneyTableCellClass}>{displayMoney(projectAmount)}</td>
                      <td className={moneyTableCellClass + " bg-emerald-50/80 font-medium text-emerald-950 dark:bg-emerald-500/[0.08] dark:text-emerald-100"}>{displayMoneyWithRial(budgetRemaining)}</td>
                   </tr>;
@@ -688,7 +688,7 @@ export default function LiquidityAllocationPage() {
                     return total + money(summary.allocations[key]) - money(summary.committed[key]);
                   }, 0))}</td>
                    <td className={moneyTableCellClass}>{displayMoney(money(previewAllocation.allocatedAmount))}</td>
-                  <td className={moneyTableCellClass}>{displayMoneyWithRial((previewAllocation.details || []).reduce((total, detail) => {
+                  <td className={moneyTableCellClass + " bg-emerald-100/80 font-semibold text-emerald-950 dark:bg-emerald-500/[0.15] dark:text-emerald-100"}>{displayMoneyWithRial((previewAllocation.details || []).reduce((total, detail) => {
                     const key = String(detail.projectId);
                      return total + money(summary.allocations[key]) - money(summary.committed[key]);
                   }, 0))}</td>
