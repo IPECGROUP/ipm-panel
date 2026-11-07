@@ -351,8 +351,8 @@ export default function LiquidityAllocationPage() {
 
   const exportExcel = async () => {
     try {
-      const xlsxModule = await import("xlsx");
-      const XLSX = xlsxModule.default || xlsxModule;
+      const excelModule = await import("exceljs");
+      const ExcelJS = excelModule.default || excelModule;
       const data = formOpen
         ? rows.map((row) => {
           const key = String(row.projectId);
@@ -365,12 +365,31 @@ export default function LiquidityAllocationPage() {
       const headers = formOpen
         ? ["پروژه", "کل تخصیص (ریال)", "تعهدات (ریال)", "مانده (ریال)", "تخصیص جدید (ریال)", "نقدینگی (ریال)"]
         : ["ردیف", "تاریخ تخصیص", "مبلغ تخصیص (ریال)", "منبع نقدینگی", "توضیحات"];
-      const sheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
-      sheet["!cols"] = (formOpen ? [45, 22, 22, 22, 22, 22] : [8, 18, 24, 25, 45]).map((wch) => ({ wch }));
-      const workbook = XLSX.utils.book_new();
-      workbook.Workbook = { Views: [{ RTL: true }] };
-      XLSX.utils.book_append_sheet(workbook, sheet, "تخصیص نقدینگی");
-      XLSX.writeFile(workbook, formOpen ? "liquidity-projects.xlsx" : "liquidity-allocations.xlsx");
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("تخصیص نقدینگی", { views: [{ rightToLeft: true, state: "frozen", ySplit: 1 }] });
+      sheet.columns = (formOpen ? [45, 22, 22, 22, 22, 22] : [8, 18, 24, 25, 45]).map((width) => ({ width }));
+      sheet.addRow(headers);
+      data.forEach((row) => sheet.addRow(row));
+      sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+      sheet.eachRow((row, rowNumber) => {
+        row.height = rowNumber === 1 ? 30 : 25;
+        row.eachCell((cell, columnNumber) => {
+          cell.font = { name: "Tahoma", size: rowNumber === 1 ? 11 : 10, bold: rowNumber === 1, color: { argb: rowNumber === 1 ? "FFFFFFFF" : "FF243746" } };
+          cell.alignment = { vertical: "middle", horizontal: rowNumber === 1 ? "center" : (formOpen ? columnNumber === 1 : columnNumber >= 4) ? "right" : "center", readingOrder: "rtl" };
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: rowNumber === 1 ? "FF184A6B" : rowNumber % 2 === 0 ? "FFF2F7FA" : "FFFFFFFF" } };
+          cell.border = { bottom: { style: "thin", color: { argb: "FFDCE5EA" } } };
+          if (rowNumber > 1 && (formOpen ? columnNumber > 1 : columnNumber === 3)) cell.numFmt = '#,##0.##;[Red]-#,##0.##;0';
+        });
+      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = formOpen ? "liquidity-projects.xlsx" : "liquidity-allocations.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Liquidity Excel export failed", error);
       window.alert("ساخت فایل اکسل انجام نشد. لطفاً دوباره تلاش کنید.");
