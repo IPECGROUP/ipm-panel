@@ -61,11 +61,11 @@ export default function ModernLogin({ testMode = false }) {
     <main className="modern-login" dir="rtl">
       <div className="modern-login__content">
         <header className="modern-login__brand">
-          <h2>سامانه فرآیندهای یکپارچه (IPS)</h2>
+          <div className="modern-login__mark"><img src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-13.png" alt="IPEC" /></div>
         </header>
 
         <section className="modern-login__panel" aria-labelledby="modern-login-title">
-          <h1 id="modern-login-title">ورود</h1>
+          <h1 id="modern-login-title">سامانه فرآیندهای یکپارچه (IPS)</h1><div className="modern-login__accent" aria-hidden="true" />
 
           <form onSubmit={submit} className="modern-login__form">
             <label className="modern-login__field">
@@ -110,7 +110,7 @@ export default function ModernLogin({ testMode = false }) {
             <div className="modern-login__captcha">
               {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => { setCaptchaToken(token || ""); if (token) setError(""); }} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setError("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
             </div>
-            <label className="modern-login__remember"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> <span>??? ?? ???? ?????</span></label>
+            <label className="modern-login__remember"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> <span>مرا به خاطر بسپار</span></label>
             {success && <p className="modern-login__success" role="status">{"\u0648\u0631\u0648\u062f \u062a\u0633\u062a\u06cc \u0648 \u0627\u0639\u062a\u0628\u0627\u0631\u0633\u0646\u062c\u06cc \u06a9\u067e\u0686\u0627 \u0645\u0648\u0641\u0642 \u0628\u0648\u062f."}</p>}
 
             {error && <p className="modern-login__error" role="alert">{error}</p>}
@@ -120,7 +120,7 @@ export default function ModernLogin({ testMode = false }) {
             </button>
           </form>
         </section>
-        <p className="modern-login__version">نسخه: <span dir="ltr">v2.0.0</span></p>
+        <footer className="modern-login__footer"><p>2026 ? تمامی حقوق متعلق به شرکت ایده پویان انرژی می باشد.</p><p className="modern-login__version">نسخه: <span dir="ltr">v2.0.0</span></p></footer>
       </div>
     </main>
   );
