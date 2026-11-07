@@ -135,9 +135,12 @@ export default function ServiceMaintenancePage() {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]"><span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: "url('/images/icons/service.svg') center / contain no-repeat", mask: "url('/images/icons/service.svg') center / contain no-repeat" }} /></span>
             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">سرویس و نگهداری</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تجهیزات</span></span>
           </div>
+          <div className="flex shrink-0 items-center gap-2">
+          <button type="button" className="min-h-10 rounded-xl border border-[#184a6b] px-3 text-sm font-medium text-[#184a6b] transition hover:bg-[#184a6b]/5 dark:border-[#8fc4e3] dark:text-[#8fc4e3] dark:hover:bg-white/5">برنامه‌های سرویس و نگهداری</button>
           <button type="button" onClick={() => { setFormOpen((open) => !open); setServiceDateError(false); setError(""); }} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen} disabled={saving}>
             {formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
           </button>
+          </div>
         </div>
 
         {formOpen && <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">

@@ -375,6 +375,12 @@ function RightNav() {
       ],
     },
     {
+      title: "مدیریت تضمین کیفیت",
+      items: [
+        { type: "link", to: "/quality-management", label: "مدیریت تضمین کیفیت", icon: <NavIcon src="/images/icons/modorit-tasmin.svg" />, active: isActive("/quality-management") },
+      ],
+    },
+    {
       title: "تنظیمات",
       items: [
         {

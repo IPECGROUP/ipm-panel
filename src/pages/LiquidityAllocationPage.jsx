@@ -106,6 +106,10 @@ export default function LiquidityAllocationPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [showValidation, setShowValidation] = useState(false);
+  const [selectedHistory, setSelectedHistory] = useState(() => new Set());
+  const [historyMenuOpen, setHistoryMenuOpen] = useState(false);
+  const [deletingHistory, setDeletingHistory] = useState(false);
+  const canDeleteHistory = ["ali", "marandi"].includes(String(user?.username || "").trim().toLowerCase());
 
   const updateForm = (key, value) => {
     setForm((current) => ({ ...current, [key]: value }));
@@ -204,6 +208,26 @@ export default function LiquidityAllocationPage() {
   const historyStartIndex = safeHistoryPage * rowsPerPage;
   const historyEndIndex = Math.min(historyTotal, historyStartIndex + rowsPerPage);
   const pagedHistory = filteredHistory.slice(historyStartIndex, historyEndIndex);
+  const allPageSelected = pagedHistory.length > 0 && pagedHistory.every((item) => selectedHistory.has(String(item.id)));
+
+  async function deleteSelectedHistory() {
+    if (!canDeleteHistory || !selectedHistory.size || deletingHistory) return;
+    if (!window.confirm(`آیا ${toFaDigits(selectedHistory.size)} تخصیص انتخاب‌شده حذف شود؟ مبالغ تخصیص پروژه‌ها نیز حذف می‌شوند و این عملیات قابل بازگشت نیست.`)) return;
+    setDeletingHistory(true);
+    setHistoryMenuOpen(false);
+    setSubmitMessage("");
+    try {
+      const response = await fetch("/api/liquidity-allocations", { method: "DELETE", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: [...selectedHistory] }) });
+      if (!response.ok) throw new Error("delete_failed");
+      setSelectedHistory(new Set());
+      await loadSummary();
+      setSubmitMessage("تخصیص‌های انتخاب‌شده حذف شد.");
+    } catch {
+      setSubmitMessage("حذف تخصیص‌های انتخاب‌شده انجام نشد.");
+    } finally {
+      setDeletingHistory(false);
+    }
+  }
 
   useEffect(() => { setPage(0); }, [rowsPerPage]);
   useEffect(() => { setPage(0); }, [historyFromDate, historyQuery, historyQuick, historyToDate]);
@@ -581,9 +605,17 @@ export default function LiquidityAllocationPage() {
           </div>
         </div>
         <div className="mt-3 overflow-hidden rounded-2xl border border-neutral-300 bg-[#fbfbf8] shadow-sm dark:border-white/10 dark:bg-neutral-900" dir="rtl">
+        {canDeleteHistory && <div className="relative flex items-center justify-between border-b border-neutral-300 px-3 py-2 dark:border-white/10">
+          <span className="text-xs text-neutral-500">{selectedHistory.size ? `${toFaDigits(selectedHistory.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</span>
+          <div className="relative">
+            <button type="button" onClick={() => setHistoryMenuOpen((open) => !open)} aria-label="مدیریت موارد انتخاب‌شده" aria-expanded={historyMenuOpen} className="grid h-8 w-8 place-items-center rounded-lg text-lg hover:bg-black/5 dark:hover:bg-white/10">•••</button>
+            {historyMenuOpen && <div className="absolute left-0 top-full z-30 w-56 rounded-xl border border-black/10 bg-white p-1 shadow-xl dark:border-white/10 dark:bg-neutral-800"><button type="button" disabled={!selectedHistory.size || deletingHistory} onClick={deleteSelectedHistory} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-right text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" />حذف موارد انتخاب‌شده</button></div>}
+          </div>
+        </div>}
         <div dir="ltr" className="max-h-[55vh] overflow-y-auto overflow-x-auto">
         <table dir="rtl" className="w-full min-w-[760px] table-fixed border-collapse text-[13px] text-neutral-800 dark:text-neutral-100">
           <colgroup>
+            {canDeleteHistory && <col style={{ width: 44 }} />}
             <col className="w-[8%]" />
             <col className="w-[18%]" />
             <col className="w-[20%]" />
@@ -592,6 +624,7 @@ export default function LiquidityAllocationPage() {
           </colgroup>
           <thead className="bg-neutral-200 text-neutral-900 dark:bg-white/[0.08] dark:text-neutral-100">
             <tr>
+              {canDeleteHistory && <th className="sticky top-0 z-10 bg-[#184a6b] text-white"><input type="checkbox" aria-label="انتخاب همه ردیف‌های این صفحه" className="h-4 w-4" checked={allPageSelected} onChange={() => setSelectedHistory((current) => { const next = new Set(current); pagedHistory.forEach((item) => allPageSelected ? next.delete(String(item.id)) : next.add(String(item.id))); return next; })} /></th>}
               {["ردیف", "تاریخ تخصیص", "مبلغ تخصیص", "منبع نقدینگی", "توضیحات"].map((title) => (
                  <th key={title} className="sticky top-0 z-10 h-9 border-b border-l border-white/10 bg-[#184a6b] px-3 text-center text-[14px] font-semibold text-white md:text-[15px]">{title}</th>
               ))}
@@ -600,6 +633,7 @@ export default function LiquidityAllocationPage() {
           <tbody>
             {pagedHistory.length ? pagedHistory.map((item, index) => (
                <tr key={item.id} onClick={() => setPreviewAllocation(item)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setPreviewAllocation(item); } }} tabIndex={0} aria-label={`نمایش جزئیات تخصیص ${item.allocationDate || ""}`} className="cursor-pointer bg-[#fbfbf8] transition-colors hover:bg-neutral-100/80 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-500 dark:bg-neutral-900 dark:hover:bg-white/[0.06]">
+                {canDeleteHistory && <td className={historyTableCellClass} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`انتخاب تخصیص ${item.allocationDate || ""}`} checked={selectedHistory.has(String(item.id))} onChange={() => setSelectedHistory((current) => { const next = new Set(current); next.has(String(item.id)) ? next.delete(String(item.id)) : next.add(String(item.id)); return next; })} className="h-4 w-4" /></td>}
                 <td className={historyTableCellClass}>{toFaDigits(historyStartIndex + index + 1)}</td>
                 <td className={historyTableCellClass}>{toFaDigits(item.allocationDate || "—")}</td>
                 <td className={historyTableCellClass}>{displayMoney(money(item.allocatedAmount))}</td>
@@ -608,7 +642,7 @@ export default function LiquidityAllocationPage() {
                    <span className="block truncate text-right" title={item.description || ""}>{item.description || "—"}</span>
                 </td>
               </tr>
-            )) : <tr><td colSpan={5} className="h-24 px-4 text-center text-neutral-500 dark:text-neutral-400">هنوز تخصیصی ثبت نشده است.</td></tr>}
+            )) : <tr><td colSpan={canDeleteHistory ? 6 : 5} className="h-24 px-4 text-center text-neutral-500 dark:text-neutral-400">هنوز تخصیصی ثبت نشده است.</td></tr>}
           </tbody>
         </table>
         </div>
