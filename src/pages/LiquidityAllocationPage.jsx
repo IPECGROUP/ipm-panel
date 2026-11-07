@@ -596,7 +596,7 @@ export default function LiquidityAllocationPage() {
       </div>
 
       {budgetOverviewOpen && <div className="fixed inset-0 z-[1000] grid place-items-center bg-black/55 p-3 backdrop-blur-sm" dir="rtl" onMouseDown={(event) => { if (event.target === event.currentTarget) setBudgetOverviewOpen(false); }}>
-        <div role="dialog" aria-modal="true" aria-labelledby="budget-overview-title" className="flex max-h-[88vh] w-[min(1040px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
+        <div role="dialog" aria-modal="true" aria-labelledby="budget-overview-title" className="flex max-h-[92vh] w-[min(1320px,calc(100vw-20px))] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
           <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10">
             <div>
               <div id="budget-overview-title" className="font-bold">بودجه و نقدینگی پروژه‌ها</div>
@@ -604,7 +604,14 @@ export default function LiquidityAllocationPage() {
             </div>
             <button type="button" onClick={() => setBudgetOverviewOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن" title="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
           </div>
-          <div className="min-h-0 space-y-5 overflow-y-auto p-4 sm:p-5">
+          <div className="min-h-0 space-y-5 overflow-y-auto p-4 sm:p-6">
+            {selectedOverviewProject && <section className="space-y-4">
+              <div><h3 className="font-bold">{selectedOverviewProject.label}</h3><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(selectedOverviewProject.allocations.length)} نوبت تخصیص</p></div>
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {[["کل تخصیص", selectedOverviewProject.total, "text-sky-700 dark:text-sky-300"], ["تعهدات", selectedOverviewProject.committed, ""], ["مصرف", selectedOverviewProject.spent, "text-red-700 dark:text-red-300"], ["مانده نقدینگی", selectedOverviewProject.remaining, "text-emerald-700 dark:text-emerald-300"]].map(([label, value, color]) => <div key={label} className="rounded-xl border border-black/10 bg-neutral-50 p-3 dark:border-white/10 dark:bg-white/[0.04]"><div className={`text-xs ${color || "text-neutral-500 dark:text-neutral-400"}`}>{label}</div><div className={`mt-1 text-sm font-bold tabular-nums ${color}`}>{displayOverviewMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
+              </div>
+            </section>}
+            <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
             <section>
               <div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-sm font-bold">کل تخصیص پروژه‌ها</h3><span className="text-xs text-neutral-500 dark:text-neutral-400">ریال</span></div>
               {projectOverview.length ? <div className="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-black/10 p-3 dark:border-white/10">
@@ -615,13 +622,9 @@ export default function LiquidityAllocationPage() {
                 </button>)}
               </div> : <div className="rounded-xl border border-black/10 p-8 text-center text-sm text-neutral-500 dark:border-white/10">پروژه‌ای برای نمایش وجود ندارد.</div>}
             </section>
-            {selectedOverviewProject && <section className="space-y-4 border-t border-black/10 pt-5 dark:border-white/10">
-              <div><h3 className="font-bold">{selectedOverviewProject.label}</h3><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(selectedOverviewProject.allocations.length)} نوبت تخصیص</p></div>
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                {[["کل تخصیص", selectedOverviewProject.total, "text-sky-700 dark:text-sky-300"], ["تعهدات", selectedOverviewProject.committed, ""], ["مصرف", selectedOverviewProject.spent, "text-red-700 dark:text-red-300"], ["مانده نقدینگی", selectedOverviewProject.remaining, "text-emerald-700 dark:text-emerald-300"]].map(([label, value, color]) => <div key={label} className="rounded-xl border border-black/10 bg-neutral-50 p-3 dark:border-white/10 dark:bg-white/[0.04]"><div className={`text-xs ${color || "text-neutral-500 dark:text-neutral-400"}`}>{label}</div><div className={`mt-1 text-sm font-bold tabular-nums ${color}`}>{displayOverviewMoney(value)} <span className="text-xs font-normal">ریال</span></div></div>)}
-              </div>
-              {selectedOverviewProject.allocations.length ? <>
-                <div className="h-56 rounded-xl border border-black/10 px-2 pb-2 pt-4 dark:border-white/10" dir="ltr">
+              {selectedOverviewProject?.allocations.length > 0 ? <section className="min-w-0">
+                <h3 className="mb-3 text-sm font-bold">روند تخصیص پروژه</h3>
+                <div className="h-64 rounded-xl border border-black/10 px-2 pb-2 pt-4 dark:border-white/10" dir="ltr">
                   <ResponsiveContainer width="100%" height="100%"><AreaChart data={[{ sequence: 0, cumulative: 0 }, ...selectedOverviewProject.allocations]} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#d4d4d8" vertical={false} />
                     <XAxis dataKey="sequence" tickFormatter={toFaDigits} tickLine={false} axisLine={false} fontSize={11} />
@@ -630,12 +633,15 @@ export default function LiquidityAllocationPage() {
                     <Area type="stepAfter" dataKey="cumulative" stroke="#0284c7" fill="#0ea5e9" fillOpacity={0.12} strokeWidth={2} dot={selectedOverviewProject.allocations.length < 20} />
                   </AreaChart></ResponsiveContainer>
                 </div>
+              </section> : selectedOverviewProject && <div className="rounded-xl border border-black/10 p-6 text-center text-sm text-neutral-500 dark:border-white/10">برای این پروژه تخصیصی ثبت نشده است.</div>}
+            </div>
+            {selectedOverviewProject?.allocations.length > 0 && <section>
+              <h3 className="mb-3 text-sm font-bold">ریز تخصیص‌ها</h3>
                 <div className="overflow-x-auto rounded-xl border border-black/10 dark:border-white/10">
                   <table className="w-full min-w-[680px] text-right text-xs sm:text-sm"><thead className="bg-neutral-100 dark:bg-white/5"><tr>{["نوبت", "تاریخ", "منبع نقدینگی", "مبلغ این نوبت", "جمع تا این نوبت", "توضیحات"].map((title) => <th key={title} className="border-b border-black/10 px-3 py-2 font-semibold dark:border-white/10">{title}</th>)}</tr></thead>
                     <tbody>{[...selectedOverviewProject.allocations].reverse().map((entry) => <tr key={entry.id} className="border-b border-black/10 last:border-b-0 dark:border-white/10"><td className="px-3 py-2">{toFaDigits(entry.sequence)}</td><td className="whitespace-nowrap px-3 py-2">{toFaDigits(entry.date)}</td><td className="px-3 py-2">{entry.source}</td><td className="whitespace-nowrap px-3 py-2 font-semibold tabular-nums">{displayOverviewMoney(entry.amount)}</td><td className="whitespace-nowrap px-3 py-2 tabular-nums">{displayOverviewMoney(entry.cumulative)}</td><td className="max-w-48 truncate px-3 py-2" title={entry.description}>{entry.description || "—"}</td></tr>)}</tbody>
                   </table>
                 </div>
-              </> : <div className="rounded-xl border border-black/10 p-6 text-center text-sm text-neutral-500 dark:border-white/10">برای این پروژه تخصیصی ثبت نشده است.</div>}
             </section>}
           </div>
         </div>
