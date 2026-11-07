@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { ArcaptchaWidget } from "arcaptcha-react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import { api } from "../utils/api.js";
 import { useAuth } from "../components/AuthProvider.jsx";
 import "./ModernLogin.css";
@@ -21,6 +21,7 @@ export default function ModernLogin({ testMode = false }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [remember, setRemember] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -43,7 +44,7 @@ export default function ModernLogin({ testMode = false }) {
         setCaptchaToken("");
         captchaRef.current?.resetCaptcha();
       } else {
-        await login(username.trim(), password.trim(), captchaToken);
+        await login(username.trim(), password.trim(), captchaToken, remember);
         navigate(location.state?.from?.pathname || "/", { replace: true });
       }
     } catch (cause) {
@@ -58,15 +59,6 @@ export default function ModernLogin({ testMode = false }) {
 
   return (
     <main className="modern-login" dir="rtl">
-      <svg className="modern-login__filters" aria-hidden="true" focusable="false">
-        <defs>
-          <filter id="modern-login-refraction" x="-5%" y="-5%" width="110%" height="110%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.012 0.025" numOctaves="1" seed="4" result="glass-noise" />
-            <feGaussianBlur in="glass-noise" stdDeviation="2" result="soft-noise" />
-            <feDisplacementMap in="SourceGraphic" in2="soft-noise" scale="6" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </defs>
-      </svg>
       <div className="modern-login__content">
         <header className="modern-login__brand">
           <h2>سامانه فرآیندهای یکپارچه (IPS)</h2>
@@ -118,6 +110,7 @@ export default function ModernLogin({ testMode = false }) {
             <div className="modern-login__captcha">
               {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => { setCaptchaToken(token || ""); if (token) setError(""); }} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setError("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
             </div>
+            <label className="modern-login__remember"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> <span>??? ?? ???? ?????</span></label>
             {success && <p className="modern-login__success" role="status">{"\u0648\u0631\u0648\u062f \u062a\u0633\u062a\u06cc \u0648 \u0627\u0639\u062a\u0628\u0627\u0631\u0633\u0646\u062c\u06cc \u06a9\u067e\u0686\u0627 \u0645\u0648\u0641\u0642 \u0628\u0648\u062f."}</p>}
 
             {error && <p className="modern-login__error" role="alert">{error}</p>}
@@ -126,11 +119,6 @@ export default function ModernLogin({ testMode = false }) {
               {submitting ? "در حال ورود…" : "ورود"}
             </button>
           </form>
-          <p className="modern-login__help">اگر حساب ندارید، با ادمین تماس بگیرید.</p>
-          <div className="modern-login__divider" aria-hidden="true" />
-          <div className="modern-login__mark">
-            <img src="/images/png%20%D9%84%D9%88%DA%AF%D9%88-12.png" alt="نشان شرکت ایده پویان انرژی" />
-          </div>
         </section>
         <p className="modern-login__version">نسخه: <span dir="ltr">v2.0.0</span></p>
       </div>

@@ -1,146 +1,23 @@
-.modern-login {
-  min-height: 100vh;
-  min-height: 100dvh;
-  width: 100%;
-  overflow-x: hidden;
-  color: #f8f7f2;
-  background: #073b66 url('/Blue%20Wave%20Corporate%20Abstract.webp') center / cover;
-  background-repeat: no-repeat;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  padding: 52px 18px 30px;
-}
-
-.modern-login__filters { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
-
-.modern-login__back {
-  position: absolute;
-  top: 24px;
-  right: 28px;
-  z-index: 2;
-  border: 1px solid rgba(248, 247, 242, .5);
-  border-radius: 999px;
-  padding: 8px 16px;
-  background: rgba(100, 166, 208, .08);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .38), 0 3px 9px rgba(0, 28, 62, .16);
-  backdrop-filter: blur(3px) saturate(125%);
-  -webkit-backdrop-filter: blur(3px) saturate(125%);
-  color: #f8f7f2;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.modern-login__content { position: relative; width: min(100%, 400px); }
-.modern-login__brand { text-align: center; margin: 0 auto 16px; }
-.modern-login__mark { position: relative; width: 140px; height: 77px; margin: 8px auto 0; overflow: hidden; }
-.modern-login__mark img { position: absolute; left: 50%; top: 50%; display: block; width: 212%; max-width: none; height: auto; transform: translate(-50%, -49.4%); }
-.modern-login__brand h2 { margin: 0; font-size: clamp(19px, 2.2vw, 23px); font-weight: 700; line-height: 1.5; }
-.modern-login__brand p { margin: 1px 0 0; color: #f48120; font-size: clamp(14px, 1.7vw, 15px); font-weight: 700; }
-
-.modern-login__panel {
-  position: relative;
-  overflow: hidden;
-  padding: 24px 24px 26px;
-  border: 1px solid transparent;
-  border-radius: 28px;
-  background:
-    linear-gradient(145deg, rgba(211, 239, 255, .10), rgba(74, 155, 211, .045) 48%, rgba(2, 38, 76, .09)) padding-box,
-    linear-gradient(135deg, rgba(238, 250, 255, .9), rgba(183, 223, 250, .18) 38%, rgba(157, 208, 243, .11) 65%, rgba(226, 247, 255, .78)) border-box;
-  box-shadow:
-    0 18px 38px rgba(0, 20, 54, .25),
-    0 3px 8px rgba(0, 15, 37, .14),
-    inset 0 1px 1px rgba(255, 255, 255, .48),
-    inset 1px 0 5px rgba(224, 246, 255, .11),
-    inset -1px -3px 7px rgba(2, 31, 69, .24);
-  backdrop-filter: blur(3px) saturate(122%);
-  -webkit-backdrop-filter: blur(3px) saturate(122%);
-  text-align: center;
-}
-
-@supports (backdrop-filter: url("#modern-login-refraction")) {
-  .modern-login__panel {
-    backdrop-filter: url("#modern-login-refraction") blur(3px) saturate(122%);
-    -webkit-backdrop-filter: url("#modern-login-refraction") blur(3px) saturate(122%);
-  }
-}
-
-.modern-login__panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background:
-    radial-gradient(ellipse 70% 16% at 18% 0%, rgba(255, 255, 255, .15), transparent 80%),
-    radial-gradient(ellipse 55% 15% at 88% 100%, rgba(177, 224, 255, .12), transparent 85%);
-  pointer-events: none;
-}
-
-.modern-login__panel h1 { position: relative; margin: 0 0 17px; font-size: clamp(22px, 2.6vw, 26px); font-weight: 700; line-height: 1.5; }
-.modern-login__subtitle { position: relative; margin: 0 0 17px; color: #d1e7f6; font-size: clamp(13px, 1.6vw, 14px); }
-.modern-login__form { position: relative; display: grid; gap: 10px; }
-.modern-login__field {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 0 14px;
-  border: 1px solid rgba(207, 238, 255, .53);
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(223, 244, 255, .09), rgba(70, 148, 200, .025) 60%, rgba(211, 240, 255, .07));
-  color: #f8f7f2;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .34), inset 0 -2px 4px rgba(0, 36, 72, .15), 0 3px 8px rgba(0, 20, 50, .07);
-  backdrop-filter: blur(2px) saturate(120%);
-  -webkit-backdrop-filter: blur(2px) saturate(120%);
-}
-.modern-login__field:focus-within { border-color: #f8f7f2; box-shadow: 0 0 0 3px rgba(248, 247, 242, .18); }
-.modern-login__field input { min-width: 0; flex: 1; background: none; border: 0; outline: 0; color: #fff; font: inherit; font-size: 15px; }
-.modern-login__field input::placeholder { color: #c3d7e9; opacity: 1; }
-.modern-login__visibility { flex: none; display: grid; place-items: center; padding: 6px; border: 0; color: #f8f7f2; background: transparent; cursor: pointer; }
-.modern-login__captcha { min-height: 42px; display: grid; place-items: center; color: #d6e6f1; font-size: 10px; line-height: 1.6; }
-.modern-login__error { margin: 0; padding: 9px 12px; background: rgba(87, 18, 18, .65); border-radius: 9px; color: #fff; font-size: 14px; }
-.modern-login__submit { display: inline-flex; justify-content: center; align-items: center; gap: 10px; min-height: 50px; margin-top: 5px; border: 1px solid #ffad54; border-radius: 999px; color: white; background: linear-gradient(#fa922c, #eb7410); box-shadow: 0 9px 17px rgba(22, 47, 67, .22), inset 0 1px 2px rgba(255, 255, 255, .33); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
-.modern-login__submit:hover:not(:disabled) { background: #f48120; }
-.modern-login__submit:disabled { opacity: .67; cursor: wait; }
-.modern-login__help { position: relative; margin: 16px 0 0; color: #e2edf5; font-size: 13px; line-height: 1.6; }
-.modern-login__divider { position: relative; height: 1px; margin-top: 15px; background: rgba(226, 237, 245, .38); }
-.modern-login__version { margin: 10px 4px 0; color: #d8e9f5; font-size: 12px; text-align: right; }
-.modern-login__back:focus-visible, .modern-login__visibility:focus-visible, .modern-login__submit:focus-visible { outline: 3px solid #f8f7f2; outline-offset: 3px; }
-
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .modern-login__panel { background: rgba(31, 94, 139, .74); }
-}
-@media (max-width: 640px) {
-  .modern-login { align-items: flex-start; padding: 77px 16px 32px; background-position: center top; }
-  .modern-login__back { top: 18px; right: 17px; }
-  .modern-login__brand { margin-bottom: 18px; }
-  .modern-login__panel { padding: 23px 20px 24px; border-radius: 27px; }
-  .modern-login__subtitle { margin-bottom: 18px; }
-  .modern-login__field { min-height: 49px; padding: 0 14px; }
-  .modern-login__field input { font-size: 15px; }
-  .modern-login__submit { min-height: 50px; font-size: 16px; }
-}
-
-.modern-login__success { margin: 0; padding: 9px 12px; background: rgba(12, 100, 56, .8); border-radius: 9px; color: white; font-size: 14px; }
-
-/* On short landscape screens, place the form controls side by side and let
-   the page scroll normally when the keyboard or an error reduces the space. */
-@media (orientation: landscape) and (max-height: 600px) and (min-width: 560px) {
-  .modern-login { align-items: safe center; padding: 12px 18px; }
-  .modern-login__content { width: min(100%, 720px); margin: auto; }
-  .modern-login__brand { margin-bottom: 6px; }
-  .modern-login__brand h2 { font-size: 17px; }
-  .modern-login__panel { padding: 10px 18px 12px; border-radius: 20px; }
-  .modern-login__panel h1 { margin-bottom: 6px; font-size: 19px; }
-  .modern-login__form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "user captcha" "password submit" "message message"; gap: 7px 16px; align-items: center; }
-  .modern-login__field:nth-of-type(1) { grid-area: user; }
-  .modern-login__field:nth-of-type(2) { grid-area: password; }
-  .modern-login__field { min-height: 44px; }
-  .modern-login__captcha { grid-area: captcha; min-width: 0; }
-  .modern-login__submit { grid-area: submit; min-height: 44px; margin: 0; }
-  .modern-login__error, .modern-login__success { grid-column: 1 / -1; }
-  .modern-login__help { margin-top: 7px; font-size: 11px; }
-  .modern-login__divider, .modern-login__mark { display: none; }
-  .modern-login__version { margin-top: 3px; }
-}
+﻿.modern-login{min-height:100vh;min-height:100dvh;width:100%;padding:24px 18px;display:flex;align-items:center;justify-content:center;overflow-x:hidden;color:#fff;background:#064b87 url('/Blue%20Wave%20Corporate%20Abstract.webp') center/cover no-repeat}
+.modern-login__content{width:min(100%,720px)}
+.modern-login__brand{display:flex;justify-content:center;margin-bottom:16px}
+.modern-login__mark{position:relative;width:220px;height:125px;overflow:hidden}
+.modern-login__mark img{position:absolute;left:50%;top:50%;width:212%;max-width:none;transform:translate(-50%,-49.4%)}
+.modern-login__panel{padding:32px clamp(24px,9vw,75px) 38px;text-align:center;border:2px solid rgba(206,237,255,.8);border-radius:28px;background:linear-gradient(135deg,rgba(128,191,230,.34),rgba(0,57,109,.56) 65%,rgba(24,122,184,.43));box-shadow:0 12px 32px rgba(0,25,62,.25),inset 0 1px 10px rgba(255,255,255,.15);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modern-login__panel h1{margin:0;font-size:clamp(21px,3.5vw,31px);line-height:1.6;font-weight:700}
+.modern-login__accent{width:100px;height:4px;margin:12px auto 25px;border-radius:4px;background:#ff8a24;box-shadow:0 2px 6px rgba(255,135,30,.4)}
+.modern-login__form{display:grid;gap:15px}
+.modern-login__field{display:flex;align-items:center;gap:15px;min-height:62px;padding:0 20px;border:2px solid rgba(205,235,255,.7);border-radius:15px;color:#eaf7ff;background:linear-gradient(100deg,rgba(187,220,246,.55),rgba(68,139,193,.35));box-shadow:inset 0 1px 3px rgba(255,255,255,.2)}
+.modern-login__field:focus-within{border-color:white;box-shadow:0 0 0 3px rgba(255,255,255,.2)}
+.modern-login__field input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:white;font:inherit;font-size:18px}
+.modern-login__field input::placeholder{color:#e0effa;opacity:1}
+.modern-login__visibility{display:grid;place-items:center;padding:5px;border:0;color:white;background:transparent;cursor:pointer}
+.modern-login__captcha{min-height:44px;display:grid;place-items:center;color:#e6f3fb;font-size:13px}
+.modern-login__remember{display:flex;align-items:center;gap:9px;text-align:right;font-size:16px;cursor:pointer}
+.modern-login__remember input{width:20px;height:20px;margin:0;accent-color:#1676c0}
+.modern-login__submit{display:flex;align-items:center;justify-content:center;gap:10px;min-height:58px;border:1px solid #ffa745;border-radius:999px;color:white;background:linear-gradient(#ff9c32,#f47a10);box-shadow:0 7px 15px rgba(0,28,57,.24),inset 0 1px 2px rgba(255,255,255,.3);font:inherit;font-size:20px;font-weight:700;cursor:pointer}
+.modern-login__submit:hover:not(:disabled){background:#f9891e}.modern-login__submit:disabled{opacity:.67;cursor:wait}
+.modern-login__error,.modern-login__success{margin:0;padding:9px 12px;border-radius:9px;color:white;font-size:14px}.modern-login__error{background:rgba(87,18,18,.75)}.modern-login__success{background:rgba(12,100,56,.8)}
+.modern-login__footer{text-align:center;color:#deedf9;font-size:13px}.modern-login__footer p{margin:16px 0 0}.modern-login__footer .modern-login__version{margin-top:3px;font-size:10px;opacity:.8}
+.modern-login__visibility:focus-visible,.modern-login__submit:focus-visible,.modern-login__remember input:focus-visible{outline:3px solid white;outline-offset:3px}
+@media(max-width:600px){.modern-login{padding:24px 16px}.modern-login__mark{width:170px;height:98px}.modern-login__panel{padding:26px 20px 30px;border-radius:22px}.modern-login__field{min-height:55px;padding:0 14px}.modern-login__field input{font-size:16px}.modern-login__submit{min-height:52px}}
