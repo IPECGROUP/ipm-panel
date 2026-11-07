@@ -6693,7 +6693,7 @@ const rowBg = normalRowBg;
                       ].map(([label, value]) => <div key={label} className="min-w-0 border-b border-black/10 px-4 py-3 text-right last:border-b-0 dark:border-white/10 lg:border-b-0 lg:border-l lg:last:border-l-0"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-1 break-words text-sm font-bold">{toFaDigits(String(value || "—"))}</div></div>)}
                     </div>
                     <div className="flex flex-col gap-4 lg:flex-row">
-                      <div className="min-w-0 lg:flex-1">
+                      <div className="min-w-0 lg:w-[42%] lg:shrink-0">
                         <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
                           <div className="bg-[#5d92b7] px-4 py-3 text-sm font-bold text-white">
                             مشخصات نامه
@@ -6853,7 +6853,7 @@ const rowBg = normalRowBg;
                         )}
                       </div>
 
-                      <div className="min-w-0 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 lg:w-[360px] lg:shrink-0">
+                      <div className="min-w-0 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 lg:flex-1">
                         <div className="h-full flex flex-col">
                           <div className="bg-[#5d92b7] px-4 py-3 flex items-center justify-between gap-2 text-white">
                             <div className="text-sm font-bold">پیش‌نمایش پیوست‌ها</div>
