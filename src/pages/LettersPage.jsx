@@ -2517,6 +2517,7 @@ const resetAllFilters = () => {
           const items = Array.isArray(r2?.items) ? r2.items : Array.isArray(r2) ? r2 : [];
           setTagCategories([]);
           setTags(items);
+          setTagsByScope((m) => ({ ...m, letters: items }));
         } catch {
           if (!mounted) return;
           setTagCategories([]);
@@ -6648,7 +6649,7 @@ const rowBg = normalRowBg;
             <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
               <div
                 className={
-                  "w-[min(1200px,calc(100vw-20px))] h-[min(82vh,780px)] rounded-2xl border shadow-2xl overflow-hidden " +
+                  "w-[min(1680px,calc(100vw-20px))] h-[min(90vh,900px)] rounded-2xl border shadow-2xl overflow-hidden " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
@@ -6681,51 +6682,28 @@ const rowBg = normalRowBg;
                     </button>
                   </div>
 
-                  <div className="flex-1 overflow-hidden">
-                    <div className="h-full flex flex-col lg:flex-row">
-                      <div className="lg:w-[56%] h-full overflow-auto p-4">
+                  <div className="flex-1 min-h-0 overflow-auto p-4">
+                    <div className="mb-3 grid grid-cols-1 overflow-hidden rounded-xl border border-black/10 bg-neutral-50 dark:border-white/10 dark:bg-white/5 sm:grid-cols-2 lg:grid-cols-5">
+                      {[
+                        ["شماره ثبت دبیرخانه", viewLetter?.secretariat_no ?? viewLetter?.secretariatNo],
+                        ["تاریخ ثبت دبیرخانه", viewLetter?.secretariat_date ?? viewLetter?.secretariatDate],
+                        ["مسئول ثبت دبیرخانه", viewLetter?.receiver_name ?? viewLetter?.receiverName],
+                        ["نوع سند", TABS.find((tab) => tab.id === letterKindOf(viewLetter))?.label],
+                        ["پروژه", (() => { const id = viewLetter?.project_id ?? viewLetter?.projectId; const project = id != null ? findProject(String(id)) : null; return project ? [project.code, project.name].filter(Boolean).join(" - ") : id; })()],
+                      ].map(([label, value]) => <div key={label} className="min-w-0 border-b border-black/10 px-4 py-3 text-right last:border-b-0 dark:border-white/10 lg:border-b-0 lg:border-l lg:last:border-l-0"><div className="text-xs text-neutral-500 dark:text-neutral-400">{label}</div><div className="mt-1 break-words text-sm font-bold">{toFaDigits(String(value || "—"))}</div></div>)}
+                    </div>
+                    <div className="flex flex-col gap-4 lg:flex-row">
+                      <div className="min-w-0 lg:flex-1">
                         <div className={"rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
-                          <div className={"px-4 py-3 text-sm font-semibold border-b " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-white")}>
+                          <div className="bg-[#5d92b7] px-4 py-3 text-sm font-bold text-white">
                             مشخصات نامه
                           </div>
 
                           <div className="px-4 divide-y divide-black/10 dark:divide-white/10">
 <InfoRow
-  label="نوع سند"
-  value={
-    viewLetter
-      ? (() => {
-          const k = letterKindOf(viewLetter);
-          const tab = TABS.find((item) => item.id === k);
-          return (
-            <span className={documentTypeFilterChipCls(k, false) + " inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1"}>
-              <span>{tab?.label || "—"}</span>
-              {tab?.icon ? <img src={tab.icon} alt="" className="h-4 w-4" /> : null}
-            </span>
-          );
-        })()
-      : ""
-  }
-/>
-
-<InfoRow
   label={viewLetter && letterKindOf(viewLetter) === "incoming" ? "کلاس سند" : "دسته بندی"}
   value={viewLetter ? categoryLabel(categoryOf(viewLetter)) : ""}
 />
-
-                            <InfoRow
-                              label="پروژه"
-                              value={
-                                viewLetter && (viewLetter?.project_id ?? viewLetter?.projectId)
-                                  ? (() => {
-                                      const pid = String(viewLetter?.project_id ?? viewLetter?.projectId);
-                                      const p = findProject(pid);
-                                      if (!p) return pid;
-                                      return `${String(p.code || "")}${p.name ? ` - ${p.name}` : ""}`.trim();
-                                    })()
-                                  : "—"
-                              }
-                            />
 
                             <InfoRow
                               label="از"
@@ -6740,7 +6718,7 @@ const rowBg = normalRowBg;
                               value={viewLetter ? String(viewLetter?.org_name ?? viewLetter?.orgName ?? viewLetter?.org ?? viewLetter?.organization ?? viewLetter?.company ?? "") : ""}
                             />
                             <InfoRow label="موضوع" value={viewLetter ? String(subjectOf(viewLetter) || "") : ""} />
-                              {viewLetter && letterKindOf(viewLetter) === "incoming" && (
+                              {viewLetter && (
                                 <InfoRow
                                   label="برچسب"
                                   value={(() => {
@@ -6838,9 +6816,6 @@ const rowBg = normalRowBg;
   }
 />
 
-                            <InfoRow label="تاریخ ثبت دبیرخانه" value={viewLetter ? toFaDigits(String(viewLetter?.secretariat_date ?? viewLetter?.secretariatDate ?? "")) : ""} />
-                            <InfoRow label="شماره ثبت دبیرخانه" value={viewLetter ? String(viewLetter?.secretariat_no ?? viewLetter?.secretariatNo ?? "") : ""} />
-                            <InfoRow label="مسئول دبیرخانه" value={viewLetter ? String(viewLetter?.receiver_name ?? viewLetter?.receiverName ?? "") : ""} />
                           </div>
                         </div>
 
@@ -6878,14 +6853,14 @@ const rowBg = normalRowBg;
                         )}
                       </div>
 
-                      <div className="lg:w-[44%] h-full border-t lg:border-t-0 lg:border-r border-black/10 dark:border-white/10 overflow-hidden">
+                      <div className="min-w-0 overflow-hidden rounded-2xl border border-black/10 dark:border-white/10 lg:w-[360px] lg:shrink-0">
                         <div className="h-full flex flex-col">
-                          <div className="px-4 py-3 flex items-center justify-between gap-2 border-b border-black/10 dark:border-white/10">
-                            <div className="text-sm font-semibold">پیش نمایش</div>
+                          <div className="bg-[#5d92b7] px-4 py-3 flex items-center justify-between gap-2 text-white">
+                            <div className="text-sm font-bold">پیش‌نمایش پیوست‌ها</div>
                           </div>
 
                           <div className="flex-1 p-3 overflow-hidden flex flex-col">
-                            <div className={"flex-1 rounded-2xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
+                            <div className={"h-[320px] lg:h-[min(48vh,500px)] rounded-xl border overflow-hidden " + (theme === "dark" ? "border-white/10 bg-white/5" : "border-black/10 bg-black/[0.02]")}>
                               {currentViewUrl ? (
                                 isPdfView ? (
                                 <object
