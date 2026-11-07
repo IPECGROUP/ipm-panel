@@ -2318,9 +2318,9 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [editUploadOpen, editAttachmentEditor, onClose]);
-  const canDecide = item.status === "pending" && item.canAct === true && !item.__actionLocked && !actionBusy;
+  const canDecide = !item.__editing && item.status === "pending" && item.canAct === true && !item.__actionLocked && !actionBusy;
   const canReviewPlanning = canDecide && currentStepRoleKey === "project_control" && item.canEditPlanning === true && item.requestType !== "tenkhah";
-  const canEditReturned = item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
+  const canEditReturned = !item.__editing && item.status === "returned" && item.canAct === true && currentStepRoleKey === "requester";
   const isOwner = item.canEdit === true;
   const [isEditing, setIsEditing] = useState(!!item.__editing);
   const canEditRequest = isOwner && isEditing && item.__editing === true;
@@ -3102,16 +3102,16 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-[1.15fr_1fr_1fr] md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditRequest} colon valueClassName={!canEditRequest ? "whitespace-nowrap" : ""} label="درخواست تامین" value={supplyRequestControl} />
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="پیوست‌ها" value={canEditRequest ? (
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className="flex min-w-0 max-w-full flex-wrap justify-end gap-2">
                     {editAttachments.map((file, index) => <span key={file.id || file.serverId || file.url || index} className="inline-flex max-w-full items-center gap-2 rounded-lg border border-black/10 px-2 py-1 text-xs dark:border-white/10">
-                      <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} className="max-w-[220px] truncate hover:underline">{file.name || `فایل ${toFa(index + 1)}`}</a>
+                      <a href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} dir="ltr" title={file.name} className="block min-w-0 max-w-[160px] truncate hover:underline">{shortAttachmentName(file.name || `فایل ${toFa(index + 1)}`)}</a>
                       <button type="button" onClick={() => removeEditAttachment(index)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-black/5 dark:hover:bg-white/10" aria-label="حذف پیوست" title="حذف پیوست">×</button>
                     </span>)}
                     <button type="button" disabled={editUploading} onClick={() => setEditUploadOpen(true)} className="grid h-9 w-9 place-items-center rounded-lg border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:opacity-50 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title={editUploading ? "در حال آپلود" : "بارگذاری"} aria-label={editUploading ? "در حال آپلود" : "بارگذاری"}>
                       <img src="/images/icons/upload.svg" alt="" className={`h-4 w-4 dark:invert ${editUploading ? "animate-pulse opacity-60" : ""}`} />
                     </button>
                   </div>
-                ) : (attachments.length ? <div className="flex flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} className="rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `فایل ${toFa(index + 1)}`}</a>)}</div> : "—")} />
+                ) : (attachments.length ? <div className="flex min-w-0 max-w-full flex-wrap justify-end gap-2">{attachments.map((file, index) => <a key={file.id || file.serverId || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" onClick={(event) => { if (isImageAttachment(file) && attachmentViewUrl(file)) { event.preventDefault(); setImageAttachment(file); } }} dir="ltr" title={file.name} className="block min-w-0 max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{shortAttachmentName(file.name || `فایل ${toFa(index + 1)}`)}</a>)}</div> : "—")} />
                   <PreviewRow compact editing={canEditRelatedDocuments} colon leader={!canEditRelatedDocuments} label="اسناد مرتبط" value={canEditRelatedDocuments ? <div className="flex flex-wrap items-center justify-end gap-2">
                     <button type="button" onClick={() => { setEditLetterPickerQuery(""); setEditLetterPickerOpen(true); }} className="inline-flex min-h-8 items-center gap-2 rounded-lg border border-black/10 bg-white px-2 py-1 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="انتخاب اسناد مرتبط">
                       <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-4 w-4 dark:invert" />
@@ -3234,6 +3234,13 @@ function PaymentMetadata({ label, value, Icon }) {
   </div>;
 }
 
+function shortAttachmentName(name, maxLength = 24) {
+  const text = String(name || "");
+  if (text.length <= maxLength) return text;
+  const extension = text.match(/(\.[^.]+)$/)?.[1] || "";
+  return `${text.slice(0, Math.max(1, maxLength - extension.length - 3))}...${extension}`;
+}
+
 function attachmentSize(bytes) {
   const size = Number(bytes);
   if (!Number.isFinite(size) || size <= 0) return "—";
@@ -3270,7 +3277,7 @@ function PaymentAttachmentPreview({ files, selectedIndex, onSelect, onOpenImage,
           : isImageAttachment(file) ? <button type="button" onClick={() => onOpenImage(file)} className="grid h-full w-full place-items-center" title="نمایش تصویر در اندازه بزرگ"><img src={url} alt={name} className="max-h-full max-w-full object-contain" /></button>
           : <div className="px-4 text-center text-xs text-neutral-500">پیش‌نمایش این نوع فایل در مرورگر در دسترس نیست.</div>}
       </div>
-      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-right text-xs font-semibold" dir="auto" title={name}>{name}</p><p className="mt-1 text-right text-[11px] text-neutral-500 dark:text-neutral-400">{attachmentSize(displaySize)}</p></div>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
+      {file && <div className="mt-3 flex min-w-0 items-center justify-between gap-2"><div className="min-w-0"><p className="truncate text-right text-xs font-semibold" dir="ltr" title={name}>{shortAttachmentName(name)}</p><p className="mt-1 text-right text-[11px] text-neutral-500 dark:text-neutral-400">{attachmentSize(displaySize)}</p></div>{url && <a href={url} target="_blank" rel="noreferrer" title="باز کردن فایل" aria-label="باز کردن فایل" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-neutral-200 transition hover:bg-neutral-100 dark:border-white/10 dark:hover:bg-white/5"><ExternalLink className="h-4 w-4" /></a>}</div>}
       {files.length > 1 && <div className="mt-3 flex flex-wrap gap-1.5" aria-label="انتخاب پیوست">{files.map((entry, fileIndex) => <button key={entry.id || entry.serverId || entry.url || fileIndex} type="button" onClick={() => onSelect(fileIndex)} aria-current={fileIndex === index ? "true" : undefined} className={`rounded-lg border px-2 py-1 text-xs transition ${fileIndex === index ? "border-neutral-800 bg-neutral-800 text-white dark:border-white dark:bg-white dark:text-neutral-900" : "border-neutral-200 hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5"}`}>پیوست {toFa(fileIndex + 1)}</button>)}</div>}
       </div>
       <div className="border-t border-neutral-200 p-3 dark:border-white/10"><button type="button" onClick={onOpenPdf} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-sm font-semibold transition hover:bg-neutral-100 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"><img src="/images/icons/pdf.svg" alt="" className="h-4 w-4" />گزارش درخواست پرداخت</button></div>
