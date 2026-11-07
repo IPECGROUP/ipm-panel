@@ -10,6 +10,24 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   const dialog = useRef(null);
   const [panel, setPanel] = useState(null);
   const [query, setQuery] = useState("");
+  const [sheetHeight, setSheetHeight] = useState(60);
+  const drag = useRef(null);
+  const updateHeight = (clientY) => {
+    const viewportHeight = window.innerHeight;
+    setSheetHeight(Math.min(90, Math.max(35, ((viewportHeight - clientY) / viewportHeight) * 100)));
+  };
+  const startResize = (event) => {
+    if (event.button !== 0) return;
+    drag.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    updateHeight(event.clientY);
+  };
+  const moveResize = (event) => {
+    if (drag.current === event.pointerId) updateHeight(event.clientY);
+  };
+  const endResize = (event) => {
+    if (drag.current === event.pointerId) drag.current = null;
+  };
   const items = groups.flatMap((group) => group.items);
   const destinations = items.flatMap((item) => item.type === "section" ? item.items : [item]);
   const unique = destinations.filter((item, index) => destinations.findIndex((other) => other.to === item.to) === index);
@@ -50,9 +68,14 @@ export default function MobileNav({ groups, user, logout, isActive }) {
         <button type="button" className={panel === "more" || moreActive ? "is-active" : ""} aria-haspopup="dialog" aria-expanded={panel === "more"} onClick={() => open("more")}><MoreHorizontal size={25} /><span>بیشتر</span></button>
       </Glass>
 
-      <dialog ref={dialog} className="mobile-menu-dialog" aria-label={section?.label || "منوی بخش‌ها"} onCancel={close} onClose={close} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
+      <dialog ref={dialog} className="mobile-menu-dialog" style={{ "--sheet-height": `${sheetHeight}dvh` }} aria-label={section?.label || "منوی بخش‌ها"} onCancel={close} onClose={close} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
         <div className="mobile-menu-sheet">
-          <div className="mobile-sheet-handle" aria-hidden="true" />
+          <div className="mobile-sheet-resize" role="slider" tabIndex={0}
+            aria-label="تغییر ارتفاع منو" aria-orientation="vertical" aria-valuemin={35} aria-valuemax={90} aria-valuenow={Math.round(sheetHeight)} aria-valuetext={`${Math.round(sheetHeight)}%`}
+            onPointerDown={startResize} onPointerMove={moveResize} onPointerUp={endResize} onPointerCancel={endResize} onLostPointerCapture={endResize}
+            onKeyDown={(event) => { if (event.key === "ArrowUp" || event.key === "ArrowDown") { event.preventDefault(); setSheetHeight((height) => Math.min(90, Math.max(35, height + (event.key === "ArrowUp" ? 5 : -5)))); } }}>
+            <span className="mobile-sheet-handle" />
+          </div>
           <header className="mobile-menu-heading">
             <div>{section && <h2>{section.label}</h2>}</div>
             <button type="button" className="mobile-round-button" onClick={close} aria-label="بستن منو" autoFocus><X size={20} /></button>

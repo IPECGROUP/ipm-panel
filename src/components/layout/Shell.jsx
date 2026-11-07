@@ -307,7 +307,7 @@ export default function Shell() {
             </span>
           </Link>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2 md:gap-3 text-xs md:text-sm">
+          <div className="shell-actions flex min-w-0 flex-1 items-center justify-end gap-1.5 sm:gap-2 md:gap-3 text-xs md:text-sm">
             {/* تاریخ */}
             <div
               className={
