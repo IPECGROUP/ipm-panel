@@ -617,6 +617,7 @@ export default function LiquidityAllocationPage() {
               </div> : <div className="rounded-xl border border-black/10 p-8 text-center text-sm text-neutral-500 dark:border-white/10">پروژه‌ای برای نمایش وجود ندارد.</div>}
             </section>
               <section className="flex min-h-0 min-w-0 flex-col gap-2">
+                {selectedOverviewProject && <h3 className="shrink-0 rounded-t-xl bg-[#5d92b7] px-3 py-2 text-sm font-bold text-white">خلاصه تخصیص</h3>}
                 {selectedOverviewProject && <div className="min-w-0"><h3 className="truncate font-bold" title={selectedOverviewProject.label}>{selectedOverviewProject.label}</h3><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(selectedOverviewProject.allocations.length)} نوبت تخصیص</p></div>}
             {selectedOverviewProject && <section className="shrink-0">
               <div className="grid grid-cols-2 gap-2">
