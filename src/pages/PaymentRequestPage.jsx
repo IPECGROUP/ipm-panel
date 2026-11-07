@@ -2324,6 +2324,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const isOwner = item.canEdit === true;
   const [isEditing, setIsEditing] = useState(!!item.__editing);
   const canEditRequest = isOwner && isEditing && item.__editing === true;
+  const canEditPaymentReceipts = canEditRequest && item.canEditPaymentReceipts === true && history.some((entry) => entry?.finalPayment);
   // Related documents belong to the requester. Even an administrator may not
   // change another user's references from this dialog.
   const canEditRelatedDocuments = Number(item.createdById) === Number(userId) && canEditRequest;
@@ -2354,7 +2355,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   const [creditPayAmount, setCreditPayAmount] = useState("");
   const [creditPayCurrencyId, setCreditPayCurrencyId] = useState(item.currencyTypeId || "");
   const [creditPayDesc, setCreditPayDesc] = useState("");
-  const [paymentReceipts, setPaymentReceipts] = useState({ cash: [], credit: [] });
+  const [paymentReceipts, setPaymentReceipts] = useState(() => item.__editing && item.canEditPaymentReceipts ? { cash: item.cashReceipts || [], credit: item.creditReceipts || [] } : { cash: [], credit: [] });
   const [receiptUploadKind, setReceiptUploadKind] = useState(null);
   const [receiptUploading, setReceiptUploading] = useState(false);
   const [receiptUploadError, setReceiptUploadError] = useState("");
@@ -2457,6 +2458,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
   useEffect(() => {
     setEditForm(formFromItem(item));
     setEditUploadError("");
+    setPaymentReceipts(item.__editing && item.canEditPaymentReceipts ? { cash: item.cashReceipts || [], credit: item.creditReceipts || [] } : { cash: [], credit: [] });
     setIsEditing(!!item.__editing);
   }, [item.id, item.updatedAt]);
 
@@ -3132,14 +3134,21 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                   <PreviewRow compact editing={canEditRequest} colon leader={!canEditRequest} label="شماره شبا" ltr={!canEditRequest} value={canEditRequest ? <input dir="ltr" inputMode="numeric" className={`${inputClass} text-left font-sans tabular-nums`} value={toFa(editForm.bankInfo || "IR")} onChange={(event) => setEditField("bankInfo", formatSheba(event.target.value))} onFocus={() => { if (!editForm.bankInfo) setEditField("bankInfo", "IR"); }} placeholder="IR" /> : (toFa(item.bankInfo) || "—")} />
                 </div>
               </PreviewSection>
-              {(item.cashReceipts?.length > 0 || item.creditReceipts?.length > 0) && <PreviewSection title="رسیدهای پرداخت">
+              {canEditPaymentReceipts ? <PreviewSection title="رسیدهای پرداخت">
+                <div className="grid gap-3 py-3 md:grid-cols-2">
+                  {[["cash", "نقدی"], ["credit", "اعتباری"]].map(([kind, label]) => <div key={kind} className="rounded-xl border border-black/10 p-3 dark:border-white/10">
+                    <div className="mb-2 text-xs font-semibold">پرداخت {label}</div>
+                    <PaymentReceiptField files={paymentReceipts[kind]} uploading={receiptUploading} onOpen={() => setReceiptUploadKind(kind)} onRemove={(index) => removePaymentReceipt(kind, index)} />
+                  </div>)}
+                </div>
+              </PreviewSection> : ((item.cashReceipts?.length > 0 || item.creditReceipts?.length > 0) && <PreviewSection title="رسیدهای پرداخت">
                 <div className="grid gap-3 py-3 md:grid-cols-2">
                   {[["نقدی", item.cashReceipts], ["اعتباری", item.creditReceipts]].map(([label, files]) => files?.length > 0 && <div key={label} className="rounded-xl border border-black/10 p-3 dark:border-white/10">
                     <div className="mb-2 text-xs font-semibold">پرداخت {label}</div>
                     <div className="flex flex-wrap gap-2">{files.map((file, index) => <a key={file.serverId || file.url || index} href={attachmentViewUrl(file) || "#"} target="_blank" rel="noreferrer" className="max-w-full truncate rounded-lg border border-black/10 px-2 py-1 text-xs hover:bg-black/5 dark:border-white/10 dark:hover:bg-white/10">{file.name || `رسید ${toFa(index + 1)}`}</a>)}</div>
                   </div>)}
                 </div>
-              </PreviewSection>}
+              </PreviewSection>)}
               {canDecide && <WorkflowPanel
                 stepKey={currentStepRoleKey}
                 stepIndex={currentStepIndex}
@@ -3220,10 +3229,10 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
         {(canDecide || canEditRequest || canEditReturned) && <footer className="shrink-0 border-t border-neutral-100 px-3 py-3 dark:border-white/10 sm:px-5">
           <ActionFooter actionBusy={actionBusy} actionError={actionError || receiptUploadError}
             label={canEditRequest ? "ذخیره ویرایش" : canEditReturned ? "ارسال مجدد درخواست" : "ثبت"}
-            disabled={canEditRequest ? editUploading
+            disabled={canEditRequest ? editUploading || receiptUploading
               : canEditReturned ? nextRecipients.users?.length > 0 && !targetAssigneeUserId
                 : finalAccounting ? receiptUploading || (!cashPayAmount && !creditPayAmount) : !choice || (choice === "approve" && ((!reviewValuesValid) || (nextRecipients.users?.length > 0 && !targetAssigneeUserId)))}
-            onSubmit={canEditRequest ? () => onEdit(item, editForm)
+            onSubmit={canEditRequest ? () => onEdit(item, { ...editForm, ...(canEditPaymentReceipts ? { cashReceipts: paymentReceipts.cash, creditReceipts: paymentReceipts.credit } : {}) })
               : canEditReturned ? () => onResubmit(item, editForm, actionNote, { targetAssigneeUserId: targetAssigneeUserId || null })
                 : submitWorkflow} />
         </footer>}
