@@ -1,0 +1,7 @@
+@media (orientation: landscape) and (max-width: 1023px) and (max-height: 600px) {
+  .shell-header { transition: transform .2s ease; }
+  .shell-header.shell-header-hidden:not(:focus-within) { transform: translateY(-100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shell-header { transition: none; }
+}

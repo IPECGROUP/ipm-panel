@@ -2,6 +2,7 @@
 import React from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import RightNav from "../RightNav.jsx";
+import "./ShellResponsive.css";
 import { useAuth } from "../AuthProvider.jsx";
 import { canOpenPage } from "../../utils/pageAccess.js";
 
@@ -42,6 +43,26 @@ export default function Shell() {
   const notificationRequestRef = React.useRef(0);
   const [notifications, setNotifications] = React.useState([]);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [headerHidden, setHeaderHidden] = React.useState(false);
+
+  React.useEffect(() => {
+    const landscape = window.matchMedia("(orientation: landscape) and (max-width: 1023px) and (max-height: 600px)");
+    let previousY = window.scrollY;
+    const onScroll = () => {
+      const currentY = Math.max(0, window.scrollY);
+      if (!landscape.matches || currentY < 32) setHeaderHidden(false);
+      else if (Math.abs(currentY - previousY) >= 4) {
+        setHeaderHidden(currentY > previousY);
+        previousY = currentY;
+        return;
+      }
+      if (currentY < 32 || !landscape.matches) previousY = currentY;
+    };
+    const onChange = () => { previousY = window.scrollY; setHeaderHidden(false); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    landscape.addEventListener("change", onChange);
+    return () => { window.removeEventListener("scroll", onScroll); landscape.removeEventListener("change", onChange); };
+  }, []);
   const [notificationsLoading, setNotificationsLoading] = React.useState(false);
   // ===== تم (dark|light) فقط برای همین سشن، بدون localStorage =====
   const [theme] = React.useState("light");
@@ -263,7 +284,7 @@ export default function Shell() {
     >
       <header
         className={
-          "sticky top-0 z-[100] isolate border-b backdrop-blur " +
+          "shell-header sticky top-0 z-[100] isolate border-b backdrop-blur " + (headerHidden ? "shell-header-hidden " : "") +
           (theme === "dark"
             ? "border-white/10 bg-gradient-to-l from-white/10 to-transparent"
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
