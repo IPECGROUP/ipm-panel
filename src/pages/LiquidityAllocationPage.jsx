@@ -76,7 +76,7 @@ function quickHistoryStartDate(key) {
   return toEnglishDigits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date));
 }
 
-const tableCellClass = "h-12 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-neutral-700";
+const tableCellClass = "h-10 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-neutral-700";
 const moneyTableCellClass = tableCellClass + " !text-right font-[Vazir]";
 const historyTableCellClass = "h-9 border-b border-l border-neutral-300 px-3 text-center align-middle dark:border-white/10";
 const paginationIconBtnCls = "grid h-9 w-9 place-items-center rounded-lg border border-black/10 text-neutral-700 transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:text-neutral-100 dark:hover:bg-white/10";
@@ -349,6 +349,34 @@ export default function LiquidityAllocationPage() {
     }
   };
 
+  const exportExcel = async () => {
+    try {
+      const xlsxModule = await import("xlsx");
+      const XLSX = xlsxModule.default || xlsxModule;
+      const data = formOpen
+        ? rows.map((row) => {
+          const key = String(row.projectId);
+          const total = money(summary.allocations[key]);
+          const committed = money(summary.committed[key]);
+          const allocation = money(row.newAllocation);
+          return [row.label, total, committed, total - committed, allocation, total - committed + allocation];
+        })
+        : filteredHistory.map((item, index) => [index + 1, item.allocationDate || "", money(item.allocatedAmount), item.source || "", item.description || ""]);
+      const headers = formOpen
+        ? ["پروژه", "کل تخصیص (ریال)", "تعهدات (ریال)", "مانده (ریال)", "تخصیص جدید (ریال)", "نقدینگی (ریال)"]
+        : ["ردیف", "تاریخ تخصیص", "مبلغ تخصیص (ریال)", "منبع نقدینگی", "توضیحات"];
+      const sheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      sheet["!cols"] = (formOpen ? [45, 22, 22, 22, 22, 22] : [8, 18, 24, 25, 45]).map((wch) => ({ wch }));
+      const workbook = XLSX.utils.book_new();
+      workbook.Workbook = { Views: [{ RTL: true }] };
+      XLSX.utils.book_append_sheet(workbook, sheet, "تخصیص نقدینگی");
+      XLSX.writeFile(workbook, formOpen ? "liquidity-projects.xlsx" : "liquidity-allocations.xlsx");
+    } catch (error) {
+      console.error("Liquidity Excel export failed", error);
+      window.alert("ساخت فایل اکسل انجام نشد. لطفاً دوباره تلاش کنید.");
+    }
+  };
+
   return (
     <Card className="liquidity-allocation-page mx-auto min-w-0 max-w-[1400px] rounded-2xl border border-neutral-200 bg-white p-2.5 text-neutral-900 sm:p-3 md:p-4 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
       <div className="mb-4 flex min-w-0 flex-wrap items-center justify-between gap-3 border-b border-black/[0.07] px-3 pb-3 pt-1 dark:border-white/10 sm:px-4 sm:pb-4 md:mb-5" dir="rtl">
@@ -362,6 +390,9 @@ export default function LiquidityAllocationPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={exportExcel} disabled={formOpen ? !rows.length : !filteredHistory.length} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
+            <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" />
+          </button>
           <button type="button" onClick={() => setBudgetOverviewOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 px-3 text-xs font-semibold transition hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/10 sm:text-sm" title="بودجه و نقدینگی پروژه‌ها">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l4-4 3 2 5-6" /></svg>
             <span>بودجه و نقدینگی پروژه‌ها</span>
@@ -447,11 +478,9 @@ export default function LiquidityAllocationPage() {
 
       </div>}
 
-      {formOpen && <div className="mt-3 flex items-center gap-3 text-xs" dir="rtl">
-        {allocationError && <span className="text-red-600 dark:text-red-300">{allocationError}</span>}
-      </div>}
+      {formOpen && allocationError && <div className="mt-2 text-xs text-red-600 dark:text-red-300" dir="rtl">{allocationError}</div>}
 
-      {formOpen ? <div className="mt-5 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100" dir="rtl">
+      {formOpen ? <div className="mt-2 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100" dir="rtl">
         <div className="relative max-h-[55vh] overflow-y-auto overflow-x-auto" dir="ltr">
         <table dir="rtl" className="w-full min-w-[860px] table-fixed border-collapse text-sm text-neutral-800 [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center dark:text-neutral-100">
           <colgroup>
@@ -483,7 +512,7 @@ export default function LiquidityAllocationPage() {
                    <td className={moneyTableCellClass}>{displayMoneyWithRial(committed)}</td>
                   <td className={moneyTableCellClass + " bg-orange-50/80 font-medium text-orange-950 dark:bg-orange-500/[0.08] dark:text-orange-100"}>{displayMoneyWithRial(budgetRemaining)}</td>
                   <td className={moneyTableCellClass}>
-                    <input value={row.newAllocation} onChange={(event) => updateRow(row.id, event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-9 !rounded-lg ltr text-right font-[Vazir]"} aria-label={`مبلغ تخصیص ${row.label}`} />
+                    <input value={row.newAllocation} onChange={(event) => updateRow(row.id, event.target.value)} inputMode="numeric" placeholder="۰" className={inputClass + " !h-8 !rounded-lg ltr text-right font-[Vazir]"} aria-label={`مبلغ تخصیص ${row.label}`} />
                   </td>
                   <td className={moneyTableCellClass + " bg-emerald-50/80 font-medium text-emerald-950 dark:bg-emerald-500/[0.08] dark:text-emerald-100"}>{displayMoneyWithRial(budgetRemaining + allocationAmount)}</td>
                 </tr>
