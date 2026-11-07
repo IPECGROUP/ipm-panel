@@ -118,7 +118,7 @@ function decimalMoney(value, fixed = false) {
   const hasDecimalPoint = normalized.includes(".");
   const [wholePart = "", ...fractionParts] = normalized.split(".");
   const wholeDigits = wholePart.replace(/\D/g, "") || "0";
-  const fraction = fractionParts.join("").replace(/\D/g, "").slice(0, 2);
+  const fraction = fractionParts.join("").replace(/\D/g, "").slice(0, 2); 
   const formattedWhole = BigInt(wholeDigits).toLocaleString("en-US");
   if (fixed) return `${formattedWhole}.${fraction.padEnd(2, "0")}`;
   return hasDecimalPoint ? `${formattedWhole}.${fraction}` : formattedWhole;
