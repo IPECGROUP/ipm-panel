@@ -1257,6 +1257,7 @@ export default function ContractInformation() {
   const [filterFromDate, setFilterFromDate] = React.useState("");
   const [filterToDate, setFilterToDate] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState("");
+  const [projectSortDir, setProjectSortDir] = React.useState(null);
   const [contractTypeOptions, setContractTypeOptions] = React.useState({ main: [], sub: [] });
   const [contractStatusOptions, setContractStatusOptions] = React.useState([]);
   const [guaranteeNameOptions, setGuaranteeNameOptions] = React.useState([]);
@@ -1811,9 +1812,20 @@ export default function ContractInformation() {
 
   React.useEffect(() => {
     setContractsPage(0);
-  }, [filterDocType, filterFromDate, filterQuery, filterStatus, filterToDate, contractsRowsPerPage]);
+  }, [filterDocType, filterFromDate, filterQuery, filterStatus, filterToDate, contractsRowsPerPage, projectSortDir]);
 
-  const contractsDisplayRows = filteredRows;
+  const contractsDisplayRows = React.useMemo(() => {
+    if (!projectSortDir) return filteredRows;
+    return [...filteredRows].sort((a, b) => {
+      const aProject = projectById.get(String(a.projectId));
+      const bProject = projectById.get(String(b.projectId));
+      const aCode = toEnDigits(aProject?.code || "").trim();
+      const bCode = toEnDigits(bProject?.code || "").trim();
+      if (!aCode || !bCode) return aCode ? -1 : bCode ? 1 : 0;
+      const result = aCode.localeCompare(bCode, "fa", { numeric: true, sensitivity: "base" });
+      return projectSortDir === "asc" ? result : -result;
+    });
+  }, [filteredRows, projectById, projectSortDir]);
 
   const contractsTotal = contractsDisplayRows.length;
   const contractsPageCount = Math.max(1, Math.ceil(contractsTotal / Math.max(1, contractsRowsPerPage)));
@@ -4974,7 +4986,7 @@ export default function ContractInformation() {
                   <tr className={`${contractsTableHeadRowCls} !text-white`}>
                     <th className="sticky top-0 z-40 bg-[#184a6b]"><input type="checkbox" className={hoverSelectableRowPreset.checkbox} checked={contractsPageRows.length > 0 && contractsPageRows.every((row) => selectedContractIds.has(String(row.id)))} onChange={(event) => setSelectedContractIds(event.target.checked ? new Set(contractsPageRows.map((row) => String(row.id))) : new Set())} aria-label="انتخاب همه قراردادهای صفحه" /></th>
                     <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">ردیف</th>
-                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">پروژه</th>
+                    <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold" aria-sort={projectSortDir === "asc" ? "ascending" : projectSortDir === "desc" ? "descending" : "none"}><button type="button" onClick={() => setProjectSortDir((previous) => previous === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 hover:opacity-90" aria-label={projectSortDir === "asc" ? "مرتب‌سازی پروژه از بزرگ به کوچک" : "مرتب‌سازی پروژه از کوچک به بزرگ"} title={projectSortDir === "asc" ? "مرتب‌سازی پروژه از بزرگ به کوچک" : "مرتب‌سازی پروژه از کوچک به بزرگ"}><span>پروژه</span><img src={projectSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 invert" /></button></th>
                     <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">سطح / نوع</th>
                     <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">موضوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">تاریخ</th>
@@ -5317,17 +5329,17 @@ export default function ContractInformation() {
                       <colgroup><col className="w-[27%]" /><col className="w-[13%]" /><col className="w-[25%]" /><col className="w-[23%]" /><col className="w-[12%]" /></colgroup>
                       <thead className="bg-neutral-100 dark:bg-white/10">
                         <tr>
-                          <th className="px-3 py-2 text-right">نام تضمین</th>
-                          <th className="px-3 py-2">نوع</th>
-                          <th className="px-3 py-2">عهده بانک/شماره</th>
-                          <th className="px-3 py-2">مبلغ</th>
-                          <th className="px-3 py-2">ارز</th>
+                          <th className="px-3 py-2 !text-center">نام تضمین</th>
+                          <th className="px-3 py-2 !text-center">نوع</th>
+                          <th className="px-3 py-2 !text-center">عهده بانک/شماره</th>
+                          <th className="px-3 py-2 !text-center">مبلغ</th>
+                          <th className="px-3 py-2 !text-center">ارز</th>
                         </tr>
                       </thead>
                       <tbody>
                         {previewFinancial.guarantees.map((item) => (
                           <tr key={item.id} className="border-t border-black/10 dark:border-neutral-800">
-                            <td className="px-3 py-2 text-right">{previewValue(item.name, "—")}</td>
+                            <td className="px-3 py-2 text-center">{previewValue(item.name, "—")}</td>
                             <td className="px-3 py-2 text-center">{previewValue(item.type, "—")}</td>
                             <td className="px-3 py-2 text-center">{previewValue(item.bankNo, "—")}</td>
                             <td className="px-3 py-2 text-center">{item.amount ? formatFinancialAmount(parseFinancialAmount(item.amount)) : "—"}</td>
