@@ -5278,7 +5278,7 @@ export default function ContractInformation() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
                 <div className="flex min-h-full flex-col lg:flex-row">
                   <div className="min-w-0 p-4 lg:w-[42%]">
                 <ContractPreviewSection title="اطلاعات اصلی" open={previewSection === "general"} onToggle={() => setPreviewSection(previewSection === "general" ? "" : "general")}>
