@@ -154,7 +154,7 @@ const PERSIAN_MONTHS = [
 const EMPTY_FORM = {
   id: "",
   projectId: "",
-  documentType: "",
+  documentType: "main",
   contractNo: "",
   subContractNo: "",
   parentContractId: "",
@@ -3003,8 +3003,13 @@ export default function ContractInformation() {
   const chipCls =
     chipBaseCls +
     " border-black/10 bg-white text-neutral-900 hover:bg-black/5 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/10";
-  const selectedTagChipCls =
-    chipBaseCls + " border-black bg-black text-white hover:bg-black/90 dark:border-neutral-200 dark:bg-neutral-100 dark:text-neutral-900";
+  const tagColors = [
+    ["bg-violet-100 text-violet-800 ring-violet-200 dark:bg-violet-500/20 dark:text-violet-300 dark:ring-violet-500/30", "bg-violet-600 text-white ring-violet-600"],
+    ["bg-amber-100 text-amber-800 ring-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30", "bg-amber-600 text-white ring-amber-600"],
+    ["bg-rose-100 text-rose-800 ring-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:ring-rose-500/30", "bg-rose-600 text-white ring-rose-600"],
+    ["bg-cyan-100 text-cyan-800 ring-cyan-200 dark:bg-cyan-500/20 dark:text-cyan-300 dark:ring-cyan-500/30", "bg-cyan-600 text-white ring-cyan-600"],
+    ["bg-indigo-100 text-indigo-800 ring-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:ring-indigo-500/30", "bg-indigo-600 text-white ring-indigo-600"],
+  ];
   const centeredRowActionsCls =
     "flex min-h-[34px] w-full items-center justify-center gap-1 transition-opacity opacity-100 pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover:opacity-100 sm:group-hover:pointer-events-auto";
   const contractsTableWrapCls =
@@ -3703,12 +3708,12 @@ export default function ContractInformation() {
                 {[{ id: "main", label: "اصلی", base: "bg-emerald-100 text-emerald-800 ring-emerald-200 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-500/30", active: "bg-emerald-600 text-white ring-emerald-600 dark:bg-emerald-500 dark:ring-emerald-500" }, { id: "sub", label: "فرعی", base: "bg-sky-100 text-sky-800 ring-sky-200 hover:bg-sky-200 dark:bg-sky-500/20 dark:text-sky-300 dark:ring-sky-500/30", active: "bg-sky-600 text-white ring-sky-600 dark:bg-sky-500 dark:ring-sky-500" }].map((item) => (
                   <button key={item.id} type="button" onClick={() => setFilterDocType((value) => value === item.id ? "" : item.id)} className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${filterDocType === item.id ? item.active : item.base}`}>{item.label}</button>
                 ))}
-                {contractStatusOptions.map((status) => (
+                {contractStatusOptions.map((status, index) => (
                   <button
                     key={status}
                     type="button"
                     onClick={() => setFilterStatus((value) => value === status ? "" : status)}
-                    className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${filterStatus === status ? "bg-neutral-800 text-white ring-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:ring-neutral-100" : "bg-gradient-to-br from-neutral-100 via-neutral-50 to-neutral-200/80 text-neutral-700 ring-neutral-200 hover:from-neutral-200 hover:to-neutral-300 dark:from-white/10 dark:via-white/[0.07] dark:to-white/[0.13] dark:text-neutral-200 dark:ring-white/10"}`}
+                    className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium shadow-sm ring-1 transition ${tagColors[index % tagColors.length][filterStatus === status ? 1 : 0]}`}
                   >
                     {status}
                   </button>
@@ -4369,7 +4374,7 @@ export default function ContractInformation() {
                         <div>
                             <div className={labelCls}>برچسب ها *</div>
                             <div className="flex flex-wrap items-center gap-2">
-                              {technicalTagIds.map((id) => {
+                              {technicalTagIds.map((id, index) => {
                                 const tag = tagById.get(String(id)) || { id, label: `برچسب (${toFaDigits(id)})` };
                                 const label = tagLabelOf(tag);
                                 return (
@@ -4377,7 +4382,7 @@ export default function ContractInformation() {
                                     key={id}
                                     type="button"
                                     onClick={() => toggleTechnicalTag(id)}
-                                    className={selectedTagChipCls + " shrink-0"}
+                                    className={`${chipBaseCls} shrink-0 border-transparent ring-1 ${tagColors[index % tagColors.length][0]}`}
                                     title={label}
                                     aria-label={label}
                                   >
@@ -5014,7 +5019,7 @@ export default function ContractInformation() {
                               aria-label={`انتخاب قرارداد ${toFaDigits(contractsStartIdx + index + 1)}`}
                             />
                           </td>
-                          <td className={`px-3 font-semibold ${divider}`}>{toFaDigits(contractsStartIdx + index + 1)}</td>
+                          <td className={`px-3 ${divider}`}>{toFaDigits(contractsStartIdx + index + 1)}</td>
                           <td className={`px-3 ${divider}`}>
                             <div className="flex items-center justify-center">
                               <span className="block truncate text-center font-semibold tabular-nums" title={projectLabel}>{projectCode}</span>
