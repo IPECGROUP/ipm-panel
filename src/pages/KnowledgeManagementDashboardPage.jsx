@@ -17,7 +17,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
   const [activeId, setActiveId] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const moveTooltip = (x, y) => setTooltipPosition({ x: Math.max(8, Math.min(x + 14, window.innerWidth - 200)), y: Math.max(8, Math.min(y + 14, window.innerHeight - 76)) });
-  const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
+  const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#ec4899", "#6366f1", "#84cc16", "#f97316", "#06b6d4", "#a855f7", "#e11d48", "#0d9488", "#eab308", "#475569"];
   const displayTotal = large ? rows.reduce((sum, row) => sum + Math.sqrt(Number(row.count)), 0) : 0;
   let cursor = 0;
   const slices = rows.map((row, index) => {
@@ -27,7 +27,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
     cursor += displayShare;
     const end = cursor * 2 * Math.PI - Math.PI / 2;
     const angle = (start + end) / 2;
-    return { ...row, share, displayShare, start, end, angle, color: colors[index % colors.length], side: Math.cos(angle) >= 0 ? 1 : -1 };
+    return { ...row, share, displayShare, start, end, angle, color: colors[index] || `hsl(${(index * 137.5) % 360} 65% ${42 + (index % 3) * 8}%)`, side: Math.cos(angle) >= 0 ? 1 : -1 };
   });
   const sides = [-1, 1].map((side) => slices.filter((slice) => slice.side === side).sort((a, b) => Math.sin(a.angle) - Math.sin(b.angle)));
   const height = Math.max(large ? 350 : 280, Math.max(...sides.map((side) => side.length)) * 30 + 30);
@@ -47,7 +47,6 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
   const active = slices.find((slice) => slice.id === activeId);
   return <>
     <p className="text-center text-xs font-bold">{totalLabel}: {fa(total)} {unit === "ریال" ? unit : ""}</p>
-    {large && rows.length > 0 && <p className="mt-1 text-center text-[10px] text-neutral-500 dark:text-neutral-400">اندازه قطعه‌ها برای نمایش سهم‌های کوچک تنظیم شده است؛ درصدها واقعی هستند.</p>}
     {rows.length && total ? <div className={`relative w-full max-h-[400px] overflow-y-auto ${large ? "mt-5" : ""}`}><svg viewBox={`0 0 580 ${height}`} className="mx-auto block w-full" role="img" aria-label={`${totalLabel}: ${fa(total)} ${unit}`}>
       {slices.map((slice) => {
         const [x1, y1] = point(slice.start, radius);
@@ -65,7 +64,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
         const lineEnd = cx + slice.side * (radius + 33);
         const elbow = cx + slice.side * (radius + 20);
         const labelWidth = cx - radius - 37;
-        return <g key={slice.id} pointerEvents="none"><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${elbow} ${slice.labelY} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width={labelWidth} height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" className="truncate text-[12px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name}</div></foreignObject></g>;
+        return <g key={slice.id} pointerEvents="none"><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${elbow} ${slice.labelY} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width={labelWidth} height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" className="truncate text-[15px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name}</div></foreignObject></g>;
       })}
     </svg>{large && <div className="space-y-1.5 px-1 pb-2">{slices.map((slice) => <div key={slice.id} className="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-[11px] dark:bg-white/[0.045]"><span className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} /><span className="break-words">{slice.name}</span></span><span className="shrink-0 tabular-nums">{fa(slice.count)} {unit} <span className="text-neutral-500">({new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(slice.share * 100)}٪)</span></span></div>)}</div>}{active && <div role="tooltip" style={{ left: tooltipPosition.x, top: tooltipPosition.y }} className="pointer-events-none fixed z-50 max-w-[190px] rounded-xl border border-neutral-200 bg-white px-4 py-2 text-center text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><span className="block font-bold">{active.name}</span><span className="mt-1 block whitespace-nowrap text-neutral-500 dark:text-neutral-300">{fa(active.count)} {unit} ({new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(active.share * 100)}٪)</span></div>}</div> : <p className="py-16 text-center text-xs text-neutral-400">{empty}</p>}
   </>;
