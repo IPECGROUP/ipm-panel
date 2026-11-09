@@ -1,6 +1,6 @@
 // src/components/layout/Shell.jsx
 import React from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import RightNav from "../RightNav.jsx";
 import "./ShellResponsive.css";
 import { useAuth } from "../AuthProvider.jsx";
@@ -35,6 +35,7 @@ const notificationSerial = (item) => String(
 ).trim();
 
 export default function Shell() {
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const notificationsRef = React.useRef(null);
@@ -279,7 +280,7 @@ export default function Shell() {
         "min-h-screen " +
         (theme === "dark"
           ? "bg-[#0b0b0f] text-white"
-          : "bg-white text-neutral-900")
+          : location.pathname === "/dashboard" ? "bg-[#f8f7f2] text-neutral-900" : "bg-white text-neutral-900")
       }
     >
       <header

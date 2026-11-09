@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Check, Plus, Settings2, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
@@ -47,6 +47,7 @@ const shortcutOptions = [
 ].map(([to, label, icon]) => ({ to, label, icon: `/images/icons/${icon}` }));
 
 const limitedShortcuts = new Set(["/finance/payment-request", "/finance/tenkhah", "/supply/request"]);
+const shortcutColors = ["bg-amber-100 dark:bg-amber-500/20", "bg-sky-100 dark:bg-sky-500/20", "bg-emerald-100 dark:bg-emerald-500/20", "bg-violet-100 dark:bg-violet-500/20", "bg-rose-100 dark:bg-rose-500/20", "bg-indigo-100 dark:bg-indigo-500/20", "bg-teal-100 dark:bg-teal-500/20", "bg-orange-100 dark:bg-orange-500/20"];
 const faNumber = (value) => Number(value || 0).toLocaleString("fa-IR");
 const amountOf = (value) => {
   const parsed = Number(String(value ?? "").replace(/[،,\s]/g, ""));
@@ -87,12 +88,17 @@ const supplyStatusOf = (item) => {
 };
 
 function HomeTopDailyLogUsers({ rows, loading }) {
-  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">کاربران پرثبت روزنگار</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">۵ کاربر با بیشترین تعداد ثبت</span></div><div className="space-y-2">{rows.length ? rows.map((person, index) => <div key={person.key} className="flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block truncate text-[10px] text-neutral-500 dark:text-neutral-400">{person.unit}</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.value)}</span></div>) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div></Card>;
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">کاربران فعال روزنگار</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">روند ماهانه ثبت‌ها در پروژه‌های فعال</span></div><div className="h-[320px] space-y-2 overflow-y-auto">{rows.length ? rows.map((person, index) => {
+    const max = Math.max(1, ...person.trend);
+    const values = person.trend.length === 1 ? [person.trend[0], person.trend[0]] : person.trend;
+    const points = values.map((value, i) => `${2 + i * 96 / Math.max(1, values.length - 1)},${27 - value / max * 23}`).join(" ");
+    return <div key={person.key} className="rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><div className="flex items-center gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block truncate text-[10px] text-neutral-500 dark:text-neutral-400">{person.unit}</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.value)}</span></div><svg viewBox="0 0 100 30" preserveAspectRatio="none" className="mt-2 h-8 w-full" role="img" aria-label={`روند ماهانه ثبت‌های ${person.label}`}><polyline points={points} fill="none" stroke="#0ea5e9" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" /></svg></div>;
+  }) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div></Card>;
 }
 
 function HomeReviewTiming({ timings }) {
   const stages = ["برنامه‌ریزی و کنترل پروژه", "مدیر پروژه", "مدیریت / دستور پرداخت", "مالی و تأیید نهایی"];
-  return <Card className="min-h-[410px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مدت زمان بررسی درخواست‌ها</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌های عادی</span></div><div className="grid gap-2 sm:grid-cols-2">{stages.map((label, index) => { const values = timings[index] || []; const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null; const maximum = values.length ? Math.max(...values) : null; return <div key={label} className="rounded-xl bg-neutral-50 p-3 dark:bg-white/[0.045]"><span className="flex items-center gap-2 text-xs font-semibold"><span className={`h-2.5 w-2.5 rounded-full ${["bg-sky-500", "bg-amber-500", "bg-violet-500", "bg-emerald-500"][index]}`} />{label}</span><div className="mt-3 flex items-end justify-between gap-2"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">میانگین</span><span className="text-sm font-bold tabular-nums">{formatReviewDuration(average)}</span></div><div className="mt-2 flex items-end justify-between gap-2 border-t border-black/[0.06] pt-2 dark:border-white/[0.08]"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">بیشترین</span><span className="text-sm font-bold tabular-nums">{formatReviewDuration(maximum)}</span></div></div>; })}</div></Card>;
+  return <Card className="min-h-[410px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مدت زمان بررسی درخواست‌های پرداخت / تأمین / تنخواه گردان</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌های عادی</span></div><div className="grid gap-2 sm:grid-cols-2">{stages.map((label, index) => { const values = timings[index] || []; const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null; const maximum = values.length ? Math.max(...values) : null; return <div key={label} className="rounded-xl bg-neutral-50 p-3 dark:bg-white/[0.045]"><span className="flex items-center gap-2 text-xs font-semibold"><span className={`h-2.5 w-2.5 rounded-full ${["bg-sky-500", "bg-amber-500", "bg-violet-500", "bg-emerald-500"][index]}`} />{label}</span><div className="mt-3 flex items-end justify-between gap-2"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">میانگین</span><span className="text-sm font-bold tabular-nums">{formatReviewDuration(average)}</span></div><div className="mt-2 flex items-end justify-between gap-2 border-t border-black/[0.06] pt-2 dark:border-white/[0.08]"><span className="text-[11px] text-neutral-500 dark:text-neutral-400">بیشترین</span><span className="text-sm font-bold tabular-nums">{formatReviewDuration(maximum)}</span></div></div>; })}</div></Card>;
 }
 
 function HomeUnsettledTenkhah({ rows, loading }) {
@@ -191,14 +197,17 @@ export default function DashboardPage() {
 
   const topDailyLogUsers = useMemo(() => {
     const people = new Map();
+    const months = [...new Set(dailyLogEntries.map((entry) => String(entry?.date_ymd ?? entry?.dateYmd ?? "").replaceAll("/", "-").slice(0, 7)).filter((month) => /^\d{4}-\d{2}$/.test(month)))].sort();
     dailyLogEntries.forEach((entry) => {
       const key = String(entry?.user_id ?? entry?.userId ?? entry?.user_name ?? entry?.userName ?? "");
       if (!key) return;
-      const current = people.get(key) || { key, label: String(entry?.user_name ?? entry?.userName ?? `کاربر #${key}`).trim(), unit: dailyLogUnits(entry), value: 0 };
+      const current = people.get(key) || { key, label: String(entry?.user_name ?? entry?.userName ?? `کاربر #${key}`).trim(), unit: dailyLogUnits(entry), value: 0, months: {} };
       current.value += 1;
+      const month = String(entry?.date_ymd ?? entry?.dateYmd ?? "").replaceAll("/", "-").slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(month)) current.months[month] = (current.months[month] || 0) + 1;
       people.set(key, current);
     });
-    return [...people.values()].sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fa")).slice(0, 5);
+    return [...people.values()].map((person) => ({ ...person, trend: months.map((month) => person.months[month] || 0) })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fa"));
   }, [dailyLogEntries]);
   const reviewTimings = useMemo(() => {
     const groups = [[], [], [], []];
@@ -251,18 +260,10 @@ export default function DashboardPage() {
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
       <section className="rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-bold md:text-lg">خانه</h1>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">دسترسی سریع به صفحه‌های پرکاربرد</p>
-          </div>
-          {selectedShortcuts.length > 0 && <button type="button" disabled={shortcutsLoading} onClick={() => setPickerOpen(true)} className="grid h-9 w-9 place-items-center rounded-xl border border-neutral-200 text-neutral-500 transition hover:border-amber-300 hover:bg-amber-50 hover:text-amber-700 dark:border-white/10 dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="ویرایش میانبرها" title="ویرایش میانبرها"><Settings2 className="h-4 w-4" /></button>}
-        </div>
-
         {shortcutError && !pickerOpen && <p role="alert" className="mt-3 text-xs text-red-600">{shortcutError}</p>}
-        <div className="mt-5 flex flex-wrap gap-3">
-          {selectedShortcuts.map((item) => <button key={item.to} type="button" onClick={() => navigate(item.to)} className="group flex w-[104px] flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50 px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/10 dark:from-white/[0.07] dark:to-white/[0.02] dark:hover:border-amber-400/60" title={item.label}><span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-50 transition group-hover:bg-amber-100 dark:bg-amber-500/10 dark:group-hover:bg-amber-500/20"><img src={item.icon} alt="" className="h-5 w-5 opacity-75 dark:invert" /></span><span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">{item.label}</span></button>)}
-          {selectedShortcuts.length < availableOptions.length && <button type="button" disabled={shortcutsLoading} onClick={() => setPickerOpen(true)} className="flex min-h-[102px] w-[104px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 px-2 text-neutral-500 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/20 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="افزودن میانبر"><span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">افزودن میانبر</span></button>}
+        <div className="flex flex-wrap gap-3">
+          {selectedShortcuts.map((item) => <button key={item.to} type="button" onClick={() => navigate(item.to)} className="group flex w-[104px] flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50 px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/10 dark:from-white/[0.07] dark:to-white/[0.02] dark:hover:border-amber-400/60" title={item.label}><span className={`grid h-11 w-11 place-items-center rounded-xl ${shortcutColors[shortcutOptions.findIndex((option) => option.to === item.to) % shortcutColors.length]}`}><img src={item.icon} alt="" className="h-7 w-7 opacity-75 dark:invert" /></span><span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">{item.label}</span></button>)}
+          {<button type="button" disabled={shortcutsLoading} onClick={() => setPickerOpen(true)} className="flex min-h-[102px] w-[104px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 px-2 text-neutral-500 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/20 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="افزودن میانبر"><span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">افزودن میانبر</span></button>}
         </div>
       </section>
 
