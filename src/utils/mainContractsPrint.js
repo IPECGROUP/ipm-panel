@@ -2,7 +2,7 @@ const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[character]);
 
-export function openMainContractsPrintPreview(rows) {
+export function openMainContractsPrintPreview(rows, { includeAmounts = true } = {}) {
   const preview = window.open("", "_blank", "width=1150,height=850");
   if (!preview) return;
   const origin = window.location.origin;
@@ -15,10 +15,11 @@ export function openMainContractsPrintPreview(rows) {
     <td class="right"><strong>${value(row.employer)}</strong><div class="secondary-text">${value(row.subject)}</div></td>
     <td>${value(row.type)}</td>
     <td><div>${value(row.start)}</div><div class="secondary-text">${value(row.end)}</div></td>
-    <td>${row.amounts.length ? row.amounts.map((amount) => `<div>${value(amount)}</div>`).join("") : "—"}</td>
+    ${includeAmounts ? `<td>${row.amounts.length ? row.amounts.map((amount) => `<div>${value(amount)}</div>`).join("") : "—"}</td>` : ""}
     <td>${value(row.status)}</td>
-  </tr>`).join("") : '<tr><td colspan="6">قرارداد اصلی ثبت نشده است.</td></tr>';
-  preview.document.write(`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>لیست قراردادهای اصلی با مبلغ</title>
+  </tr>`).join("") : `<tr><td colspan="${includeAmounts ? 6 : 5}">قرارداد اصلی ثبت نشده است.</td></tr>`;
+  const modeLabel = includeAmounts ? "با مبلغ" : "بدون مبلغ";
+  preview.document.write(`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>لیست قراردادهای اصلی ${modeLabel}</title>
   <style>
     @font-face{font-family:Vazir;src:url("${origin}/fonts/Vazir.woff2") format("woff2");font-weight:400}
     @font-face{font-family:Vazir;src:url("${origin}/fonts/Vazir-Bold.woff2") format("woff2");font-weight:700}
@@ -35,8 +36,8 @@ export function openMainContractsPrintPreview(rows) {
     @media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.toolbar{display:none}.sheet{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}thead{display:table-header-group}tr{break-inside:avoid}.header,.section-title{break-inside:avoid}}
     @media screen and (max-width:900px){.sheet{width:calc(100% - 20px);min-height:auto;padding:18px}.header{grid-template-columns:1fr}.logo,.document-meta{border:0;border-bottom:1px solid #d5dbe0}}
   </style></head><body><div class="toolbar"><button id="print-document" type="button">چاپ / ذخیره PDF</button><button id="close-preview" class="secondary" type="button">بستن پیش‌نمایش</button></div>
-  <article class="sheet"><header class="header"><div class="logo"><img src="${origin}/images/IPEC%20Persian%20Energy%20Process%20Logo.webp" alt="IPEC"></div><div class="title"><h1>لیست قراردادهای اصلی</h1><p>گزارش قراردادهای اصلی با مبلغ</p></div><div class="document-meta"><div><span>تاریخ:</span><strong>${value(date)}</strong></div><div><span>ساعت:</span><strong>${value(time)}</strong></div></div></header>
-  <section><h2 class="section-title">فهرست قراردادها</h2><table><colgroup><col style="width:6%"><col style="width:32%"><col style="width:14%"><col style="width:14%"><col style="width:17%"><col style="width:17%"></colgroup><thead><tr><th>ردیف</th><th>کارفرما / موضوع قرارداد</th><th>نوع قرارداد</th><th>شروع / پایان</th><th>مبلغ</th><th>آخرین وضعیت</th></tr></thead><tbody>${body}</tbody></table></section><footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${value(time)} - ${value(date)}</span></footer></article></body></html>`);
+  <article class="sheet"><header class="header"><div class="logo"><img src="${origin}/images/IPEC%20Persian%20Energy%20Process%20Logo.webp" alt="IPEC"></div><div class="title"><h1>لیست قراردادهای اصلی</h1><p>گزارش قراردادهای اصلی ${modeLabel}</p></div><div class="document-meta"><div><span>تاریخ:</span><strong>${value(date)}</strong></div><div><span>ساعت:</span><strong>${value(time)}</strong></div></div></header>
+  <section><h2 class="section-title">فهرست قراردادها</h2><table><colgroup><col style="width:6%"><col style="width:${includeAmounts ? 32 : 39}%"><col style="width:${includeAmounts ? 14 : 17}%"><col style="width:${includeAmounts ? 14 : 17}%">${includeAmounts ? '<col style="width:17%">' : ""}<col style="width:${includeAmounts ? 17 : 21}%"></colgroup><thead><tr><th>ردیف</th><th>کارفرما / موضوع قرارداد</th><th>نوع قرارداد</th><th>شروع / پایان</th>${includeAmounts ? "<th>مبلغ</th>" : ""}<th>آخرین وضعیت</th></tr></thead><tbody>${body}</tbody></table></section><footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${value(time)} - ${value(date)}</span></footer></article></body></html>`);
   preview.document.close();
   preview.document.getElementById("print-document")?.addEventListener("click", async () => { await preview.document.fonts.ready; preview.focus(); preview.print(); });
   preview.document.getElementById("close-preview")?.addEventListener("click", () => preview.close());

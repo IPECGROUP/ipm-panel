@@ -1249,8 +1249,6 @@ export default function ContractInformation() {
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
   const [previewContractId, setPreviewContractId] = React.useState("");
   const [previewFileIndex, setPreviewFileIndex] = React.useState(0);
-  const [mainListMode, setMainListMode] = React.useState("");
-  const mainListRef = React.useRef(null);
   const [relatedLetterPreviewId, setRelatedLetterPreviewId] = React.useState("");
   const [finalSaveStatus, setFinalSaveStatus] = React.useState({ sectionId: "", message: "" });
   const [filterQuery, setFilterQuery] = React.useState("");
@@ -1835,7 +1833,7 @@ export default function ContractInformation() {
   const contractsEndIdx = Math.min(contractsTotal, contractsStartIdx + contractsRowsPerPage);
   const contractsPageRows = contractsDisplayRows.slice(contractsStartIdx, contractsEndIdx);
 
-  const previewMainContractsWithAmounts = () => {
+  const previewMainContracts = (includeAmounts) => {
     const mainRows = rows.filter((row) => row.documentType === "main").map((row, index) => ({
       number: toFaDigits(index + 1),
       employer: row.general?.employerAssignor,
@@ -1843,10 +1841,10 @@ export default function ContractInformation() {
       type: row.general?.contractType,
       start: `شروع: ${toFaDigits((row.calendar?.startDate || "—").replaceAll("-", "/"))}`,
       end: `پایان: ${toFaDigits((effectiveContractEndDate(row) || "—").replaceAll("-", "/"))}`,
-      amounts: normalizeFinancial(row.financial || {}).contractAmounts.filter((amount) => hasFinancialAmount(amount.amount)).map((amount) => `${formatFinancialAmount(parseFinancialAmount(amount.amount))} ${amount.currencyLabel || readItemLabel(currencyById.get(String(amount.currencyId || ""))) || ""}`.trim()),
+      amounts: includeAmounts ? normalizeFinancial(row.financial || {}).contractAmounts.filter((amount) => hasFinancialAmount(amount.amount)).map((amount) => `${formatFinancialAmount(parseFinancialAmount(amount.amount))} ${amount.currencyLabel || readItemLabel(currencyById.get(String(amount.currencyId || ""))) || ""}`.trim()) : [],
       status: row.insurance?.lastStatus || "ثبت نشده",
     }));
-    openMainContractsPrintPreview(mainRows);
+    openMainContractsPrintPreview(mainRows, { includeAmounts });
   };
 
   const exportContractsExcel = async () => {
@@ -3687,7 +3685,7 @@ export default function ContractInformation() {
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-            {!formOpen && ["with", "without"].map((mode) => <button key={mode} type="button" onClick={() => mode === "with" ? previewMainContractsWithAmounts() : setMainListMode(mode)} className="rounded-xl border border-[#6093b7] bg-white px-3 py-1.5 text-center text-xs font-bold text-[#184a6b] hover:bg-sky-50 dark:bg-neutral-900 dark:text-sky-200"><span className="block">لیست قراردادهای اصلی</span><span className="mt-0.5 block text-[10px] font-normal">{mode === "with" ? "با مبلغ" : "بدون مبلغ"}</span></button>)}
+            {!formOpen && ["with", "without"].map((mode) => <button key={mode} type="button" onClick={() => previewMainContracts(mode === "with")} className="rounded-xl border border-[#6093b7] bg-white px-3 py-1.5 text-center text-xs font-bold text-[#184a6b] hover:bg-sky-50 dark:bg-neutral-900 dark:text-sky-200"><span className="block">لیست قراردادهای اصلی</span><span className="mt-0.5 block text-[10px] font-normal">{mode === "with" ? "با مبلغ" : "بدون مبلغ"}</span></button>)}
             {canContract("افزودن") && <button
               type="button"
               onClick={() => (formOpen ? closeForm() : openFreshForm())}
@@ -5233,16 +5231,6 @@ export default function ContractInformation() {
         </div>
         </div>
       </Card>
-
-      {mainListMode && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6" dir="rtl">
-          <div className="absolute inset-0 bg-black/55" onClick={() => setMainListMode("")} />
-          <div className="relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl dark:bg-neutral-900 dark:text-white">
-            <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="font-bold">لیست قراردادهای اصلی <span className="text-xs font-normal">({mainListMode === "with" ? "با مبلغ" : "بدون مبلغ"})</span></div><div className="flex gap-2"><button type="button" className="rounded-xl border border-black/10 px-4 text-sm dark:border-white/10" onClick={() => { const win = window.open("", "_blank"); if (!win || !mainListRef.current) return; win.document.write('<!doctype html><html dir="rtl"><head><title>لیست قراردادهای اصلی</title><style>body{font-family:tahoma,sans-serif;padding:20px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #aaa;padding:8px;text-align:center}th{background:#ddd}@page{size:landscape}</style></head><body></body></html>'); win.document.close(); const title = win.document.createElement("h2"); title.textContent = `لیست قراردادهای اصلی (${mainListMode === "with" ? "با مبلغ" : "بدون مبلغ"})`; win.document.body.append(title, mainListRef.current.cloneNode(true)); win.focus(); win.print(); }}>چاپ</button><button type="button" className={iconBtnCls} onClick={() => setMainListMode("")} aria-label="بستن">×</button></div></div>
-            <div className="overflow-auto p-4"><table ref={mainListRef} className="w-full min-w-[750px] text-center text-sm"><thead className="bg-[#6093b7] text-white"><tr><th className="p-2">ردیف</th><th className="p-2">پروژه</th><th className="p-2">شماره قرارداد</th><th className="p-2">نوع قرارداد</th><th className="p-2">موضوع</th><th className="p-2">کارفرما</th><th className="p-2">تاریخ شروع</th><th className="p-2">تاریخ پایان</th>{mainListMode === "with" && <th className="p-2">مبلغ</th>}</tr></thead><tbody>{rows.filter((row) => row.documentType === "main").map((row, index) => <tr key={row.id} className="border-b border-black/10 dark:border-white/10"><td className="p-2">{toFaDigits(index + 1)}</td><td className="p-2">{projectById.get(String(row.projectId))?.label || "—"}</td><td className="p-2">{toFaDigits(contractNoForRow(row, rowById) || "—")}</td><td className="p-2">{row.general?.contractType || "—"}</td><td className="p-2">{row.general?.contractSubject || "—"}</td><td className="p-2">{row.general?.employerAssignor || "—"}</td><td className="p-2">{toFaDigits(row.calendar?.startDate || "—")}</td><td className="p-2">{toFaDigits(effectiveContractEndDate(row) || "—")}</td>{mainListMode === "with" && <td className="p-2">{normalizeFinancial(row.financial || {}).contractAmounts.filter((amount) => hasFinancialAmount(amount.amount)).map((amount, i) => <div key={amount.id || i}>{formatFinancialAmount(parseFinancialAmount(amount.amount))} {amount.currencyLabel || readItemLabel(currencyById.get(String(amount.currencyId || ""))) || ""}</div>)}</td>}</tr>)}</tbody></table>{!rows.some((row) => row.documentType === "main") && <div className="p-8 text-center text-sm text-neutral-500">قرارداد اصلی ثبت نشده است.</div>}</div>
-          </div>
-        </div>, document.body
-      )}
 
       {previewContract &&
         createPortal(
