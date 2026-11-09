@@ -410,7 +410,7 @@ function isRialCurrency(row = {}) {
     .normalize("NFKC")
     .replace(/[\s\u200c\u200d]/g, "")
     .toLowerCase();
-  return value.includes("ریال") || value.includes("ريال") || value.includes("rial");
+  return value.includes("ریال") || value.includes("ريال") || value.includes("rial") || value === "irr";
 }
 
 function normalizeInsurance(insurance = {}) {
@@ -1248,6 +1248,8 @@ export default function ContractInformation() {
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
   const [previewContractId, setPreviewContractId] = React.useState("");
   const [previewFileIndex, setPreviewFileIndex] = React.useState(0);
+  const [mainListMode, setMainListMode] = React.useState("");
+  const mainListRef = React.useRef(null);
   const [relatedLetterPreviewId, setRelatedLetterPreviewId] = React.useState("");
   const [finalSaveStatus, setFinalSaveStatus] = React.useState({ sectionId: "", message: "" });
   const [filterQuery, setFilterQuery] = React.useState("");
@@ -1688,7 +1690,7 @@ export default function ContractInformation() {
     return map;
   }, [currencySourceItems]);
   const isRialCurrencyRow = React.useCallback(
-    (row) => Boolean(row?.currencyIsRial) || isRialCurrency({ currencyLabel: readItemLabel(currencyById.get(String(row?.currencyId || ""))) || row?.currencyLabel }),
+    (row) => Boolean(row?.currencyIsRial) || isRialCurrency(row) || isRialCurrency({ currencyLabel: readItemLabel(currencyById.get(String(row?.currencyId || ""))) }),
     [currencyById]
   );
   const financialForm = React.useMemo(() => normalizeFinancial(form.financial || {}), [form.financial]);
@@ -3106,9 +3108,10 @@ export default function ContractInformation() {
       ...(Array.isArray(previewFinancial.breakdownFiles) ? previewFinancial.breakdownFiles.map((file) => normalizeFile(file, "جدول شکست مبلغ")) : []),
       ...(Array.isArray(previewFinancial.paymentTermsFiles) ? previewFinancial.paymentTermsFiles.map((file) => normalizeFile(file, "شرایط پرداخت")) : []),
       ...(Array.isArray(previewInsurance.clearanceFiles) ? previewInsurance.clearanceFiles.map((file) => normalizeFile(file, "مفاصا حساب")) : []),
+      ...previewFinancial.appendices.flatMap((appendix, index) => (appendix.files || []).map((file) => normalizeFile(file, `الحاقیه ${toFaDigits(index + 1)}`))),
       ...(Array.isArray(previewLetterAttachments) ? previewLetterAttachments.map((file) => normalizeFile(file, "سند مرتبط")) : []),
     ];
-  }, [previewFinancial.breakdownFiles, previewFinancial.paymentTermsFiles, previewInsurance.clearanceFiles, previewLetterAttachments]);
+  }, [previewFinancial.breakdownFiles, previewFinancial.paymentTermsFiles, previewFinancial.appendices, previewInsurance.clearanceFiles, previewLetterAttachments]);
   const activePreviewFile = previewFiles[Math.min(Math.max(0, previewFileIndex), Math.max(0, previewFiles.length - 1))] || null;
   const resolvePreviewFileUrl = (file) => {
     return resolvePublicUrl(file?.url || "");
@@ -3139,9 +3142,9 @@ export default function ContractInformation() {
     [relatedLetterPreview]
   );
   const relatedLetterPreviewFile = relatedLetterPreviewFiles.find((file) => file.isPdf || file.isImage) || relatedLetterPreviewFiles[0] || null;
-  const previewInfoItemCls = "rounded-xl border border-black/10 bg-black/[0.02] px-3 py-2 dark:border-neutral-700 dark:bg-white/[0.03]";
+  const previewInfoItemCls = "flex items-start justify-between gap-4 border-b border-black/10 px-3 py-2 dark:border-neutral-700";
   const previewLabelCls = "text-[11px] font-semibold text-black/45 dark:text-neutral-400";
-  const previewValueCls = "mt-1 break-words text-sm font-semibold text-black dark:text-neutral-100";
+  const previewValueCls = "min-w-0 break-words text-left text-sm text-black dark:text-neutral-100";
   const previewValue = (value, fallback = "ثبت نشده") => {
     const text = String(value ?? "").trim();
     return text ? text : fallback;
@@ -3153,7 +3156,7 @@ export default function ContractInformation() {
     </div>
   );
   const renderPreviewSectionTitle = (title) => (
-    <div className="mt-4 mb-2 text-sm font-bold text-black dark:text-neutral-100">{title}</div>
+    <div className="mt-4 rounded-t-xl bg-[#6093b7] px-4 py-3 text-sm font-bold text-white">{title}</div>
   );
   const previewPaymentStatus = (value) => (value === "has" ? "دارد" : value === "none" ? "ندارد" : "");
   const previewFileNames = (files) => {
@@ -3656,6 +3659,8 @@ export default function ContractInformation() {
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">پروژه‌ها</span>
               </span>
             </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+            {!formOpen && ["with", "without"].map((mode) => <button key={mode} type="button" onClick={() => setMainListMode(mode)} className="rounded-xl border border-[#6093b7] bg-white px-3 py-1.5 text-center text-xs font-bold text-[#184a6b] hover:bg-sky-50 dark:bg-neutral-900 dark:text-sky-200"><span className="block">لیست قراردادهای اصلی</span><span className="mt-0.5 block text-[10px] font-normal">{mode === "with" ? "با مبلغ" : "بدون مبلغ"}</span></button>)}
             {canContract("افزودن") && <button
               type="button"
               onClick={() => (formOpen ? closeForm() : openFreshForm())}
@@ -3669,6 +3674,7 @@ export default function ContractInformation() {
                 className="w-5 h-5 dark:invert"
               />}
             </button>}
+            </div>
           </div>
 
           {!formOpen ? <div className="mb-4 space-y-2 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
@@ -3931,7 +3937,6 @@ export default function ContractInformation() {
                         <div className="min-w-0">
                           <div className={labelCls}>سطح</div>
                           <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
-                            <option value="">انتخاب کنید</option>
                             {CONTRACT_DOCUMENT_TYPES.filter((item) => item.id === "main" || item.id === "sub").map((item) => (
                               <option key={item.id} value={item.id}>
                                 {item.label}
@@ -4994,7 +4999,7 @@ export default function ContractInformation() {
                       const amountRow = normalizeFinancial(row.financial || {}).contractAmounts.find((item) => hasFinancialAmount(item.amount));
                       const amountText = amountRow ? formatFinancialAmount(parseFinancialAmount(amountRow.amount)) : "—";
                       const currencyText = amountRow?.currencyLabel || amountRow?.currencyId || "—";
-                      const sourceText = amountRow?.sourceLabel || amountRow?.sourceId || "—";
+                      const sourceText = amountRow?.sourceLabel || amountRow?.sourceId || "";
                       const statusText = row.insurance?.lastStatus || "ثبت نشده";
 
                       return (
@@ -5045,7 +5050,7 @@ export default function ContractInformation() {
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="font-semibold tabular-nums">{amountText}</div>
-                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{amountRow ? `${currencyText} - ${sourceText}` : "—"}</div>
+                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{amountRow ? [currencyText, !isRialCurrencyRow(amountRow) && sourceText].filter(Boolean).join(" - ") : "—"}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="flex min-h-[38px] items-center justify-center">
@@ -5202,11 +5207,21 @@ export default function ContractInformation() {
         </div>
       </Card>
 
+      {mainListMode && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6" dir="rtl">
+          <div className="absolute inset-0 bg-black/55" onClick={() => setMainListMode("")} />
+          <div className="relative flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white text-neutral-900 shadow-2xl dark:bg-neutral-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 dark:border-white/10"><div className="font-bold">لیست قراردادهای اصلی <span className="text-xs font-normal">({mainListMode === "with" ? "با مبلغ" : "بدون مبلغ"})</span></div><div className="flex gap-2"><button type="button" className="rounded-xl border border-black/10 px-4 text-sm dark:border-white/10" onClick={() => { const win = window.open("", "_blank"); if (!win || !mainListRef.current) return; win.document.write('<!doctype html><html dir="rtl"><head><title>لیست قراردادهای اصلی</title><style>body{font-family:tahoma,sans-serif;padding:20px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border:1px solid #aaa;padding:8px;text-align:center}th{background:#ddd}@page{size:landscape}</style></head><body></body></html>'); win.document.close(); const title = win.document.createElement("h2"); title.textContent = `لیست قراردادهای اصلی (${mainListMode === "with" ? "با مبلغ" : "بدون مبلغ"})`; win.document.body.append(title, mainListRef.current.cloneNode(true)); win.focus(); win.print(); }}>چاپ</button><button type="button" className={iconBtnCls} onClick={() => setMainListMode("")} aria-label="بستن">×</button></div></div>
+            <div className="overflow-auto p-4"><table ref={mainListRef} className="w-full min-w-[750px] text-center text-sm"><thead className="bg-[#6093b7] text-white"><tr><th className="p-2">ردیف</th><th className="p-2">پروژه</th><th className="p-2">شماره قرارداد</th><th className="p-2">نوع قرارداد</th><th className="p-2">موضوع</th><th className="p-2">کارفرما</th><th className="p-2">تاریخ شروع</th><th className="p-2">تاریخ پایان</th>{mainListMode === "with" && <th className="p-2">مبلغ</th>}</tr></thead><tbody>{rows.filter((row) => row.documentType === "main").map((row, index) => <tr key={row.id} className="border-b border-black/10 dark:border-white/10"><td className="p-2">{toFaDigits(index + 1)}</td><td className="p-2">{projectById.get(String(row.projectId))?.label || "—"}</td><td className="p-2">{toFaDigits(contractNoForRow(row, rowById) || "—")}</td><td className="p-2">{row.general?.contractType || "—"}</td><td className="p-2">{row.general?.contractSubject || "—"}</td><td className="p-2">{row.general?.employerAssignor || "—"}</td><td className="p-2">{toFaDigits(row.calendar?.startDate || "—")}</td><td className="p-2">{toFaDigits(effectiveContractEndDate(row) || "—")}</td>{mainListMode === "with" && <td className="p-2">{normalizeFinancial(row.financial || {}).contractAmounts.filter((amount) => hasFinancialAmount(amount.amount)).map((amount, i) => <div key={amount.id || i}>{formatFinancialAmount(parseFinancialAmount(amount.amount))} {amount.currencyLabel || readItemLabel(currencyById.get(String(amount.currencyId || ""))) || ""}</div>)}</td>}</tr>)}</tbody></table>{!rows.some((row) => row.documentType === "main") && <div className="p-8 text-center text-sm text-neutral-500">قرارداد اصلی ثبت نشده است.</div>}</div>
+          </div>
+        </div>, document.body
+      )}
+
       {previewContract &&
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6" dir="rtl">
             <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setPreviewContractId("")} />
-            <div className="relative flex h-[min(86vh,760px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-black shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+            <div className="relative flex h-[min(90vh,900px)] w-full max-w-[1680px] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-black shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
               <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-neutral-800">
                 <div className="min-w-0">
                   <div className="text-base font-bold">پیش نمایش قرارداد</div>
@@ -5237,13 +5252,14 @@ export default function ContractInformation() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-hidden">
-                <div className="flex h-full flex-col lg:flex-row">
-                  <div className="h-full overflow-y-auto p-4 lg:w-[58%]">
+              <div className="flex-1 overflow-y-auto">
+                <div className="flex min-h-full flex-col lg:flex-row">
+                  <div className="min-w-0 p-4 lg:w-[42%]">
                 {renderPreviewSectionTitle("اطلاعات اصلی")}
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("مرکز/پروژه", previewProject?.label)}
                   {renderPreviewInfo("سند قراردادی", documentTypeLabel(previewContract.documentType))}
+                  {renderPreviewInfo("ثبت", previewContract.general?.registrationType === "official" ? "رسمی" : previewContract.general?.registrationType === "unofficial" ? "غیر رسمی" : "")}
                   {renderPreviewInfo("شماره قرارداد", contractNoForRow(previewContract, rowById))}
                   {previewContract.documentType === "sub" ? renderPreviewInfo("شماره قرارداد فرعی", previewContract.subContractNo) : null}
                   {renderPreviewInfo("نوع قرارداد", previewContract.general?.contractType)}
@@ -5258,12 +5274,13 @@ export default function ContractInformation() {
                 </div>
 
                 {renderPreviewSectionTitle("تقویم قرارداد")}
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
+                <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {previewContract.documentType === "appendix"
                     ? renderPreviewInfo("تمدید مدت قرارداد تا تاریخ", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")
                     : renderPreviewInfo("تاریخ پایان قرارداد", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")}
                   {renderPreviewInfo("میلادی تاریخ پایان", jalaliToGregorianLabel(previewContract.calendar?.endDate))}
                   {renderPreviewInfo("تاریخ ابلاغ کار", previewContract.calendar?.notifyDate ? toFaDigits(previewContract.calendar.notifyDate) : "")}
+                  {renderPreviewInfo("نامه ابلاغ کار", (() => { const letter = letterById.get(String(previewContract.calendar?.notifyLetterId || "")); return letter ? toFaDigits(secretariatNoOf(letter) || letterNoOf(letter) || letterIdOf(letter)) : previewContract.calendar?.notifyLetterId; })())}
                   {renderPreviewInfo("میلادی تاریخ ابلاغ", jalaliToGregorianLabel(previewContract.calendar?.notifyDate))}
                   {renderPreviewInfo("تاریخ شروع قرارداد", previewContract.calendar?.startDate ? toFaDigits(previewContract.calendar.startDate) : "")}
                   {renderPreviewInfo("میلادی تاریخ شروع", jalaliToGregorianLabel(previewContract.calendar?.startDate))}
@@ -5274,8 +5291,8 @@ export default function ContractInformation() {
                 </div>
 
                 {renderPreviewSectionTitle("فنی و محدوده کار")}
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  <div className={`${previewInfoItemCls} md:col-span-2`}>
+                <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
+                  <div className={`${previewInfoItemCls} `}>
                     <div className={previewLabelCls}>شرح خدمات</div>
                     <div className="mt-1 whitespace-pre-wrap text-sm leading-7">{previewValue(previewContract.technical?.serviceScope)}</div>
                   </div>
@@ -5285,7 +5302,7 @@ export default function ContractInformation() {
 
                 {renderPreviewSectionTitle("مالی و تضامین")}
                 {renderPreviewFinancialRows(previewFinancial.contractAmounts)}
-                <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("شرایط پرداخت", previewFileNames(previewFinancial.paymentTermsFiles) || previewFinancial.paymentTerms)}
                   {renderPreviewInfo("پیش پرداخت", previewPaymentStatus(previewFinancial.advancePayment))}
                   {renderPreviewInfo("سپرده بیمه", previewPaymentStatus(previewFinancial.capitalDeposit))}
@@ -5324,20 +5341,25 @@ export default function ContractInformation() {
                 )}
 
                 {renderPreviewSectionTitle("تامین اجتماعی")}
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("ردیف پیمان", previewInsurance.contractRow)}
                   {renderPreviewInfo("شعبه سازمان تامین اجتماعی", previewInsurance.branchStatus)}
                   {renderPreviewInfo("کارکرد ناخالص نهایی قرارداد", previewInsurance.finalGrossPerformance ? `${formatFinancialAmount(parseFinancialAmount(previewInsurance.finalGrossPerformance))} ریال` : "")}
+                  {renderPreviewInfo("نحوه محاسبه و ضرایب", previewInsurance.calculationMethod)}
+                  {renderPreviewInfo("شماره مفاصا حساب", previewInsurance.clearanceNo)}
+                  {renderPreviewInfo("مبلغ مفاصا حساب", previewInsurance.clearanceAmount ? `${formatFinancialAmount(parseFinancialAmount(previewInsurance.clearanceAmount))} ریال` : "")}
                   {renderPreviewInfo("مفاصا حساب بیمه تامین اجتماعی", previewFileNames(previewInsurance.clearanceFiles))}
                   {renderPreviewInfo("سند مرتبط تامین اجتماعی", previewInsuranceLetterLabel)}
                   {renderPreviewInfo("آخرین وضعیت قرارداد", previewInsurance.lastStatus)}
                   {renderPreviewInfo("توضیحات", previewInsurance.description)}
                 </div>
+                {renderPreviewSectionTitle("الحاقیه‌ها")}
+                {previewFinancial.appendices.length ? previewFinancial.appendices.map((item, index) => <div key={item.id} className="rounded-b-xl border border-black/10 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-white/[0.03]"><div className="px-3 py-2 text-sm font-bold">الحاقیه {toFaDigits(index + 1)}</div>{renderPreviewInfo("از تاریخ", toFaDigits(item.fromDate))}{renderPreviewInfo("تا تاریخ", toFaDigits(item.toDate))}{renderPreviewInfo("مبلغ", item.amount ? `${formatFinancialAmount(parseFinancialAmount(item.amount))} ${item.currencyLabel || item.currencyId || ""}` : "")}{renderPreviewInfo("منشأ", item.sourceLabel || item.sourceId)}{renderPreviewInfo("شرح محدوده کار", item.workScope)}{renderPreviewInfo("اسناد مرتبط", normalizeIdList(item.relatedLetterIds).map((id) => { const letter = letterById.get(String(id)); return toFaDigits(letter ? secretariatNoOf(letter) || letterNoOf(letter) || id : id); }).join("، "))}{renderPreviewInfo("فایل‌ها", previewFileNames(item.files))}</div>) : renderPreviewInfo("الحاقیه", "ثبت نشده")}
                   </div>
 
-                  <div className="flex min-h-[320px] flex-col border-t border-black/10 bg-black/[0.015] lg:w-[42%] lg:border-r lg:border-t-0 dark:border-neutral-800 dark:bg-white/[0.02]">
-                    <div className="flex items-center justify-between gap-2 border-b border-black/10 px-4 py-3 dark:border-neutral-800">
-                      <div className="text-sm font-bold">فایل‌ها و اسناد</div>
+                  <div className="flex min-h-[600px] min-w-0 flex-col border-t border-black/10 bg-black/[0.015] lg:sticky lg:top-0 lg:h-[calc(90vh-72px)] lg:w-[58%] lg:border-r lg:border-t-0 dark:border-neutral-800 dark:bg-white/[0.02]">
+                    <div className="flex items-center justify-between gap-2 bg-[#6093b7] px-4 py-3 text-white">
+                      <div className="text-sm font-bold">پیش‌نمایش پیوست‌ها</div>
                       <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
                         {toFaDigits(previewFiles.length)}
                       </div>
