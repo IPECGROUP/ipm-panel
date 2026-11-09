@@ -12,6 +12,15 @@ import { dayjs, isJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { openMainContractsPrintPreview } from "../utils/mainContractsPrint.js";
 
+function ContractPreviewSection({ title, open, onToggle, children }) {
+  return <section className="mb-3 overflow-hidden rounded-xl border border-black/10 dark:border-neutral-700">
+    <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center justify-between gap-3 bg-[#6093b7] px-4 py-3 text-right text-sm font-bold text-white hover:bg-[#5486a8]">
+      <span>{title}</span><svg className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </button>
+    {open && <div className="bg-neutral-50 dark:bg-white/[0.03]">{children}</div>}
+  </section>;
+}
+
 const CONTRACT_DOCUMENT_TYPES = [
   { id: "main", label: "اصلی" },
   { id: "sub", label: "فرعی" },
@@ -1248,6 +1257,7 @@ export default function ContractInformation() {
   const [form, setForm] = React.useState(() => emptyForm());
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
   const [previewContractId, setPreviewContractId] = React.useState("");
+  const [previewSection, setPreviewSection] = React.useState("general");
   const [previewFileIndex, setPreviewFileIndex] = React.useState(0);
   const [relatedLetterPreviewId, setRelatedLetterPreviewId] = React.useState("");
   const [finalSaveStatus, setFinalSaveStatus] = React.useState({ sectionId: "", message: "" });
@@ -3469,6 +3479,7 @@ export default function ContractInformation() {
 
   React.useEffect(() => {
     setPreviewFileIndex(0);
+    setPreviewSection("general");
   }, [previewContractId]);
 
   React.useEffect(() => {
@@ -5236,7 +5247,7 @@ export default function ContractInformation() {
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6" dir="rtl">
             <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setPreviewContractId("")} />
-            <div className="relative flex h-[min(90vh,900px)] w-full max-w-[1680px] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-black shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
+            <div className="relative flex h-[min(84vh,800px)] w-full max-w-[1450px] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white text-black shadow-2xl dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
               <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-neutral-800">
                 <div className="min-w-0">
                   <div className="text-base font-bold">پیش نمایش قرارداد</div>
@@ -5270,7 +5281,7 @@ export default function ContractInformation() {
               <div className="flex-1 overflow-y-auto">
                 <div className="flex min-h-full flex-col lg:flex-row">
                   <div className="min-w-0 p-4 lg:w-[42%]">
-                {renderPreviewSectionTitle("اطلاعات اصلی")}
+                <ContractPreviewSection title="اطلاعات اصلی" open={previewSection === "general"} onToggle={() => setPreviewSection(previewSection === "general" ? "" : "general")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("مرکز/پروژه", previewProject?.label)}
                   {renderPreviewInfo("سند قراردادی", documentTypeLabel(previewContract.documentType))}
@@ -5288,7 +5299,8 @@ export default function ContractInformation() {
                   {renderPreviewInfo("آخرین بخش ذخیره شده", CONTRACT_SECTION_TABS.find((tab) => tab.id === previewContract.lastSavedSection)?.label || previewContract.lastSavedSection)}
                 </div>
 
-                {renderPreviewSectionTitle("تقویم قرارداد")}
+                </ContractPreviewSection>
+                <ContractPreviewSection title="تقویم قرارداد" open={previewSection === "calendar"} onToggle={() => setPreviewSection(previewSection === "calendar" ? "" : "calendar")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {previewContract.documentType === "appendix"
                     ? renderPreviewInfo("تمدید مدت قرارداد تا تاریخ", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")
@@ -5305,7 +5317,8 @@ export default function ContractInformation() {
                   {renderPreviewInfo("تاریخ‌های افزوده", Array.isArray(previewContract.calendar?.extraDates) && previewContract.calendar.extraDates.length ? previewContract.calendar.extraDates.map((date) => toFaDigits(date)).join("، ") : "")}
                 </div>
 
-                {renderPreviewSectionTitle("فنی و محدوده کار")}
+                </ContractPreviewSection>
+                <ContractPreviewSection title="فنی و محدوده کار" open={previewSection === "technical"} onToggle={() => setPreviewSection(previewSection === "technical" ? "" : "technical")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   <div className={`${previewInfoItemCls} `}>
                     <div className={previewLabelCls}>شرح خدمات</div>
@@ -5315,7 +5328,8 @@ export default function ContractInformation() {
                   {TECHNICAL_SUPPORT_FIELDS.map((item) => renderPreviewInfo(item.label, previewContract.technical?.[item.key]))}
                 </div>
 
-                {renderPreviewSectionTitle("مالی و تضامین")}
+                </ContractPreviewSection>
+                <ContractPreviewSection title="مالی و تضامین" open={previewSection === "financial"} onToggle={() => setPreviewSection(previewSection === "financial" ? "" : "financial")}>
                 {renderPreviewFinancialRows(previewFinancial.contractAmounts)}
                 <div className="mt-3 grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("شرایط پرداخت", previewFileNames(previewFinancial.paymentTermsFiles) || previewFinancial.paymentTerms)}
@@ -5356,7 +5370,8 @@ export default function ContractInformation() {
                   <div className="mt-3">{renderPreviewInfo("تضامین", "تضمینی ثبت نشده است.")}</div>
                 )}
 
-                {renderPreviewSectionTitle("تامین اجتماعی")}
+                </ContractPreviewSection>
+                <ContractPreviewSection title="تامین اجتماعی" open={previewSection === "insurance"} onToggle={() => setPreviewSection(previewSection === "insurance" ? "" : "insurance")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("ردیف پیمان", previewInsurance.contractRow)}
                   {renderPreviewInfo("شعبه سازمان تامین اجتماعی", previewInsurance.branchStatus)}
@@ -5369,11 +5384,13 @@ export default function ContractInformation() {
                   {renderPreviewInfo("آخرین وضعیت قرارداد", previewInsurance.lastStatus)}
                   {renderPreviewInfo("توضیحات", previewInsurance.description)}
                 </div>
-                {renderPreviewSectionTitle("الحاقیه‌ها")}
+                </ContractPreviewSection>
+                <ContractPreviewSection title="الحاقیه‌ها" open={previewSection === "appendices"} onToggle={() => setPreviewSection(previewSection === "appendices" ? "" : "appendices")}>
                 {previewFinancial.appendices.length ? previewFinancial.appendices.map((item, index) => <div key={item.id} className="rounded-b-xl border border-black/10 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-white/[0.03]"><div className="px-3 py-2 text-sm font-bold">الحاقیه {toFaDigits(index + 1)}</div>{renderPreviewInfo("از تاریخ", toFaDigits(item.fromDate))}{renderPreviewInfo("تا تاریخ", toFaDigits(item.toDate))}{renderPreviewInfo("مبلغ", item.amount ? `${formatFinancialAmount(parseFinancialAmount(item.amount))} ${item.currencyLabel || item.currencyId || ""}` : "")}{renderPreviewInfo("منشأ", item.sourceLabel || item.sourceId)}{renderPreviewInfo("شرح محدوده کار", item.workScope)}{renderPreviewInfo("اسناد مرتبط", normalizeIdList(item.relatedLetterIds).map((id) => { const letter = letterById.get(String(id)); return toFaDigits(letter ? secretariatNoOf(letter) || letterNoOf(letter) || id : id); }).join("، "))}{renderPreviewInfo("فایل‌ها", previewFileNames(item.files))}</div>) : renderPreviewInfo("الحاقیه", "ثبت نشده")}
+                </ContractPreviewSection>
                   </div>
 
-                  <div className="flex min-h-[600px] min-w-0 flex-col overflow-hidden rounded-2xl border border-black/10 bg-black/[0.015] mx-4 mb-4 lg:sticky lg:top-4 lg:mt-4 lg:ml-4 lg:mr-0 lg:h-[calc(90vh-104px)] lg:w-[58%] dark:border-neutral-800 dark:bg-white/[0.02]">
+                  <div className="flex min-h-[320px] min-w-0 flex-col overflow-hidden rounded-2xl border border-black/10 bg-black/[0.015] mx-4 mb-4 lg:sticky lg:top-4 lg:mt-4 lg:ml-4 lg:mr-0 lg:h-[calc(min(84vh,800px)-104px)] lg:w-[58%] dark:border-neutral-800 dark:bg-white/[0.02]">
                     <div className="flex items-center justify-between gap-2 bg-[#6093b7] px-4 py-3 text-white">
                       <div className="text-sm font-bold">پیش‌نمایش پیوست‌ها</div>
                       <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
