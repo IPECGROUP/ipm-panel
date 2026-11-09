@@ -128,6 +128,7 @@ export default function App() {
         <Route path="/quality-management/systems" element={<NavPlaceholderPage title="مدیریت سیستم‌ها" icon="/images/icons/modiriat-system.svg" />} />
         <Route path="/quality-management/requirements" element={<NavPlaceholderPage title="الزامات و انطباق‌ها" icon="/images/icons/elzamat.svg" />} />
         <Route path="/quality-management/audits" element={<NavPlaceholderPage title="ممیزی و اقدام اصلاحی" icon="/images/icons/momaezi.svg" />} />
+        <Route path="/quality-management/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت سیستم‌ها" icon="/images/icons/dashboard-12.svg" />} />
         <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />
         <Route path="/knowledge-management/technical-standards" element={<NavPlaceholderPage title="استانداردهای فنی" />} />
         <Route path="/knowledge-management/template-library" element={<NavPlaceholderPage title="بانک الگوها" />} />

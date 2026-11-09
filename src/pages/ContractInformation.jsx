@@ -2766,6 +2766,37 @@ export default function ContractInformation() {
   };
 
   const saveContractSection = async (sectionId = activeContractTab) => {
+    const validateGeneral = sectionId === "general" || sectionId === "financial" || sectionId === "appendices";
+    if (validateGeneral && form.documentType !== "appendix") {
+      const missing = [];
+      if (!String(form.projectId || "").trim()) missing.push("پروژه");
+      if (!String(form.documentType || "").trim()) missing.push("سطح");
+      if (!String(form.general?.registrationType || "").trim()) missing.push("ثبت");
+      if (!String(form.general?.contractType || "").trim()) missing.push("نوع قرارداد");
+      if (!String(form.documentType === "sub" ? form.subContractNo || "" : form.contractNo || "").trim()) missing.push("شماره قرارداد");
+      if (!String(form.general?.contractSubject || "").trim()) missing.push("موضوع");
+      if (!normalizeIdList(form.relatedLetterIds?.length ? form.relatedLetterIds : form.relatedLetterId ? [form.relatedLetterId] : []).length) missing.push("اسناد مرتبط");
+      if (form.documentType !== "sub" && !String(form.general?.mainEmployer || "").trim()) missing.push("کارفرمای اصلی");
+      if (form.documentType !== "sub" && !String(form.general?.employerAssignor || "").trim()) missing.push("واگذارنده / کارفرما");
+      if (form.documentType === "sub" && !String(form.general?.executor || "").trim()) missing.push("مجری قرارداد");
+      if (missing.length) {
+        alert(`فیلدهای اجباری تب عمومی: ${missing.join("، ")}`);
+        return;
+      }
+    }
+    if ((sectionId === "insurance" || sectionId === "financial" || sectionId === "appendices") && isSocialInsuranceClearanceStatus(form.insurance?.lastStatus)) {
+      const insurance = normalizeInsurance(form.insurance || {});
+      const missing = [];
+      if (!String(insurance.contractRow || "").trim()) missing.push("ردیف پیمان");
+      if (!String(insurance.branchStatus || "").trim()) missing.push("شعبه سازمان تامین اجتماعی");
+      if (!hasFinancialAmount(insurance.finalGrossPerformance)) missing.push("رقم کارکرد نهایی");
+      if (!String(insurance.calculationMethod || "").trim()) missing.push("نحوه محاسبه و ضرایب");
+      if (!String(insurance.clearanceNo || "").trim()) missing.push("شماره مفاصا حساب");
+      if (missing.length) {
+        alert(`فیلدهای اجباری تب تامین اجتماعی: ${missing.join("، ")}`);
+        return;
+      }
+    }
     if (sectionId !== "financial" && sectionId !== "appendices") {
       await saveContractDraft({ sectionId, immediate: true });
       return;
@@ -2871,10 +2902,10 @@ export default function ContractInformation() {
         return;
       }
       const invalidAmountRow = financial.contractAmounts.find(
-        (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || (!isRialCurrencyRow(row) && !String(row.sourceId || "").trim())
+        (row) => !hasFinancialAmount(row.amount) || !String(row.currencyId || "").trim() || !String(row.sourceId || "").trim()
       );
       if (invalidAmountRow) {
-        alert("در بخش مبلغ قرارداد، مبلغ و ارز اجباری هستند و برای ارزهای غیرریالی، منشأ نیز اجباری است.");
+        alert("در بخش مبلغ قرارداد، مبلغ، ارز و منشأ اجباری هستند.");
         return;
       }
       if (documentType !== "appendix" && !isPropertyAndBuildingLeaseContract(form.general?.contractType) && !financial.breakdownFiles.length) {
@@ -3666,17 +3697,14 @@ export default function ContractInformation() {
               </select>
             </div>
             <div className="min-w-0">
-              <div className={labelCls}>منشأ {isRialCurrencyRow(row) ? "" : "*"}</div>
+              <div className={labelCls}>منشأ *</div>
               <select
                 value={row.sourceId || ""}
-                onChange={(e) => {
-                  if (!isRialCurrencyRow(row)) updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value);
-                }}
-                className={`${inputCls} ${isRialCurrencyRow(row) ? "pointer-events-none cursor-not-allowed bg-black/[0.06] text-black/40 dark:bg-white/[0.08] dark:text-neutral-500" : ""}`}
-                disabled={currencyLoading || isRialCurrencyRow(row)}
-                aria-disabled={currencyLoading || isRialCurrencyRow(row)}
+                onChange={(e) => updateFinancialRow(sectionKey, row.id, "sourceId", e.target.value)}
+                className={inputCls}
+                disabled={currencyLoading}
               >
-                <option value="">{isRialCurrencyRow(row) ? "" : currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
+                <option value="">{currencyLoading ? "در حال بارگذاری..." : "انتخاب منشأ"}</option>
                 {currencySourceItems.map((item) => {
                   const id = readItemId(item);
                   if (!id) return null;
@@ -4063,7 +4091,7 @@ export default function ContractInformation() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className={labelCls}>سطح</div>
+                          <div className={labelCls}>سطح *</div>
                           <select value={form.documentType} onChange={(e) => setField("documentType", e.target.value)} className={inputCls}>
                             {CONTRACT_DOCUMENT_TYPES.filter((item) => item.id === "main" || item.id === "sub").map((item) => (
                               <option key={item.id} value={item.id}>
@@ -4074,7 +4102,7 @@ export default function ContractInformation() {
                         </div>
 
                         <div className="min-w-0">
-                          <div className={labelCls}>ثبت</div>
+                          <div className={labelCls}>ثبت *</div>
                           <select
                             value={form.general?.registrationType || ""}
                             onChange={(e) => setGeneralField("registrationType", e.target.value)}
@@ -4207,7 +4235,7 @@ export default function ContractInformation() {
                         </div>
 
                         <div className="flex w-11 flex-col items-center gap-1">
-                          <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">اسناد مرتبط</div>
+                          <div className="whitespace-nowrap text-center text-[11px] font-semibold text-black/55 dark:text-neutral-400">اسناد مرتبط *</div>
                           <button type="button" onClick={() => openRelatedPicker("contract")} className={`${iconBtnCls} relative !h-11 !w-11 shrink-0`} aria-label="انتخاب اسناد مرتبط" title="انتخاب اسناد مرتبط">
                             <img src="/images/icons/asnad-mortabet.svg" alt="" className="h-5 w-5 dark:invert" />
                             <RelatedDocumentCountBadge value={selectedRelatedLetterSummaryItems.length} />
@@ -4255,7 +4283,7 @@ export default function ContractInformation() {
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(115px,0.75fr)_minmax(135px,0.9fr)_minmax(150px,1fr)_max-content]">
                         {form.documentType !== "sub" ? (
                           <div className="min-w-0">
-                            <div className={labelCls}>کارفرمای اصلی</div>
+                            <div className={labelCls}>کارفرمای اصلی *</div>
                             <input
                               value={form.general?.mainEmployer || ""}
                               onChange={(e) => setGeneralField("mainEmployer", e.target.value)}
@@ -4837,7 +4865,7 @@ export default function ContractInformation() {
                       <div>
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(140px,0.5fr)_minmax(170px,0.5fr)_minmax(220px,0.8fr)_minmax(180px,0.65fr)]">
                           <div className="min-w-0">
-                            <div className={labelCls}>ردیف پیمان{isPropertyAndBuildingLease ? "" : " *"}</div>
+                            <div className={labelCls}>ردیف پیمان{isPropertyAndBuildingLease && !isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? "" : " *"}</div>
                             <input
                               value={insuranceForm.contractRow || ""}
                               onChange={(e) => setInsuranceField("contractRow", e.target.value)}
@@ -4847,7 +4875,7 @@ export default function ContractInformation() {
                           </div>
 
                           <div className="min-w-0">
-                            <div className={labelCls}>شعبه سازمان تامین اجتماعی{isPropertyAndBuildingLease ? "" : " *"}</div>
+                            <div className={labelCls}>شعبه سازمان تامین اجتماعی{isPropertyAndBuildingLease && !isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? "" : " *"}</div>
                             <input
                               value={insuranceForm.branchStatus || ""}
                               onChange={(e) => setInsuranceField("branchStatus", e.target.value)}
@@ -4887,7 +4915,7 @@ export default function ContractInformation() {
                           </div>
                           {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
                             <div className="min-w-0">
-                              <div className={labelCls}>رقم کارکرد نهایی</div>
+                              <div className={labelCls}>رقم کارکرد نهایی *</div>
                               <div className="relative">
                                 <input
                                   value={formatAmountInput(insuranceForm.finalGrossPerformance || "")}
@@ -4913,11 +4941,11 @@ export default function ContractInformation() {
                         {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
                           <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)_minmax(220px,1fr)]">
                             <div className="min-w-0">
-                              <div className={labelCls}>نحوه محاسبه و ضرایب</div>
+                              <div className={labelCls}>نحوه محاسبه و ضرایب *</div>
                               <input value={insuranceForm.calculationMethod || ""} onChange={(e) => setInsuranceField("calculationMethod", e.target.value)} className={inputCls} type="text" />
                             </div>
                             <div className="min-w-0">
-                              <div className={labelCls}>شماره مفاصا حساب</div>
+                              <div className={labelCls}>شماره مفاصا حساب *</div>
                               <input value={insuranceForm.clearanceNo || ""} onChange={(e) => setInsuranceField("clearanceNo", e.target.value)} className={inputCls} type="text" />
                             </div>
                             <div className="min-w-0">
@@ -5178,7 +5206,7 @@ export default function ContractInformation() {
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="font-semibold tabular-nums">{amountText}</div>
-                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{amountRow ? [currencyText, !isRialCurrencyRow(amountRow) && sourceText].filter(Boolean).join(" - ") : "—"}</div>
+                            <div className="mt-1 text-xs text-black/50 dark:text-neutral-400">{amountRow ? [currencyText, sourceText].filter(Boolean).join(" - ") : "—"}</div>
                           </td>
                           <td className={`px-3 ${divider}`}>
                             <div className="flex min-h-[38px] items-center justify-center">

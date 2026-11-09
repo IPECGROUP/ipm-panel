@@ -387,6 +387,7 @@ function RightNav() {
           { to: "/quality-management/systems", label: "مدیریت سیستم‌ها", icon: <NavIcon src="/images/icons/modiriat-system.svg" /> },
           { to: "/quality-management/requirements", label: "الزامات و انطباق‌ها", icon: <NavIcon src="/images/icons/elzamat.svg" /> },
           { to: "/quality-management/audits", label: "ممیزی و اقدام اصلاحی", icon: <NavIcon src="/images/icons/momaezi.svg" /> },
+          { to: "/quality-management/dashboard", label: "داشبورد مدیریت سیستم‌ها", icon: <IcProjectDashboard /> },
         ],
       }],
     },
