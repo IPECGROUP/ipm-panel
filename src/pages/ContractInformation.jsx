@@ -10,6 +10,7 @@ import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { baseCurrenciesTablePreset as financialTablePreset, hoverSelectableRowPreset } from "../components/ui/tablePresets.js";
 import { dayjs, isJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider.jsx";
+import { openMainContractsPrintPreview } from "../utils/mainContractsPrint.js";
 
 const CONTRACT_DOCUMENT_TYPES = [
   { id: "main", label: "اصلی" },
@@ -1833,6 +1834,20 @@ export default function ContractInformation() {
   const contractsStartIdx = safeContractsPage * contractsRowsPerPage;
   const contractsEndIdx = Math.min(contractsTotal, contractsStartIdx + contractsRowsPerPage);
   const contractsPageRows = contractsDisplayRows.slice(contractsStartIdx, contractsEndIdx);
+
+  const previewMainContractsWithAmounts = () => {
+    const mainRows = rows.filter((row) => row.documentType === "main").map((row, index) => ({
+      number: toFaDigits(index + 1),
+      employer: row.general?.employerAssignor,
+      subject: row.general?.contractSubject,
+      type: row.general?.contractType,
+      start: `شروع: ${toFaDigits((row.calendar?.startDate || "—").replaceAll("-", "/"))}`,
+      end: `پایان: ${toFaDigits((effectiveContractEndDate(row) || "—").replaceAll("-", "/"))}`,
+      amounts: normalizeFinancial(row.financial || {}).contractAmounts.filter((amount) => hasFinancialAmount(amount.amount)).map((amount) => `${formatFinancialAmount(parseFinancialAmount(amount.amount))} ${amount.currencyLabel || readItemLabel(currencyById.get(String(amount.currencyId || ""))) || ""}`.trim()),
+      status: row.insurance?.lastStatus || "ثبت نشده",
+    }));
+    openMainContractsPrintPreview(mainRows);
+  };
 
   const exportContractsExcel = async () => {
     if (!filteredRows.length) return;
@@ -3672,7 +3687,7 @@ export default function ContractInformation() {
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-            {!formOpen && ["with", "without"].map((mode) => <button key={mode} type="button" onClick={() => setMainListMode(mode)} className="rounded-xl border border-[#6093b7] bg-white px-3 py-1.5 text-center text-xs font-bold text-[#184a6b] hover:bg-sky-50 dark:bg-neutral-900 dark:text-sky-200"><span className="block">لیست قراردادهای اصلی</span><span className="mt-0.5 block text-[10px] font-normal">{mode === "with" ? "با مبلغ" : "بدون مبلغ"}</span></button>)}
+            {!formOpen && ["with", "without"].map((mode) => <button key={mode} type="button" onClick={() => mode === "with" ? previewMainContractsWithAmounts() : setMainListMode(mode)} className="rounded-xl border border-[#6093b7] bg-white px-3 py-1.5 text-center text-xs font-bold text-[#184a6b] hover:bg-sky-50 dark:bg-neutral-900 dark:text-sky-200"><span className="block">لیست قراردادهای اصلی</span><span className="mt-0.5 block text-[10px] font-normal">{mode === "with" ? "با مبلغ" : "بدون مبلغ"}</span></button>)}
             {canContract("افزودن") && <button
               type="button"
               onClick={() => (formOpen ? closeForm() : openFreshForm())}
