@@ -5243,11 +5243,11 @@ export default function ContractInformation() {
                   <button
                     type="button"
                     onClick={() => setPreviewContractId("")}
-                    className={iconBtnCls}
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white ring-1 ring-black/15 transition hover:bg-black/90 focus:outline-none dark:bg-transparent dark:ring-neutral-800 dark:hover:bg-white/10"
                     aria-label="بستن"
                     title="بستن"
                   >
-                    <img src="/images/icons/bastan.svg" alt="" className="w-5 h-5 dark:invert" />
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                   </button>
                 </div>
               </div>
@@ -5312,8 +5312,9 @@ export default function ContractInformation() {
                   {renderPreviewInfo("جدول شکست مبلغ قرارداد", previewFileNames(previewFinancial.breakdownFiles))}
                 </div>
                 {previewFinancial.guarantees.length ? (
-                  <div className="mt-3 overflow-x-auto rounded-xl border border-black/10 dark:border-neutral-800">
-                    <table className="w-full min-w-[680px] text-sm">
+                  <div className="mt-3 overflow-hidden rounded-xl border border-black/10 dark:border-neutral-800">
+                    <table className="w-full table-fixed text-xs sm:text-sm [&_th]:break-words [&_td]:break-words [&_th]:px-1 [&_td]:px-1">
+                      <colgroup><col className="w-[27%]" /><col className="w-[13%]" /><col className="w-[25%]" /><col className="w-[23%]" /><col className="w-[12%]" /></colgroup>
                       <thead className="bg-neutral-100 dark:bg-white/10">
                         <tr>
                           <th className="px-3 py-2 text-right">نام تضمین</th>
@@ -5357,7 +5358,7 @@ export default function ContractInformation() {
                 {previewFinancial.appendices.length ? previewFinancial.appendices.map((item, index) => <div key={item.id} className="rounded-b-xl border border-black/10 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-white/[0.03]"><div className="px-3 py-2 text-sm font-bold">الحاقیه {toFaDigits(index + 1)}</div>{renderPreviewInfo("از تاریخ", toFaDigits(item.fromDate))}{renderPreviewInfo("تا تاریخ", toFaDigits(item.toDate))}{renderPreviewInfo("مبلغ", item.amount ? `${formatFinancialAmount(parseFinancialAmount(item.amount))} ${item.currencyLabel || item.currencyId || ""}` : "")}{renderPreviewInfo("منشأ", item.sourceLabel || item.sourceId)}{renderPreviewInfo("شرح محدوده کار", item.workScope)}{renderPreviewInfo("اسناد مرتبط", normalizeIdList(item.relatedLetterIds).map((id) => { const letter = letterById.get(String(id)); return toFaDigits(letter ? secretariatNoOf(letter) || letterNoOf(letter) || id : id); }).join("، "))}{renderPreviewInfo("فایل‌ها", previewFileNames(item.files))}</div>) : renderPreviewInfo("الحاقیه", "ثبت نشده")}
                   </div>
 
-                  <div className="flex min-h-[600px] min-w-0 flex-col border-t border-black/10 bg-black/[0.015] lg:sticky lg:top-0 lg:h-[calc(90vh-72px)] lg:w-[58%] lg:border-r lg:border-t-0 dark:border-neutral-800 dark:bg-white/[0.02]">
+                  <div className="flex min-h-[600px] min-w-0 flex-col overflow-hidden rounded-2xl border border-black/10 bg-black/[0.015] mx-4 mb-4 lg:sticky lg:top-4 lg:mt-4 lg:ml-4 lg:mr-0 lg:h-[calc(90vh-104px)] lg:w-[58%] dark:border-neutral-800 dark:bg-white/[0.02]">
                     <div className="flex items-center justify-between gap-2 bg-[#6093b7] px-4 py-3 text-white">
                       <div className="text-sm font-bold">پیش‌نمایش پیوست‌ها</div>
                       <div className="rounded-full bg-black/[0.06] px-2 py-0.5 text-xs font-semibold dark:bg-white/10">
@@ -5419,7 +5420,7 @@ export default function ContractInformation() {
 
                         {previewFiles.length ? (
                           <div className="max-h-40 overflow-y-auto rounded-2xl border border-black/10 bg-white p-2 dark:border-neutral-800 dark:bg-neutral-900">
-                            <div className="grid grid-cols-1 gap-2">
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
                               {previewFiles.map((file, index) => {
                                 const active = index === previewFileIndex;
                                 return (
@@ -5427,10 +5428,10 @@ export default function ContractInformation() {
                                     key={`${file.group}_${file.id}_${index}`}
                                     type="button"
                                     onClick={() => setPreviewFileIndex(index)}
-                                    className={`min-w-0 rounded-xl border px-3 py-2 text-right transition ${active ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black" : "border-black/10 bg-black/[0.02] hover:bg-black/[0.04] dark:border-neutral-800 dark:bg-white/[0.03] dark:hover:bg-white/[0.07]"}`}
+                                    className={`min-w-0 rounded-xl border px-3 py-2 text-right transition ${active ? "border-[#6093b7] bg-sky-50 text-[#184a6b] ring-1 ring-[#6093b7] dark:bg-sky-900/40 dark:text-sky-100" : "border-black/10 bg-neutral-50 hover:bg-black/[0.04] dark:border-neutral-800 dark:bg-white/[0.03] dark:hover:bg-white/[0.07]"}`}
                                   >
                                     <div className="truncate text-xs font-bold">{file.name}</div>
-                                    <div className={`mt-1 flex items-center justify-between gap-2 text-[11px] ${active ? "text-white/70 dark:text-black/60" : "text-black/50 dark:text-neutral-400"}`}>
+                                    <div className={`mt-1 flex items-center justify-between gap-2 text-[11px] ${active ? "text-sky-700 dark:text-sky-300" : "text-black/50 dark:text-neutral-400"}`}>
                                       <span className="truncate">{file.group}</span>
                                       <span>{file.size ? toFaDigits(formatBytes(file.size)) : ""}</span>
                                     </div>
