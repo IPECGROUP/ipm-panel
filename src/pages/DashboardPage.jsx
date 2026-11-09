@@ -114,14 +114,13 @@ function HomeTopDailyLogUsers({ rows, loading }) {
   }) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div>{hover && <div role="tooltip" style={{ left: hover.x, top: hover.y }} className="pointer-events-none fixed z-50 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><b className="block">{hover.name}</b><span className="mt-1 block text-neutral-500 dark:text-neutral-300">{hover.month.replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)])}: {faNumber(hover.value)} ثبت</span></div>}</Card>;
 }
 
-function HomeReviewTiming({ timings }) {
-  const stages = ["برنامه‌ریزی و کنترل پروژه", "مدیر پروژه", "مدیریت / دستور پرداخت", "مالی و تأیید نهایی"];
+function HomeReviewTiming({ title, stages, timings }) {
   const chartData = stages.map((name, index) => {
     const values = timings[index] || [];
     return { name, maximum: values.length ? Math.max(...values) : null, average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null };
   });
   return <Card className="min-h-[410px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
-    <div className="mb-4"><span className="block text-sm font-bold">مدت زمان بررسی درخواست‌های پرداخت / تأمین / تنخواه گردان</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌های عادی</span></div>
+    <div className="mb-4"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌ها</span></div>
     <div className="flex justify-center gap-5 text-xs"><span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />بیشترین</span><span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-sky-400" />میانگین</span></div>
     <div className="mt-4 h-[280px]" dir="ltr"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 12, right: 4, left: 4, bottom: 12 }} barGap={1} barCategoryGap="25%">
       <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="4 4" />
@@ -375,14 +374,14 @@ export default function DashboardPage() {
       </section>
 
       <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
-        <HomeTopDailyLogUsers rows={topDailyLogUsers} loading={dashboardWidgetsLoading} />
-        <div className="min-w-0 md:col-span-2 xl:col-span-1"><HomeUnsettledTenkhah rows={unsettledTenkhah} loading={dashboardWidgetsLoading} /></div>
+        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های پرداخت" stages={["برنامه‌ریزی و کنترل پروژه", "مدیر پروژه", "مدیریت / دستور پرداخت", "مالی و تأیید نهایی"]} timings={reviewTimings} />
+        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تأمین" stages={["مدیر پروژه", "واحد تأمین"]} timings={supplyReviewTimings} />
+        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تنخواه گردان" stages={["مدیر پروژه", "مدیریت", "مالی"]} timings={tenkhahReviewTimings} />
       </div>
 
-      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
-        <HomeReviewTiming title="??? ???? ????? ??????????? ??????" stages={["??????????? ? ????? ?????", "???? ?????", "?????? / ????? ??????", "???? ? ????? ?????"]} timings={reviewTimings} />
-        <HomeReviewTiming title="??? ???? ????? ??????????? ?????" stages={["???? ?????", "???? ?????"]} timings={supplyReviewTimings} />
-        <HomeReviewTiming title="??? ???? ????? ?????? ?????" stages={["???? ?????", "??????", "????"]} timings={tenkhahReviewTimings} />
+      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 [&>*]:min-w-0">
+        <HomeTopDailyLogUsers rows={topDailyLogUsers} loading={dashboardWidgetsLoading} />
+        <HomeUnsettledTenkhah rows={unsettledTenkhah} loading={dashboardWidgetsLoading} />
       </div>
 
       <div className="mt-3 min-w-0">
