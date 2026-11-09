@@ -318,6 +318,7 @@ function RightNav() {
           active: supplyParentActive,
           items: [
             { to: "/supply/request", label: "درخواست تامین", hint: "ثبت و پیگیری درخواست تامین", icon: <IcSupplyRequest /> },
+            { to: "/supply/supplier-evaluation", label: "ارزیابی تأمین‌کنندگان", hint: "ارزیابی تأمین‌کنندگان", icon: <NavIcon src="/images/icons/arzyabi%20tamin.svg" /> },
             { to: "/supply/dashboard", label: "داشبورد مدیریت تامین", hint: "نمای کلی تامین", icon: <IcProjectDashboard /> },
           ],
         },

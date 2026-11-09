@@ -145,6 +145,7 @@ export default function App() {
         <Route path="/finance/financial-management-dashboard" element={<FinancialManagementDashboardPage />} />
 
         <Route path="/supply/request" element={<SupplyRequestPage />} />
+        <Route path="/supply/supplier-evaluation" element={<NavPlaceholderPage title="ارزیابی تأمین‌کنندگان" />} />
         <Route path="/supply/actions" element={<SupplyActionsRedirect />} />
         <Route path="/supply/dashboard" element={<SupplyManagementDashboardPage />} />
 

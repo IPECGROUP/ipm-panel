@@ -17,6 +17,7 @@ const ROUTE_PERMISSION_PAGES = [
   ["/finance/cash-flow-forecast", "پیش‌بینی جریان نقدی"],
   ["/finance/financial-management-dashboard", "پیش‌بینی جریان نقدی", "داشبورد مدیریت مالی"],
   ["/supply/request", "درخواست تأمین"],
+  ["/supply/supplier-evaluation", "درخواست تأمین"],
   ["/supply/actions", "درخواست تأمین"],
   ["/supply/dashboard", "درخواست تأمین", "داشبورد مدیریت تأمین"],
   ["/knowledge-management/dashboard", "داشبورد مدیریت دانش"],
