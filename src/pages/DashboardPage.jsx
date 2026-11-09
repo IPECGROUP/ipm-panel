@@ -124,10 +124,11 @@ function HomeUnsettledTenkhah({ rows, loading }) {
   return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} large empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></Card>;
 }
 
+const activityDateFormatters = Object.fromEntries(["persian", "gregory"].map((calendar) => [calendar, new Intl.DateTimeFormat(`en-US-u-ca-${calendar}-nu-latn`, { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" })]));
 const activityDay = (value, calendar = "persian") => {
   const date = new Date(value);
   if (!Number.isFinite(date.getTime())) return "";
-  const parts = new Intl.DateTimeFormat(`en-US-u-ca-${calendar}-nu-latn`, { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const parts = activityDateFormatters[calendar].formatToParts(date);
   const part = (type) => parts.find((item) => item.type === type)?.value || "";
   return `${part("year")}/${part("month")}/${part("day")}`;
 };
@@ -145,29 +146,50 @@ function ActivityPanels({ logs }) {
     const people = new Map();
     filtered.forEach((item) => {
       const start = Date.parse(item.loggedInAt);
-      const end = item.loggedOutAt ? Date.parse(item.loggedOutAt) : now;
+      const end = item.loggedOutAt ? Date.parse(item.loggedOutAt) : item.sessionActive ? now : NaN;
       if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return;
-      const day = activityDay(start);
-      let bucket = day;
-      if (period === "month") bucket = day.slice(0, 7);
-      if (period === "week") {
-        const gregorian = activityDay(start, "gregory").split("/").map(Number);
-        const date = new Date(Date.UTC(gregorian[0], gregorian[1] - 1, gregorian[2]));
-        date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 1) % 7);
-        bucket = date.toISOString().slice(0, 10);
-      }
-      const person = people.get(item.username) || { key: item.username, name: item.name || item.username, buckets: new Map() };
-      person.buckets.set(bucket, (person.buckets.get(bucket) || 0) + end - start);
+      const person = people.get(item.username) || { key: item.username, name: item.name || item.username, intervals: [], buckets: new Map() };
+      person.intervals.push([start, end]);
       people.set(item.username, person);
     });
-    return [...people.values()].map((person) => ({ ...person, average: [...person.buckets.values()].reduce((sum, value) => sum + value, 0) / person.buckets.size })).sort((a, b) => b.average - a.average);
+    people.forEach((person) => {
+      const merged = [];
+      person.intervals.sort((a, b) => a[0] - b[0]).forEach(([start, end]) => {
+        const previous = merged[merged.length - 1];
+        if (previous && start <= previous[1]) previous[1] = Math.max(previous[1], end);
+        else merged.push([start, end]);
+      });
+      merged.forEach(([start, end]) => {
+        let cursor = start;
+        while (cursor < end) {
+          const day = activityDay(cursor);
+          let boundary = Math.min(end, cursor + 30 * 60 * 60 * 1000);
+          if (activityDay(boundary) !== day) {
+            let low = cursor, high = boundary;
+            while (high - low > 1) { const middle = Math.floor((low + high) / 2); if (activityDay(middle) === day) low = middle; else high = middle; }
+            boundary = high;
+          }
+          let bucket = day;
+          if (period === "month") bucket = day.slice(0, 7);
+          if (period === "week") {
+            const gregorian = activityDay(cursor, "gregory").split("/").map(Number);
+            const date = new Date(Date.UTC(gregorian[0], gregorian[1] - 1, gregorian[2]));
+            date.setUTCDate(date.getUTCDate() - (date.getUTCDay() + 1) % 7);
+            bucket = date.toISOString().slice(0, 10);
+          }
+          person.buckets.set(bucket, (person.buckets.get(bucket) || 0) + boundary - cursor);
+          cursor = boundary;
+        }
+      });
+    });
+    return [...people.values()].filter((person) => person.buckets.size).map((person) => ({ ...person, average: [...person.buckets.values()].reduce((sum, value) => sum + value, 0) / person.buckets.size })).sort((a, b) => b.average - a.average);
   }, [filtered, period, now]);
   const duration = (value) => { const minutes = Math.floor(value / 60000); const hours = Math.floor(minutes / 60); return `${faNumber(hours)} ساعت و ${faNumber(minutes % 60)} دقیقه`; };
   const inputClass = "h-9 rounded-lg border border-black/10 bg-white px-2 text-xs dark:border-white/10 dark:bg-neutral-900";
   return <section className="mt-3 rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-sm font-bold">لاگ حضور کاربران</h2><p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">زمان ورود، مدت حضور و زمان خروج از سامانه</p></div><div className="flex flex-wrap items-end gap-2"><label className="grid gap-1 text-[10px] text-neutral-500">کاربر<select value={userFilter} onChange={(event) => setUserFilter(event.target.value)} className={`${inputClass} min-w-32`}><option value="">همه کاربران</option>{users.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select></label><label className="grid gap-1 text-[10px] text-neutral-500">از تاریخ<JalaliPopupDatePicker value={from} onChange={setFrom} placeholder="از تاریخ" preventDefaultToday buttonClassName={`${inputClass} w-28`} /></label><label className="grid gap-1 text-[10px] text-neutral-500">تا تاریخ<JalaliPopupDatePicker value={to} onChange={setTo} placeholder="تا تاریخ" preventDefaultToday buttonClassName={`${inputClass} w-28`} /></label>{(from || to || userFilter) && <button type="button" onClick={() => { setFrom(""); setTo(""); setUserFilter(""); }} className="h-9 px-2 text-xs text-sky-600">پاک‌کردن فیلتر</button>}</div></div>
-    <div className="grid gap-3 xl:grid-cols-3"><div className="max-h-[350px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08] xl:col-span-2"><table className="w-full min-w-[590px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">کاربر</th><th className="px-3 py-2.5 font-medium">ورود</th><th className="px-3 py-2.5 font-medium">مدت حضور</th><th className="px-3 py-2.5 font-medium">خروج</th></tr></thead><tbody>{filtered.length ? filtered.map((item) => <tr key={item.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="px-3 py-3"><span className="flex items-center gap-2">{!item.loggedOutAt && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" aria-label="آنلاین" />}{item.name || item.username}</span></td><td className="whitespace-nowrap px-3 py-3 tabular-nums">{formatDateTime(item.loggedInAt)}</td><td className="whitespace-nowrap px-3 py-3 font-bold tabular-nums">{duration(Math.max(0, (item.loggedOutAt ? new Date(item.loggedOutAt).getTime() : now) - new Date(item.loggedInAt).getTime()))}</td><td className="px-3 py-3">{item.loggedOutAt ? <span className="whitespace-nowrap"><span className="text-neutral-500">آفلاین</span> · {formatDateTime(item.loggedOutAt)}</span> : <span className="text-emerald-600 dark:text-emerald-400">آنلاین</span>}</td></tr>) : <tr><td colSpan="4" className="px-3 py-16 text-center text-neutral-400">لاگ حضوری برای نمایش وجود ندارد.</td></tr>}</tbody></table></div>
-    <div className="rounded-xl border border-black/[0.07] p-3 dark:border-white/[0.08]"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-xs font-bold">میانگین حضور کاربران</h3><select value={period} onChange={(event) => setPeriod(event.target.value)} className={inputClass} aria-label="دوره میانگین"><option value="day">روزانه</option><option value="week">هفتگی</option><option value="month">ماهانه</option></select></div><p className="mt-2 text-[10px] leading-5 text-neutral-500">میانگین مجموع نشست‌ها در دوره‌های دارای ورود، بر اساس تاریخ ورود و فیلترهای انتخاب‌شده</p><div className="mt-2 max-h-[265px] overflow-auto"><table className="w-full text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800"><tr><th className="px-2 py-2 font-medium">کاربر</th><th className="px-2 py-2 text-left font-medium">میانگین حضور</th></tr></thead><tbody>{averages.length ? averages.map((person) => <tr key={person.key} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="px-2 py-3">{person.name}</td><td className="whitespace-nowrap px-2 py-3 text-left tabular-nums">{duration(person.average)}</td></tr>) : <tr><td colSpan="2" className="px-2 py-12 text-center text-neutral-400">داده‌ای برای نمایش وجود ندارد.</td></tr>}</tbody></table></div></div></div>
+    <div className="grid gap-3 xl:grid-cols-3"><div className="max-h-[350px] overflow-auto rounded-xl border border-black/[0.07] dark:border-white/[0.08] xl:col-span-2"><table className="w-full min-w-[590px] text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-300"><tr><th className="px-3 py-2.5 font-medium">کاربر</th><th className="px-3 py-2.5 font-medium">ورود</th><th className="px-3 py-2.5 font-medium">مدت حضور</th><th className="px-3 py-2.5 font-medium">خروج</th></tr></thead><tbody>{filtered.length ? filtered.map((item) => <tr key={item.id} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="px-3 py-3"><span className="flex items-center gap-2">{item.sessionActive && !item.loggedOutAt && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" aria-label="آنلاین" />}{item.name || item.username}</span></td><td className="whitespace-nowrap px-3 py-3 tabular-nums">{formatDateTime(item.loggedInAt)}</td><td className="whitespace-nowrap px-3 py-3 font-bold tabular-nums">{item.loggedOutAt || item.sessionActive ? duration(Math.max(0, (item.loggedOutAt ? new Date(item.loggedOutAt).getTime() : now) - new Date(item.loggedInAt).getTime())) : "نامشخص"}</td><td className="px-3 py-3">{item.loggedOutAt ? <span className="whitespace-nowrap"><span className="text-neutral-500">آفلاین</span> · {formatDateTime(item.loggedOutAt)}</span> : item.sessionActive ? <span className="text-emerald-600 dark:text-emerald-400">آنلاین</span> : <span className="text-neutral-500">نامشخص</span>}</td></tr>) : <tr><td colSpan="4" className="px-3 py-16 text-center text-neutral-400">لاگ حضوری برای نمایش وجود ندارد.</td></tr>}</tbody></table></div>
+    <div className="rounded-xl border border-black/[0.07] p-3 dark:border-white/[0.08]"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-xs font-bold">میانگین حضور کاربران</h3><select value={period} onChange={(event) => setPeriod(event.target.value)} className={inputClass} aria-label="دوره میانگین"><option value="day">روزانه</option><option value="week">هفتگی</option><option value="month">ماهانه</option></select></div><p className="mt-2 text-[10px] leading-5 text-neutral-500">میانگین زمان نشست‌های معتبر در دوره‌های دارای حضور؛ نشست‌های هم‌زمان یک بار محاسبه می‌شوند.</p><div className="mt-2 max-h-[265px] overflow-auto"><table className="w-full text-right text-xs"><thead className="sticky top-0 bg-neutral-50 text-neutral-500 dark:bg-neutral-800"><tr><th className="px-2 py-2 font-medium">کاربر</th><th className="px-2 py-2 text-left font-medium">میانگین حضور</th></tr></thead><tbody>{averages.length ? averages.map((person) => <tr key={person.key} className="border-t border-black/[0.06] dark:border-white/[0.08]"><td className="px-2 py-3">{person.name}</td><td className="whitespace-nowrap px-2 py-3 text-left tabular-nums">{duration(person.average)}</td></tr>) : <tr><td colSpan="2" className="px-2 py-12 text-center text-neutral-400">داده‌ای برای نمایش وجود ندارد.</td></tr>}</tbody></table></div></div></div>
   </section>;
 }
 
