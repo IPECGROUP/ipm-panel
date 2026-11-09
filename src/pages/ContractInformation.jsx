@@ -12,7 +12,8 @@ import { dayjs, isJalaliYmd } from "../utils/date";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { openMainContractsPrintPreview } from "../utils/mainContractsPrint.js";
 
-function ContractPreviewSection({ title, open, onToggle, children }) {
+function ContractPreviewSection({ title, open, onToggle, children, allowed = true }) {
+  if (!allowed) return null;
   return <section className="mb-3 overflow-hidden rounded-xl border border-black/10 dark:border-neutral-700">
     <button type="button" aria-expanded={open} onClick={onToggle} className="flex w-full items-center justify-between gap-3 bg-[#6093b7] px-4 py-3 text-right text-sm font-bold text-white hover:bg-[#5486a8]">
       <span>{title}</span><svg className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
@@ -1258,6 +1259,8 @@ export default function ContractInformation() {
   const [form, setForm] = React.useState(() => emptyForm());
   const [activeContractTab, setActiveContractTab] = React.useState(CONTRACT_SECTION_TABS[0].id);
   const [previewContractId, setPreviewContractId] = React.useState("");
+  const [previewContractData, setPreviewContractData] = React.useState(null);
+  const previewRequestRef = React.useRef(0);
   const [previewSection, setPreviewSection] = React.useState("general");
   const [previewFileIndex, setPreviewFileIndex] = React.useState(0);
   const [relatedLetterPreviewId, setRelatedLetterPreviewId] = React.useState("");
@@ -1844,9 +1847,15 @@ export default function ContractInformation() {
   const contractsEndIdx = Math.min(contractsTotal, contractsStartIdx + contractsRowsPerPage);
   const contractsPageRows = contractsDisplayRows.slice(contractsStartIdx, contractsEndIdx);
 
-  const previewMainContracts = (includeAmounts) => {
+  const previewMainContracts = async (includeAmounts) => {
     if (includeAmounts && !canContract("لیست قراردادهای اصلی با مبلغ")) return;
-    const mainRows = rows.filter((row) => row.documentType === "main").map((row, index) => ({
+    const previewWindow = window.open("", "_blank", "width=1150,height=850");
+    if (!previewWindow) return;
+    try {
+    const sourceRows = includeAmounts
+      ? asArray(await fetchJson("/contracts?documentType=main&purpose=main_list_with_amounts")).map(normalizeContractRow)
+      : rows;
+    const mainRows = sourceRows.filter((row) => row.documentType === "main").map((row, index) => ({
       number: toFaDigits(index + 1),
       employer: row.general?.employerAssignor,
       subject: row.general?.contractSubject,
@@ -1856,11 +1865,20 @@ export default function ContractInformation() {
       amounts: includeAmounts ? normalizeFinancial(row.financial || {}).contractAmounts.filter((amount) => hasFinancialAmount(amount.amount)).map((amount) => `${formatFinancialAmount(parseFinancialAmount(amount.amount))} ${amount.currencyLabel || readItemLabel(currencyById.get(String(amount.currencyId || ""))) || ""}`.trim()) : [],
       status: row.insurance?.lastStatus || "ثبت نشده",
     }));
-    openMainContractsPrintPreview(mainRows, { includeAmounts });
+    openMainContractsPrintPreview(mainRows, { includeAmounts, previewWindow });
+    } catch (error) {
+      previewWindow.close();
+      alert(error?.message === "forbidden" ? "دسترسی به لیست قراردادهای اصلی با مبلغ ندارید." : "دریافت اطلاعات فهرست قراردادها انجام نشد.");
+    }
   };
 
   const exportContractsExcel = async () => {
     if (!canContract("خروجی اکسل") || !contractsDisplayRows.length) return;
+    try {
+    const serverRows = asArray(await fetchJson("/contracts?purpose=excel")).map(normalizeContractRow);
+    const serverById = new Map(serverRows.map((row) => [String(row.id), row]));
+    const exportRows = contractsDisplayRows.map((row) => serverById.get(String(row.id))).filter(Boolean);
+    if (exportRows.length !== contractsDisplayRows.length) throw new Error("contract_list_changed");
     const xlsxMod = await import("xlsx");
     const XLSX = xlsxMod?.default || xlsxMod;
     const [tagResponses, typesResponse, sourcesResponse] = await Promise.all([
@@ -1899,7 +1917,7 @@ export default function ContractInformation() {
         for (let offset = 0; offset < Math.max(value.length, 1); offset += 32000) raw.push([contractId, value.length > 32000 ? `${path} [${Math.floor(offset / 32000) + 1}]` : path, value.slice(offset, offset + 32000)]);
       }
     };
-    contractsDisplayRows.forEach((row, index) => {
+    exportRows.forEach((row, index) => {
       const financial = normalizeFinancial(row.financial || {});
       const insurance = normalizeInsurance(row.insurance || {});
       const calendar = row.calendar || {};
@@ -1930,6 +1948,9 @@ export default function ContractInformation() {
       XLSX.utils.book_append_sheet(workbook, sheet, name);
     });
     XLSX.writeFile(workbook, "contracts.xlsx");
+    } catch (error) {
+      alert(error?.message === "forbidden" ? "دسترسی به خروجی اکسل قراردادها ندارید." : error?.message === "contract_list_changed" ? "فهرست قراردادها تغییر کرده است؛ صفحه را تازه‌سازی کنید و دوباره خروجی بگیرید." : "دریافت خروجی اکسل انجام نشد؛ دوباره تلاش کنید.");
+    }
   };
 
   React.useEffect(() => {
@@ -3140,7 +3161,23 @@ export default function ContractInformation() {
   );
   const readonlyInputCls =
     "w-full h-11 rounded-xl px-3 bg-black/[0.04] text-black border border-black/10 outline-none dark:bg-white/[0.06] dark:text-neutral-100 dark:border-neutral-700";
-  const previewContract = previewContractId ? rowById.get(String(previewContractId)) : null;
+  const previewContract = previewContractId && String(previewContractData?.id) === String(previewContractId) ? previewContractData : null;
+  const openContractPreview = async (id) => {
+    if (!canContract("پیش‌نمایش")) return;
+    const requestId = ++previewRequestRef.current;
+    try {
+      const response = await fetchJson(`/contracts?id=${encodeURIComponent(id)}&purpose=preview`);
+      if (previewRequestRef.current !== requestId) return;
+      setPreviewContractData(normalizeContractRow(response.item));
+      setPreviewContractId(String(id));
+    } catch (error) {
+      if (previewRequestRef.current === requestId) alert(error?.message === "forbidden" ? "دسترسی به پیش‌نمایش قرارداد ندارید." : "دریافت پیش‌نمایش قرارداد انجام نشد.");
+    }
+  };
+  const previewPermissions = {
+    general: canContract("عمومی"), calendar: canContract("تقویم قرارداد"), technical: canContract("دامنه کار"),
+    financial: canContract("مالی و تضامین"), insurance: canContract("تأمین اجتماعی"), appendices: canContract("الحاقیه"),
+  };
   const previewProject = previewContract ? projectById.get(String(previewContract.projectId)) : null;
   const previewRelatedLetterIds = React.useMemo(
     () =>
@@ -3191,13 +3228,13 @@ export default function ContractInformation() {
     });
 
     return [
-      ...(Array.isArray(previewFinancial.breakdownFiles) ? previewFinancial.breakdownFiles.map((file) => normalizeFile(file, "جدول شکست مبلغ")) : []),
-      ...(Array.isArray(previewFinancial.paymentTermsFiles) ? previewFinancial.paymentTermsFiles.map((file) => normalizeFile(file, "شرایط پرداخت")) : []),
-      ...(Array.isArray(previewInsurance.clearanceFiles) ? previewInsurance.clearanceFiles.map((file) => normalizeFile(file, "مفاصا حساب")) : []),
-      ...previewFinancial.appendices.flatMap((appendix, index) => (appendix.files || []).map((file) => normalizeFile(file, `الحاقیه ${toFaDigits(index + 1)}`))),
-      ...(Array.isArray(previewLetterAttachments) ? previewLetterAttachments.map((file) => normalizeFile(file, "سند مرتبط")) : []),
+      ...(previewPermissions.financial && Array.isArray(previewFinancial.breakdownFiles) ? previewFinancial.breakdownFiles.map((file) => normalizeFile(file, "جدول شکست مبلغ")) : []),
+      ...(previewPermissions.financial && Array.isArray(previewFinancial.paymentTermsFiles) ? previewFinancial.paymentTermsFiles.map((file) => normalizeFile(file, "شرایط پرداخت")) : []),
+      ...(previewPermissions.insurance && Array.isArray(previewInsurance.clearanceFiles) ? previewInsurance.clearanceFiles.map((file) => normalizeFile(file, "مفاصا حساب")) : []),
+      ...(previewPermissions.appendices ? previewFinancial.appendices.flatMap((appendix, index) => (appendix.files || []).map((file) => normalizeFile(file, `الحاقیه ${toFaDigits(index + 1)}`))) : []),
+      ...(previewPermissions.general && Array.isArray(previewLetterAttachments) ? previewLetterAttachments.map((file) => normalizeFile(file, "سند مرتبط")) : []),
     ];
-  }, [previewFinancial.breakdownFiles, previewFinancial.paymentTermsFiles, previewFinancial.appendices, previewInsurance.clearanceFiles, previewLetterAttachments]);
+  }, [previewFinancial.breakdownFiles, previewFinancial.paymentTermsFiles, previewFinancial.appendices, previewInsurance.clearanceFiles, previewLetterAttachments, previewPermissions.financial, previewPermissions.insurance, previewPermissions.appendices, previewPermissions.general]);
   const activePreviewFile = previewFiles[Math.min(Math.max(0, previewFileIndex), Math.max(0, previewFiles.length - 1))] || null;
   const resolvePreviewFileUrl = (file) => {
     return resolvePublicUrl(file?.url || "");
@@ -3281,7 +3318,7 @@ export default function ContractInformation() {
   };
 
   const printContractSummary = () => {
-    if (!previewContract) return;
+    if (!previewContract || !canContract("پیش‌نمایش")) return;
 
     const escapeHtml = (value) =>
       String(value ?? "")
@@ -3302,7 +3339,11 @@ export default function ContractInformation() {
           ? rows.map((row) => `<tr>${row.map((item) => `<td>${multiline(item)}</td>`).join("")}</tr>`).join("")
           : `<tr><td colspan="${headers.length}">موردی ثبت نشده است.</td></tr>`
       }</tbody></table>`;
-    const section = (title, body) => `<section><h2>${escapeHtml(title)}</h2>${body}</section>`;
+    const section = (title, body) => {
+      const permissionByTitle = { "اطلاعات اصلی": "general", "تقویم قرارداد": "calendar", "فنی و محدوده کار": "technical", "مبلغ قرارداد": "financial", "شرایط پرداخت": "financial", "تضامین": "financial", "تامین اجتماعی": "insurance", "اسناد مرتبط": "general" };
+      const permission = permissionByTitle[title];
+      return permission && !previewPermissions[permission] ? "" : `<section><h2>${escapeHtml(title)}</h2>${body}</section>`;
+    };
 
     const calendar = calculateCalendarDays(previewContract.calendar || {});
     const amountRows = (Array.isArray(previewFinancial.contractAmounts) ? previewFinancial.contractAmounts : [])
@@ -3406,7 +3447,7 @@ export default function ContractInformation() {
       <div class="subtitle">${text(previewProject?.label)} - شماره قرارداد: ${text(contractNoForRow(previewContract, rowById))}</div>
       <div class="meta">
         <div><strong>سند قراردادی:</strong> ${text(documentTypeLabel(previewContract.documentType))}</div>
-        <div><strong>نوع قرارداد:</strong> ${text(previewContract.general?.contractType)}</div>
+        ${previewPermissions.general ? `<div><strong>نوع قرارداد:</strong> ${text(previewContract.general?.contractType)}</div>` : ""}
         <div><strong>تاریخ چاپ:</strong> ${toFaDigits(new Date().toLocaleDateString("fa-IR"))}</div>
       </div>
     </header>
@@ -3530,7 +3571,7 @@ export default function ContractInformation() {
 
   React.useEffect(() => {
     setPreviewFileIndex(0);
-    setPreviewSection("general");
+    setPreviewSection(Object.keys(previewPermissions).find((key) => previewPermissions[key]) || "");
   }, [previewContractId]);
 
   React.useEffect(() => {
@@ -4979,11 +5020,11 @@ export default function ContractInformation() {
                         key={row.id}
                         role="button"
                         tabIndex={0}
-                        onClick={() => setPreviewContractId(id)}
+                        onClick={() => { openContractPreview(id); }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
-                            setPreviewContractId(id);
+                            openContractPreview(id);
                           }
                         }}
                         className="cursor-pointer border-r-4 bg-white p-3 text-neutral-900 transition-colors hover:bg-black/[0.025] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black/30 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-white/[0.04]"
@@ -5093,11 +5134,11 @@ export default function ContractInformation() {
                         <tr
                           key={row.id}
                           tabIndex={0}
-                          onClick={() => setPreviewContractId(id)}
+                          onClick={() => { openContractPreview(id); }}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
                               event.preventDefault();
-                              setPreviewContractId(id);
+                              openContractPreview(id);
                             }
                           }}
                           className={`group cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-black/30 ${selected ? "bg-black/[0.055] hover:bg-black/[0.07] dark:bg-white/[0.09] dark:hover:bg-white/[0.12]" : "bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"}`}
@@ -5294,7 +5335,7 @@ export default function ContractInformation() {
         </div>
       </Card>
 
-      {previewContract &&
+      {previewContract && canContract("\u067e\u06cc\u0634\u200c\u0646\u0645\u0627\u06cc\u0634") &&
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 md:p-6" dir="rtl">
             <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={() => setPreviewContractId("")} />
@@ -5332,7 +5373,8 @@ export default function ContractInformation() {
               <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable]">
                 <div className="flex min-h-full flex-col lg:flex-row">
                   <div className="min-w-0 p-4 lg:w-[42%]">
-                <ContractPreviewSection title="اطلاعات اصلی" open={previewSection === "general"} onToggle={() => setPreviewSection(previewSection === "general" ? "" : "general")}>
+                {!Object.values(previewPermissions).some(Boolean) && <div className="rounded-xl border border-black/10 bg-neutral-50 p-4 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-white/[0.03] dark:text-neutral-300">به بخش‌های اطلاعات قرارداد دسترسی ندارید.</div>}
+                <ContractPreviewSection title="اطلاعات اصلی" allowed={previewPermissions.general} open={previewSection === "general"} onToggle={() => setPreviewSection(previewSection === "general" ? "" : "general")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("مرکز/پروژه", previewProject?.label)}
                   {renderPreviewInfo("سند قراردادی", documentTypeLabel(previewContract.documentType))}
@@ -5351,7 +5393,7 @@ export default function ContractInformation() {
                 </div>
 
                 </ContractPreviewSection>
-                <ContractPreviewSection title="تقویم قرارداد" open={previewSection === "calendar"} onToggle={() => setPreviewSection(previewSection === "calendar" ? "" : "calendar")}>
+                <ContractPreviewSection title="تقویم قرارداد" allowed={previewPermissions.calendar} open={previewSection === "calendar"} onToggle={() => setPreviewSection(previewSection === "calendar" ? "" : "calendar")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {previewContract.documentType === "appendix"
                     ? renderPreviewInfo("تمدید مدت قرارداد تا تاریخ", previewContract.calendar?.endDate ? toFaDigits(previewContract.calendar.endDate) : "")
@@ -5369,7 +5411,7 @@ export default function ContractInformation() {
                 </div>
 
                 </ContractPreviewSection>
-                <ContractPreviewSection title="فنی و محدوده کار" open={previewSection === "technical"} onToggle={() => setPreviewSection(previewSection === "technical" ? "" : "technical")}>
+                <ContractPreviewSection title="فنی و محدوده کار" allowed={previewPermissions.technical} open={previewSection === "technical"} onToggle={() => setPreviewSection(previewSection === "technical" ? "" : "technical")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   <div className={`${previewInfoItemCls} `}>
                     <div className={previewLabelCls}>شرح خدمات</div>
@@ -5380,7 +5422,7 @@ export default function ContractInformation() {
                 </div>
 
                 </ContractPreviewSection>
-                <ContractPreviewSection title="مالی و تضامین" open={previewSection === "financial"} onToggle={() => setPreviewSection(previewSection === "financial" ? "" : "financial")}>
+                <ContractPreviewSection title="مالی و تضامین" allowed={previewPermissions.financial} open={previewSection === "financial"} onToggle={() => setPreviewSection(previewSection === "financial" ? "" : "financial")}>
                 {renderPreviewFinancialRows(previewFinancial.contractAmounts)}
                 <div className="mt-3 grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("شرایط پرداخت", previewFileNames(previewFinancial.paymentTermsFiles) || previewFinancial.paymentTerms)}
@@ -5422,7 +5464,7 @@ export default function ContractInformation() {
                 )}
 
                 </ContractPreviewSection>
-                <ContractPreviewSection title="تامین اجتماعی" open={previewSection === "insurance"} onToggle={() => setPreviewSection(previewSection === "insurance" ? "" : "insurance")}>
+                <ContractPreviewSection title="تامین اجتماعی" allowed={previewPermissions.insurance} open={previewSection === "insurance"} onToggle={() => setPreviewSection(previewSection === "insurance" ? "" : "insurance")}>
                 <div className="grid grid-cols-1 rounded-b-xl border border-black/10 bg-neutral-50 dark:border-neutral-700 dark:bg-white/[0.03]">
                   {renderPreviewInfo("ردیف پیمان", previewInsurance.contractRow)}
                   {renderPreviewInfo("شعبه سازمان تامین اجتماعی", previewInsurance.branchStatus)}
@@ -5436,7 +5478,7 @@ export default function ContractInformation() {
                   {renderPreviewInfo("توضیحات", previewInsurance.description)}
                 </div>
                 </ContractPreviewSection>
-                <ContractPreviewSection title="الحاقیه‌ها" open={previewSection === "appendices"} onToggle={() => setPreviewSection(previewSection === "appendices" ? "" : "appendices")}>
+                <ContractPreviewSection title="الحاقیه‌ها" allowed={previewPermissions.appendices} open={previewSection === "appendices"} onToggle={() => setPreviewSection(previewSection === "appendices" ? "" : "appendices")}>
                 {previewFinancial.appendices.length ? previewFinancial.appendices.map((item, index) => <div key={item.id} className="rounded-b-xl border border-black/10 bg-neutral-50 p-2 dark:border-neutral-700 dark:bg-white/[0.03]"><div className="px-3 py-2 text-sm font-bold">الحاقیه {toFaDigits(index + 1)}</div>{renderPreviewInfo("از تاریخ", toFaDigits(item.fromDate))}{renderPreviewInfo("تا تاریخ", toFaDigits(item.toDate))}{renderPreviewInfo("مبلغ", item.amount ? `${formatFinancialAmount(parseFinancialAmount(item.amount))} ${item.currencyLabel || item.currencyId || ""}` : "")}{renderPreviewInfo("منشأ", item.sourceLabel || item.sourceId)}{renderPreviewInfo("شرح محدوده کار", item.workScope)}{renderPreviewInfo("اسناد مرتبط", normalizeIdList(item.relatedLetterIds).map((id) => { const letter = letterById.get(String(id)); return toFaDigits(letter ? secretariatNoOf(letter) || letterNoOf(letter) || id : id); }).join("، "))}{renderPreviewInfo("فایل‌ها", previewFileNames(item.files))}</div>) : renderPreviewInfo("الحاقیه", "ثبت نشده")}
                 </ContractPreviewSection>
                   </div>

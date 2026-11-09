@@ -2,8 +2,8 @@ const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[character]);
 
-export function openMainContractsPrintPreview(rows, { includeAmounts = true } = {}) {
-  const preview = window.open("", "_blank", "width=1150,height=850");
+export function openMainContractsPrintPreview(rows, { includeAmounts = true, previewWindow = null } = {}) {
+  const preview = previewWindow || window.open("", "_blank", "width=1150,height=850");
   if (!preview) return;
   const origin = window.location.origin;
   const now = new Date();
