@@ -14,6 +14,7 @@ function Rows({ rows, empty = "داده‌ای ثبت نشده است.", transfo
 function TopUsers({ rows }) { return <Rows rows={rows} empty="مراجعه‌ای ثبت نشده است." transform={(row) => row.name} />; }
 
 function LessonAuthorsChart({ lessons }) {
+  const [activeId, setActiveId] = useState(null);
   const rows = lessons.byAuthor || [];
   const total = Number(lessons.total || 0);
   const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
@@ -29,23 +30,38 @@ function LessonAuthorsChart({ lessons }) {
   const sides = [-1, 1].map((side) => slices.filter((slice) => slice.side === side).sort((a, b) => Math.sin(a.angle) - Math.sin(b.angle)));
   const height = Math.max(240, Math.max(...sides.map((side) => side.length)) * 30 + 30);
   const cx = 260, cy = height / 2, radius = 90;
-  const labels = sides.flatMap((sideRows) => sideRows.map((slice, index) => ({ ...slice, labelY: cy + (index - (sideRows.length - 1) / 2) * Math.min(30, (height - 30) / Math.max(1, sideRows.length - 1)) })));
+  const labels = sides.flatMap((sideRows) => {
+    const positions = sideRows.map((slice) => Math.max(15, Math.min(height - 15, cy + Math.sin(slice.angle) * (radius + 20))));
+    for (let i = 1; i < positions.length; i++) positions[i] = Math.max(positions[i], positions[i - 1] + 24);
+    if (positions.length && positions[positions.length - 1] > height - 15) {
+      positions[positions.length - 1] = height - 15;
+      for (let i = positions.length - 2; i >= 0; i--) positions[i] = Math.min(positions[i], positions[i + 1] - 24);
+    }
+    return sideRows.map((slice, index) => ({ ...slice, labelY: positions[index] }));
+  });
   const point = (angle, distance) => [cx + distance * Math.cos(angle), cy + distance * Math.sin(angle)];
+  const active = slices.find((slice) => slice.id === activeId);
   return <Panel title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده">
     <p className="text-center text-xs font-bold">کل درس‌آموخته‌ها: {fa(total)}</p>
-    {rows.length && total ? <div className="w-full overflow-x-auto"><svg viewBox={`0 0 520 ${height}`} className="mx-auto block w-full min-w-[440px]" role="img" aria-label={`سهم کاربران از ${fa(total)} درس‌آموخته`}>
+    {rows.length && total ? <div className="relative w-full"><svg viewBox={`0 0 520 ${height}`} className="mx-auto block w-full" role="img" aria-label={`سهم کاربران از ${fa(total)} درس‌آموخته`}>
       {slices.map((slice) => {
         const [x1, y1] = point(slice.start, radius);
         const [x2, y2] = point(slice.end, radius);
-        return slice.share >= 1 ? <circle key={slice.id} cx={cx} cy={cy} r={radius} fill={slice.color} /> : <path key={slice.id} d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${slice.share > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={slice.color} />;
+        const [countX, countY] = point(slice.angle, radius * 0.62);
+        const selected = activeId === slice.id;
+        return <g key={slice.id} tabIndex={0} role="button" aria-label={`${slice.name}، ${fa(slice.count)} درس‌آموخته`} onMouseEnter={() => setActiveId(slice.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(slice.id)} onBlur={() => setActiveId(null)} style={{ cursor: "pointer", transform: selected ? `translate(${Math.cos(slice.angle) * 7}px, ${Math.sin(slice.angle) * 7}px)` : "translate(0px, 0px)", transition: "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 220ms", filter: selected ? "drop-shadow(0px 5px 5px rgba(0,0,0,0.25))" : "none" }}>
+          {slice.share >= 1 ? <circle cx={cx} cy={cy} r={radius} fill={slice.color} /> : <path d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${slice.share > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={slice.color} />}
+          <text x={countX} y={countY} textAnchor="middle" dominantBaseline="central" fill="white" fontSize="14" fontWeight="bold" pointerEvents="none">{fa(slice.count)}</text>
+        </g>;
       })}
       {labels.map((slice) => {
         const [x1, y1] = point(slice.angle, radius);
         const [x2, y2] = point(slice.angle, radius + 12);
         const lineEnd = cx + slice.side * 123;
-        return <g key={slice.id}><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width="133" height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" title={`${slice.name}: ${fa(slice.count)} (${fa(Math.round(slice.share * 100))}٪)`} className="truncate text-[11px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name} ({fa(slice.count)})</div></foreignObject></g>;
+        const elbow = cx + slice.side * 110;
+        return <g key={slice.id} pointerEvents="none"><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${elbow} ${slice.labelY} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width="133" height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" className="truncate text-[12px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name}</div></foreignObject></g>;
       })}
-    </svg></div> : <p className="py-16 text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}
+    </svg>{active && <div role="tooltip" className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-center text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><span className="block font-bold">{active.name}</span><span className="mt-1 block whitespace-nowrap text-neutral-500 dark:text-neutral-300">{fa(active.count)} درس‌آموخته ({fa(Math.round(active.share * 100))}٪)</span></div>}</div> : <p className="py-16 text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}
   </Panel>;
 }
 
