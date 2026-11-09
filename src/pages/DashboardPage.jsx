@@ -106,7 +106,7 @@ const supplyStatusOf = (item) => {
 
 function HomeTopDailyLogUsers({ rows, loading }) {
   const [hover, setHover] = useState(null);
-  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">کاربران فعال روزنگار</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">روند ماهانه ثبت‌ها در پروژه‌های فعال</span></div><div className="h-[320px] space-y-2 overflow-y-auto">{rows.length ? rows.map((person, index) => {
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">کاربران فعال روزنگار</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">روند ماهانه ثبت‌ها در پروژه‌های فعال</span></div><div className="h-[400px] space-y-2 overflow-y-auto">{rows.length ? rows.map((person, index) => {
     const max = Math.max(1, ...person.trend);
     const values = person.trend.length === 1 ? [person.trend[0], person.trend[0]] : person.trend;
     const points = values.map((value, i) => `${2 + i * 96 / Math.max(1, values.length - 1)},${27 - value / max * 23}`).join(" ");
@@ -135,7 +135,7 @@ function HomeReviewTiming({ title, stages, timings }) {
 
 function HomeUnsettledTenkhah({ rows, loading }) {
   const total = rows.reduce((sum, row) => sum + row.unsettled, 0);
-  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} large empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></Card>;
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><div className="mx-auto w-full max-w-[480px]"><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} large empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></div></Card>;
 }
 
 const activityDateFormatters = Object.fromEntries(["persian", "gregory"].map((calendar) => [calendar, new Intl.DateTimeFormat(`en-US-u-ca-${calendar}-nu-latn`, { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" })]));
