@@ -42,11 +42,22 @@ export default function AccessManagementPage() {
   const { user } = useAuth();
   const [activeGroup, setActiveGroup] = useState(groups[0].label);
   const [users, setUsers] = useState([]);
+  const [userSortDir, setUserSortDir] = useState(null);
   const [selected, setSelected] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const group = groups.find((item) => item.label === activeGroup) || groups[0];
   const pages = group.pages.filter((page) => pageColumns[page]);
   const columnCount = pages.reduce((sum, page) => sum + pageColumns[page].length, 0);
+  const sortedUsers = useMemo(() => {
+    if (!userSortDir) return users;
+    return [...users].sort((a, b) => {
+      const first = String(a.name || "").trim();
+      const second = String(b.name || "").trim();
+      if (!first || !second) return first ? -1 : second ? 1 : 0;
+      const comparison = first.localeCompare(second, "fa", { sensitivity: "base", numeric: true });
+      return userSortDir === "asc" ? comparison : -comparison;
+    });
+  }, [users, userSortDir]);
 
   useEffect(() => {
     api("/admin/users").then((data) => {
@@ -90,8 +101,8 @@ export default function AccessManagementPage() {
       {groups.map((item, index) => <button key={item.label} type="button" onClick={() => setActiveGroup(item.label)} className={`relative z-10 h-11 min-w-[132px] flex-1 whitespace-nowrap px-4 text-sm font-semibold transition ${index ? "border-r border-black/10 dark:border-neutral-800" : ""} ${activeGroup === item.label ? "bg-[#184a6b] text-white dark:bg-[#184a6b] dark:text-white" : "hover:bg-neutral-50 dark:hover:bg-neutral-800"}`}>{item.label}</button>)}
     </div>
     <div className={`${tableUi.frame} rounded-t-none`}><div className="overflow-x-auto"><table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(420, 230 + columnCount * 68) }}><thead>
-      <tr className={tableUi.headRow}><th rowSpan={2} className={`${tableUi.th} w-[230px] border-l border-neutral-300 dark:border-neutral-700`}>کاربران</th>{pages.map((page) => <th key={page} colSpan={pageColumns[page].length} className="border-l border-neutral-300 py-2 text-center text-sm font-bold dark:border-neutral-700">{page}</th>)}</tr>
+      <tr className={tableUi.headRow}><th rowSpan={2} aria-sort={userSortDir === "asc" ? "ascending" : userSortDir === "desc" ? "descending" : "none"} className={`${tableUi.th} w-[230px] border-l border-neutral-300 dark:border-neutral-700`}><button type="button" onClick={() => setUserSortDir((previous) => previous === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 hover:opacity-75" aria-label={userSortDir === "asc" ? "مرتب‌سازی کاربران به ترتیب الفبای معکوس" : "مرتب‌سازی کاربران به ترتیب حروف الفبا"} title={userSortDir === "asc" ? "مرتب‌سازی کاربران به ترتیب الفبای معکوس" : "مرتب‌سازی کاربران به ترتیب حروف الفبا"}><span>کاربران</span><img src={userSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>{pages.map((page) => <th key={page} colSpan={pageColumns[page].length} className="border-l border-neutral-300 py-2 text-center text-sm font-bold dark:border-neutral-700">{page}</th>)}</tr>
       <tr className={tableUi.headRow}>{pages.flatMap((page) => pageColumns[page].map((column) => <th key={`${page}-${column}`} className="w-[68px] border-l border-neutral-300 px-1 py-2 text-center text-xs dark:border-neutral-700">{column}</th>))}</tr>
-    </thead><tbody className={tableUi.body}>{loading ? <tr><td colSpan={columnCount + 1} className={tableUi.emptyRow}>در حال دریافت کاربران…</td></tr> : pages.length === 0 ? <tr><td colSpan={1} className={tableUi.emptyRow}>برای این بخش مجوزی تعریف نشده است.</td></tr> : users.map((item) => <tr key={item.id}><td className="border-l border-neutral-300 px-3 py-3 text-center dark:border-neutral-700">{item.name || "—"}</td>{pages.flatMap((page) => pageColumns[page].map((column) => { const checked = selected.has(keyOf(page, item.id, column)); return <td key={`${page}-${column}`} className="border-l border-neutral-300 px-1 py-3 dark:border-neutral-700"><button type="button" onClick={() => toggle(item, page, column)} className={`mx-auto grid h-5 w-5 place-items-center rounded-[6px] border text-xs ${checked ? "border-black bg-black text-white" : "border-black/25"}`}>{checked ? "✓" : ""}</button></td>; }))}</tr>)}</tbody></table></div></div>
+    </thead><tbody className={tableUi.body}>{loading ? <tr><td colSpan={columnCount + 1} className={tableUi.emptyRow}>در حال دریافت کاربران…</td></tr> : pages.length === 0 ? <tr><td colSpan={1} className={tableUi.emptyRow}>برای این بخش مجوزی تعریف نشده است.</td></tr> : sortedUsers.map((item) => <tr key={item.id}><td className="border-l border-neutral-300 px-3 py-3 text-center dark:border-neutral-700">{item.name || "—"}</td>{pages.flatMap((page) => pageColumns[page].map((column) => { const checked = selected.has(keyOf(page, item.id, column)); return <td key={`${page}-${column}`} className="border-l border-neutral-300 px-1 py-3 dark:border-neutral-700"><button type="button" onClick={() => toggle(item, page, column)} className={`mx-auto grid h-5 w-5 place-items-center rounded-[6px] border text-xs ${checked ? "border-black bg-black text-white" : "border-black/25"}`}>{checked ? "✓" : ""}</button></td>; }))}</tr>)}</tbody></table></div></div>
   </Card>;
 }
