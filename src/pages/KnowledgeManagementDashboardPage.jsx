@@ -31,7 +31,9 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
   const height = Math.max(large ? 350 : 280, Math.max(...sides.map((side) => side.length)) * 30 + 30);
   const cx = 290, cy = height / 2, radius = large ? 145 : 110;
   const labels = sides.flatMap((sideRows) => {
-    const positions = sideRows.map((slice) => Math.max(15, Math.min(height - 15, cy + Math.sin(slice.angle) * (radius + 20))));
+    const positions = sideRows.map((slice, index) => large && sideRows.length > 1
+      ? cy - radius + index * (radius * 2) / (sideRows.length - 1)
+      : Math.max(15, Math.min(height - 15, cy + Math.sin(slice.angle) * (radius + 20))));
     for (let i = 1; i < positions.length; i++) positions[i] = Math.max(positions[i], positions[i - 1] + 24);
     if (positions.length && positions[positions.length - 1] > height - 15) {
       positions[positions.length - 1] = height - 15;
@@ -62,7 +64,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
         const labelWidth = cx - radius - 37;
         return <g key={slice.id} pointerEvents="none"><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${elbow} ${slice.labelY} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width={labelWidth} height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" className="truncate text-[12px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name}</div></foreignObject></g>;
       })}
-    </svg>{active && <div role="tooltip" style={{ left: tooltipPosition.x, top: tooltipPosition.y }} className="pointer-events-none fixed z-50 max-w-[190px] rounded-xl border border-neutral-200 bg-white px-4 py-2 text-center text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><span className="block font-bold">{active.name}</span><span className="mt-1 block whitespace-nowrap text-neutral-500 dark:text-neutral-300">{fa(active.count)} {unit} ({fa(Math.round(active.share * 100))}٪)</span></div>}</div> : <p className="py-16 text-center text-xs text-neutral-400">{empty}</p>}
+    </svg>{large && <div className="space-y-1.5 px-1 pb-2">{slices.map((slice) => <div key={slice.id} className="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 px-2 py-1.5 text-[11px] dark:bg-white/[0.045]"><span className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: slice.color }} /><span className="break-words">{slice.name}</span></span><span className="shrink-0 tabular-nums">{fa(slice.count)} {unit} <span className="text-neutral-500">({new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(slice.share * 100)}٪)</span></span></div>)}</div>}{active && <div role="tooltip" style={{ left: tooltipPosition.x, top: tooltipPosition.y }} className="pointer-events-none fixed z-50 max-w-[190px] rounded-xl border border-neutral-200 bg-white px-4 py-2 text-center text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><span className="block font-bold">{active.name}</span><span className="mt-1 block whitespace-nowrap text-neutral-500 dark:text-neutral-300">{fa(active.count)} {unit} ({new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(active.share * 100)}٪)</span></div>}</div> : <p className="py-16 text-center text-xs text-neutral-400">{empty}</p>}
   </>;
 }
 
