@@ -29,7 +29,6 @@ import LettersPage from "./pages/LettersPage.jsx";
 import SupplyRequestPage from "./pages/SupplyRequestPage.jsx";
 import PettyCashPage from "./pages/PettyCashPage.jsx";
 import RoznegarPgae from "./pages/RoznegarPgae.jsx";
-import QualityManagementPage from "./pages/QualityManagementPage.jsx";
 import NavPlaceholderPage from "./pages/NavPlaceholderPage.jsx";
 import EquipmentIdentityPage from "./pages/EquipmentIdentityPage.jsx";
 import ServiceMaintenancePage from "./pages/ServiceMaintenancePage.jsx";
@@ -125,7 +124,10 @@ export default function App() {
         <Route path="/letters" element={<LettersPage />} />
         <Route path="/documents/delivery-receipts" element={<DeliveryReceiptsPage />} />
         <Route path="/documents/management-dashboard" element={<DocumentsManagementDashboardPage />} />
-        <Route path="/quality-management" element={<QualityManagementPage />} />
+        <Route path="/quality-management" element={<NavPlaceholderPage title="مدیریت سیستم‌ها" icon="/images/icons/modiriat-system.svg" />} />
+        <Route path="/quality-management/systems" element={<NavPlaceholderPage title="مدیریت سیستم‌ها" icon="/images/icons/modiriat-system.svg" />} />
+        <Route path="/quality-management/requirements" element={<NavPlaceholderPage title="الزامات و انطباق‌ها" icon="/images/icons/elzamat.svg" />} />
+        <Route path="/quality-management/audits" element={<NavPlaceholderPage title="ممیزی و اقدام اصلاحی" icon="/images/icons/momaezi.svg" />} />
         <Route path="/knowledge-management/organizational-documents" element={<NavPlaceholderPage title="مستندات سازمانی" />} />
         <Route path="/knowledge-management/technical-standards" element={<NavPlaceholderPage title="استانداردهای فنی" />} />
         <Route path="/knowledge-management/template-library" element={<NavPlaceholderPage title="بانک الگوها" />} />

@@ -376,10 +376,19 @@ function RightNav() {
       ],
     },
     {
-      title: "مدیریت تضمین کیفیت",
-      items: [
-        { type: "link", to: "/quality-management", label: "مدیریت تضمین کیفیت", icon: <NavIcon src="/images/icons/modorit-tasmin.svg" />, active: isActive("/quality-management") },
-      ],
+      title: "مدیریت سیستم‌ها",
+      items: [{
+        type: "section",
+        key: "systems",
+        label: "مدیریت سیستم‌ها",
+        icon: <NavIcon src="/images/icons/modorit-tasmin.svg" />,
+        active: !!open.systems || isActive("/quality-management"),
+        items: [
+          { to: "/quality-management/systems", label: "مدیریت سیستم‌ها", icon: <NavIcon src="/images/icons/modiriat-system.svg" /> },
+          { to: "/quality-management/requirements", label: "الزامات و انطباق‌ها", icon: <NavIcon src="/images/icons/elzamat.svg" /> },
+          { to: "/quality-management/audits", label: "ممیزی و اقدام اصلاحی", icon: <NavIcon src="/images/icons/momaezi.svg" /> },
+        ],
+      }],
     },
     {
       title: "تنظیمات",
