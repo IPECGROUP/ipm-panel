@@ -259,7 +259,7 @@ export default function DashboardPage() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-[1400px]">
-      <section className="rounded-2xl border border-black/10 bg-white p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
+      <section className="rounded-2xl border border-black/10 bg-[#f8f7f2] p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
         {shortcutError && !pickerOpen && <p role="alert" className="mt-3 text-xs text-red-600">{shortcutError}</p>}
         <div className="flex flex-wrap gap-3">
           {selectedShortcuts.map((item) => <button key={item.to} type="button" onClick={() => navigate(item.to)} className="group flex w-[104px] flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50 px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/10 dark:from-white/[0.07] dark:to-white/[0.02] dark:hover:border-amber-400/60" title={item.label}><span className={`grid h-11 w-11 place-items-center rounded-xl ${shortcutColors[shortcutOptions.findIndex((option) => option.to === item.to) % shortcutColors.length]}`}><img src={item.icon} alt="" className="h-7 w-7 opacity-75 dark:invert" /></span><span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">{item.label}</span></button>)}
