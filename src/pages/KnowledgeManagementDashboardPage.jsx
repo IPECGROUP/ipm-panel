@@ -23,12 +23,19 @@ function LessonAuthorsChart({ lessons }) {
     cursor += Number(row.count) / total * 100;
     return `${colors[index % colors.length]} ${start}% ${cursor}%`;
   }).join(", ")})` : "#e5e7eb";
+  let labelCursor = 0;
+  const labels = rows.map((row) => {
+    const share = total ? Number(row.count) / total : 0;
+    const angle = (labelCursor + share / 2) * 2 * Math.PI - Math.PI / 2;
+    labelCursor += share;
+    return { ...row, share, x: 50 + 32 * Math.cos(angle), y: 50 + 32 * Math.sin(angle) };
+  });
   return <Panel title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده">
     <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: gradient }} aria-hidden="true">
-        <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center dark:bg-neutral-900"><span><b className="block text-2xl tabular-nums">{fa(total)}</b><span className="text-[10px] text-neutral-500 dark:text-neutral-400">کل درس‌آموخته‌ها</span></span></div>
+      <div className="relative h-40 w-40 shrink-0 rounded-full" style={{ background: gradient }} aria-hidden="true">
+        <svg viewBox="0 0 100 100" className="h-full w-full">{labels.filter((row) => row.share >= 0.08).map((row) => <text key={row.id} x={row.x} y={row.y} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="7" fontWeight="bold">{fa(row.count)}</text>)}</svg>
       </div>
-      <div className="max-h-52 w-full space-y-2 overflow-auto">{rows.length ? rows.map((row, index) => <div key={row.id} className="flex items-center justify-between gap-2 text-xs"><span className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} /><span className="truncate" title={row.name}>{row.name}</span></span><span className="shrink-0 font-bold tabular-nums">{fa(row.count)} <span className="font-normal text-neutral-500">({fa(total ? Math.round(Number(row.count) / total * 100) : 0)}٪)</span></span></div>) : <p className="text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}</div>
+      <div className="w-full"><p className="mb-3 text-xs font-bold">کل درس‌آموخته‌ها: {fa(total)}</p><div className="max-h-52 space-y-2 overflow-auto">{rows.length ? rows.map((row, index) => <div key={row.id} className="flex items-center justify-between gap-2 text-xs"><span className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} /><span className="truncate" title={row.name}>{row.name}</span></span><span className="shrink-0 font-bold tabular-nums">{fa(row.count)} <span className="font-normal text-neutral-500">({fa(total ? Math.round(Number(row.count) / total * 100) : 0)}٪)</span></span></div>) : <p className="text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}</div></div>
     </div>
   </Panel>;
 }

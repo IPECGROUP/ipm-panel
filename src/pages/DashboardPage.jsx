@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
-import { SupplyExpertsPanel } from "./SupplyManagementDashboardPage.jsx";
+import { countExpertRequests, SupplyExpertsPanel } from "./SupplyManagementDashboardPage.jsx";
 import { KnowledgeDashboardWidgets } from "./KnowledgeManagementDashboardPage.jsx";
 
 const activityViewers = new Set(["marandi", "nouri"]);
@@ -222,6 +222,7 @@ export default function DashboardPage() {
     return {
       id,
       name: person.name || person.username || person.email || `کاربر #${id}`,
+      total: countExpertRequests(supplyRequests, id),
       active: owned.filter((item) => ["pending", "in_progress"].includes(supplyStatusOf(item))).length,
       pending: owned.filter((item) => supplyStatusOf(item) === "pending").length,
       done: supplyRequests.filter((item) => (item.supplyActions || []).some((action) => Number(action.byUserId) === id && String(action.status) === "done") || (item.historyJson || []).some((event) => event?.type === "approved" && event?.roleKey === "commercial" && Number(event?.byUserId) === id)).length,
