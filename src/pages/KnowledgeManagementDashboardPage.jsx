@@ -15,6 +15,8 @@ function TopUsers({ rows }) { return <Rows rows={rows} empty="مراجعه‌ا�
 
 function LessonAuthorsChart({ lessons }) {
   const [activeId, setActiveId] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const moveTooltip = (x, y) => setTooltipPosition({ x: Math.max(8, Math.min(x + 14, window.innerWidth - 200)), y: Math.max(8, Math.min(y + 14, window.innerHeight - 76)) });
   const rows = lessons.byAuthor || [];
   const total = Number(lessons.total || 0);
   const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
@@ -49,7 +51,7 @@ function LessonAuthorsChart({ lessons }) {
         const [x2, y2] = point(slice.end, radius);
         const [countX, countY] = point(slice.angle, radius * 0.62);
         const selected = activeId === slice.id;
-        return <g key={slice.id} tabIndex={0} role="button" aria-label={`${slice.name}، ${fa(slice.count)} درس‌آموخته`} onMouseEnter={() => setActiveId(slice.id)} onMouseLeave={() => setActiveId(null)} onFocus={() => setActiveId(slice.id)} onBlur={() => setActiveId(null)} style={{ cursor: "pointer", transform: selected ? `translate(${Math.cos(slice.angle) * 7}px, ${Math.sin(slice.angle) * 7}px)` : "translate(0px, 0px)", transition: "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 220ms", filter: selected ? "drop-shadow(0px 5px 5px rgba(0,0,0,0.25))" : "none" }}>
+        return <g key={slice.id} tabIndex={0} role="button" aria-label={`${slice.name}، ${fa(slice.count)} درس‌آموخته`} onMouseEnter={(event) => { setActiveId(slice.id); moveTooltip(event.clientX, event.clientY); }} onMouseMove={(event) => moveTooltip(event.clientX, event.clientY)} onMouseLeave={() => setActiveId(null)} onFocus={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setActiveId(slice.id); moveTooltip(rect.left + rect.width / 2, rect.top + rect.height / 2); }} onBlur={() => setActiveId(null)} style={{ cursor: "pointer", transform: selected ? `translate(${Math.cos(slice.angle) * 7}px, ${Math.sin(slice.angle) * 7}px)` : "translate(0px, 0px)", transition: "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 220ms", filter: selected ? "drop-shadow(0px 5px 5px rgba(0,0,0,0.25))" : "none" }}>
           {slice.share >= 1 ? <circle cx={cx} cy={cy} r={radius} fill={slice.color} /> : <path d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${slice.share > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={slice.color} />}
           <text x={countX} y={countY} textAnchor="middle" dominantBaseline="central" fill="white" fontSize="14" fontWeight="bold" pointerEvents="none">{fa(slice.count)}</text>
         </g>;
@@ -61,7 +63,7 @@ function LessonAuthorsChart({ lessons }) {
         const elbow = cx + slice.side * 110;
         return <g key={slice.id} pointerEvents="none"><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${elbow} ${slice.labelY} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width="133" height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" className="truncate text-[12px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name}</div></foreignObject></g>;
       })}
-    </svg>{active && <div role="tooltip" className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-center text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><span className="block font-bold">{active.name}</span><span className="mt-1 block whitespace-nowrap text-neutral-500 dark:text-neutral-300">{fa(active.count)} درس‌آموخته ({fa(Math.round(active.share * 100))}٪)</span></div>}</div> : <p className="py-16 text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}
+    </svg>{active && <div role="tooltip" style={{ left: tooltipPosition.x, top: tooltipPosition.y }} className="pointer-events-none fixed z-50 max-w-[190px] rounded-xl border border-neutral-200 bg-white px-4 py-2 text-center text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><span className="block font-bold">{active.name}</span><span className="mt-1 block whitespace-nowrap text-neutral-500 dark:text-neutral-300">{fa(active.count)} درس‌آموخته ({fa(Math.round(active.share * 100))}٪)</span></div>}</div> : <p className="py-16 text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}
   </Panel>;
 }
 
