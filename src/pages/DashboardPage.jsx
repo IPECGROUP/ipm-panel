@@ -120,7 +120,7 @@ function HomeReviewTiming({ timings }) {
 
 function HomeUnsettledTenkhah({ rows, loading }) {
   const total = rows.reduce((sum, row) => sum + row.unsettled, 0);
-  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></Card>;
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} large empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></Card>;
 }
 
 export default function DashboardPage() {
