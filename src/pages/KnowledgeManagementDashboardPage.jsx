@@ -72,17 +72,8 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
 
 export function KnowledgeDashboardWidgets({ data }) {
   const lessons = data?.lessons || {};
-  const resources = data?.resources || {};
-  const resourceVisits = data?.visits?.training || [];
-  const lessonVisits = data?.visits?.lessons || [];
-  const maxTrainingVisits = resourceVisits.reduce((sum, row) => sum + Number(row.count || 0), 0);
   return <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
     <Panel title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده"><ShareChart rows={lessons.byAuthor || []} total={Number(lessons.total || 0)} totalLabel="کل درس‌آموخته‌ها" unit="درس‌آموخته" empty="درس‌آموخته‌ای ثبت نشده است." /></Panel>
-    <Panel title="درس‌آموخته‌ها بر اساس اهمیت"><Rows rows={lessons.byImportance} transform={(row) => importanceLabels[row.label] || row.label} /></Panel>
-    <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها"><TopUsers rows={lessonVisits} /></Panel>
-    <Panel title="مستندات به تفکیک کتابخانه"><Rows rows={data?.libraries} /></Panel>
-    <Panel title="منابع آموزشی بر اساس دسته‌بندی" subtitle={`مجموع مراجعه به منابع آموزشی: ${fa(maxTrainingVisits)}`}><Rows rows={resources.byCategory} /></Panel>
-    <Panel title="۳ کاربر برتر مراجعه به منابع آموزشی"><TopUsers rows={resourceVisits} /></Panel>
   </div>;
 }
 
