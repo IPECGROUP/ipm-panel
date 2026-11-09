@@ -141,6 +141,7 @@ function paymentActionAmount(value, currencyTypeId) {
 }
 function paymentRequestCreateErrorMessage(code) {
   const messages = {
+    supply_request_awaiting_your_approval: "این درخواست تامین در انتظار تایید توسط شماست لطفا ابتدا از صفحه درخواست تامین این مورد را بررسی کنید.",
     project_required: "پروژه را انتخاب کنید.",
     budget_code_required: "کد بودجه را انتخاب کنید.",
     title_required: "موضوع درخواست را وارد کنید.",
@@ -154,6 +155,10 @@ function paymentRequestCreateErrorMessage(code) {
     invalid_doc_type: "نوع سند انتخاب‌شده برای درخواست پرداخت معتبر نیست.",
   };
   return messages[code] || "ثبت درخواست انجام نشد. لطفاً دوباره تلاش کنید.";
+}
+function supplyApprovalPendingForUser(item, userId) {
+  return item?.status === "pending" && item?.currentStepRoleKey === "project_manager" &&
+    Number(item.currentAssigneeUserId) === Number(userId);
 }
 function minorUnitsToDecimal(minorUnits) {
   const value = BigInt(minorUnits || 0);
@@ -509,6 +514,7 @@ export default function PaymentRequestPage() {
   const [supplyPickerPage, setSupplyPickerPage] = useState(1);
   const [supplyPickerLoading, setSupplyPickerLoading] = useState(false);
   const [supplyPickerHasMore, setSupplyPickerHasMore] = useState(false);
+  const [supplyApprovalWarning, setSupplyApprovalWarning] = useState(false);
   const [letterPickerOpen, setLetterPickerOpen] = useState(false);
   const [letterPickerQuery, setLetterPickerQuery] = useState("");
   const [letters, setLetters] = useState([]);
@@ -843,7 +849,8 @@ export default function PaymentRequestPage() {
       // equivalent prevents a 400 response from looking like an unexplained
       // registration failure, especially when workflow assignments are not
       // configured yet.
-      setError(paymentRequestCreateErrorMessage(submitError?.message));
+      if (submitError?.message === "supply_request_awaiting_your_approval") setSupplyApprovalWarning(true);
+      else setError(paymentRequestCreateErrorMessage(submitError?.message));
     }
     finally { setSubmitting(false); }
   };
@@ -991,7 +998,9 @@ export default function PaymentRequestPage() {
         if (latest?.item) setSelected((current) => current ? { ...current, ...latest.item, __editing: false } : current);
         await loadItems();
       }
-      setActionError(err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید."
+      if (err?.message === "supply_request_awaiting_your_approval") setSupplyApprovalWarning(true);
+      setActionError(err?.message === "supply_request_awaiting_your_approval" ? paymentRequestCreateErrorMessage(err.message)
+        : err?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید."
         : err?.message === "amount_exceeds_project_liquidity" ? paymentRequestCreateErrorMessage(err.message)
         : ["request_changed", "request_already_processed"].includes(err?.message) ? "این درخواست پیش از ثبت ویرایش تغییر کرده یا روی آن اقدام شده است. ویرایش متوقف شد."
         : "ویرایش درخواست انجام نشد.");
@@ -1429,9 +1438,19 @@ export default function PaymentRequestPage() {
           hasMore={supplyPickerHasMore}
           selectedId={form.supplyRequestId}
           onLoadMore={() => setSupplyPickerPage((value) => value + 1)}
-          onSelect={(item) => { setField("supplyRequestId", String(item.id)); setSupplyPickerOpen(false); }}
+          onSelect={(item) => {
+            if (supplyApprovalPendingForUser(item, user?.id)) {
+              setField("supplyRequestId", "");
+              setSupplyPickerOpen(false);
+              setSupplyApprovalWarning(true);
+              return;
+            }
+            setField("supplyRequestId", String(item.id));
+            setSupplyPickerOpen(false);
+          }}
           onClose={() => setSupplyPickerOpen(false)}
         />}
+        {supplyApprovalWarning && <SupplyApprovalWarningModal onClose={() => setSupplyApprovalWarning(false)} />}
         {letterPickerOpen && <RelatedLettersPickerModal
           api={api}
           query={letterPickerQuery}
@@ -1852,6 +1871,18 @@ function RequestChoiceModal({ title, query, onQueryChange, loading, items, selec
       </button>;
     })}{hasMore && <button type="button" onClick={onLoadMore} className="mx-auto mt-2 block rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold transition hover:bg-black/[0.04] dark:border-white/10 dark:hover:bg-white/10">نمایش موارد بیشتر</button>}</div> : <div className="p-5 text-center text-sm text-neutral-500">درخواستی پیدا نشد.</div>}
   </ChoiceModal>;
+}
+
+function SupplyApprovalWarningModal({ onClose }) {
+  return createPortal(
+    <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4" dir="rtl" role="alertdialog" aria-modal="true" aria-labelledby="supply-approval-warning">
+      <div className="absolute inset-0 bg-black/55" onClick={onClose} />
+      <div className="relative w-full max-w-md rounded-2xl bg-white p-5 text-neutral-900 shadow-2xl dark:bg-neutral-900 dark:text-white">
+        <p id="supply-approval-warning" className="text-sm leading-8">این درخواست تامین در انتظار تایید توسط شماست لطفا ابتدا از صفحه درخواست تامین این مورد را بررسی کنید.</p>
+        <div className="mt-5 flex justify-end"><button type="button" autoFocus onClick={onClose} className="rounded-xl bg-black px-5 py-2 text-sm font-semibold text-white dark:bg-white dark:text-black">متوجه شدم</button></div>
+      </div>
+    </div>, document.body
+  );
 }
 
 function PaymentUploadModal({ files, uploading, onUpload, onRemove, onClose }) {
