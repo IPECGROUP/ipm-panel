@@ -1249,6 +1249,7 @@ export default function ContractInformation() {
   const [contractsPage, setContractsPage] = React.useState(0);
   const [contractsRowsPerPage, setContractsRowsPerPage] = React.useState(10);
   const [selectedContractIds, setSelectedContractIds] = React.useState(() => new Set());
+  const [deletingContracts, setDeletingContracts] = React.useState(false);
   const [contractTableMenuOpen, setContractTableMenuOpen] = React.useState(false);
   const [contractTableMenuPosition, setContractTableMenuPosition] = React.useState({ top: 0, left: 0 });
   const contractTableMenuRef = React.useRef(null);
@@ -1844,6 +1845,7 @@ export default function ContractInformation() {
   const contractsPageRows = contractsDisplayRows.slice(contractsStartIdx, contractsEndIdx);
 
   const previewMainContracts = (includeAmounts) => {
+    if (includeAmounts && !canContract("لیست قراردادهای اصلی با مبلغ")) return;
     const mainRows = rows.filter((row) => row.documentType === "main").map((row, index) => ({
       number: toFaDigits(index + 1),
       employer: row.general?.employerAssignor,
@@ -1858,35 +1860,75 @@ export default function ContractInformation() {
   };
 
   const exportContractsExcel = async () => {
-    if (!filteredRows.length) return;
+    if (!canContract("خروجی اکسل") || !contractsDisplayRows.length) return;
     const xlsxMod = await import("xlsx");
     const XLSX = xlsxMod?.default || xlsxMod;
-    const exportRows = [
-      ["قراردادها - خروجی جدول"],
-      [""],
-      ["ردیف", "پروژه", "سطح", "نوع قرارداد", "واگذارنده / کارفرما", "موضوع قرارداد", "تاریخ شروع", "تاریخ پایان", "مبلغ", "آخرین وضعیت"],
-      ...filteredRows.map((row, index) => {
-        const amount = normalizeFinancial(row.financial || {}).contractAmounts.find((item) => hasFinancialAmount(item.amount));
-        return [
-          toFaDigits(index + 1),
-          projectById.get(String(row.projectId))?.label || "بدون پروژه",
-          documentTypeLabel(row.documentType),
-          row.general?.contractType || "",
-          row.general?.employerAssignor || "",
-          row.general?.contractSubject || "",
-          toFaDigits(String(row.calendar?.startDate || "").replaceAll("-", "/")),
-          toFaDigits(String(effectiveContractEndDate(row) || "").replaceAll("-", "/")),
-          amount ? formatFinancialAmount(parseFinancialAmount(amount.amount)) : "",
-          row.insurance?.lastStatus || "",
-        ];
-      }),
-    ];
-    const sheet = XLSX.utils.aoa_to_sheet(exportRows);
-    sheet["!cols"] = [8, 24, 12, 24, 28, 38, 15, 15, 18, 32].map((wch) => ({ wch }));
-    sheet["!rtl"] = true;
+    const [tagResponses, typesResponse, sourcesResponse] = await Promise.all([
+      tagsLoaded ? Promise.resolve([]) : Promise.all(["letters", "projects", "execution"].map((scope) => fetchJson(`/tags?scope=${scope}`))).catch(() => []),
+      currencyItems.length ? Promise.resolve(null) : fetchJson("/base/currencies/types").catch(() => null),
+      currencySourceItems.length ? Promise.resolve(null) : fetchJson("/base/currencies/sources").catch(() => null),
+    ]);
+    const exportTags = new Map([...tags, ...tagResponses.flatMap((data) => Array.isArray(data?.tags) ? data.tags : asArray(data))].map((tag) => [String(tag.id), tag]));
+    const exportCurrencies = new Map([...currencyItems, ...listFromPayload(typesResponse, "types")].map((item) => [readItemId(item), item]));
+    const exportSources = new Map([...currencySourceItems, ...listFromPayload(sourcesResponse, "sources")].map((item) => [readItemId(item), item]));
+    const labelFor = (map, id, label) => label || readItemLabel(map.get(String(id || ""))) || String(id || "");
+    const lettersFor = (ids) => normalizeIdList(ids).map((id) => { const letter = letterById.get(String(id)); return letter ? secretariatNoOf(letter) || letterNoOf(letter) || id : id; }).join("، ");
+    const fileName = (file) => file?.name || file?.originalName || file?.original_name || file?.filename || file?.fileName || "";
+    const fileUrl = (file) => file?.url || file?.href || file?.path || "";
+    const status = (value) => value === "has" ? "دارد" : value === "none" ? "ندارد" : value || "";
+    const main = [["ردیف", "شناسه قرارداد", "شناسه پروژه", "کد پروژه", "پروژه", "سطح", "شماره قرارداد", "شناسه قرارداد اصلی", "شماره قرارداد فرعی", "ثبت", "نوع قرارداد", "موضوع قرارداد", "کارفرمای اصلی", "واگذارنده / کارفرما", "مجری", "اعضای مشارکت", "ثبت در ساجات", "اسناد مرتبط", "شناسه اسناد مرتبط", "تاریخ ابلاغ", "شناسه نامه ابلاغ", "نامه ابلاغ", "تاریخ شروع", "تاریخ پایان", "پایان با الحاقیه", "مدت قرارداد (روز)", "روزهای افزوده", "جمع مدت (روز)", "تاریخ‌های افزوده", "شرح خدمات", "وظایف", "برچسب‌ها", "شناسه برچسب‌ها", ...TECHNICAL_SUPPORT_FIELDS.map((field) => field.label), "شرایط پرداخت", "پیش‌پرداخت", "سپرده بیمه", "درصد سپرده بیمه", "حسن انجام کار", "درصد حسن انجام کار", "ردیف پیمان", "شعبه تامین اجتماعی", "کارکرد ناخالص نهایی", "نحوه محاسبه و ضرایب", "شماره مفاصا حساب", "مبلغ مفاصا حساب", "سند مرتبط تامین اجتماعی", "شناسه سند تامین اجتماعی", "آخرین وضعیت", "توضیحات", "آخرین بخش ذخیره‌شده", "تاریخ ایجاد", "تاریخ ویرایش"]];
+    const amounts = [["شناسه قرارداد", "ردیف", "شناسه ردیف", "مبلغ", "ارز", "شناسه ارز", "منشأ", "شناسه منشأ"]];
+    const guarantees = [["شناسه قرارداد", "ردیف", "شناسه تضمین", "نام تضمین", "نوع", "عهده بانک / شماره", "مبلغ", "ارز", "شناسه ارز"]];
+    const appendices = [["شناسه قرارداد", "ردیف", "شناسه الحاقیه", "از تاریخ", "تا تاریخ", "مبلغ", "ارز", "شناسه ارز", "منشأ", "شناسه منشأ", "شرح محدوده کار", "اسناد مرتبط", "شناسه اسناد مرتبط"]];
+    const documents = [["شناسه قرارداد", "بخش", "شناسه الحاقیه", "شناسه سند", "شماره ثبت دبیرخانه", "شماره نامه", "تاریخ نامه", "موضوع"]];
+    const files = [["شناسه قرارداد", "بخش", "شناسه الحاقیه", "نام فایل", "شناسه فایل", "نوع فایل", "حجم (بایت)", "نشانی فایل"]];
+    const raw = [["شناسه قرارداد", "مسیر فیلد", "مقدار ذخیره‌شده"]];
+    const addFiles = (contractId, section, list, appendixId = "") => (Array.isArray(list) ? list : []).forEach((file) => files.push([contractId, section, appendixId, fileName(file), String(file?.id ?? file?.file_id ?? file?.fileId ?? file?.serverId ?? ""), file?.type || file?.mimeType || file?.mime_type || "", String(file?.size ?? file?.bytes ?? ""), fileUrl(file)]));
+    const addDocuments = (contractId, section, ids, appendixId = "") => normalizeIdList(ids).forEach((id) => {
+      const letter = letterById.get(String(id));
+      documents.push([contractId, section, appendixId, String(id), letter ? secretariatNoOf(letter) : "", letter ? letterNoOf(letter) : "", letter ? letterDateOf(letter) : "", letter ? subjectOf(letter) : ""]);
+      if (letter) letterAttachmentsOf(letter).forEach((file, index) => files.push([contractId, `سند مرتبط - ${section}`, appendixId, letterAttachmentNameOf(file), String(file?.id ?? file?.file_id ?? file?.fileId ?? ""), letterAttachmentTypeOf(file), String(file?.size ?? file?.bytes ?? ""), letterAttachmentViewUrlOf(file, id, index)]));
+    });
+    const flatten = (contractId, node, path) => {
+      if (node !== null && typeof node === "object") {
+        const entries = Object.entries(node);
+        if (!entries.length) raw.push([contractId, path, Array.isArray(node) ? "[]" : "{}"]);
+        else entries.forEach(([key, value]) => flatten(contractId, value, path ? `${path}.${key}` : key));
+      } else {
+        const value = String(node ?? "");
+        for (let offset = 0; offset < Math.max(value.length, 1); offset += 32000) raw.push([contractId, value.length > 32000 ? `${path} [${Math.floor(offset / 32000) + 1}]` : path, value.slice(offset, offset + 32000)]);
+      }
+    };
+    contractsDisplayRows.forEach((row, index) => {
+      const financial = normalizeFinancial(row.financial || {});
+      const insurance = normalizeInsurance(row.insurance || {});
+      const calendar = row.calendar || {};
+      const duration = calculateCalendarDays(calendar);
+      const general = row.general || {};
+      const technical = row.technical || {};
+      const project = projectById.get(String(row.projectId));
+      const relatedIds = normalizeIdList(row.relatedLetterIds?.length ? row.relatedLetterIds : row.relatedLetterId ? [row.relatedLetterId] : []);
+      const tagIds = normalizeIdList(technical.tagIds);
+      main.push([index + 1, String(row.id), String(row.projectId), project?.code || "", project?.label || "", documentTypeLabel(row.documentType), contractNoForRow(row, rowById), String(row.parentContractId || ""), row.subContractNo || "", general.registrationType === "official" ? "رسمی" : general.registrationType === "unofficial" ? "غیر رسمی" : general.registrationType || "", general.contractType || "", general.contractSubject || "", general.mainEmployer || "", general.employerAssignor || "", general.executor || "", general.companyMembers || "", general.sajatRegistered ? "بله" : "خیر", lettersFor(relatedIds), relatedIds.join("، "), calendar.notifyDate || "", calendar.notifyLetterId || "", lettersFor(calendar.notifyLetterId ? [calendar.notifyLetterId] : []), calendar.startDate || "", calendar.endDate || "", effectiveContractEndDate(row), duration.baseDays ?? "", duration.extraDays ?? "", duration.totalDays ?? "", (calendar.extraDates || []).join("، "), technical.serviceScope || "", technical.duties || "", tagIds.map((id) => exportTags.has(String(id)) ? tagLabelOf(exportTags.get(String(id))) : id).join("، "), tagIds.join("، "), ...TECHNICAL_SUPPORT_FIELDS.map((field) => technical[field.key] || ""), financial.paymentTerms || "", status(financial.advancePayment), status(financial.capitalDeposit), financial.capitalDepositAmount || "", status(financial.performanceBond), financial.performanceBondAmount || "", insurance.contractRow, insurance.branchStatus, insurance.finalGrossPerformance, insurance.calculationMethod, insurance.clearanceNo, insurance.clearanceAmount, lettersFor(insurance.relatedLetterId ? [insurance.relatedLetterId] : []), insurance.relatedLetterId, insurance.lastStatus, insurance.description, row.lastSavedSection || "", String(row.createdAt || ""), String(row.updatedAt || "")]);
+      financial.contractAmounts.filter((item) => [item.amount, item.currencyId, item.currencyLabel, item.sourceId, item.sourceLabel].some(Boolean)).forEach((item, i) => amounts.push([String(row.id), i + 1, String(item.id), item.amount, labelFor(exportCurrencies, item.currencyId, item.currencyLabel), item.currencyId, labelFor(exportSources, item.sourceId, item.sourceLabel), item.sourceId]));
+      financial.guarantees.forEach((item, i) => guarantees.push([String(row.id), i + 1, String(item.id), item.name, item.type, item.bankNo, item.amount, labelFor(exportCurrencies, item.currencyId, item.currencyLabel), item.currencyId]));
+      financial.appendices.forEach((item, i) => { appendices.push([String(row.id), i + 1, String(item.id), item.fromDate || "", item.toDate || "", String(item.amount ?? ""), labelFor(exportCurrencies, item.currencyId, item.currencyLabel), item.currencyId || "", labelFor(exportSources, item.sourceId, item.sourceLabel), item.sourceId || "", item.workScope || "", lettersFor(item.relatedLetterIds), normalizeIdList(item.relatedLetterIds).join("، ")]); addFiles(String(row.id), "الحاقیه", item.files, String(item.id)); addDocuments(String(row.id), "الحاقیه", item.relatedLetterIds, String(item.id)); });
+      addDocuments(String(row.id), "قرارداد", relatedIds);
+      addDocuments(String(row.id), "ابلاغ", calendar.notifyLetterId ? [calendar.notifyLetterId] : []);
+      addDocuments(String(row.id), "تامین اجتماعی", insurance.relatedLetterId ? [insurance.relatedLetterId] : []);
+      addFiles(String(row.id), "شرایط پرداخت", financial.paymentTermsFiles);
+      addFiles(String(row.id), "جدول شکست مبلغ", financial.breakdownFiles);
+      addFiles(String(row.id), "مفاصا حساب", insurance.clearanceFiles);
+      flatten(String(row.id), row, "");
+    });
     const workbook = XLSX.utils.book_new();
     workbook.Workbook = { Views: [{ RTL: true }] };
-    XLSX.utils.book_append_sheet(workbook, sheet, "Contracts");
+    [["قراردادها", main], ["مبالغ", amounts], ["تضامین", guarantees], ["الحاقیه‌ها", appendices], ["اسناد مرتبط", documents], ["فایل‌ها", files], ["داده کامل", raw]].forEach(([name, data]) => {
+      const sheet = XLSX.utils.aoa_to_sheet(data);
+      sheet["!cols"] = data[0].map((header) => ({ wch: Math.min(36, Math.max(15, String(header).length + 3)) }));
+      sheet["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: data.length - 1, c: data[0].length - 1 } }) };
+      XLSX.utils.book_append_sheet(workbook, sheet, name);
+    });
     XLSX.writeFile(workbook, "contracts.xlsx");
   };
 
@@ -2985,19 +3027,28 @@ export default function ContractInformation() {
   };
 
   const deleteSelectedContracts = async () => {
-    if (!selectedContractIds.size) return;
-    if (!window.confirm(`آیا ${toFaDigits(selectedContractIds.size)} قرارداد انتخاب‌شده حذف شود؟`)) return;
+    if (!canContract("حذف") || !selectedContractIds.size || deletingContracts) return;
     const selectedRows = [...selectedContractIds].map((id) => rowById.get(String(id))).filter(Boolean);
     const selectedSet = new Set(selectedRows.map((row) => String(row.id)));
     const targets = selectedRows.filter((row) => !selectedSet.has(String(row.parentContractId || "")));
+    if (!targets.length) return;
+    if (!window.confirm(`آیا ${toFaDigits(selectedContractIds.size)} قرارداد انتخاب‌شده حذف شود؟ اسناد قراردادی وابسته نیز حذف می‌شوند.`)) return;
+    setDeletingContracts(true);
     try {
-      await Promise.all(targets.map((row) => fetchJson(`/contracts?id=${encodeURIComponent(row.id)}`, { method: "DELETE" })));
-      setRows(await fetchContractRows());
-      setSelectedContractIds(new Set());
+      const results = await Promise.allSettled(targets.map((row) => fetchJson(`/contracts?id=${encodeURIComponent(row.id)}`, { method: "DELETE" })));
+      const failed = results.filter((result) => result.status === "rejected");
+      const refreshed = await fetchContractRows();
+      setRows(refreshed);
+      const remaining = new Set(refreshed.map((row) => String(row.id)));
+      setSelectedContractIds(new Set([...selectedContractIds].filter((id) => remaining.has(String(id)))));
       setContractTableMenuOpen(false);
       setRowsError("");
+      if (failed.length) alert(`حذف ${toFaDigits(failed.length)} مورد انجام نشد. ${failed[0].reason?.message || "دوباره تلاش کنید."}`);
     } catch (error) {
-      alert(error?.message || "خطا در حذف قراردادهای انتخاب‌شده");
+      setRowsError("دریافت مجدد فهرست پس از حذف انجام نشد؛ لطفاً صفحه را تازه‌سازی کنید.");
+      alert(error?.message || "خطا در دریافت مجدد قراردادها");
+    } finally {
+      setDeletingContracts(false);
     }
   };
 
@@ -3696,7 +3747,7 @@ export default function ContractInformation() {
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-            {!formOpen && ["with", "without"].map((mode) => <button key={mode} type="button" onClick={() => previewMainContracts(mode === "with")} className="rounded-xl border border-[#6093b7] bg-white px-3 py-1.5 text-center text-xs font-bold text-[#184a6b] hover:bg-sky-50 dark:bg-neutral-900 dark:text-sky-200"><span className="block">لیست قراردادهای اصلی</span><span className="mt-0.5 block text-[10px] font-normal">{mode === "with" ? "با مبلغ" : "بدون مبلغ"}</span></button>)}
+            {!formOpen && ["with", "without"].filter((mode) => mode !== "with" || canContract("لیست قراردادهای اصلی با مبلغ")).map((mode) => <button key={mode} type="button" onClick={() => previewMainContracts(mode === "with")} className="rounded-xl border border-[#6093b7] bg-white px-3 py-1.5 text-center text-xs font-bold text-[#184a6b] hover:bg-sky-50 dark:bg-neutral-900 dark:text-sky-200"><span className="block">لیست قراردادهای اصلی</span><span className="mt-0.5 block text-[10px] font-normal">{mode === "with" ? "با مبلغ" : "بدون مبلغ"}</span></button>)}
             {canContract("افزودن") && <button
               type="button"
               onClick={() => (formOpen ? closeForm() : openFreshForm())}
@@ -3733,7 +3784,7 @@ export default function ContractInformation() {
                 <div className={labelCls}>تا</div>
                 <ContractDatePicker value={filterToDate} onChange={setFilterToDate} />
               </div>
-              <button
+              {canContract("خروجی اکسل") && <button
                 type="button"
                 className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-50 hover:shadow-md disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10"
                 onClick={exportContractsExcel}
@@ -3742,7 +3793,7 @@ export default function ContractInformation() {
                 title="خروجی اکسل"
               >
                 <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5" />
-              </button>
+              </button>}
             </div>
             <div>
               <div className={labelCls}>برچسب ها</div>
@@ -5015,7 +5066,7 @@ export default function ContractInformation() {
                     <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">موضوع قرارداد</th>
                     <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">تاریخ</th>
                     <th className="sticky top-0 z-30 bg-[#184a6b] text-[14px] font-semibold">مبلغ</th>
-                    <th className="sticky top-0 z-40 bg-[#184a6b] text-[14px] font-semibold"><span className="pointer-events-none absolute inset-0 flex items-center justify-center">آخرین وضعیت</span><span className="absolute left-2 top-1/2 z-10 -translate-y-1/2"><button ref={contractTableMenuRef} type="button" onClick={toggleContractTableMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت قراردادها" aria-label="مدیریت قراردادها" aria-expanded={contractTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${contractTableMenuOpen ? "scale-110" : ""} invert`} /></button></span>{contractTableMenuOpen ? createPortal(<div ref={contractTablePopoverRef} dir="rtl" style={{ top: contractTableMenuPosition.top, left: contractTableMenuPosition.left }} className="table-menu-popover fixed z-[10020] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedContractIds.size ? `${toFaDigits(selectedContractIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div><button type="button" disabled={selectedContractIds.size !== 1 || !canContract("ویرایش")} onClick={editSelectedContract} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش قرارداد</span></button><button type="button" disabled={!selectedContractIds.size || !canContract("حذف")} onClick={deleteSelectedContracts} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button></div>, document.body) : null}</th>
+                    <th className="sticky top-0 z-40 bg-[#184a6b] text-[14px] font-semibold"><span className="pointer-events-none absolute inset-0 flex items-center justify-center">آخرین وضعیت</span><span className="absolute left-2 top-1/2 z-10 -translate-y-1/2"><button ref={contractTableMenuRef} type="button" onClick={toggleContractTableMenu} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت قراردادها" aria-label="مدیریت قراردادها" aria-expanded={contractTableMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${contractTableMenuOpen ? "scale-110" : ""} invert`} /></button></span>{contractTableMenuOpen ? createPortal(<div ref={contractTablePopoverRef} dir="rtl" style={{ top: contractTableMenuPosition.top, left: contractTableMenuPosition.left }} className="table-menu-popover fixed z-[10020] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100"><div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedContractIds.size ? `${toFaDigits(selectedContractIds.size)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div><button type="button" disabled={selectedContractIds.size !== 1 || !canContract("ویرایش")} onClick={editSelectedContract} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش قرارداد</span></button><button type="button" disabled={deletingContracts || !selectedContractIds.size || !canContract("حذف")} onClick={deleteSelectedContracts} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 transition group-hover:scale-105 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">حذف موارد انتخاب‌شده</span></button></div>, document.body) : null}</th>
                   </tr>
                 </thead>
                 <tbody className={contractsTableBodyCls}>
