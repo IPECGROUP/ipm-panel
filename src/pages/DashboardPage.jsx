@@ -5,7 +5,7 @@ import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
 import { countExpertRequests, SupplyExpertsPanel } from "./SupplyManagementDashboardPage.jsx";
-import { KnowledgeDashboardWidgets } from "./KnowledgeManagementDashboardPage.jsx";
+import { KnowledgeDashboardWidgets, ShareChart } from "./KnowledgeManagementDashboardPage.jsx";
 
 const activityViewers = new Set(["marandi", "nouri"]);
 const formatDateTime = (value) => value ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "—";
@@ -88,12 +88,13 @@ const supplyStatusOf = (item) => {
 };
 
 function HomeTopDailyLogUsers({ rows, loading }) {
+  const [hover, setHover] = useState(null);
   return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">کاربران فعال روزنگار</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">روند ماهانه ثبت‌ها در پروژه‌های فعال</span></div><div className="h-[320px] space-y-2 overflow-y-auto">{rows.length ? rows.map((person, index) => {
     const max = Math.max(1, ...person.trend);
     const values = person.trend.length === 1 ? [person.trend[0], person.trend[0]] : person.trend;
     const points = values.map((value, i) => `${2 + i * 96 / Math.max(1, values.length - 1)},${27 - value / max * 23}`).join(" ");
-    return <div key={person.key} className="rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><div className="flex items-center gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block truncate text-[10px] text-neutral-500 dark:text-neutral-400">{person.unit}</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.value)}</span></div><svg viewBox="0 0 100 30" preserveAspectRatio="none" className="mt-2 h-8 w-full" role="img" aria-label={`روند ماهانه ثبت‌های ${person.label}`}><polyline points={points} fill="none" stroke="#0ea5e9" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" /></svg></div>;
-  }) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div></Card>;
+    return <div key={person.key} className="rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><div className="flex items-center gap-3"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block truncate text-[10px] text-neutral-500 dark:text-neutral-400">{person.unit}</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.value)}</span></div><svg viewBox="0 0 100 30" preserveAspectRatio="none" className="mt-2 h-8 w-full" role="img" aria-label={`روند ماهانه ثبت‌های ${person.label}`} onMouseMove={(event) => { if (!person.monthLabels.length) return; const rect = event.currentTarget.getBoundingClientRect(); const position = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)); const monthIndex = Math.round(position * (person.monthLabels.length - 1)); setHover({ name: person.label, month: person.monthLabels[monthIndex], value: person.trend[monthIndex], x: Math.max(8, Math.min(event.clientX + 14, window.innerWidth - 190)), y: Math.max(8, Math.min(event.clientY + 14, window.innerHeight - 80)) }); }} onMouseLeave={() => setHover(null)}><polyline points={points} fill="none" stroke="#0ea5e9" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinecap="round" strokeLinejoin="round" /><rect width="100" height="30" fill="transparent" /></svg></div>;
+  }) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div>{hover && <div role="tooltip" style={{ left: hover.x, top: hover.y }} className="pointer-events-none fixed z-50 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><b className="block">{hover.name}</b><span className="mt-1 block text-neutral-500 dark:text-neutral-300">{hover.month.replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)])}: {faNumber(hover.value)} ثبت</span></div>}</Card>;
 }
 
 function HomeReviewTiming({ timings }) {
@@ -102,7 +103,8 @@ function HomeReviewTiming({ timings }) {
 }
 
 function HomeUnsettledTenkhah({ rows, loading }) {
-  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">۵ نفر اول بر اساس بیشترین ماندهٔ تسویه‌نشده</span></div><div className="space-y-2">{rows.length ? rows.map((person, index) => <div key={person.key} className="flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">{faNumber(index + 1)}</span><span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium">{person.label}</span><span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">مانده تسویه‌نشده: {faNumber(person.unsettled)} ریال</span></span><span className="shrink-0 text-sm font-bold tabular-nums">{faNumber(person.unsettled)} <span className="text-[10px] font-medium text-neutral-400">ریال</span></span></div>) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div></Card>;
+  const total = rows.reduce((sum, row) => sum + row.unsettled, 0);
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></Card>;
 }
 
 export default function DashboardPage() {
@@ -207,7 +209,7 @@ export default function DashboardPage() {
       if (/^\d{4}-\d{2}$/.test(month)) current.months[month] = (current.months[month] || 0) + 1;
       people.set(key, current);
     });
-    return [...people.values()].map((person) => ({ ...person, trend: months.map((month) => person.months[month] || 0) })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fa"));
+    return [...people.values()].map((person) => ({ ...person, monthLabels: months, trend: months.map((month) => person.months[month] || 0) })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label, "fa"));
   }, [dailyLogEntries]);
   const reviewTimings = useMemo(() => {
     const groups = [[], [], [], []];
@@ -223,7 +225,7 @@ export default function DashboardPage() {
       current.unsettled += amountOf(item?.unsettledBalance);
       people.set(key, current);
     });
-    return [...people.values()].filter((person) => person.unsettled > 0).sort((a, b) => b.unsettled - a.unsettled || a.label.localeCompare(b.label, "fa")).slice(0, 5);
+    return [...people.values()].filter((person) => person.unsettled > 0).sort((a, b) => b.unsettled - a.unsettled || a.label.localeCompare(b.label, "fa"));
   }, [tenkhahRequests]);
   const supplyExperts = useMemo(() => supplyUsers.map((person) => {
     const id = Number(person.id);
@@ -262,7 +264,7 @@ export default function DashboardPage() {
       <section className="rounded-2xl border border-black/10 bg-[#f8f7f2] p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
         {shortcutError && !pickerOpen && <p role="alert" className="mt-3 text-xs text-red-600">{shortcutError}</p>}
         <div className="flex flex-wrap gap-3">
-          {selectedShortcuts.map((item) => <button key={item.to} type="button" onClick={() => navigate(item.to)} className="group flex w-[104px] flex-col items-center gap-2 rounded-2xl border border-neutral-200 bg-gradient-to-b from-white to-neutral-50 px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/10 dark:from-white/[0.07] dark:to-white/[0.02] dark:hover:border-amber-400/60" title={item.label}><span className={`grid h-11 w-11 place-items-center rounded-xl ${shortcutColors[shortcutOptions.findIndex((option) => option.to === item.to) % shortcutColors.length]}`}><img src={item.icon} alt="" className="h-7 w-7 opacity-75 dark:invert" /></span><span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">{item.label}</span></button>)}
+          {selectedShortcuts.map((item) => <button key={item.to} type="button" onClick={() => navigate(item.to)} className={`group flex w-[104px] flex-col items-center gap-2 rounded-2xl border border-neutral-200 px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/10 dark:hover:border-amber-400/60 ${shortcutColors[shortcutOptions.findIndex((option) => option.to === item.to) % shortcutColors.length]}`} title={item.label}><span className="grid h-11 w-11 place-items-center rounded-xl bg-white/40 dark:bg-white/5"><img src={item.icon} alt="" className="h-7 w-7 opacity-75 dark:invert" /></span><span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">{item.label}</span></button>)}
           {<button type="button" disabled={shortcutsLoading} onClick={() => setPickerOpen(true)} className="flex min-h-[102px] w-[104px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 px-2 text-neutral-500 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/20 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="افزودن میانبر"><span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">افزودن میانبر</span></button>}
         </div>
       </section>
