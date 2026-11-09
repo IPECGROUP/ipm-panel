@@ -28,8 +28,8 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
     return { ...row, share, start, end, angle, color: colors[index % colors.length], side: Math.cos(angle) >= 0 ? 1 : -1 };
   });
   const sides = [-1, 1].map((side) => slices.filter((slice) => slice.side === side).sort((a, b) => Math.sin(a.angle) - Math.sin(b.angle)));
-  const height = Math.max(240, Math.max(...sides.map((side) => side.length)) * 30 + 30);
-  const cx = 260, cy = height / 2, radius = 90;
+  const height = Math.max(280, Math.max(...sides.map((side) => side.length)) * 30 + 30);
+  const cx = 290, cy = height / 2, radius = 110;
   const labels = sides.flatMap((sideRows) => {
     const positions = sideRows.map((slice) => Math.max(15, Math.min(height - 15, cy + Math.sin(slice.angle) * (radius + 20))));
     for (let i = 1; i < positions.length; i++) positions[i] = Math.max(positions[i], positions[i - 1] + 24);
@@ -43,7 +43,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
   const active = slices.find((slice) => slice.id === activeId);
   return <>
     <p className="text-center text-xs font-bold">{totalLabel}: {fa(total)} {unit === "ریال" ? unit : ""}</p>
-    {rows.length && total ? <div className="relative w-full max-h-[320px] overflow-y-auto"><svg viewBox={`0 0 520 ${height}`} className="mx-auto block w-full" role="img" aria-label={`${totalLabel}: ${fa(total)} ${unit}`}>
+    {rows.length && total ? <div className="relative w-full max-h-[400px] overflow-y-auto"><svg viewBox={`0 0 580 ${height}`} className="mx-auto block w-full" role="img" aria-label={`${totalLabel}: ${fa(total)} ${unit}`}>
       {slices.map((slice) => {
         const [x1, y1] = point(slice.start, radius);
         const [x2, y2] = point(slice.end, radius);
@@ -57,9 +57,9 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
       {labels.map((slice) => {
         const [x1, y1] = point(slice.angle, radius);
         const [x2, y2] = point(slice.angle, radius + 12);
-        const lineEnd = cx + slice.side * 123;
-        const elbow = cx + slice.side * 110;
-        return <g key={slice.id} pointerEvents="none"><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${elbow} ${slice.labelY} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width="133" height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" className="truncate text-[12px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name}</div></foreignObject></g>;
+        const lineEnd = cx + slice.side * 143;
+        const elbow = cx + slice.side * 130;
+        return <g key={slice.id} pointerEvents="none"><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${elbow} ${slice.labelY} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width="143" height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" className="truncate text-[12px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name}</div></foreignObject></g>;
       })}
     </svg>{active && <div role="tooltip" style={{ left: tooltipPosition.x, top: tooltipPosition.y }} className="pointer-events-none fixed z-50 max-w-[190px] rounded-xl border border-neutral-200 bg-white px-4 py-2 text-center text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><span className="block font-bold">{active.name}</span><span className="mt-1 block whitespace-nowrap text-neutral-500 dark:text-neutral-300">{fa(active.count)} {unit} ({fa(Math.round(active.share * 100))}٪)</span></div>}</div> : <p className="py-16 text-center text-xs text-neutral-400">{empty}</p>}
   </>;
