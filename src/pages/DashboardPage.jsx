@@ -71,6 +71,21 @@ const stageDurations = (item) => {
   const accountingAt = approvalAt(history, "accounting", (entry) => Number(entry?.index) >= 5);
   return [durationOf(createdAt, projectControlAt), durationOf(projectControlAt, projectManagerAt), durationOf(projectManagerAt, managementAt), durationOf(managementAt, accountingAt)];
 };
+const workflowStageTimings = (requests, stages, keyField, approvalType) => {
+  const groups = stages.map(() => []);
+  requests.forEach((request) => {
+    const history = historyOf(request);
+    stages.forEach((stage, index) => {
+      const startIndex = history.findIndex((entry) => entry?.type === "step_set" && entry?.[keyField] === stage);
+      if (startIndex < 0) return;
+      const start = timestampOf(history[startIndex]);
+      const end = timestampOf(history.slice(startIndex + 1).find((entry) => entry?.type === approvalType && entry?.[keyField] === stage));
+      const duration = durationOf(start, end);
+      if (duration != null) groups[index].push(duration);
+    });
+  });
+  return groups;
+};
 const formatReviewDuration = (milliseconds) => {
   if (!Number.isFinite(milliseconds)) return "—";
   const hours = Math.round(milliseconds / 3600000);
@@ -115,7 +130,7 @@ function HomeReviewTiming({ timings }) {
       <Bar dataKey="maximum" name="بیشترین" fill="#6366f1" radius={[5, 5, 0, 0]} maxBarSize={32} />
       <Bar dataKey="average" name="میانگین" fill="#38bdf8" radius={[5, 5, 0, 0]} maxBarSize={32} />
     </BarChart></ResponsiveContainer></div>
-    <div className="grid grid-cols-4 gap-1 text-center text-[10px] leading-4 text-neutral-500 dark:text-neutral-400" dir="ltr">{chartData.map((item) => <span key={item.name} dir="rtl">{item.name}</span>)}</div>
+    <div className="grid gap-1 text-center text-[10px] leading-4 text-neutral-500 dark:text-neutral-400" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }} dir="ltr">{chartData.map((item) => <span key={item.name} dir="rtl">{item.name}</span>)}</div>
   </Card>;
 }
 
@@ -304,6 +319,8 @@ export default function DashboardPage() {
     normalRequests.forEach((request) => stageDurations(request).forEach((duration, index) => { if (duration != null) groups[index].push(duration); }));
     return groups;
   }, [normalRequests]);
+  const supplyReviewTimings = useMemo(() => workflowStageTimings(supplyRequests, ["project_manager", "commercial"], "roleKey", "approved"), [supplyRequests]);
+  const tenkhahReviewTimings = useMemo(() => workflowStageTimings(tenkhahRequests, ["project_manager", "management", "finance"], "stage", "approve"), [tenkhahRequests]);
   const unsettledTenkhah = useMemo(() => {
     const people = new Map();
     tenkhahRequests.forEach((item) => {
@@ -359,8 +376,13 @@ export default function DashboardPage() {
 
       <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
         <HomeTopDailyLogUsers rows={topDailyLogUsers} loading={dashboardWidgetsLoading} />
-        <HomeReviewTiming timings={reviewTimings} />
         <div className="min-w-0 md:col-span-2 xl:col-span-1"><HomeUnsettledTenkhah rows={unsettledTenkhah} loading={dashboardWidgetsLoading} /></div>
+      </div>
+
+      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
+        <HomeReviewTiming title="??? ???? ????? ??????????? ??????" stages={["??????????? ? ????? ?????", "???? ?????", "?????? / ????? ??????", "???? ? ????? ?????"]} timings={reviewTimings} />
+        <HomeReviewTiming title="??? ???? ????? ??????????? ?????" stages={["???? ?????", "???? ?????"]} timings={supplyReviewTimings} />
+        <HomeReviewTiming title="??? ???? ????? ?????? ?????" stages={["???? ?????", "??????", "????"]} timings={tenkhahReviewTimings} />
       </div>
 
       <div className="mt-3 min-w-0">
