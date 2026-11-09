@@ -18,25 +18,34 @@ function LessonAuthorsChart({ lessons }) {
   const total = Number(lessons.total || 0);
   const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
   let cursor = 0;
-  const gradient = total && rows.length ? `conic-gradient(${rows.map((row, index) => {
-    const start = cursor;
-    cursor += Number(row.count) / total * 100;
-    return `${colors[index % colors.length]} ${start}% ${cursor}%`;
-  }).join(", ")})` : "#e5e7eb";
-  let labelCursor = 0;
-  const labels = rows.map((row) => {
+  const slices = rows.map((row, index) => {
     const share = total ? Number(row.count) / total : 0;
-    const angle = (labelCursor + share / 2) * 2 * Math.PI - Math.PI / 2;
-    labelCursor += share;
-    return { ...row, share, x: 50 + 32 * Math.cos(angle), y: 50 + 32 * Math.sin(angle) };
+    const start = cursor * 2 * Math.PI - Math.PI / 2;
+    cursor += share;
+    const end = cursor * 2 * Math.PI - Math.PI / 2;
+    const angle = (start + end) / 2;
+    return { ...row, share, start, end, angle, color: colors[index % colors.length], side: Math.cos(angle) >= 0 ? 1 : -1 };
   });
+  const sides = [-1, 1].map((side) => slices.filter((slice) => slice.side === side).sort((a, b) => Math.sin(a.angle) - Math.sin(b.angle)));
+  const height = Math.max(240, Math.max(...sides.map((side) => side.length)) * 30 + 30);
+  const cx = 260, cy = height / 2, radius = 90;
+  const labels = sides.flatMap((sideRows) => sideRows.map((slice, index) => ({ ...slice, labelY: cy + (index - (sideRows.length - 1) / 2) * Math.min(30, (height - 30) / Math.max(1, sideRows.length - 1)) })));
+  const point = (angle, distance) => [cx + distance * Math.cos(angle), cy + distance * Math.sin(angle)];
   return <Panel title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده">
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
-      <div className="relative h-40 w-40 shrink-0 rounded-full" style={{ background: gradient }} aria-hidden="true">
-        <svg viewBox="0 0 100 100" className="h-full w-full">{labels.filter((row) => row.share >= 0.08).map((row) => <text key={row.id} x={row.x} y={row.y} textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="7" fontWeight="bold">{fa(row.count)}</text>)}</svg>
-      </div>
-      <div className="w-full"><p className="mb-3 text-xs font-bold">کل درس‌آموخته‌ها: {fa(total)}</p><div className="max-h-52 space-y-2 overflow-auto">{rows.length ? rows.map((row, index) => <div key={row.id} className="flex items-center justify-between gap-2 text-xs"><span className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} /><span className="truncate" title={row.name}>{row.name}</span></span><span className="shrink-0 font-bold tabular-nums">{fa(row.count)} <span className="font-normal text-neutral-500">({fa(total ? Math.round(Number(row.count) / total * 100) : 0)}٪)</span></span></div>) : <p className="text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}</div></div>
-    </div>
+    <p className="text-center text-xs font-bold">کل درس‌آموخته‌ها: {fa(total)}</p>
+    {rows.length && total ? <div className="w-full overflow-x-auto"><svg viewBox={`0 0 520 ${height}`} className="mx-auto block w-full min-w-[440px]" role="img" aria-label={`سهم کاربران از ${fa(total)} درس‌آموخته`}>
+      {slices.map((slice) => {
+        const [x1, y1] = point(slice.start, radius);
+        const [x2, y2] = point(slice.end, radius);
+        return slice.share >= 1 ? <circle key={slice.id} cx={cx} cy={cy} r={radius} fill={slice.color} /> : <path key={slice.id} d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${slice.share > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={slice.color} />;
+      })}
+      {labels.map((slice) => {
+        const [x1, y1] = point(slice.angle, radius);
+        const [x2, y2] = point(slice.angle, radius + 12);
+        const lineEnd = cx + slice.side * 123;
+        return <g key={slice.id}><path d={`M ${x1} ${y1} L ${x2} ${y2} L ${lineEnd} ${slice.labelY}`} fill="none" stroke={slice.color} strokeWidth="1.2" /><foreignObject x={slice.side > 0 ? lineEnd + 4 : 0} y={slice.labelY - 12} width="133" height="24"><div xmlns="http://www.w3.org/1999/xhtml" dir="rtl" title={`${slice.name}: ${fa(slice.count)} (${fa(Math.round(slice.share * 100))}٪)`} className="truncate text-[11px] text-neutral-700 dark:text-neutral-200" style={{ textAlign: slice.side > 0 ? "left" : "right" }}>{slice.name} ({fa(slice.count)})</div></foreignObject></g>;
+      })}
+    </svg></div> : <p className="py-16 text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}
   </Panel>;
 }
 
