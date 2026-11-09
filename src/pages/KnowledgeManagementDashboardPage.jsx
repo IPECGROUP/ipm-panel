@@ -13,6 +13,26 @@ function Rows({ rows, empty = "داده‌ای ثبت نشده است.", transfo
 }
 function TopUsers({ rows }) { return <Rows rows={rows} empty="مراجعه‌ای ثبت نشده است." transform={(row) => row.name} />; }
 
+function LessonAuthorsChart({ lessons }) {
+  const rows = lessons.byAuthor || [];
+  const total = Number(lessons.total || 0);
+  const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
+  let cursor = 0;
+  const gradient = total && rows.length ? `conic-gradient(${rows.map((row, index) => {
+    const start = cursor;
+    cursor += Number(row.count) / total * 100;
+    return `${colors[index % colors.length]} ${start}% ${cursor}%`;
+  }).join(", ")})` : "#e5e7eb";
+  return <Panel title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده">
+    <div className="flex flex-col items-center gap-4 sm:flex-row">
+      <div className="grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: gradient }} aria-hidden="true">
+        <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center dark:bg-neutral-900"><span><b className="block text-2xl tabular-nums">{fa(total)}</b><span className="text-[10px] text-neutral-500 dark:text-neutral-400">کل درس‌آموخته‌ها</span></span></div>
+      </div>
+      <div className="max-h-52 w-full space-y-2 overflow-auto">{rows.length ? rows.map((row, index) => <div key={row.id} className="flex items-center justify-between gap-2 text-xs"><span className="flex min-w-0 items-center gap-2"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} /><span className="truncate" title={row.name}>{row.name}</span></span><span className="shrink-0 font-bold tabular-nums">{fa(row.count)} <span className="font-normal text-neutral-500">({fa(total ? Math.round(Number(row.count) / total * 100) : 0)}٪)</span></span></div>) : <p className="text-center text-xs text-neutral-400">درس‌آموخته‌ای ثبت نشده است.</p>}</div>
+    </div>
+  </Panel>;
+}
+
 export function KnowledgeDashboardWidgets({ data }) {
   const lessons = data?.lessons || {};
   const resources = data?.resources || {};
@@ -20,9 +40,7 @@ export function KnowledgeDashboardWidgets({ data }) {
   const lessonVisits = data?.visits?.lessons || [];
   const maxTrainingVisits = resourceVisits.reduce((sum, row) => sum + Number(row.count || 0), 0);
   return <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-    <Panel title="خلاصه درس‌آموخته‌ها" subtitle="دانش ثبت‌شده و دانش‌آفرینان" className="xl:col-span-1"><div className="grid grid-cols-2 gap-3"><div className="rounded-2xl bg-sky-50 p-4 text-center dark:bg-sky-500/10"><b className="block text-2xl">{fa(lessons.total)}</b><span className="mt-1 block text-xs text-neutral-500">کل درس‌آموخته‌ها</span></div><div className="rounded-2xl bg-emerald-50 p-4 text-center dark:bg-emerald-500/10"><b className="block text-2xl">{fa(lessons.authors)}</b><span className="mt-1 block text-xs text-neutral-500">کل دانش‌آفرینان</span></div></div><h3 className="mt-4 text-xs font-bold">۳ نفر برتر تولید دانش</h3><div className="mt-2"><TopUsers rows={lessons.topAuthors} /></div></Panel>
-    <Panel title="درس‌آموخته‌ها به تفکیک پروژه"><Rows rows={lessons.byProject} /></Panel>
-    <Panel title="درس‌آموخته‌ها بر اساس دسته‌بندی"><Rows rows={lessons.byCategory} /></Panel>
+    <LessonAuthorsChart lessons={lessons} />
     <Panel title="درس‌آموخته‌ها بر اساس اهمیت"><Rows rows={lessons.byImportance} transform={(row) => importanceLabels[row.label] || row.label} /></Panel>
     <Panel title="۳ کاربر برتر مراجعه به درس‌آموخته‌ها"><TopUsers rows={lessonVisits} /></Panel>
     <Panel title="مستندات به تفکیک کتابخانه"><Rows rows={data?.libraries} /></Panel>

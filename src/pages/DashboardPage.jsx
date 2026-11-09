@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
-import { SupplyExpertsPanel, SupplyTimingPanel } from "./SupplyManagementDashboardPage.jsx";
+import { SupplyExpertsPanel } from "./SupplyManagementDashboardPage.jsx";
 import { KnowledgeDashboardWidgets } from "./KnowledgeManagementDashboardPage.jsx";
 
 const activityViewers = new Set(["marandi", "nouri"]);
@@ -84,10 +84,6 @@ const supplyStatusOf = (item) => {
   if (String(item?.status || "").toLowerCase() === "rejected") return "rejected";
   if (item?.workflowStatus === "done" || String(item?.status || "").toLowerCase() === "approved") return "done";
   return item?.workflowStatus === "in_progress" ? "in_progress" : "pending";
-};
-const supplyTimeOf = (value) => {
-  const time = Date.parse(String(value || ""));
-  return Number.isFinite(time) ? time : null;
 };
 
 function HomeTopDailyLogUsers({ rows, loading }) {
@@ -231,19 +227,6 @@ export default function DashboardPage() {
       done: supplyRequests.filter((item) => (item.supplyActions || []).some((action) => Number(action.byUserId) === id && String(action.status) === "done") || (item.historyJson || []).some((event) => event?.type === "approved" && event?.roleKey === "commercial" && Number(event?.byUserId) === id)).length,
     };
   }).sort((a, b) => b.active - a.active || b.pending - a.pending || a.name.localeCompare(b.name, "fa")), [supplyRequests, supplyUsers]);
-  const supplyTimings = useMemo(() => {
-    const registeredToApproval = [];
-    const approvalToAction = [];
-    supplyRequests.forEach((item) => {
-      const history = Array.isArray(item.historyJson) ? item.historyJson : [];
-      const created = supplyTimeOf(history.find((event) => event?.type === "created")?.at || item.createdAt);
-      const approved = supplyTimeOf(history.find((event) => event?.type === "approved" && event?.roleKey === "project_manager")?.at);
-      const firstAction = supplyTimeOf((item.supplyActions || [])[0]?.createdAt);
-      if (created != null && approved != null && approved >= created) registeredToApproval.push(approved - created);
-      if (approved != null && firstAction != null && firstAction >= approved) approvalToAction.push(firstAction - approved);
-    });
-    return { registeredToApproval, approvalToAction };
-  }, [supplyRequests]);
 
   const selectedShortcuts = selectedPaths.map((path) => availableOptions.find((item) => item.to === path)).filter(Boolean);
   const updateSelection = (path) => setSelectedPaths((current) =>
@@ -288,9 +271,8 @@ export default function DashboardPage() {
         <HomeUnsettledTenkhah rows={unsettledTenkhah} loading={dashboardWidgetsLoading} />
       </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-2">
+      <div className="mt-3">
         <SupplyExpertsPanel rows={supplyExperts} />
-        <SupplyTimingPanel {...supplyTimings} />
       </div>
 
       {canOpenPage(user, "/knowledge-management/dashboard") && <Card className="mt-3 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
