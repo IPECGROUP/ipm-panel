@@ -18,14 +18,16 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const moveTooltip = (x, y) => setTooltipPosition({ x: Math.max(8, Math.min(x + 14, window.innerWidth - 200)), y: Math.max(8, Math.min(y + 14, window.innerHeight - 76)) });
   const colors = ["#0ea5e9", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444", "#14b8a6", "#ec4899", "#6366f1"];
+  const displayTotal = large ? rows.reduce((sum, row) => sum + Math.sqrt(Number(row.count)), 0) : 0;
   let cursor = 0;
   const slices = rows.map((row, index) => {
     const share = total ? Number(row.count) / total : 0;
+    const displayShare = large && displayTotal ? Math.sqrt(Number(row.count)) / displayTotal : share;
     const start = cursor * 2 * Math.PI - Math.PI / 2;
-    cursor += share;
+    cursor += displayShare;
     const end = cursor * 2 * Math.PI - Math.PI / 2;
     const angle = (start + end) / 2;
-    return { ...row, share, start, end, angle, color: colors[index % colors.length], side: Math.cos(angle) >= 0 ? 1 : -1 };
+    return { ...row, share, displayShare, start, end, angle, color: colors[index % colors.length], side: Math.cos(angle) >= 0 ? 1 : -1 };
   });
   const sides = [-1, 1].map((side) => slices.filter((slice) => slice.side === side).sort((a, b) => Math.sin(a.angle) - Math.sin(b.angle)));
   const height = Math.max(large ? 350 : 280, Math.max(...sides.map((side) => side.length)) * 30 + 30);
@@ -45,6 +47,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
   const active = slices.find((slice) => slice.id === activeId);
   return <>
     <p className="text-center text-xs font-bold">{totalLabel}: {fa(total)} {unit === "ریال" ? unit : ""}</p>
+    {large && rows.length > 0 && <p className="mt-1 text-center text-[10px] text-neutral-500 dark:text-neutral-400">اندازه قطعه‌ها برای نمایش سهم‌های کوچک تنظیم شده است؛ درصدها واقعی هستند.</p>}
     {rows.length && total ? <div className={`relative w-full max-h-[400px] overflow-y-auto ${large ? "mt-5" : ""}`}><svg viewBox={`0 0 580 ${height}`} className="mx-auto block w-full" role="img" aria-label={`${totalLabel}: ${fa(total)} ${unit}`}>
       {slices.map((slice) => {
         const [x1, y1] = point(slice.start, radius);
@@ -52,7 +55,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
         const [countX, countY] = point(slice.angle, radius * 0.62);
         const selected = activeId === slice.id;
         return <g key={slice.id} tabIndex={0} role="button" aria-label={`${slice.name}، ${fa(slice.count)} ${unit}`} onMouseEnter={(event) => { setActiveId(slice.id); moveTooltip(event.clientX, event.clientY); }} onMouseMove={(event) => moveTooltip(event.clientX, event.clientY)} onMouseLeave={() => setActiveId(null)} onFocus={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setActiveId(slice.id); moveTooltip(rect.left + rect.width / 2, rect.top + rect.height / 2); }} onBlur={() => setActiveId(null)} style={{ cursor: "pointer", transform: selected ? `translate(${Math.cos(slice.angle) * 7}px, ${Math.sin(slice.angle) * 7}px)` : "translate(0px, 0px)", transition: "transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 220ms", filter: selected ? "drop-shadow(0px 5px 5px rgba(0,0,0,0.25))" : "none" }}>
-          {slice.share >= 1 ? <circle cx={cx} cy={cy} r={radius} fill={slice.color} /> : <path d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${slice.share > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={slice.color} />}
+          {slice.displayShare >= 1 ? <circle cx={cx} cy={cy} r={radius} fill={slice.color} /> : <path d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${slice.displayShare > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={slice.color} />}
           {(showValues || slice.share >= 0.06) && <text x={countX} y={countY} textAnchor="middle" dominantBaseline="central" fill="white" fontSize="14" fontWeight="bold" pointerEvents="none">{showValues ? fa(slice.count) : `${fa(Math.round(slice.share * 100))}٪`}</text>}
         </g>;
       })}
