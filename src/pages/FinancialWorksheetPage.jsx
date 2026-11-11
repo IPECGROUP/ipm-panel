@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom";
 import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
-import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
+import { THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
 import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
@@ -1989,10 +1989,7 @@ export default function FinancialWorksheetPage() {
             </div>
           )}
 
-          <div className="!mt-0">
-          <TableWrap>
-            <div className={tablePreset.outer}>
-              <div className={tablePreset.innerPad}>
+          <div>
                 <div className={tablePreset.frame + " shadow-sm"}>
                   <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
                     <table className={tablePreset.table + " min-w-[1000px] table-fixed text-[13px] [&_th]:!py-2 [&_td]:!py-0"} dir="rtl">
@@ -2047,9 +2044,6 @@ export default function FinancialWorksheetPage() {
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </TableWrap>
           </div>
 
           {!formOpen && err ? <div role="alert" className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
