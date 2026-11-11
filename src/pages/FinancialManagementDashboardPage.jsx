@@ -1091,7 +1091,7 @@ export default function FinancialManagementDashboardPage() {
             </span>
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+        <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3 [&>*]:min-w-0">
           <RequestStatsPanel
             title="درخواست‌های عادی"
             subtitle="وضعیت درخواست‌های پرداخت عادی"
@@ -1116,8 +1116,6 @@ export default function FinancialManagementDashboardPage() {
               "اتمام‌یافته",
             ]}
           />
-        </div>
-        <div className="mt-3">
           <UnsettledTenkhahPanel rows={unsettledTenkhah} />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
