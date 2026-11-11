@@ -36,6 +36,7 @@ function ProjectsPage() {
   const [rows, setRows] = React.useState([]);
   const [err, setErr] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [query, setQuery] = React.useState("");
 
   const [codeInput, setCodeInput] = React.useState("");
   const [nameInput, setNameInput] = React.useState("");
@@ -264,12 +265,17 @@ function ProjectsPage() {
     return arr;
   }, [rows, codeSortDir]);
 
-  const total = sortedRows.length;
+  const normalizeSearch = (value) => toEnDigits(value).replace(/ي/g, "ی").replace(/ك/g, "ک").toLowerCase().trim();
+  const searchTerm = normalizeSearch(query);
+  const filteredRows = sortedRows.filter((row) =>
+    [row.code, row.name].some((value) => normalizeSearch(value).includes(searchTerm))
+  );
+  const total = filteredRows.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(page, totalPages - 1);
   const startIdx = total === 0 ? 0 : safePage * pageSize;
   const endIdx = Math.min(total, startIdx + pageSize);
-  const pageRows = sortedRows.slice(startIdx, endIdx);
+  const pageRows = filteredRows.slice(startIdx, endIdx);
 
   React.useEffect(() => {
     if (page !== safePage) setPage(safePage);
@@ -490,6 +496,18 @@ function ProjectsPage() {
           {err && <div className="text-sm text-red-600 dark:text-red-400 mt-2">{err}</div>}
         </form>
 
+        <div className="mx-[15px] mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
+          <label className="block text-sm text-black/70 dark:text-neutral-300">
+            جست‌وجو
+            <input
+              value={query}
+              onChange={(event) => { setQuery(event.target.value); setPage(0); }}
+              className="mt-1 h-10 w-full rounded-xl border border-black/15 bg-white px-3 text-sm text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
+              placeholder="جستجو در کد یا نام پروژه..."
+            />
+          </label>
+        </div>
+
         {/* جدول */}
         <TableWrap>
           <div className={tableUi.outer}>
@@ -589,7 +607,7 @@ function ProjectsPage() {
                       ) : pageRows.length === 0 ? (
                         <TR>
                           <TD colSpan={5} className={tableUi.emptyRow}>
-                            موردی ثبت نشده.
+                            {searchTerm ? "پروژه‌ای یافت نشد." : "موردی ثبت نشده."}
                           </TD>
                         </TR>
                       ) : (

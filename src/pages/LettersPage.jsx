@@ -6649,7 +6649,7 @@ const rowBg = normalRowBg;
             <div className="absolute inset-0 p-3 md:p-6 flex items-center justify-center">
               <div
                 className={
-                  "w-[min(1680px,calc(100vw-20px))] h-[min(90vh,900px)] rounded-2xl border shadow-2xl overflow-hidden " +
+                  "w-[min(1500px,calc(100vw-20px))] h-[min(82vh,820px)] rounded-2xl border shadow-2xl overflow-hidden " +
                   (theme === "dark" ? "border-white/10 bg-neutral-900 text-white" : "border-black/10 bg-white text-neutral-900")
                 }
                 onClick={(e) => e.stopPropagation()}
