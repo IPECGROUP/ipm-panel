@@ -46,7 +46,7 @@ function WorksheetReadingMenu({ selectedCount, canEdit, deleting, onEdit, onDele
   const run = (action) => () => { setOpen(false); action(); };
   return <div className="absolute left-2 top-1/2 z-30 -translate-y-1/2" dir="rtl">
     <button ref={triggerRef} type="button" onClick={() => { if (!open) updatePosition(); setOpen((value) => !value); }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="عملیات" aria-label="عملیات" aria-expanded={open}>
-      <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 dark:invert" />
+      <img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 invert" />
     </button>
     {open && position && createPortal(<div ref={popoverRef} className="fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFaDigits(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
@@ -61,7 +61,7 @@ function SortableWorksheetHeader({ label, field, sort, onSort }) {
   const direction = active ? sort.direction : "asc";
   const nextDirection = active && direction === "asc" ? "desc" : "asc";
   return <button type="button" onClick={() => onSort(field)} className="mx-auto inline-flex items-center gap-1 hover:opacity-90" title={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-label={`مرتب‌سازی ${label} از ${nextDirection === "asc" ? "کوچک به بزرگ" : "بزرگ به کوچک"}`} aria-pressed={active}>
-    <span>{label}</span><img src={direction === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="w-4 h-4 dark:invert" />
+    <span>{label}</span><img src={direction === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="w-4 h-4 invert" />
   </button>;
 }
 const DEFAULT_RECEIPT_TYPE_OPTIONS = [
@@ -1996,17 +1996,17 @@ export default function FinancialWorksheetPage() {
                 <div className={tablePreset.frame + " shadow-sm"}>
                   <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
                     <table className={tablePreset.table + " min-w-[1000px] table-fixed text-[13px] [&_th]:!py-2 [&_td]:!py-0"} dir="rtl">
-                      <THead><tr className={tablePreset.headRow + " sticky top-0 z-10"}>
-                        <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
-                        <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
-                        <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="ردیف" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
-                        <TH className={tablePreset.th}>پروژه</TH><TH className={tablePreset.th}>سطح / بابت</TH><TH className={tablePreset.th}>موضوع قرارداد</TH>
-                        <TH className={tablePreset.th}>شماره<span className="block text-xs font-normal">تاریخ</span></TH>
-                        <TH className={tablePreset.th}>مبلغ</TH><TH className={tablePreset.th}>ارز / منشأ</TH><TH className={tablePreset.th}>VAT</TH>
-                        <TH className={`relative !pl-10 ${tablePreset.th}`}>ارز / منشأ<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
+                      <colgroup><col style={{ width: 40 }} /><col style={{ width: 20 }} /><col style={{ width: 65 }} /><col style={{ width: 140 }} /><col style={{ width: 110 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
+                      <THead><tr className="sticky top-0 z-10 border-b border-[#184a6b] bg-[#184a6b] text-white [&_th]:!text-center [&_th]:!text-[14px] [&_th]:!font-semibold [&_th]:!text-white md:[&_th]:!text-[15px]">
+                        <TH><input ref={selectAllRef} type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
+                        <TH aria-label="خوانده‌نشده" />
+                        <TH><SortableWorksheetHeader label="ردیف" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
+                        <TH>پروژه</TH><TH>سطح / بابت</TH><TH>موضوع قرارداد</TH>
+                        <TH>شماره<span className="block text-xs font-normal">تاریخ</span></TH>
+                        <TH>مبلغ</TH><TH className="relative !pl-10">VAT<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                       </tr></THead>
                       <tbody className={`${tablePreset.body} [&_tr]:h-12`}>
-                        {rowsLoading ? <TR><td colSpan={11} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR> : !pageRows.length ? <TR><td colSpan={11} className={`h-24 !text-center ${tablePreset.emptyRow}`}>موردی برای نمایش وجود ندارد.</td></TR> : pageRows.map((row) => {
+                        {rowsLoading ? <TR><td colSpan={9} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR> : !pageRows.length ? <TR><td colSpan={9} className={`h-24 !text-center ${tablePreset.emptyRow}`}>موردی برای نمایش وجود ندارد.</td></TR> : pageRows.map((row) => {
                           const contract = contractById.get(String(row.contractId));
                           const parent = contractById.get(String(contract?.parentContractId || contract?.parent_contract_id || ""));
                           const rowProject = projects.find((project) => String(project.id) === String(row.raw?.project_id ?? row.raw?.projectId));
@@ -2014,6 +2014,10 @@ export default function FinancialWorksheetPage() {
                           const isReceipt = row.raw?.kind === "receipts";
                           const basis = isReceipt ? (level === "sub" ? "پرداختی" : "دریافتی") : "صورت وضعیت";
                           const subject = contract?.general?.contractSubject || parent?.general?.contractSubject || row.raw?.contract_subject || "—";
+                          const currency = row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال";
+                          const source = row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId)));
+                          const vatCurrency = isReceipt ? (row.raw?.vat_currency_label || readItemLabel(currencyById.get(String(row.raw?.vat_currency_id))) || "ریال") : currency;
+                          const vatSource = isReceipt ? (row.raw?.vat_currency_source_label || readItemLabel(currencySourceById.get(String(row.raw?.vat_currency_source_id)))) : source;
                           return <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] dark:hover:bg-white/15 ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
                             <TD><input type="checkbox" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                             <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500" />}</TD>
@@ -2021,8 +2025,8 @@ export default function FinancialWorksheetPage() {
                             <TD>{contract ? documentTypeLabel(level) : "—"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{basis}</span></TD>
                             <TD>{subject}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "—")}</span></TD>
                             <TD>{toFaDigits(row.number || "—")}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.date || "—")}</span></TD>
-                            <TD>{toFaDigits(formatMoney(isReceipt ? row.receiptAmount : row.grossAmount))}</TD><TD>{row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))) || "—"}</span></TD>
-                            <TD>{row.raw?.vat_amount != null ? toFaDigits(formatMoney(row.vatAmount)) : "—"}</TD><TD>{isReceipt && row.raw?.vat_amount != null ? (row.raw?.vat_currency_label || readItemLabel(currencyById.get(String(row.raw?.vat_currency_id))) || "ریال") : "—"}</TD>
+                            <TD><span className="font-semibold">{toFaDigits(formatMoney(isReceipt ? row.receiptAmount : row.grossAmount))}</span><span className="block text-xs text-neutral-500 dark:text-neutral-400">{[currency, source].filter(Boolean).join(" - ")}</span></TD>
+                            <TD>{row.raw?.vat_amount != null ? <><span className="font-semibold">{toFaDigits(formatMoney(row.vatAmount))}</span><span className="block text-xs text-neutral-500 dark:text-neutral-400">{[vatCurrency, vatSource].filter(Boolean).join(" - ")}</span></> : "—"}</TD>
                           </TR>;
                         })}
                       </tbody>
