@@ -3093,7 +3093,7 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
               </div>
             </div>
           </div>
-          <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[240px_minmax(0,1fr)_minmax(400px,30%)]">
+          <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[280px_minmax(0,1fr)_minmax(370px,28%)]">
           <aside className="min-w-0 overflow-hidden rounded-2xl border border-neutral-200 dark:border-white/10">
              <div className="bg-[#5d92b7] px-4 py-3 text-sm font-semibold text-white">فرآیند پرداخت</div>
             <div className="px-3"><PaymentWorkflowTimeline history={history} item={item} /></div>
