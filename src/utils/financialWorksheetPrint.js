@@ -13,8 +13,7 @@ export function openFinancialWorksheetPrintPreview({ title, project, contract, h
   const now = new Date();
   const reportDate = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { dateStyle: "short", timeZone: "Asia/Tehran" }).format(now);
   const reportTime = new Intl.DateTimeFormat("fa-IR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran" }).format(now);
-  const details = rows.slice(0, -1);
-  const totals = rows.at(-1) || [];
+  const details = rows;
   const safeTitle = escapeHtml(title);
   const tableRows = details.length ? details.map((row) => `<tr>${headers.map((_, index) => `<td>${printValue(row[index])}</td>`).join("")}</tr>`).join("")
     : `<tr><td colspan="${headers.length}">ردیفی ثبت نشده است.</td></tr>`;
@@ -50,9 +49,10 @@ export function openFinancialWorksheetPrintPreview({ title, project, contract, h
   .label { font-size: 9px; font-weight: 700; }
   .value { margin-top: 2px; color: #17232d; font-size: 10px; font-weight: 700; overflow-wrap: anywhere; }
   table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #d7dfe5; border-radius: 11px; }
-  th, td { padding: 6px; text-align: center; vertical-align: middle; border-bottom: 1px solid #e3e8ec; border-left: 1px solid #e3e8ec; overflow-wrap: anywhere; }
+  th, td { padding: 6px; text-align: center; vertical-align: middle; border-bottom: 1px solid #e3e8ec; border-left: 1px solid #e3e8ec; overflow-wrap: anywhere; white-space: pre-line; }
   th { background: #eef3f6; color: #293945; font-size: 9px; font-weight: 700; }
   td { font-size: 9px; }
+  td:nth-child(4) { text-align: right; }
   th:last-child, td:last-child { border-left: 0; }
   tbody tr:last-child td { border-bottom: 0; }
   tfoot td { background: #f4f7f9; color: #172734; font-weight: 700; border-bottom: 0; }
@@ -83,15 +83,15 @@ export function openFinancialWorksheetPrintPreview({ title, project, contract, h
       <div class="title"><h1>فرم کاربرگ مالی</h1><p>گزارش رسمی اطلاعات ${safeTitle}</p></div>
       <div class="document-meta"><div><span>تاریخ:</span><strong>${escapeHtml(reportDate)}</strong></div><div><span>ساعت:</span><strong>${escapeHtml(reportTime)}</strong></div></div>
     </header>
-    <section><h2 class="section-title">مشخصات کاربرگ</h2><div class="info-grid">
+    ${project || contract ? `<section><h2 class="section-title">مشخصات کاربرگ</h2><div class="info-grid">
       <div class="info-card"><div class="label">پروژه</div><div class="value">${printValue(project)}</div></div>
       <div class="info-card"><div class="label">قرارداد</div><div class="value">${printValue(contract)}</div></div>
       <div class="info-card"><div class="label">بخش</div><div class="value">${safeTitle}</div></div>
-    </div></section>
+    </div></section>` : ""}
     <section><h2 class="section-title">جزئیات ${safeTitle}</h2>
-      <table><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+      <table><colgroup><col style="width:5%"><col style="width:14%"><col style="width:10%"><col style="width:31%"><col style="width:14%"><col style="width:13%"><col style="width:13%"></colgroup><thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
       <tbody>${tableRows}</tbody>
-      <tfoot><tr>${headers.map((_, index) => `<td>${printValue(totals[index])}</td>`).join("")}</tr></tfoot></table>
+      </table>
     </section>
     <footer class="footer"><span>سامانه فرآیندهای یکپارچه شرکت ایده پویان انرژی</span><span>${escapeHtml(reportTime)} - ${escapeHtml(reportDate)}</span></footer>
   </article>

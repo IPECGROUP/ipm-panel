@@ -281,6 +281,8 @@ function jalaliToGregorian(jy, jm, jd) {
 
 function JalaliPopupDatePicker({ value, onChange }) {
   const wrapRef = useRef(null);
+  const popupRef = useRef(null);
+  const [position, setPosition] = useState(null);
   const now = useMemo(() => getJalaliPartsFromDate(new Date()), []);
   const init = useMemo(() => {
     const m = String(value || "").match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
@@ -304,7 +306,7 @@ function JalaliPopupDatePicker({ value, onChange }) {
   useEffect(() => {
     if (!open) return;
     const onDown = (e) => {
-      if (!wrapRef.current?.contains(e.target)) setOpen(false);
+      if (!wrapRef.current?.contains(e.target) && !popupRef.current?.contains(e.target)) setOpen(false);
     };
     const onEsc = (e) => {
       if (e.key === "Escape") setOpen(false);
@@ -336,20 +338,28 @@ function JalaliPopupDatePicker({ value, onChange }) {
   }, [jm, jd]);
 
   const preview = `${jy}/${pad2(jm)}/${pad2(jd)}`;
+  const togglePopup = () => {
+    if (!open && wrapRef.current) {
+      const rect = wrapRef.current.getBoundingClientRect();
+      const width = Math.min(400, window.innerWidth - 32);
+      setPosition({ width, left: Math.max(16, Math.min(rect.right - width, window.innerWidth - width - 16)), top: Math.max(8, Math.min(rect.bottom + 8, window.innerHeight - 160)) });
+    }
+    setOpen((current) => !current);
+  };
 
   return (
     <div className="relative" ref={wrapRef}>
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={togglePopup}
         className="w-full h-10 px-3 rounded-xl border text-right flex items-center justify-between gap-2 border-black/10 bg-white text-neutral-900 hover:bg-black/[0.02] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
       >
         <span className={value ? "" : "text-neutral-400 dark:text-white/50"}>{value ? toFaDigits(value) : "انتخاب تاریخ"}</span>
         <img src="/images/icons/tarikh.svg" alt="" className="h-[18px] w-[18px] dark:invert" />
       </button>
 
-      {open && (
-        <div className="absolute z-30 mt-2 w-[min(400px,calc(100vw-32px))] rounded-2xl border p-3 shadow-lg border-black/10 bg-white text-neutral-900 dark:border-white/10 dark:bg-neutral-900 dark:text-white">
+      {open && position && createPortal(
+        <div ref={popupRef} dir="rtl" style={position} className="fixed z-[9999] rounded-2xl border p-3 shadow-lg border-black/10 bg-white text-neutral-900 dark:border-white/10 dark:bg-neutral-900 dark:text-white">
           <div className="grid grid-cols-3 gap-2">
             <select value={jy} onChange={(e) => setJy(Number(e.target.value))} className="h-10 rounded-xl border px-2 text-sm bg-white border-black/10 dark:bg-white/5 dark:border-white/15">
               {years.map((y) => (
@@ -373,7 +383,7 @@ function JalaliPopupDatePicker({ value, onChange }) {
             <button type="button" onClick={() => { onChange(preview); setOpen(false); }} className="h-9 px-4 rounded-xl text-sm bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90">تایید</button>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
@@ -1118,14 +1128,19 @@ export default function FinancialWorksheetPage() {
     [isSelectedSubContract],
   );
   const worksheetExportData = () => {
-    const headers = ["ردیف", "پروژه", "سطح", "بابت", "موضوع قرارداد", "شماره قرارداد", "شماره", "تاریخ", "مبلغ", "ارز", "منشأ", "VAT", "ارز VAT"];
+    const headers = ["ردیف", "پروژه", "سطح / بابت", "موضوع قرارداد", "شماره / تاریخ", "مبلغ", "VAT"];
     const rows = sortedRows.map((row) => {
       const contract = contractById.get(String(row.contractId));
       const parent = contractById.get(String(contract?.parentContractId || contract?.parent_contract_id || ""));
       const project = projects.find((item) => String(item.id) === String(row.raw?.project_id ?? row.raw?.projectId));
       const level = documentTypeForContract(contract);
       const receipt = row.raw?.kind === "receipts";
-      return [rowNumberById.get(String(row.id)), project ? projectLabel(project) : "", contract ? documentTypeLabel(level) : "", receipt ? (level === "sub" ? "پرداختی" : "دریافتی") : "صورت وضعیت", contract?.general?.contractSubject || parent?.general?.contractSubject || row.raw?.contract_subject || "", row.raw?.contract_no || contractNoForRow(contract), row.number, row.date, receipt ? row.receiptAmount : row.grossAmount, row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال", row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))), row.raw?.vat_amount == null ? "" : row.vatAmount, receipt && row.raw?.vat_amount != null ? (row.raw?.vat_currency_label || readItemLabel(currencyById.get(String(row.raw?.vat_currency_id))) || "ریال") : ""];
+      const currency = row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال";
+      const source = row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId)));
+      const vatCurrency = receipt ? (row.raw?.vat_currency_label || readItemLabel(currencyById.get(String(row.raw?.vat_currency_id))) || "ریال") : currency;
+      const vatSource = receipt ? (row.raw?.vat_currency_source_label || readItemLabel(currencySourceById.get(String(row.raw?.vat_currency_source_id)))) : source;
+      const lines = (...values) => values.filter((value) => value !== "" && value != null).join("\n");
+      return [rowNumberById.get(String(row.id)), project ? projectLabel(project) : "—", lines(contract ? documentTypeLabel(level) : "—", receipt ? (level === "sub" ? "پرداختی" : "دریافتی") : "صورت وضعیت"), lines(contract?.general?.contractSubject || parent?.general?.contractSubject || row.raw?.contract_subject || "—", row.raw?.contract_no || contractNoForRow(contract)), lines(row.number || "—", row.date || "—"), lines(formatMoney(receipt ? row.receiptAmount : row.grossAmount), [currency, source].filter(Boolean).join(" - ")), row.raw?.vat_amount == null ? "—" : lines(formatMoney(row.vatAmount), [vatCurrency, vatSource].filter(Boolean).join(" - "))];
     });
     return { headers, rows };
   };
@@ -1133,14 +1148,28 @@ export default function FinancialWorksheetPage() {
     if (!sortedRows.length || exportingExcel) return;
     setExportingExcel(true);
     try {
-      const xlsxModule = await import("xlsx");
-      const XLSX = xlsxModule.default || xlsxModule;
+      const excelModule = await import("exceljs");
+      const ExcelJS = excelModule.default || excelModule;
       const { headers, rows } = worksheetExportData();
-      const sheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-      sheet["!cols"] = headers.map((header) => ({ wch: Math.max(18, header.length + 4) }));
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, sheet, tab === "receipts" ? "Payments-Receipts" : "Statements");
-      XLSX.writeFile(workbook, "financial-worksheet.xlsx");
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet("کاربرگ مالی", { views: [{ rightToLeft: true }] });
+      sheet.columns = [8, 23, 17, 55, 21, 22, 22].map((width) => ({ width }));
+      sheet.addRow(headers);
+      rows.forEach((row) => sheet.addRow(row));
+      sheet.eachRow((row, rowNumber) => {
+        row.height = rowNumber === 1 ? 26 : 45;
+        row.eachCell((cell, column) => {
+          cell.alignment = { vertical: "middle", horizontal: column === 4 ? "right" : "center", wrapText: true, readingOrder: "rtl" };
+          if (rowNumber === 1) { cell.font = { bold: true, color: { argb: "FFFFFFFF" } }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF184A6B" } }; }
+        });
+      });
+      const buffer = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "financial-worksheet.xlsx";
+      link.click();
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Financial worksheet Excel export failed", error);
       window.alert("ساخت فایل اکسل انجام نشد. لطفاً دوباره تلاش کنید.");
