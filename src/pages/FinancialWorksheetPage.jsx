@@ -1472,13 +1472,21 @@ export default function FinancialWorksheetPage() {
               <label className="w-full text-xs font-medium text-neutral-600 dark:text-neutral-300 md:min-w-[280px] md:flex-1">جست و جو<input value={filterQuery} onChange={(e) => { setFilterQuery(e.target.value); setPage(0); }} placeholder="جستجو در پروژه، قرارداد، شماره و ..." className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none dark:border-white/15 dark:bg-neutral-900 dark:text-white" /></label>
               <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">از</div><JalaliPopupDatePicker value={filterFromDate} onChange={(value) => { setFilterFromDate(value); setPage(0); }} /></div>
               <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</div><JalaliPopupDatePicker value={filterToDate} onChange={(value) => { setFilterToDate(value); setPage(0); }} /></div>
+              <div className="flex items-center gap-2" aria-label="خروجی کاربرگ مالی">
+                <button type="button" onClick={exportWorksheetExcel} disabled={!projectId || exportingExcel} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
+                  <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" />
+                </button>
+                <button type="button" onClick={printWorksheet} disabled={!projectId} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="چاپ کاربرگ" aria-label="چاپ کاربرگ">
+                  <img src="/images/icons/print.svg" alt="" className="h-5 w-5 dark:invert" />
+                </button>
+              </div>
             </div>
             <div><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">فیلتر</div><div className="flex flex-wrap gap-2">
               {[["main", "اصلی"], ["sub", "فرعی"]].map(([id, label]) => <button key={id} type="button" aria-pressed={contractKind === id} onClick={() => { setContractKind(id); setContractId(""); setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${contractKind === id ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>)}
               {[["statement", "صورت وضعیت"], ["receipts", "دریافتی"], ["payments", "پرداختی"]].map(([id, label]) => { const active = id === "statement" ? tab === "statement" : tab === "receipts" && contractKind === (id === "payments" ? "sub" : "main"); return <button key={id} type="button" aria-pressed={active} onClick={() => { setTab(id === "statement" ? "statement" : "receipts"); if (id !== "statement") { setContractKind(id === "payments" ? "sub" : "main"); setContractId(""); } setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>; })}
             </div></div>
           </div>}
-          {formOpen && <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(180px,.8fr)_minmax(0,1.5fr)_minmax(160px,.7fr)_auto] lg:items-end">
+          {formOpen && <div className="grid gap-3 lg:grid-cols-[minmax(180px,.8fr)_minmax(0,1.5fr)_minmax(160px,.7fr)] lg:items-end">
             <div className="min-w-0">
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
@@ -1556,14 +1564,6 @@ export default function FinancialWorksheetPage() {
                 <option value="statement">صورت وضعیت</option>
                 <option value="receipts">{contractKind === "sub" ? "پرداختی" : "دریافتی"}</option>
               </select>
-            </div>
-            <div className="flex items-center gap-2 lg:pb-0" aria-label="خروجی کاربرگ مالی">
-              <button type="button" onClick={exportWorksheetExcel} disabled={!projectId || exportingExcel} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
-                <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" />
-              </button>
-              <button type="button" onClick={printWorksheet} disabled={!projectId} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="چاپ کاربرگ" aria-label="چاپ کاربرگ">
-                <img src="/images/icons/print.svg" alt="" className="h-5 w-5 dark:invert" />
-              </button>
             </div>
           </div>}
 
