@@ -2,8 +2,8 @@
 altcha-widget.ipec-captcha {
   --altcha-border-width: 1px;
   --altcha-border-radius: 12px;
-  --altcha-border-color: rgba(131, 189, 235, 0.8);
-  --altcha-color-base: rgba(23, 74, 126, 0.88);
+  --altcha-border-color: rgba(184, 224, 251, 0.42);
+  --altcha-color-base: rgba(7, 54, 104, 0.38);
   --altcha-color-base-content: #fff;
   --altcha-color-neutral: #83bdeb;
   --altcha-color-neutral-content: #d4e7f8;
@@ -18,7 +18,7 @@ altcha-widget.ipec-captcha {
   --altcha-checkbox-outline: 2px solid #fff;
   --altcha-input-background-color: #174a7e;
   --altcha-max-width: 100%;
-  --altcha-padding: 10px 12px;
+  --altcha-padding: 12px 14px;
   --altcha-spinner-color: #fff;
   --altcha-transition-duration: 200ms;
   display: block;
@@ -26,6 +26,7 @@ altcha-widget.ipec-captcha {
   min-width: 0;
   font-family: Vazir, system-ui, sans-serif;
   font-size: 14px;
+  line-height: 1.5;
   text-align: right;
 }
 
