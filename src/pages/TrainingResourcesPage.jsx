@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { createPortal } from "react-dom";
-import { Copy, File, Image, Plus } from "lucide-react";
+import { Copy, File, Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
@@ -86,9 +86,9 @@ function FileTypeIcon({ file }) {
     excel: { src: "/images/sheets.png", alt: "Excel" },
     word: { src: "/images/word-processor.png", alt: "Word" },
     pdf: { src: "/images/pdf.png", alt: "PDF" },
+    image: { src: "/images/image-file.svg", alt: "تصویر" },
   };
   if (icons[kind]) return <img src={icons[kind].src} alt={icons[kind].alt} className="h-6 w-6 object-contain" />;
-  if (kind === "image") return <Image aria-label="تصویر" className="h-5 w-5 text-violet-600 dark:text-violet-400" />;
   return <File className="h-5 w-5 text-neutral-500" />;
 }
 
