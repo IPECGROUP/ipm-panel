@@ -1995,14 +1995,14 @@ export default function FinancialWorksheetPage() {
           <div>
                 <div className={tablePreset.frame + " shadow-sm"}>
                   <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
-                    <table className={tablePreset.table + " min-w-[1000px] table-fixed text-[13px] [&_th]:!py-2 [&_td]:!py-0"} dir="rtl">
+                    <table className="w-full min-w-[1000px] table-fixed text-xs sm:text-sm [&_th]:whitespace-nowrap [&_th]:py-2 [&_th]:text-center [&_td]:min-w-0 [&_td]:py-2 [&_td]:text-center" dir="rtl">
                       <colgroup><col style={{ width: 40 }} /><col style={{ width: 20 }} /><col style={{ width: 65 }} /><col style={{ width: 140 }} /><col style={{ width: 110 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 150 }} /><col style={{ width: 160 }} /></colgroup>
-                      <THead><tr className="sticky top-0 z-10 border-b border-[#184a6b] bg-[#184a6b] text-white [&_th]:!text-center [&_th]:!text-[14px] [&_th]:!font-semibold [&_th]:!text-white md:[&_th]:!text-[15px]">
+                      <THead><tr className="sticky top-0 z-10 border-b border-[#184a6b] bg-[#184a6b] text-white [&_th]:!text-[14px] [&_th]:!font-semibold [&_th]:!text-white">
                         <TH><input ref={selectAllRef} type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
                         <TH aria-label="خوانده‌نشده" />
                         <TH><SortableWorksheetHeader label="ردیف" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
-                        <TH>پروژه</TH><TH>سطح / بابت</TH><TH>موضوع قرارداد</TH>
-                        <TH>شماره<span className="block text-xs font-normal">تاریخ</span></TH>
+                        <TH>پروژه</TH><TH>سطح / بابت</TH><TH className="!text-right">موضوع قرارداد</TH>
+                        <TH>شماره / تاریخ</TH>
                         <TH>مبلغ</TH><TH className="relative !pl-10">VAT<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                       </tr></THead>
                       <tbody className={`${tablePreset.body} [&_tr]:h-12`}>
@@ -2023,7 +2023,7 @@ export default function FinancialWorksheetPage() {
                             <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500" />}</TD>
                             <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD><TD>{rowProject ? projectLabel(rowProject) : "—"}</TD>
                             <TD>{contract ? documentTypeLabel(level) : "—"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{basis}</span></TD>
-                            <TD>{subject}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "—")}</span></TD>
+                            <TD className="!text-right"><div className="w-full break-words text-right font-semibold" dir="auto">{subject}</div><span className="mt-1 block text-right text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "—")}</span></TD>
                             <TD>{toFaDigits(row.number || "—")}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.date || "—")}</span></TD>
                             <TD><span className="font-semibold">{toFaDigits(formatMoney(isReceipt ? row.receiptAmount : row.grossAmount))}</span><span className="block text-xs text-neutral-500 dark:text-neutral-400">{[currency, source].filter(Boolean).join(" - ")}</span></TD>
                             <TD>{row.raw?.vat_amount != null ? <><span className="font-semibold">{toFaDigits(formatMoney(row.vatAmount))}</span><span className="block text-xs text-neutral-500 dark:text-neutral-400">{[vatCurrency, vatSource].filter(Boolean).join(" - ")}</span></> : "—"}</TD>
@@ -2049,7 +2049,7 @@ export default function FinancialWorksheetPage() {
                         <span className="text-black/70 dark:text-neutral-400">تعداد در هر صفحه:</span>
                         <div className="inline-flex h-9 overflow-hidden rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-white/5">
                           {[10, 25, 100].map((count) => (
-                            <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "text-neutral-700 hover:bg-black/[0.04] dark:text-white/75 dark:hover:bg-white/10"}`}>{toFaDigits(count)}</button>
+                            <button key={count} type="button" onClick={() => { setRowsPerPage(count); setPage(0); }} aria-pressed={rowsPerPage === count} className={`min-w-10 px-2.5 text-sm font-semibold transition sm:px-3 ${rowsPerPage === count ? "bg-[#184a6b] text-white" : "bg-[#184a6b]/10 text-[#184a6b] hover:bg-[#184a6b]/20 dark:text-sky-200"}`}>{toFaDigits(count)}</button>
                           ))}
                         </div>
                       </div>
