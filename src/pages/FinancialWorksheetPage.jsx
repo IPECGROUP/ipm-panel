@@ -462,6 +462,8 @@ export default function FinancialWorksheetPage() {
   const [filterQuery, setFilterQuery] = useState("");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
+  const [filterLevel, setFilterLevel] = useState("");
+  const [filterBasis, setFilterBasis] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
@@ -723,24 +725,18 @@ export default function FinancialWorksheetPage() {
 
   useEffect(() => {
     let dead = false;
-    if (!projectId) {
-      setWorksheetRows([]);
-      setRowsLoading(false);
-      return () => { dead = true; };
-    }
     (async () => {
       setRowsLoading(true);
       try {
-        const q = new URLSearchParams();
-        if (projectId) q.set("project_id", String(projectId));
-        if (contractId) q.set("contract_id", String(contractId));
-        q.set("kind", tab === "receipts" ? "receipts" : "statement");
-        const r = await api("/financial-worksheet?" + q.toString());
+        const results = await Promise.allSettled(["statement", "receipts"].map((kind) => api(`/financial-worksheet?all=1&kind=${kind}`)));
         if (dead) return;
-        const rows = r?.items || r?.data || r?.rows || [];
-        setWorksheetRows(normalizeRows(rows).filter((row) => !contractId || !row.contractId || String(row.contractId) === String(contractId)));
+        const successful = results.filter((result) => result.status === "fulfilled");
+        if (!successful.length) throw new Error("خطا در بارگذاری اطلاعات کاربرگ مالی");
+        const rows = successful.flatMap(({ value }) => value?.items || value?.data || value?.rows || []);
+        rows.sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+        setWorksheetRows(normalizeRows(rows));
       } catch {
-        if (!dead) setWorksheetRows([]);
+        if (!dead) { setWorksheetRows([]); setErr("خطا در بارگذاری اطلاعات کاربرگ مالی"); }
       } finally {
         if (!dead) setRowsLoading(false);
       }
@@ -748,18 +744,21 @@ export default function FinancialWorksheetPage() {
     return () => {
       dead = true;
     };
-  }, [api, contractId, projectId, tab, normalizeRows]);
+  }, [api, formOpen, normalizeRows]);
 
   const filteredRows = worksheetRows.filter((row) => {
     const contract = contractById.get(String(row.contractId));
     const kind = documentTypeForContract(contract);
-    if (kind && kind !== contractKind) return false;
+    if (filterLevel && kind !== filterLevel) return false;
+    const basis = row.raw?.kind === "receipts" ? (kind === "sub" ? "payments" : "receipts") : "statement";
+    if (filterBasis && basis !== filterBasis) return false;
     const date = toEnDigits(row.date || "").replace(/\D/g, "");
     const from = toEnDigits(filterFromDate).replace(/\D/g, "");
     const to = toEnDigits(filterToDate).replace(/\D/g, "");
     if ((from && (!date || date < from)) || (to && (!date || date > to))) return false;
     const query = toEnDigits(filterQuery).trim().toLowerCase();
-    return !query || toEnDigits(JSON.stringify([row.raw, contract, selectedProject])).toLowerCase().includes(query);
+    const rowProject = projects.find((project) => String(project.id) === String(row.raw?.project_id ?? row.raw?.projectId));
+    return !query || toEnDigits(JSON.stringify([row.raw, contract, rowProject])).toLowerCase().includes(query);
   });
   const worksheetTotals = useMemo(() => {
     return filteredRows.reduce(
@@ -1110,20 +1109,19 @@ export default function FinancialWorksheetPage() {
     [isSelectedSubContract],
   );
   const worksheetExportData = () => {
-    const receipt = tab === "receipts";
-    const headers = receipt
-      ? ["#", receiptUi.date, "بابت", receiptUi.amount, receiptUi.foreignAmount]
-      : ["#", "شماره صورت وضعیت", "تاریخ", "مبلغ ناخالص", "VAT", "ارز منشا"];
-    const rows = sortedRows.map((row) => receipt
-      ? [rowNumberById.get(String(row.id)), row.date || "", receiptBasisLabel(row), Number(row.receiptAmount || 0), Number(row.receiptForeignAmount || 0)]
-      : [rowNumberById.get(String(row.id)), row.number || "", row.date || "", Number(row.grossAmount || 0), Number(row.vatAmount || 0), row.currencySourceLabel || ""]);
-    const totals = receipt
-      ? ["", "", "جمع", sumReceiptAmount, sumReceiptForeignAmount]
-      : ["", "", "جمع", sumGross, sumVat, ""];
-    return { headers, rows: [...rows, totals] };
+    const headers = ["ردیف", "پروژه", "سطح", "بابت", "موضوع قرارداد", "شماره قرارداد", "شماره", "تاریخ", "مبلغ", "ارز", "منشأ", "VAT"];
+    const rows = sortedRows.map((row) => {
+      const contract = contractById.get(String(row.contractId));
+      const parent = contractById.get(String(contract?.parentContractId || contract?.parent_contract_id || ""));
+      const project = projects.find((item) => String(item.id) === String(row.raw?.project_id ?? row.raw?.projectId));
+      const level = documentTypeForContract(contract);
+      const receipt = row.raw?.kind === "receipts";
+      return [rowNumberById.get(String(row.id)), project ? projectLabel(project) : "", contract ? documentTypeLabel(level) : "", receipt ? (level === "sub" ? "پرداختی" : "دریافتی") : "صورت وضعیت", contract?.general?.contractSubject || parent?.general?.contractSubject || row.raw?.contract_subject || "", row.raw?.contract_no || contractNoForRow(contract), row.number, row.date, receipt ? row.receiptAmount : row.grossAmount, row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال", row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))), receipt ? "" : row.vatAmount];
+    });
+    return { headers, rows };
   };
   const exportWorksheetExcel = async () => {
-    if (!projectId || exportingExcel) return;
+    if (!sortedRows.length || exportingExcel) return;
     setExportingExcel(true);
     try {
       const xlsxModule = await import("xlsx");
@@ -1133,7 +1131,7 @@ export default function FinancialWorksheetPage() {
       sheet["!cols"] = headers.map((header) => ({ wch: Math.max(18, header.length + 4) }));
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, sheet, tab === "receipts" ? "Payments-Receipts" : "Statements");
-      XLSX.writeFile(workbook, `financial-worksheet-${projectId}-${tab}.xlsx`);
+      XLSX.writeFile(workbook, "financial-worksheet.xlsx");
     } catch (error) {
       console.error("Financial worksheet Excel export failed", error);
       window.alert("ساخت فایل اکسل انجام نشد. لطفاً دوباره تلاش کنید.");
@@ -1142,12 +1140,12 @@ export default function FinancialWorksheetPage() {
     }
   };
   const printWorksheet = () => {
-    if (!projectId) return;
+    if (!sortedRows.length) return;
     const { headers, rows } = worksheetExportData();
     openFinancialWorksheetPrintPreview({
-      title: worksheetTabs.find((item) => item.id === tab)?.label || "کاربرگ مالی",
-      project: selectedProject ? projectLabel(selectedProject) : "",
-      contract: contractId ? contractNoForRow(selectedContract) : "",
+      title: "کاربرگ مالی",
+      project: "",
+      contract: "",
       headers, rows,
     });
   };
@@ -1168,6 +1166,7 @@ export default function FinancialWorksheetPage() {
 
   const handleEditRow = (row) => {
     const source = row?.raw && typeof row.raw === "object" ? row.raw : row || {};
+    const rowKind = source.kind === "receipts" ? "receipts" : "statement";
     const rowProjectId = String(source?.project_id ?? source?.projectId ?? "");
     if (rowProjectId && rowProjectId !== String(projectId)) setProjectId(rowProjectId);
     if (row?.contractId && String(row.contractId) !== String(contractId)) {
@@ -1176,10 +1175,11 @@ export default function FinancialWorksheetPage() {
       setContractId(String(row.contractId));
     }
     setFormOpen(true);
-    setFormBasis(tab);
+    setTab(rowKind);
+    setFormBasis(rowKind);
     setErr("");
     setEditingRowId(String(row?.id || source?.id || ""));
-    if (tab === "receipts") {
+    if (rowKind === "receipts") {
       const storedTypes = Array.isArray(source?.receipt_types) && source.receipt_types.length
         ? source.receipt_types
         : [{ type: source?.receipt_type ?? row?.receiptType, number: source?.receipt_no ?? row?.number, otherDescription: source?.receipt_type_other_description ?? row?.receiptTypeOtherDescription }];
@@ -1473,17 +1473,17 @@ export default function FinancialWorksheetPage() {
               <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">از</div><JalaliPopupDatePicker value={filterFromDate} onChange={(value) => { setFilterFromDate(value); setPage(0); }} /></div>
               <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">تا</div><JalaliPopupDatePicker value={filterToDate} onChange={(value) => { setFilterToDate(value); setPage(0); }} /></div>
               <div className="flex items-center gap-2" aria-label="خروجی کاربرگ مالی">
-                <button type="button" onClick={exportWorksheetExcel} disabled={!projectId || exportingExcel} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
+                <button type="button" onClick={exportWorksheetExcel} disabled={!sortedRows.length || exportingExcel} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
                   <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" />
                 </button>
-                <button type="button" onClick={printWorksheet} disabled={!projectId} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="چاپ کاربرگ" aria-label="چاپ کاربرگ">
+                <button type="button" onClick={printWorksheet} disabled={!sortedRows.length} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="چاپ کاربرگ" aria-label="چاپ کاربرگ">
                   <img src="/images/icons/print.svg" alt="" className="h-5 w-5 dark:invert" />
                 </button>
               </div>
             </div>
             <div><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">فیلتر</div><div className="flex flex-wrap gap-2">
-              {[["main", "اصلی"], ["sub", "فرعی"]].map(([id, label]) => <button key={id} type="button" aria-pressed={contractKind === id} onClick={() => { setContractKind(id); setContractId(""); setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${contractKind === id ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>)}
-              {[["statement", "صورت وضعیت"], ["receipts", "دریافتی"], ["payments", "پرداختی"]].map(([id, label]) => { const active = id === "statement" ? tab === "statement" : tab === "receipts" && contractKind === (id === "payments" ? "sub" : "main"); return <button key={id} type="button" aria-pressed={active} onClick={() => { setTab(id === "statement" ? "statement" : "receipts"); if (id !== "statement") { setContractKind(id === "payments" ? "sub" : "main"); setContractId(""); } setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>; })}
+              {[["main", "اصلی"], ["sub", "فرعی"]].map(([id, label]) => <button key={id} type="button" aria-pressed={filterLevel === id} onClick={() => { setFilterLevel((current) => current === id ? "" : id); setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${filterLevel === id ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>)}
+              {[["statement", "صورت وضعیت"], ["receipts", "دریافتی"], ["payments", "پرداختی"]].map(([id, label]) => <button key={id} type="button" aria-pressed={filterBasis === id} onClick={() => { setFilterBasis((current) => current === id ? "" : id); setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${filterBasis === id ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>)}
             </div></div>
           </div>}
           {formOpen && <div className="grid gap-3 lg:grid-cols-[minmax(180px,.8fr)_minmax(0,1.5fr)_minmax(160px,.7fr)] lg:items-end">
@@ -1511,7 +1511,7 @@ export default function FinancialWorksheetPage() {
               </select>
             </div>
             <div className="min-w-0">
-              <label className="text-xs text-neutral-600 dark:text-white/60">قرارداد</label>
+              <label className="text-xs text-neutral-600 dark:text-white/60">سطح قرارداد</label>
               <div className="mt-1 grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
                 <div className="flex items-center gap-1">
                 {[
@@ -1981,24 +1981,29 @@ export default function FinancialWorksheetPage() {
                         <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
                         <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
                         <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="ردیف" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
-                        <TH className={tablePreset.th}>پروژه</TH><TH className={tablePreset.th}>شرکت<span className="block text-xs font-normal">قرارداد</span></TH>
+                        <TH className={tablePreset.th}>پروژه</TH><TH className={tablePreset.th}>سطح / بابت</TH><TH className={tablePreset.th}>موضوع قرارداد</TH>
                         <TH className={tablePreset.th}>شماره<span className="block text-xs font-normal">تاریخ</span></TH>
                         <TH className={tablePreset.th}>مبلغ</TH><TH className={tablePreset.th}>ارز / منشأ</TH><TH className={tablePreset.th}>VAT</TH>
                         <TH className={`relative !pl-10 ${tablePreset.th}`}>ارز / منشأ<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                       </tr></THead>
                       <tbody className={`${tablePreset.body} [&_tr]:h-12`}>
-                        {rowsLoading ? <TR><td colSpan={10} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR> : !pageRows.length ? <TR><td colSpan={10} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR> : pageRows.map((row) => {
+                        {rowsLoading ? <TR><td colSpan={11} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR> : !pageRows.length ? <TR><td colSpan={11} className={`h-24 !text-center ${tablePreset.emptyRow}`}>موردی برای نمایش وجود ندارد.</td></TR> : pageRows.map((row) => {
                           const contract = contractById.get(String(row.contractId));
-                          const company = row.raw?.company_name || row.raw?.company || contract?.company_name || contract?.companyName || contract?.contractor_name || contract?.contractorName || contract?.company || contract?.contractor || "—";
-                          const companyLabel = typeof company === "object" ? (company.name || company.title || "—") : company;
+                          const parent = contractById.get(String(contract?.parentContractId || contract?.parent_contract_id || ""));
+                          const rowProject = projects.find((project) => String(project.id) === String(row.raw?.project_id ?? row.raw?.projectId));
+                          const level = documentTypeForContract(contract);
+                          const isReceipt = row.raw?.kind === "receipts";
+                          const basis = isReceipt ? (level === "sub" ? "پرداختی" : "دریافتی") : "صورت وضعیت";
+                          const subject = contract?.general?.contractSubject || parent?.general?.contractSubject || row.raw?.contract_subject || "—";
                           return <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] dark:hover:bg-white/15 ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
                             <TD><input type="checkbox" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
                             <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500" />}</TD>
-                            <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD><TD>{selectedProject ? projectLabel(selectedProject) : "—"}</TD>
-                            <TD>{companyLabel}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "—")}</span></TD>
+                            <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD><TD>{rowProject ? projectLabel(rowProject) : "—"}</TD>
+                            <TD>{contract ? documentTypeLabel(level) : "—"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{basis}</span></TD>
+                            <TD>{subject}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "—")}</span></TD>
                             <TD>{toFaDigits(row.number || "—")}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.date || "—")}</span></TD>
-                            <TD>{toFaDigits(formatMoney(tab === "receipts" ? row.receiptAmount : row.grossAmount))}</TD><TD>{readItemLabel(currencyById.get(String(row.currencyId))) || "—"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))) || "—"}</span></TD>
-                            <TD>{tab === "statement" ? toFaDigits(formatMoney(row.vatAmount)) : "—"}</TD><TD>—</TD>
+                            <TD>{toFaDigits(formatMoney(isReceipt ? row.receiptAmount : row.grossAmount))}</TD><TD>{row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))) || "—"}</span></TD>
+                            <TD>{!isReceipt ? toFaDigits(formatMoney(row.vatAmount)) : "—"}</TD><TD>—</TD>
                           </TR>;
                         })}
                       </tbody>
@@ -2037,9 +2042,9 @@ export default function FinancialWorksheetPage() {
 
       {detailRow && <FinancialWorksheetDetailModal
         row={detailRow}
-        kind={tab}
+        kind={detailRow.raw?.kind === "receipts" ? "receipts" : "statement"}
         project={detailProject ? projectLabel(detailProject) : ""}
-        contract={detailRow.raw?.contract_no || contractNoForRow(selectedContract)}
+        contract={detailRow.raw?.contract_no || contractNoForRow(contractById.get(String(detailRow.contractId)))}
         currency={readItemLabel(currencyById.get(String(detailRow.currencyId)))}
         currencySource={readItemLabel(currencySourceById.get(String(detailRow.currencySourceId)))}
         receiptTypeLabel={receiptTypeLabel}
