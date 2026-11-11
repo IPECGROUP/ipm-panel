@@ -40,3 +40,11 @@ test("ignores empty labels, deduplicates IDs, and retains original catalog IDs",
   assert.deepEqual(findMatchingTagIds([null, "", "ضمانت نامه", "صمانتنامه"], index), ["tag-7"]);
   assert.deepEqual(findMatchingTagIds(["موضوع"], buildTagMatchIndex([])), []);
 });
+
+test("matches shared multiword tag prefixes while preferring a complete label", () => {
+  const labels = ["بانک تجارت دزاشیب", "بانک تجارت مرکزی", "بانک ملت مرکزی"];
+  assert.deepEqual(match(["نامه بانک تجارت"], labels), ["1", "2"]);
+  assert.deepEqual(match(["نامه بانك تجارت دزاشیب"], labels), ["1"]);
+  assert.deepEqual(match(["بانک"], labels), []);
+  assert.deepEqual(match(["بانک", "تجارت"], labels), []);
+});

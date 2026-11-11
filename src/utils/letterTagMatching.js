@@ -22,17 +22,25 @@ function typoBudget(label) {
 
 export function buildTagMatchIndex(tags) {
   const byLength = new Map();
+  const byPrefix = new Map();
   let maxLength = 0;
   for (const tag of tags) {
     const id = String(tag?.id ?? "").trim();
-    const label = normalizeTagText(tag?.label ?? tag?.name ?? tag?.title ?? tag?.text ?? tag?.tag).replaceAll(" ", "");
+    const normalized = normalizeTagText(tag?.label ?? tag?.name ?? tag?.title ?? tag?.text ?? tag?.tag);
+    const words = normalized.split(" ").filter(Boolean);
+    const label = normalized.replaceAll(" ", "");
     if (!id || !label) continue;
     const entry = { id, label, budget: typoBudget(label) };
     if (!byLength.has(label.length)) byLength.set(label.length, []);
     byLength.get(label.length).push(entry);
+    for (let count = 2; count < words.length; count += 1) {
+      const prefix = words.slice(0, count).join(" ");
+      if (!byPrefix.has(prefix)) byPrefix.set(prefix, []);
+      byPrefix.get(prefix).push(entry);
+    }
     maxLength = Math.max(maxLength, label.length + entry.budget);
   }
-  return { byLength, maxLength };
+  return { byLength, byPrefix, maxLength };
 }
 
 // Bounded Damerau-Levenshtein distance also accepts adjacent transposed letters.
@@ -87,6 +95,16 @@ export function findMatchingTagIds(fields, index) {
       // Equally close, differently named tags are ambiguous; let the user choose.
       if (match.distance && new Set(match.entries.map((entry) => entry.label)).size > 1) continue;
       for (const entry of match.entries) ids.add(entry.id);
+    }
+    // A multiword prefix can identify a family of tags even before its final word is entered.
+    for (let start = 0; start < words.length; start += 1) {
+      let prefix = words[start];
+      for (let end = start + 1; end < words.length; end += 1) {
+        prefix += ` ${words[end]}`;
+        if (prefix.replaceAll(" ", "").length > index.maxLength) break;
+        if (exact.some((match) => match.start === start && match.end >= end)) continue;
+        for (const entry of index.byPrefix.get(prefix) || []) ids.add(entry.id);
+      }
     }
   }
   return [...ids];
