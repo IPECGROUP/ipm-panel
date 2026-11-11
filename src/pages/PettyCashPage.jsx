@@ -13,6 +13,7 @@ import { todayJalaliYmd } from "../utils/date.js";
 import { format3, toEnglishDigits } from "../utils/format.js";
 import { budgetPickerItems, fullBudgetCode } from "../utils/budgetPickerItems.js";
 import { openPettyCashReportPdf } from "../utils/pettyCashReportPdf.js";
+import { api } from "../utils/api.js";
 
 const colors = ["#1f2937", "#64748b", "#a78bfa", "#38bdf8", "#34d399", "#fbbf24", "#fb7185", "#818cf8"];
 const amount = (value) => { try { return BigInt(value || 0); } catch { return 0n; } };
@@ -327,6 +328,7 @@ export default function PettyCashPage() {
   const [reportsPerPage, setReportsPerPage] = useState(10);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [reports, setReports] = useState([]);
+  const [workflowUnits, setWorkflowUnits] = useState([]);
   const [selectedReportIds, setSelectedReportIds] = useState(new Set());
   const [readState, setReadState] = useState({ seen: [], unread: [] });
   const [deletingReports, setDeletingReports] = useState(false);
@@ -376,6 +378,7 @@ export default function PettyCashPage() {
     const refresh = () => {
       loadReports().catch((reason) => setReportError(reason.message));
       loadExpenseAccess();
+      api("/base/units").then((data) => setWorkflowUnits(Array.isArray(data.units) ? data.units : [])).catch(() => {});
     };
     refresh();
     const timer = setInterval(refresh, 30000);
@@ -414,7 +417,7 @@ export default function PettyCashPage() {
       .catch(() => { if (openingNotificationRef.current === key) { openingNotificationRef.current = ""; setReportError("دریافت گزارش اعلان‌شده انجام نشد. دوباره تلاش کنید."); } });
   }, [searchParams, setSearchParams, userId]);
   const visibleReports = reports.filter((report) => {
-     const state = expenseReportState(report);
+     const state = expenseReportState(report, workflowUnits);
     if (reportStatusFilter && state.statusKey !== reportStatusFilter) return false;
     if (reportOwnershipFilter === "mine" && String(report.createdById) !== String(user?.id)) return false;
     if (reportOwnershipFilter === "incoming" && !report.canAct && !report.wasSentToMe) return false;
@@ -578,7 +581,7 @@ export default function PettyCashPage() {
                 </thead>
                 <tbody className="text-[13px] [&>tr]:h-9 [&>tr>td]:!py-0">
                   {pageReports.map((report) => {
-                     const state = expenseReportState(report);
+                     const state = expenseReportState(report, workflowUnits);
                     return <tr key={report.id} tabIndex={0} onClick={() => openReport(report)}
                       onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openReport(report); } }}
                       aria-label={`مشاهده گزارش ${report.reportName}`}
@@ -1200,12 +1203,23 @@ function reportStatusBadgeClass(status, active = false) {
   return `border shadow-sm ${(colors[status] || colors.pending)[active ? 1 : 0]}`;
 }
 
-function expenseReportState(report) {
+function workflowUnitNames(stage, units) {
+  const normalize = (value) => String(value || "").toLowerCase().replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\u200c/g, " ").replace(/[_\s]+/g, " ").trim();
+  return units.filter((unit) => {
+    const name = normalize(unit.name), code = normalize(unit.code), values = `${name} ${code}`;
+    if (stage === "planning") return code ? ["project control", "planning"].includes(code) : /برنامه ریزی|کنترل پروژه|planning|project control/.test(name);
+    if (stage === "project_manager") return /مدیریت پروژه|project management/.test(values);
+    if (stage === "finance") return /مالی|حسابداری|finance|accounting/.test(values);
+    if (stage === "management") return /مدیریت|management/.test(values) && !/مدیریت پروژه|project management|مالی|finance|accounting|کنترل پروژه/.test(values);
+    return false;
+  }).map((unit) => unit.name).filter(Boolean);
+}
+
+function expenseReportState(report, units = []) {
   if (report.initialStage === "draft") return { waiting: "—", status: "در حال تکمیل", statusKey: "draft" };
   const items = report.items || [];
   const pending = items.filter((item) => ["planning", "project_manager", "finance", "management", "revision"].includes(item.stage));
-  const waiting = [...new Set(pending.map((item) => item.stage === "planning" ? "برنامه‌ریزی و کنترل پروژه" : item.stage === "finance" ? "مالی"
-    : item.stage === "management" ? "مدیریت" : item.stage === "revision" ? "—" : "مدیریت پروژه‌ها"))].filter((name) => name !== "—").join("، ") || "—";
+  const waiting = [...new Set(pending.flatMap((item) => workflowUnitNames(item.stage, units)))].join("، ") || "—";
   const status = items.some((item) => item.stage === "revision") ? "درخواست اصلاح" : pending.length ? "در انتظار تأیید"
     : items.length && items.every((item) => item.stage === "completed") ? "تأیید شد" : "رد شده";
   const statusKey = status === "درخواست اصلاح" ? "returned" : status === "در انتظار تأیید" ? "pending" : status === "تأیید شد" ? "approved" : "rejected";
