@@ -783,12 +783,19 @@ export default function FinancialWorksheetPage() {
   const sortedRows = useMemo(() => [...filteredRows].sort((a, b) => {
     const ordinalDifference = (rowNumberById.get(String(a.id)) || 0) - (rowNumberById.get(String(b.id)) || 0);
     if (rowSort.field === "number") return rowSort.direction === "asc" ? ordinalDifference : -ordinalDifference;
+    if (rowSort.field === "project") {
+      const aProject = projects.find((project) => String(project.id) === String(a.raw?.project_id ?? a.raw?.projectId));
+      const bProject = projects.find((project) => String(project.id) === String(b.raw?.project_id ?? b.raw?.projectId));
+      if (!aProject || !bProject) return aProject ? -1 : bProject ? 1 : -ordinalDifference;
+      const comparison = toEnDigits(aProject.code || aProject.name || "").localeCompare(toEnDigits(bProject.code || bProject.name || ""), "fa", { numeric: true, sensitivity: "base" });
+      return (rowSort.direction === "asc" ? comparison : -comparison) || -ordinalDifference;
+    }
     const aDate = toEnDigits(a.date || "").replace(/\D/g, "");
     const bDate = toEnDigits(b.date || "").replace(/\D/g, "");
     if (!aDate || !bDate) return aDate ? -1 : bDate ? 1 : -ordinalDifference;
     const dateDifference = aDate.localeCompare(bDate, "en", { numeric: true });
     return (rowSort.direction === "asc" ? dateDifference : -dateDifference) || -ordinalDifference;
-  }), [filteredRows, rowNumberById, rowSort]);
+  }), [filteredRows, projects, rowNumberById, rowSort]);
   const changeRowSort = (field) => {
     setRowSort((current) => ({ field, direction: current.field === field && current.direction === "asc" ? "desc" : "asc" }));
     setPage(0);
@@ -2001,7 +2008,7 @@ export default function FinancialWorksheetPage() {
                         <TH><input ref={selectAllRef} type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
                         <TH aria-label="خوانده‌نشده" />
                         <TH><SortableWorksheetHeader label="ردیف" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
-                        <TH>پروژه</TH><TH>سطح / بابت</TH><TH className="!text-right">موضوع قرارداد</TH>
+                        <TH><SortableWorksheetHeader label="پروژه" field="project" sort={rowSort} onSort={changeRowSort} /></TH><TH>سطح / بابت</TH><TH className="!text-right">موضوع قرارداد</TH>
                         <TH>شماره / تاریخ</TH>
                         <TH>مبلغ</TH><TH className="relative !pl-10">VAT<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                       </tr></THead>
