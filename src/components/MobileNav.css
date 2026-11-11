@@ -129,9 +129,9 @@
 .ipm-mobile-nav .mobile-glass-tabs.lg-tab-bar {
   --lg-tab-width: min(96px, calc((100vw - 36px) / var(--lg-tabs)));
   --lg-tab-height: 56px;
-  --lg-tab-selected: #d56419;
+  --lg-tab-selected: #fff;
   --lg-selection: rgba(255, 218, 185, .48);
-  --lg-foreground: #687996;
+  --lg-foreground: #fff;
   --lg-glass: rgba(231, 241, 250, .28);
   position: fixed; z-index: 200; bottom: max(8px, env(safe-area-inset-bottom, 0px));
   left: 50%; transform: translateX(-50%); max-width: calc(100vw - 16px);
