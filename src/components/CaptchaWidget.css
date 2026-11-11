@@ -1,0 +1,36 @@
+/* ALTCHA's public theme variables are inherited by its shadow component. */
+altcha-widget.ipec-captcha {
+  --altcha-border-width: 1px;
+  --altcha-border-radius: 12px;
+  --altcha-border-color: rgba(131, 189, 235, 0.8);
+  --altcha-color-base: rgba(23, 74, 126, 0.88);
+  --altcha-color-base-content: #fff;
+  --altcha-color-neutral: #83bdeb;
+  --altcha-color-neutral-content: #d4e7f8;
+  --altcha-color-primary: #ff941f;
+  --altcha-color-primary-content: #1a3048;
+  --altcha-color-success: #22c55e;
+  --altcha-color-success-content: #103d20;
+  --altcha-color-error: #ffb4ab;
+  --altcha-color-error-content: #4c100b;
+  --altcha-checkbox-border-color: #d4e7f8;
+  --altcha-checkbox-border-width: 1px;
+  --altcha-checkbox-outline: 2px solid #fff;
+  --altcha-input-background-color: #174a7e;
+  --altcha-max-width: 100%;
+  --altcha-padding: 10px 12px;
+  --altcha-spinner-color: #fff;
+  --altcha-transition-duration: 200ms;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  font-family: Vazir, system-ui, sans-serif;
+  font-size: 14px;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  altcha-widget.ipec-captcha {
+    --altcha-transition-duration: 0ms;
+  }
+}

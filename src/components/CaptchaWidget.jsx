@@ -1,4 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import "altcha/themes/caramel.css";
+import "./CaptchaWidget.css";
 
 // Loading failure is isolated from the login form.
 export default forwardRef(function CaptchaWidget({ onToken }, ref) {
@@ -10,7 +12,19 @@ export default forwardRef(function CaptchaWidget({ onToken }, ref) {
   useEffect(() => {
     if (!enabled) return;
     let active = true;
-    import("altcha").then(() => { if (active) setLoaded(true); }).catch(() => {});
+    import("altcha")
+      .then(() => import("altcha/i18n/fa"))
+      .then(() => {
+        const i18n = globalThis.$altcha.i18n;
+        i18n.set("fa", {
+          ...i18n.get("fa"),
+          label: "????? ???? ???? ??????",
+          verifying: "?? ??? ????? ??????...",
+          verified: "????? ??",
+          footer: '?????????? ???? <a href="https://altcha.org/" target="_blank" rel="noopener" aria-label="??????? ???? ALTCHA (?? ???? ???? ??? ??????)">ALTCHA</a>',
+        });
+        if (active) setLoaded(true);
+      }).catch(() => {});
     return () => { active = false; };
   }, [enabled]);
   useEffect(() => {
@@ -22,5 +36,5 @@ export default forwardRef(function CaptchaWidget({ onToken }, ref) {
   }, [loaded, generation, onToken]);
   if (!enabled || !loaded) return null;
   const base = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
-  return <altcha-widget key={generation} ref={widget} challenge={`${base}/captcha/challenge`} auto="off" />;
+  return <altcha-widget class="ipec-captcha" key={generation} ref={widget} challenge={`${base}/captcha/challenge`} auto="off" theme="caramel" language="fa" dir="rtl" />;
 });

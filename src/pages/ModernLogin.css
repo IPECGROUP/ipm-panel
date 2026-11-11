@@ -13,7 +13,7 @@
 .modern-login__field input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:white;font:inherit;font-size:16px}
 .modern-login__field input::placeholder{color:#e0effa;opacity:1}
 .modern-login__visibility{display:grid;place-items:center;padding:5px;border:0;color:white;background:transparent;cursor:pointer}
-.modern-login__captcha{min-height:44px;max-width:100%;overflow-x:auto;display:grid;place-items:center;color:#e6f3fb;font-size:13px}
+.modern-login__captcha{min-height:72px;width:100%;max-width:100%;display:flex;align-items:center;color:#e6f3fb;font-size:13px}
 .modern-login__remember{display:flex;align-items:center;gap:9px;text-align:right;font-size:14px;cursor:pointer}
 .modern-login__remember input{width:20px;height:20px;margin:0;accent-color:#1676c0}
 .modern-login__submit{display:flex;align-items:center;justify-content:center;gap:10px;min-height:44px;border:1px solid #ffa745;border-radius:999px;color:white;background:linear-gradient(#ff9c32,#f47a10);box-shadow:0 7px 15px rgba(0,28,57,.24),inset 0 1px 2px rgba(255,255,255,.3);font:inherit;font-size:16px;font-weight:700;cursor:pointer}
