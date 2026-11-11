@@ -115,20 +115,22 @@ function HomeTopDailyLogUsers({ rows, loading }) {
   }) : <div className="py-24 text-center text-xs text-neutral-400">{loading ? "در حال دریافت اطلاعات..." : "داده‌ای برای نمایش وجود ندارد."}</div>}</div>{hover && <div role="tooltip" style={{ left: hover.x, top: hover.y }} className="pointer-events-none fixed z-50 rounded-xl border border-neutral-200 bg-white px-4 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><b className="block">{hover.name}</b><span className="mt-1 block text-neutral-500 dark:text-neutral-300">{hover.month.replace(/\d/g, (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)])}: {faNumber(hover.value)} ثبت</span></div>}</Card>;
 }
 
-function HomeReviewTiming({ title, stages, timings }) {
+function HomeReviewTiming({ title, stages, timings, hue }) {
+  const maximumColor = `hsl(${hue}, 65%, 43%)`;
+  const averageColor = `hsl(${hue}, 70%, 68%)`;
   const chartData = stages.map((name, index) => {
     const values = timings[index] || [];
     return { name, maximum: values.length ? Math.max(...values) : null, average: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null };
   });
   return <Card className="min-h-[410px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
     <div className="mb-4"><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">بر اساس زمان ثبت‌شده در گردش‌کار درخواست‌ها</span></div>
-    <div className="flex justify-center gap-5 text-xs"><span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />بیشترین</span><span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-sky-400" />میانگین</span></div>
+    <div className="flex justify-center gap-5 text-xs"><span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: maximumColor }} />بیشترین</span><span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: averageColor }} />میانگین</span></div>
     <div className="mt-4 h-[280px]" dir="ltr"><ResponsiveContainer width="100%" height="100%"><BarChart data={chartData} margin={{ top: 12, right: 4, left: 4, bottom: 12 }} barGap={1} barCategoryGap="25%">
       <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="4 4" />
       <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} />
       <Tooltip cursor={{ fill: "rgba(148,163,184,0.1)" }} content={({ active, payload, label }) => active && payload?.length ? <div dir="rtl" className="rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-neutral-700 dark:bg-neutral-800"><b className="block">{label}</b>{payload.map((entry) => <span key={entry.dataKey} className="mt-1 block" style={{ color: entry.color }}>{entry.name}: {formatReviewDuration(entry.value)}</span>)}</div> : null} />
-      <Bar dataKey="maximum" name="بیشترین" fill="#6366f1" radius={[5, 5, 0, 0]} maxBarSize={32} />
-      <Bar dataKey="average" name="میانگین" fill="#38bdf8" radius={[5, 5, 0, 0]} maxBarSize={32} />
+      <Bar dataKey="maximum" name="بیشترین" fill={maximumColor} radius={[5, 5, 0, 0]} maxBarSize={32} />
+      <Bar dataKey="average" name="میانگین" fill={averageColor} radius={[5, 5, 0, 0]} maxBarSize={32} />
     </BarChart></ResponsiveContainer></div>
     <div className="grid gap-1 text-center text-[10px] leading-4 text-neutral-500 dark:text-neutral-400" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(0, 1fr))` }} dir="ltr">{chartData.map((item) => <span key={item.name} dir="rtl">{item.name}</span>)}</div>
   </Card>;
@@ -346,6 +348,10 @@ export default function DashboardPage() {
   }).sort((a, b) => b.active - a.active || b.pending - a.pending || a.name.localeCompare(b.name, "fa")), [supplyRequests, supplyUsers]);
 
   const selectedShortcuts = selectedPaths.map((path) => availableOptions.find((item) => item.to === path)).filter(Boolean);
+  const chartHue = (path) => {
+    const index = selectedShortcuts.findIndex((item) => item.to === path);
+    return shortcutHue(index >= 0 ? index : shortcutOptions.findIndex((item) => item.to === path));
+  };
   const updateSelection = (path) => setSelectedPaths((current) =>
     current.includes(path) ? current.filter((item) => item !== path) : [...current, path]
   );
@@ -375,9 +381,9 @@ export default function DashboardPage() {
       </section>
 
       <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
-        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های پرداخت" stages={["برنامه‌ریزی و کنترل پروژه", "مدیر پروژه", "مدیریت / دستور پرداخت", "مالی و تأیید نهایی"]} timings={reviewTimings} />
-        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تأمین" stages={["مدیر پروژه", "واحد تأمین"]} timings={supplyReviewTimings} />
-        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تنخواه گردان" stages={["مدیر پروژه", "مدیریت", "مالی"]} timings={tenkhahReviewTimings} />
+        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های پرداخت" stages={["برنامه‌ریزی و کنترل پروژه", "مدیر پروژه", "مدیریت / دستور پرداخت", "مالی و تأیید نهایی"]} timings={reviewTimings} hue={chartHue("/finance/payment-request")} />
+        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تأمین" stages={["مدیر پروژه", "واحد تأمین"]} timings={supplyReviewTimings} hue={chartHue("/supply/request")} />
+        <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تنخواه گردان" stages={["مدیر پروژه", "مدیریت", "مالی"]} timings={tenkhahReviewTimings} hue={chartHue("/finance/tenkhah")} />
       </div>
 
       <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 [&>*]:min-w-0">
