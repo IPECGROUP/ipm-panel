@@ -458,6 +458,7 @@ export default function FinancialWorksheetPage() {
   const [exportingExcel, setExportingExcel] = useState(false);
 
   const [tab, setTab] = useState("statement");
+  const [formBasis, setFormBasis] = useState("");
   const [filterQuery, setFilterQuery] = useState("");
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
@@ -1150,19 +1151,6 @@ export default function FinancialWorksheetPage() {
       headers, rows,
     });
   };
-  const tabStripCls =
-    "flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900";
-  const topTabBtnClass = (isActive, index, total) =>
-    [
-      "relative z-10 h-10 min-w-[118px] flex-none rounded-lg px-3 text-xs font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm",
-      index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "",
-      index === 0 ? "md:rounded-tr-2xl" : "",
-      index === total - 1 ? "md:rounded-tl-2xl" : "",
-      "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
-      isActive
-        ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
-        : "bg-white text-[#1f2937] hover:bg-neutral-50 md:bg-white dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 md:dark:bg-neutral-900",
-    ].join(" ");
   const renderVatOption = (value, label) => (
     <label className="inline-flex h-10 items-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-xs font-semibold transition hover:bg-black/[0.03] dark:border-neutral-700 dark:bg-neutral-800 dark:hover:bg-neutral-700">
       <input
@@ -1188,6 +1176,7 @@ export default function FinancialWorksheetPage() {
       setContractId(String(row.contractId));
     }
     setFormOpen(true);
+    setFormBasis(tab);
     setErr("");
     setEditingRowId(String(row?.id || source?.id || ""));
     if (tab === "receipts") {
@@ -1284,6 +1273,7 @@ export default function FinancialWorksheetPage() {
   const toggleAddForm = () => {
     resetStatementForm();
     resetReceiptForm();
+    setFormBasis("");
     setErr("");
     setFormOpen((open) => !open);
   };
@@ -1488,7 +1478,7 @@ export default function FinancialWorksheetPage() {
               {[["statement", "صورت وضعیت"], ["receipts", "دریافتی"], ["payments", "پرداختی"]].map(([id, label]) => { const active = id === "statement" ? tab === "statement" : tab === "receipts" && contractKind === (id === "payments" ? "sub" : "main"); return <button key={id} type="button" aria-pressed={active} onClick={() => { setTab(id === "statement" ? "statement" : "receipts"); if (id !== "statement") { setContractKind(id === "payments" ? "sub" : "main"); setContractId(""); } setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>; })}
             </div></div>
           </div>}
-          {formOpen && <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(220px,.35fr)_minmax(0,1fr)_auto] lg:items-end">
+          {formOpen && <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(180px,.8fr)_minmax(0,1.5fr)_minmax(160px,.7fr)_auto] lg:items-end">
             <div className="min-w-0">
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
@@ -1497,7 +1487,7 @@ export default function FinancialWorksheetPage() {
                   setProjectId(e.target.value);
                   setContractId("");
                   setContractKind("main");
-                  setFormOpen(false);
+                  setFormBasis("");
                   resetStatementForm();
                   resetReceiptForm();
                 }}
@@ -1530,6 +1520,9 @@ export default function FinancialWorksheetPage() {
                       onClick={() => {
                         setContractKind(item.id);
                         setContractId("");
+                        setFormBasis("");
+                        resetStatementForm();
+                        resetReceiptForm();
                       }}
                       className={`h-11 min-w-[68px] rounded-xl border px-4 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${active ? item.activeClass : item.idleClass}`}
                     >
@@ -1540,7 +1533,7 @@ export default function FinancialWorksheetPage() {
                 </div>
               <select
                 value={contractId}
-                onChange={(e) => setContractId(e.target.value)}
+                onChange={(e) => { setContractId(e.target.value); setFormBasis(""); resetStatementForm(); resetReceiptForm(); }}
                 disabled={!projectId}
                 aria-label="شماره قرارداد"
                 className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white disabled:opacity-60"
@@ -1556,6 +1549,14 @@ export default function FinancialWorksheetPage() {
               </select>
               </div>
             </div>
+            <div className="min-w-0">
+              <label htmlFor="worksheet-basis" className="text-xs text-neutral-600 dark:text-white/60">بابت</label>
+              <select id="worksheet-basis" value={formBasis} disabled={!contractId} onChange={(e) => { const value = e.target.value; resetStatementForm(); resetReceiptForm(); setFormBasis(value); if (value) setTab(value); }} className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white">
+                <option value="">انتخاب بابت</option>
+                <option value="statement">صورت وضعیت</option>
+                <option value="receipts">{contractKind === "sub" ? "پرداختی" : "دریافتی"}</option>
+              </select>
+            </div>
             <div className="flex items-center gap-2 lg:pb-0" aria-label="خروجی کاربرگ مالی">
               <button type="button" onClick={exportWorksheetExcel} disabled={!projectId || exportingExcel} className="grid h-11 w-11 place-items-center rounded-xl border border-black/10 bg-white transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" title="خروجی اکسل" aria-label="خروجی اکسل">
                 <img src="/images/icons8-excel-50.png" alt="" className="h-5 w-5 object-contain" />
@@ -1566,25 +1567,8 @@ export default function FinancialWorksheetPage() {
             </div>
           </div>}
 
-          {formOpen && <div className="!mb-0 flex items-start gap-2">
-            <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
-              {worksheetTabs.map((item, index) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === item.id}
-                  onClick={() => setTab(item.id)}
-                  className={topTabBtnClass(tab === item.id, index, worksheetTabs.length)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>}
-
-          {formOpen && (
-            <div className="!mt-0 rounded-2xl rounded-t-none border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
+          {formOpen && formBasis && (
+            <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
               {(!projectId || !contractId) && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">{!projectId ? "برای ثبت، ابتدا پروژه را انتخاب کنید." : "برای ثبت در این پروژه، شماره قرارداد را انتخاب کنید."}</div>}
               {tab === "receipts" ? (
                 <>
