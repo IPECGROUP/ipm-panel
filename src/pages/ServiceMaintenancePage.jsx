@@ -207,7 +207,7 @@ function ServiceMaintenancePreview({ item, equipment, definitions, onClose }) {
 
   return createPortal(<div dir="rtl" className="fixed inset-0 z-[10000] flex items-end justify-center sm:items-center sm:p-3 md:p-6">
     <div className="absolute inset-0 bg-black/55 backdrop-blur-sm" onClick={onClose} />
-    <section role="dialog" aria-modal="true" aria-label="جزئیات سرویس و نگهداری" className="relative flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:h-[min(90vh,860px)] sm:w-[min(1680px,calc(100vw-32px))] sm:rounded-2xl">
+    <section role="dialog" aria-modal="true" aria-label="جزئیات سرویس و نگهداری" className="relative flex h-[calc(100dvh-env(safe-area-inset-top,0px))] w-full flex-col overflow-hidden rounded-t-2xl border border-black/10 bg-white text-neutral-900 shadow-2xl dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:h-[min(85vh,760px)] sm:w-[min(1400px,calc(100vw-32px))] sm:rounded-2xl">
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10">
         <h2 className="truncate text-sm font-bold sm:text-base">سرویس و نگهداری تجهیز</h2>
         <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-neutral-800 text-white shadow-sm transition hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200" aria-label="بستن"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
