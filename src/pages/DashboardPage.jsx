@@ -36,6 +36,7 @@ const shortcutOptions = [
   ["/finance/financial-management-dashboard", "داشبورد مدیریت مالی", "dashboard-12.svg"],
   ["/supply/request", "درخواست تأمین", "darkhast-tamin.svg"],
   ["/supply/dashboard", "داشبورد مدیریت تأمین", "dashboard-12.svg"],
+  ["/equipment/dashboard", "داشبورد مدیریت تجهیزات", "dashboard-12.svg"],
   ["/operations/equipment", "ماشین‌آلات و تجهیزات", "tanzimat.svg"],
   ["/operations/history", "سوابق عملیات", "gozareshrozane.svg"],
   ["/knowledge-management/project-lessons-learned", "درس‌آموخته‌ها", "darsamokhteha.svg"],

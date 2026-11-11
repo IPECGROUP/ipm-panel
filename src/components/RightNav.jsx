@@ -336,6 +336,7 @@ function RightNav() {
           items: [
             { to: "/equipment/identity", label: "شناسنامه تجهیزات", hint: "ثبت و مدیریت شناسنامه تجهیزات", icon: <NavIcon src="/images/icons/shenasnameh-taghizat.svg" /> },
             { to: "/equipment/service-maintenance", label: "سرویس و نگهداری", hint: "مدیریت سرویس و نگهداری تجهیزات", icon: <NavIcon src="/images/icons/service.svg" /> },
+            { to: "/equipment/dashboard", label: "داشبورد مدیریت تجهیزات", hint: "نمای کلی تجهیزات", icon: <IcProjectDashboard /> },
           ],
         },
       ],

@@ -154,6 +154,7 @@ export default function App() {
 
         <Route path="/equipment/identity" element={<EquipmentIdentityPage />} />
         <Route path="/equipment/service-maintenance" element={<ServiceMaintenancePage />} />
+        <Route path="/equipment/dashboard" element={<NavPlaceholderPage title="داشبورد مدیریت تجهیزات" icon="/images/icons/dashboard-12.svg" />} />
 
         <Route path="/executive-operations/daily-work-report" element={<NavPlaceholderPage title="گزارش کارکرد روزانه" />} />
         <Route path="/executive-operations/operation-history" element={<NavPlaceholderPage title="سوابق عملیات ها" />} />
