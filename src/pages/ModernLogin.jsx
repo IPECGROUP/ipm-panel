@@ -1,11 +1,10 @@
 import { useRef, useState } from "react";
-import { ArcaptchaWidget } from "arcaptcha-react";
+import CaptchaWidget from "../components/CaptchaWidget.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
 import { api } from "../utils/api.js";
 import { useAuth } from "../components/AuthProvider.jsx";
 import "./ModernLogin.css";
-import { captchaSiteKeyForHostname } from "../utils/captcha.js";
 
 export default function ModernLogin({ testMode = false }) {
   const { login } = useAuth();
@@ -13,10 +12,6 @@ export default function ModernLogin({ testMode = false }) {
   const location = useLocation();
   const captchaRef = useRef(null);
   const submittingRef = useRef(false);
-  const siteKey = captchaSiteKeyForHostname(window.location.hostname, {
-    external: import.meta.env.VITE_ARCAPTCHA_SITE_KEY,
-    internal: import.meta.env.VITE_ARCAPTCHA_SITE_KEY_INTERNAL,
-  });
   const [captchaToken, setCaptchaToken] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,10 +26,6 @@ export default function ModernLogin({ testMode = false }) {
     if (submittingRef.current) return;
     setError("");
     setSuccess(false);
-    if (!siteKey || !captchaToken) {
-      setError(siteKey ? "\u0644\u0637\u0641\u0627\u064b \u06a9\u067e\u0686\u0627 \u0631\u0627 \u062a\u06a9\u0645\u06cc\u0644 \u06a9\u0646\u06cc\u062f." : "\u0633\u0631\u0648\u06cc\u0633 \u06a9\u067e\u0686\u0627 \u062a\u0646\u0638\u06cc\u0645 \u0646\u0634\u062f\u0647 \u0627\u0633\u062a.");
-      return;
-    }
     submittingRef.current = true;
     setSubmitting(true);
     try {
@@ -42,14 +33,14 @@ export default function ModernLogin({ testMode = false }) {
         await api("/auth/test-login", { method: "POST", body: JSON.stringify({ username: username.trim(), password: password.trim(), captchaToken }) });
         setSuccess(true);
         setCaptchaToken("");
-        captchaRef.current?.resetCaptcha();
+        captchaRef.current?.reset?.();
       } else {
         await login(username.trim(), password.trim(), captchaToken, remember);
         navigate(location.state?.from?.pathname || "/", { replace: true });
       }
     } catch (cause) {
       setCaptchaToken("");
-      captchaRef.current?.resetCaptcha();
+      captchaRef.current?.reset?.();
       setError(cause?.message || "ورود انجام نشد. دوباره تلاش کنید.");
     } finally {
       submittingRef.current = false;
@@ -108,10 +99,10 @@ export default function ModernLogin({ testMode = false }) {
             </label>
 
             <div className="modern-login__captcha">
-              {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => { setCaptchaToken(token || ""); if (token) setError(""); }} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setError("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
+              <CaptchaWidget ref={captchaRef} onToken={setCaptchaToken} />
             </div>
             <label className="modern-login__remember"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /> <span>مرا به خاطر بسپار</span></label>
-            {success && <p className="modern-login__success" role="status">{"\u0648\u0631\u0648\u062f \u062a\u0633\u062a\u06cc \u0648 \u0627\u0639\u062a\u0628\u0627\u0631\u0633\u0646\u062c\u06cc \u06a9\u067e\u0686\u0627 \u0645\u0648\u0641\u0642 \u0628\u0648\u062f."}</p>}
+            {success && <p className="modern-login__success" role="status">{"\u0648\u0631\u0648\u062f \u062a\u0633\u062a\u06cc \u0645\u0648\u0641\u0642 \u0628\u0648\u062f."}</p>}
 
             {error && <p className="modern-login__error" role="alert">{error}</p>}
 

@@ -1,11 +1,10 @@
 // src/pages/LoginPage.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { ArcaptchaWidget } from "arcaptcha-react";
+import CaptchaWidget from "../components/CaptchaWidget.jsx";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../components/AuthProvider.jsx";
 import Card from "../components/ui/Card.jsx";
 import ModernLogin from "./ModernLogin.jsx";
-import { captchaSiteKeyForHostname } from "../utils/captcha.js";
 
 const APP_VERSION = "1.0.0";
 
@@ -15,10 +14,6 @@ function LegacyLogin({ onShowModern }) {
   const loc = useLocation();
   const captchaRef = useRef(null);
   const submittingRef = useRef(false);
-  const siteKey = captchaSiteKeyForHostname(window.location.hostname, {
-    external: import.meta.env.VITE_ARCAPTCHA_SITE_KEY,
-    internal: import.meta.env.VITE_ARCAPTCHA_SITE_KEY_INTERNAL,
-  });
   const [captchaToken, setCaptchaToken] = useState("");
 
   const [username, setUsername] = useState("");
@@ -44,10 +39,6 @@ function LegacyLogin({ onShowModern }) {
     e.preventDefault();
     if (submittingRef.current) return;
     setErr("");
-    if (!siteKey || !captchaToken) {
-      setErr(siteKey ? "لطفاً کپچا را تکمیل کنید." : "سرویس کپچا تنظیم نشده است.");
-      return;
-    }
     submittingRef.current = true;
     setSubmitting(true);
     try {
@@ -56,7 +47,7 @@ function LegacyLogin({ onShowModern }) {
     } catch (ex) {
       setErr(ex.message);
       setCaptchaToken("");
-      captchaRef.current?.resetCaptcha();
+      captchaRef.current?.reset?.();
     } finally {
       submittingRef.current = false;
       setSubmitting(false);
@@ -139,7 +130,7 @@ function LegacyLogin({ onShowModern }) {
               </div>
 
               <div className="flex min-h-11 items-center justify-center text-xs text-neutral-600 dark:text-white/80">
-                {siteKey ? <ArcaptchaWidget ref={captchaRef} site-key={siteKey} callback={(token) => { setCaptchaToken(token || ""); if (token) setErr(""); }} expired_callback={() => setCaptchaToken("")} script_loading_failed_callback={() => setErr("بارگذاری کپچا انجام نشد.")} /> : "کلید کپچا تنظیم نشده است."}
+              <CaptchaWidget ref={captchaRef} onToken={setCaptchaToken} />
               </div>
 
               {err && (
