@@ -585,7 +585,7 @@ function RightNav() {
           className={[
             "mt-5 min-h-0 flex-1",
             expanded
-              ? "ipm-right-nav-scroll space-y-4 overflow-y-auto overflow-x-visible px-0.5"
+              ? "ipm-right-nav-scroll space-y-1.5 overflow-y-auto overflow-x-visible px-0.5"
               : "space-y-1.5 overflow-visible",
           ].join(" ")}
         >
