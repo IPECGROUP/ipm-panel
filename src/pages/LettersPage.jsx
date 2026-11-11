@@ -1079,7 +1079,7 @@ const canEditSecretariatNo = useMemo(() => {
     .map((value) => String(value || "").trim().toLowerCase())
     .filter(Boolean);
 
-  return ids.includes("rastegar");
+  return ids.includes("rastegar") || ids.includes("saeidi");
 }, [user]);
 
 // ===== Filters (page-level) =====
