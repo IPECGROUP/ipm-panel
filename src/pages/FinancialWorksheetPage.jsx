@@ -501,6 +501,8 @@ export default function FinancialWorksheetPage() {
   const [receiptTypeRows, setReceiptTypeRows] = useState([{ id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
   const [receiptJalaliDate, setReceiptJalaliDate] = useState("");
   const [receiptReceivedAmount, setReceiptReceivedAmount] = useState("");
+  const [receiptVatAmount, setReceiptVatAmount] = useState("");
+  const [receiptVatCurrencyId, setReceiptVatCurrencyId] = useState("");
   const [receiptCurrencyId, setReceiptCurrencyId] = useState("");
   const [receiptCurrencySourceId, setReceiptCurrencySourceId] = useState("");
   const [receiptRialDescription, setReceiptRialDescription] = useState("");
@@ -1109,14 +1111,14 @@ export default function FinancialWorksheetPage() {
     [isSelectedSubContract],
   );
   const worksheetExportData = () => {
-    const headers = ["ردیف", "پروژه", "سطح", "بابت", "موضوع قرارداد", "شماره قرارداد", "شماره", "تاریخ", "مبلغ", "ارز", "منشأ", "VAT"];
+    const headers = ["ردیف", "پروژه", "سطح", "بابت", "موضوع قرارداد", "شماره قرارداد", "شماره", "تاریخ", "مبلغ", "ارز", "منشأ", "VAT", "ارز VAT"];
     const rows = sortedRows.map((row) => {
       const contract = contractById.get(String(row.contractId));
       const parent = contractById.get(String(contract?.parentContractId || contract?.parent_contract_id || ""));
       const project = projects.find((item) => String(item.id) === String(row.raw?.project_id ?? row.raw?.projectId));
       const level = documentTypeForContract(contract);
       const receipt = row.raw?.kind === "receipts";
-      return [rowNumberById.get(String(row.id)), project ? projectLabel(project) : "", contract ? documentTypeLabel(level) : "", receipt ? (level === "sub" ? "پرداختی" : "دریافتی") : "صورت وضعیت", contract?.general?.contractSubject || parent?.general?.contractSubject || row.raw?.contract_subject || "", row.raw?.contract_no || contractNoForRow(contract), row.number, row.date, receipt ? row.receiptAmount : row.grossAmount, row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال", row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))), receipt ? "" : row.vatAmount];
+      return [rowNumberById.get(String(row.id)), project ? projectLabel(project) : "", contract ? documentTypeLabel(level) : "", receipt ? (level === "sub" ? "پرداختی" : "دریافتی") : "صورت وضعیت", contract?.general?.contractSubject || parent?.general?.contractSubject || row.raw?.contract_subject || "", row.raw?.contract_no || contractNoForRow(contract), row.number, row.date, receipt ? row.receiptAmount : row.grossAmount, row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال", row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))), row.raw?.vat_amount == null ? "" : row.vatAmount, receipt && row.raw?.vat_amount != null ? (row.raw?.vat_currency_label || readItemLabel(currencyById.get(String(row.raw?.vat_currency_id))) || "ریال") : ""];
     });
     return { headers, rows };
   };
@@ -1191,6 +1193,8 @@ export default function FinancialWorksheetPage() {
       })));
       setReceiptJalaliDate(String(source?.jalali_date ?? row?.date ?? ""));
       setReceiptReceivedAmount(formatAmountInput(source?.received_amount ?? row?.receiptAmount ?? ""));
+      setReceiptVatAmount(source?.vat_amount == null ? "" : formatAmountInput(source.vat_amount));
+      setReceiptVatCurrencyId(String(source?.vat_currency_id ?? ""));
       setReceiptCurrencyId(String(source?.currency_id ?? row?.currencyId ?? ""));
       setReceiptCurrencySourceId(String(source?.currency_source_id ?? row?.currencySourceId ?? ""));
       setReceiptRialDescription(String(source?.rial_description ?? row?.rialDescription ?? ""));
@@ -1264,6 +1268,8 @@ export default function FinancialWorksheetPage() {
     setReceiptTypeRows([{ id: Date.now() + Math.random(), type: "", number: "", otherDescription: "" }]);
     setReceiptJalaliDate("");
     setReceiptReceivedAmount("");
+    setReceiptVatAmount("");
+    setReceiptVatCurrencyId("");
     setReceiptCurrencyId("");
     setReceiptCurrencySourceId("");
     setReceiptRialDescription("");
@@ -1417,6 +1423,9 @@ export default function FinancialWorksheetPage() {
       gregorian_date: receiptGregorianDate,
       received_amount: receiptReceivedAmountNumber,
       received_amount_foreign: isRialCurrency ? 0 : receiptReceivedAmountNumber,
+      vat_amount: receiptVatAmount === "" ? null : parseAmountInput(receiptVatAmount),
+      vat_currency_id: receiptVatCurrencyId,
+      vat_currency_label: readItemLabel(currencyById.get(String(receiptVatCurrencyId))) || "ریال",
       currency_id: receiptCurrencyId,
       currency_label: selectedReceiptCurrencyLabel || "ریال",
       currency_source_id: receiptCurrencySourceId,
@@ -1729,7 +1738,7 @@ export default function FinancialWorksheetPage() {
 
               {tab === "receipts" ? (
                 <>
-                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(100px,.385fr)_minmax(125px,.48fr)_minmax(90px,.315fr)_minmax(240px,1fr)] xl:justify-start xl:items-start">
+                  <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(100px,.385fr)_minmax(125px,.48fr)_minmax(90px,.315fr)_minmax(125px,.48fr)_minmax(180px,1fr)] xl:justify-start xl:items-start">
                     <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">{receiptUi.date}</label>
                       <div className="mt-1">
@@ -1777,6 +1786,16 @@ export default function FinancialWorksheetPage() {
                           return <option key={id} value={id}>{readItemLabel(it) || id}</option>;
                         })}
                       </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-neutral-600 dark:text-white/60">مبلغ VAT</label>
+                      <div className="relative mt-1 min-w-0">
+                        <input value={receiptVatAmount} onChange={(e) => setReceiptVatAmount(formatAmountInput(e.target.value))} className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 pl-[72px] text-sm text-neutral-900 outline-none transition focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white" type="text" dir="ltr" placeholder="۰" />
+                        <select aria-label="ارز مبلغ VAT" title="انتخاب ارز" value={receiptVatCurrencyId} onChange={(e) => setReceiptVatCurrencyId(e.target.value)} className="absolute left-1 top-1 h-8 !w-[64px] cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10">
+                          <option value="" className="bg-white text-neutral-900">ریال</option>
+                          {(currencyItems || []).filter((it) => !isRialCurrencyItem(it)).map((it) => { const id = readItemId(it); return id ? <option key={id} value={id} className="bg-white text-neutral-900">{readItemLabel(it) || id}</option> : null; })}
+                        </select>
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs text-neutral-600 dark:text-white/60">توضیحات</label>
@@ -2003,7 +2022,7 @@ export default function FinancialWorksheetPage() {
                             <TD>{subject}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "—")}</span></TD>
                             <TD>{toFaDigits(row.number || "—")}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.date || "—")}</span></TD>
                             <TD>{toFaDigits(formatMoney(isReceipt ? row.receiptAmount : row.grossAmount))}</TD><TD>{row.raw?.currency_label || readItemLabel(currencyById.get(String(row.currencyId))) || "ریال"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))) || "—"}</span></TD>
-                            <TD>{!isReceipt ? toFaDigits(formatMoney(row.vatAmount)) : "—"}</TD><TD>—</TD>
+                            <TD>{row.raw?.vat_amount != null ? toFaDigits(formatMoney(row.vatAmount)) : "—"}</TD><TD>{isReceipt && row.raw?.vat_amount != null ? (row.raw?.vat_currency_label || readItemLabel(currencyById.get(String(row.raw?.vat_currency_id))) || "ریال") : "—"}</TD>
                           </TR>;
                         })}
                       </tbody>
