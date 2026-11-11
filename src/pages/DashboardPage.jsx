@@ -370,11 +370,8 @@ export default function DashboardPage() {
         <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تنخواه گردان" stages={["مدیر پروژه", "مدیریت", "مالی"]} timings={tenkhahReviewTimings} hue={chartHue("/finance/tenkhah")} />
       </div>
 
-      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 [&>*]:min-w-0">
+      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 [&>*]:min-w-0">
         <HomeTopDailyLogUsers rows={topDailyLogUsers} loading={dashboardWidgetsLoading} />
-      </div>
-
-      <div className="mt-3 min-w-0">
         <SupplyExpertsPanel rows={supplyExperts} />
       </div>
 
