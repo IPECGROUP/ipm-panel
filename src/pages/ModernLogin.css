@@ -3,7 +3,8 @@
 .modern-login__brand{display:flex;justify-content:center;margin-bottom:16px}
 .modern-login__mark{position:relative;width:180px;height:102px;overflow:hidden}
 .modern-login__mark img{position:absolute;left:50%;top:50%;width:212%;max-width:none;transform:translate(-50%,-49.4%)}
-.modern-login__panel{padding:18px clamp(14px,4vw,24px) 20px;text-align:center;border:1px solid rgba(255,255,255,.65);border-radius:28px;background:linear-gradient(135deg,rgba(255,255,255,.24),rgba(231,241,250,.12));box-shadow:inset 0 1px 2px rgba(255,255,255,.8),inset 0 -1px 3px rgba(110,139,168,.2),0 8px 28px rgba(0,25,62,.25);backdrop-filter:blur(8px) saturate(1.6);-webkit-backdrop-filter:blur(8px) saturate(1.6)}
+.modern-login__panel{position:relative;isolation:isolate;padding:18px clamp(14px,4vw,24px) 20px;text-align:center;border-radius:28px}
+.modern-login__panel .modern-login__glass{--lg-glass:rgba(231,241,250,.12);--lg-blur:8px;position:absolute;inset:0;z-index:-1;pointer-events:none;border:1px solid rgba(255,255,255,.65);border-radius:inherit;box-shadow:inset 0 1px 2px rgba(255,255,255,.8),inset 0 -1px 3px rgba(110,139,168,.2),0 8px 28px rgba(0,25,62,.25)}
 .modern-login__panel h1{margin:0;font-size:clamp(16px,3vw,19px);line-height:1.6;font-weight:700}
 .modern-login__accent{width:100px;height:4px;margin:7px auto 14px;border-radius:4px;background:#ff8a24;box-shadow:0 2px 6px rgba(255,135,30,.4)}
 .modern-login__form{display:grid;gap:10px}

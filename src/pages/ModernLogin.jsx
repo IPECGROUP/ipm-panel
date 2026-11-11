@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import CaptchaWidget from "../components/CaptchaWidget.jsx";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from "lucide-react";
+import { Glass } from "glisse";
 import { api } from "../utils/api.js";
 import { useAuth } from "../components/AuthProvider.jsx";
 import "./ModernLogin.css";
@@ -56,6 +57,7 @@ export default function ModernLogin({ testMode = false }) {
         </header>
 
         <section className="modern-login__panel" aria-labelledby="modern-login-title">
+          <Glass className="modern-login__glass" aria-hidden="true" />
           <h1 id="modern-login-title">سامانه فرآیندهای یکپارچه (IPS)</h1><div className="modern-login__accent" aria-hidden="true" />
 
           <form onSubmit={submit} className="modern-login__form">
