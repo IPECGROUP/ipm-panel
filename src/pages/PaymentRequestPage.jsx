@@ -3101,8 +3101,6 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
           <main className="min-w-0 space-y-4">
             <div className="space-y-4">
               <PreviewSection title="جزئیات درخواست پرداخت" flush>
-                <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-2 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:divide-white/10 dark:md:[&>*+*]:border-white/15">
-                  <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                   <PreviewRow compact editing={canEditRequest || canReviewPlanning} colon leader={!canEditRequest && !canReviewPlanning} label="کد بودجه" value={canReviewPlanning ? (
                     <select className={inputClass} value={reviewBudgetCode} disabled={!reviewProjectId || reviewBudgetLoading || actionBusy} onChange={(event) => setReviewBudgetCode(event.target.value)}>
                       <option value="">{reviewBudgetLoading ? "در حال دریافت..." : "انتخاب کد بودجه"}</option>
@@ -3117,8 +3115,8 @@ export function PaymentPreview({ item, projects, letters, supplyRequests, curren
                         return <option key={code || row.id} value={code}>{code}{desc ? ` - ${desc}` : ""}</option>;
                       })}
                     </select>
-                  ) : (item.budgetCode ? <span className="inline-flex max-w-full items-center gap-1.5 font-sans"><bdi dir="ltr">{toFa(item.budgetCode)}</bdi>{budgetName ? <span className="min-w-0 truncate">- {budgetName}</span> : null}</span> : "—")} />
-                </div>
+                  ) : (item.budgetCode ? <span className="inline-flex max-w-full flex-wrap items-center gap-1.5 font-sans"><bdi dir="ltr">{toFa(item.budgetCode)}</bdi>{budgetName ? <span className="min-w-0 break-words">- {budgetName}</span> : null}</span> : "—")} />
+                <PreviewRow compact editing={canEditRequest} colon label="موضوع درخواست" value={canEditRequest ? <input className={inputClass} value={editForm.title} onChange={(event) => setEditField("title", event.target.value)} /> : (item.title || "—")} />
                 <PreviewRow compact editing={canEditRequest} colon label="شرح درخواست" value={canEditRequest ? <textarea className={`${inputClass} h-[68px] min-h-[68px] resize-y py-1.5 leading-6`} value={editForm.description} onChange={(event) => setEditField("description", event.target.value)} /> : (item.description || "—")} />
                 <div className="grid grid-cols-1 divide-y divide-black/10 md:grid-cols-3 md:divide-y-0 md:[&>*+*]:border-r md:[&>*+*]:border-black/20 dark:md:[&>*+*]:border-white/15 dark:divide-white/10">
                   <PreviewRow compact editing={canEditReturnedAmount} colon leader={!canEditReturnedAmount} label="مبلغ درخواست" ltr={!canEditReturnedAmount} value={canEditReturnedAmount ? <div className="flex items-center gap-2"><MoneyInput decimals={editForm.currencyTypeId ? 2 : 0} value={editForm.amount} onChange={(value) => setEditField("amount", value)} /><select aria-label="ارز مبلغ درخواست" className={`${inputClass} !w-24 shrink-0`} value={editForm.currencyTypeId} onChange={(event) => setEditForm((old) => ({ ...old, currencyTypeId: event.target.value, amount: event.target.value ? decimalMoney(old.amount) : money(String(old.amount).split(".")[0]), exchangeRate: event.target.value ? old.exchangeRate : "" }))}><option value="">ریال</option>{currencyTypes.filter((currency) => currencyOptionKey(currency) !== "rial").map((currency) => <option key={currency.id} value={currency.id}>{itemLabel(currency)}</option>)}</select></div> : <span dir="ltr" className="inline-flex items-center gap-1 font-sans"><span>{currencyName}</span><span>{toFa(paymentRequestAmount(item.amount, showCurrencyDecimals))}</span></span>} />

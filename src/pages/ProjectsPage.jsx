@@ -451,6 +451,18 @@ function ProjectsPage() {
                    dark:bg-neutral-900 dark:border-neutral-800"
         dir="rtl"
       >
+        <div className="mx-[15px] mt-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
+          <label className="block text-sm text-black/70 dark:text-neutral-300">
+            جست‌وجو
+            <input
+              value={query}
+              onChange={(event) => { setQuery(event.target.value); setPage(0); }}
+              className="mt-1 h-10 w-full rounded-xl border border-black/15 bg-white px-3 text-sm text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
+              placeholder="جستجو در کد یا نام پروژه..."
+            />
+          </label>
+        </div>
+
         {/* فرم (هم‌راستا با جدول: px دقیقاً 15px) */}
         <form onSubmit={submitAdd} className="px-[15px] py-4">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] items-end gap-3">
@@ -495,18 +507,6 @@ function ProjectsPage() {
 
           {err && <div className="text-sm text-red-600 dark:text-red-400 mt-2">{err}</div>}
         </form>
-
-        <div className="mx-[15px] mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
-          <label className="block text-sm text-black/70 dark:text-neutral-300">
-            جست‌وجو
-            <input
-              value={query}
-              onChange={(event) => { setQuery(event.target.value); setPage(0); }}
-              className="mt-1 h-10 w-full rounded-xl border border-black/15 bg-white px-3 text-sm text-black outline-none focus:ring-2 focus:ring-black/10 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:ring-neutral-600/50"
-              placeholder="جستجو در کد یا نام پروژه..."
-            />
-          </label>
-        </div>
 
         {/* جدول */}
         <TableWrap>

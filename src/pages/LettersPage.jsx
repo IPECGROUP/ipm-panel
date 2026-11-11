@@ -6906,13 +6906,13 @@ const rowBg = normalRowBg;
                               )}
                             </div>
 
-                            <div className="mt-2 flex flex-col gap-2">
+                            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
                               <a
                                 href={currentViewUrl || "#"}
                                 target="_blank"
                                 rel="noreferrer"
                                 className={
-                                  "h-11 rounded-xl inline-flex items-center justify-center gap-2 transition " +
+                                  "h-10 rounded-xl inline-flex items-center justify-center gap-2 px-5 transition " +
                                   (currentViewUrl
                                     ? theme === "dark"
                                       ? "bg-white/10 text-white hover:bg-white/15"
@@ -6933,7 +6933,7 @@ const rowBg = normalRowBg;
                                 rel="noreferrer"
                                 download
                                 className={
-                                  "h-11 rounded-xl inline-flex items-center justify-center gap-2 transition " +
+                                  "h-10 rounded-xl inline-flex items-center justify-center gap-2 px-5 transition " +
                                   (currentViewUrl
                                     ? theme === "dark"
                                       ? "bg-white text-black hover:bg-white/90"
@@ -6950,7 +6950,7 @@ const rowBg = normalRowBg;
                               </a>
 
                               {currentViewName ? (
-                                <div dir="auto" className={theme === "dark" ? "text-[11px] text-white/60 text-center [overflow-wrap:anywhere] [unicode-bidi:plaintext]" : "text-[11px] text-neutral-600 text-center [overflow-wrap:anywhere] [unicode-bidi:plaintext]"}>
+                                <div dir="auto" className={theme === "dark" ? "w-full text-[11px] text-white/60 text-center [overflow-wrap:anywhere] [unicode-bidi:plaintext]" : "w-full text-[11px] text-neutral-600 text-center [overflow-wrap:anywhere] [unicode-bidi:plaintext]"}>
                                   {currentViewName}
                                 </div>
                               ) : null}
