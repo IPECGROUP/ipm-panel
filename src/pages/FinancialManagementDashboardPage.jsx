@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
 import { PaymentPreview, TenkhahPreviewV4 } from "./PaymentRequestPage.jsx";
+import { ShareChart } from "./KnowledgeManagementDashboardPage.jsx";
 
 const PAGE_ICON = "/images/icons/dashboard-12.svg";
 
@@ -961,6 +962,11 @@ function FinancialReportPanel({ normalRequests, tenkhahRequests, projects, userI
   );
 }
 
+function UnsettledTenkhahPanel({ rows }) {
+  const total = rows.reduce((sum, row) => sum + row.unsettled, 0);
+  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><div className="mx-auto w-full max-w-[480px]"><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} large empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></div></Card>;
+}
+
 function EmptyPanel() {
   return (
     <Card className="min-h-[180px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800" />
@@ -1023,6 +1029,17 @@ export default function FinancialManagementDashboardPage() {
     );
     return timingGroups;
   }, [normalRequests]);
+  const unsettledTenkhah = useMemo(() => {
+    const people = new Map();
+    tenkhahRequests.forEach((item) => {
+      const key = String(item?.beneficiaryUserId ?? item?.createdById ?? item?.beneficiaryName ?? item?.requesterName ?? "");
+      if (!key) return;
+      const current = people.get(key) || { key, label: String(item?.beneficiaryName ?? item?.requesterName ?? item?.beneficiaryUsername ?? `کاربر #${key}`).trim(), unsettled: 0 };
+      current.unsettled += amountOf(item?.unsettledBalance);
+      people.set(key, current);
+    });
+    return [...people.values()].filter((person) => person.unsettled > 0).sort((a, b) => b.unsettled - a.unsettled || a.label.localeCompare(b.label, "fa"));
+  }, [tenkhahRequests]);
   const rankedTenkhah = useMemo(
     () => tenkhahRankings(tenkhahRequests),
     [tenkhahRequests],
@@ -1099,6 +1116,9 @@ export default function FinancialManagementDashboardPage() {
               "اتمام‌یافته",
             ]}
           />
+        </div>
+        <div className="mt-3">
+          <UnsettledTenkhahPanel rows={unsettledTenkhah} />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
           <TimingPanel timings={operationTimings} />

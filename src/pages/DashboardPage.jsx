@@ -7,7 +7,7 @@ import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
 import { countExpertRequests, SupplyExpertsPanel } from "./SupplyManagementDashboardPage.jsx";
-import { KnowledgeDashboardWidgets, ShareChart } from "./KnowledgeManagementDashboardPage.jsx";
+import { KnowledgeDashboardWidgets } from "./KnowledgeManagementDashboardPage.jsx";
 
 const activityViewers = new Set(["marandi", "nouri"]);
 const formatDateTime = (value) => value ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "—";
@@ -52,10 +52,7 @@ const shortcutOptions = [
 const limitedShortcuts = new Set(["/finance/payment-request", "/finance/tenkhah", "/supply/request"]);
 const shortcutHue = (index) => Math.round((42 + index * 137.508) % 360);
 const faNumber = (value) => Number(value || 0).toLocaleString("fa-IR");
-const amountOf = (value) => {
-  const parsed = Number(String(value ?? "").replace(/[،,\s]/g, ""));
-  return Number.isFinite(parsed) ? parsed : 0;
-};
+
 const historyOf = (item) => Array.isArray(item?.historyJson ?? item?.history ?? item?.workflowHistory) ? (item.historyJson ?? item.history ?? item.workflowHistory) : [];
 const timestampOf = (entry) => {
   const value = Date.parse(String(entry?.at || entry?.createdAt || ""));
@@ -136,10 +133,7 @@ function HomeReviewTiming({ title, stages, timings, hue }) {
   </Card>;
 }
 
-function HomeUnsettledTenkhah({ rows, loading }) {
-  const total = rows.reduce((sum, row) => sum + row.unsettled, 0);
-  return <Card className="min-h-[350px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"><div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از مانده تسویه‌نشده</span></div><div className="mx-auto w-full max-w-[480px]"><ShareChart rows={rows.map((row) => ({ id: row.key, name: row.label, count: row.unsettled }))} total={total} totalLabel="کل مانده تسویه‌نشده" unit="ریال" showValues={false} large empty={loading ? "در حال دریافت اطلاعات..." : "مانده تسویه‌نشده‌ای وجود ندارد."} /></div></Card>;
-}
+
 
 const activityDateFormatters = Object.fromEntries(["persian", "gregory"].map((calendar) => [calendar, new Intl.DateTimeFormat(`en-US-u-ca-${calendar}-nu-latn`, { timeZone: "Asia/Tehran", year: "numeric", month: "2-digit", day: "2-digit" })]));
 const activityDay = (value, calendar = "persian") => {
@@ -323,17 +317,7 @@ export default function DashboardPage() {
   }, [normalRequests]);
   const supplyReviewTimings = useMemo(() => workflowStageTimings(supplyRequests, ["project_manager", "commercial"], "roleKey", "approved"), [supplyRequests]);
   const tenkhahReviewTimings = useMemo(() => workflowStageTimings(tenkhahRequests, ["project_manager", "management", "finance"], "stage", "approve"), [tenkhahRequests]);
-  const unsettledTenkhah = useMemo(() => {
-    const people = new Map();
-    tenkhahRequests.forEach((item) => {
-      const key = String(item?.beneficiaryUserId ?? item?.createdById ?? item?.beneficiaryName ?? item?.requesterName ?? "");
-      if (!key) return;
-      const current = people.get(key) || { key, label: String(item?.beneficiaryName ?? item?.requesterName ?? item?.beneficiaryUsername ?? `کاربر #${key}`).trim(), unsettled: 0 };
-      current.unsettled += amountOf(item?.unsettledBalance);
-      people.set(key, current);
-    });
-    return [...people.values()].filter((person) => person.unsettled > 0).sort((a, b) => b.unsettled - a.unsettled || a.label.localeCompare(b.label, "fa"));
-  }, [tenkhahRequests]);
+
   const supplyExperts = useMemo(() => supplyUsers.map((person) => {
     const id = Number(person.id);
     const owned = supplyRequests.filter((item) => Number(item.currentAssigneeUserId) === id);
@@ -386,9 +370,8 @@ export default function DashboardPage() {
         <HomeReviewTiming title="مدت زمان بررسی درخواست‌های تنخواه گردان" stages={["مدیر پروژه", "مدیریت", "مالی"]} timings={tenkhahReviewTimings} hue={chartHue("/finance/tenkhah")} />
       </div>
 
-      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 [&>*]:min-w-0">
+      <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 [&>*]:min-w-0">
         <HomeTopDailyLogUsers rows={topDailyLogUsers} loading={dashboardWidgetsLoading} />
-        <HomeUnsettledTenkhah rows={unsettledTenkhah} loading={dashboardWidgetsLoading} />
       </div>
 
       <div className="mt-3 min-w-0">
