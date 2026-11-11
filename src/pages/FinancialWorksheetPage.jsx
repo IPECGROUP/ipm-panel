@@ -1,6 +1,7 @@
 // کاربرگ مالی
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
@@ -1471,7 +1472,7 @@ export default function FinancialWorksheetPage() {
               </span>
             </div>
             <button type="button" onClick={toggleAddForm} className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${formOpen ? "ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" : "border border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن" : "افزودن"} aria-label={formOpen ? "بستن" : "افزودن"}>
-              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className={`h-5 w-5 ${formOpen ? "dark:invert" : "invert"}`} />
+              {formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
             </button>
           </div>
 
@@ -1487,7 +1488,7 @@ export default function FinancialWorksheetPage() {
               {[["statement", "صورت وضعیت"], ["receipts", "دریافتی"], ["payments", "پرداختی"]].map(([id, label]) => { const active = id === "statement" ? tab === "statement" : tab === "receipts" && contractKind === (id === "payments" ? "sub" : "main"); return <button key={id} type="button" aria-pressed={active} onClick={() => { setTab(id === "statement" ? "statement" : "receipts"); if (id !== "statement") { setContractKind(id === "payments" ? "sub" : "main"); setContractId(""); } setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>; })}
             </div></div>
           </div>}
-          <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(220px,.35fr)_minmax(0,1fr)_auto] lg:items-end">
+          {formOpen && <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(220px,.35fr)_minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
@@ -1563,7 +1564,7 @@ export default function FinancialWorksheetPage() {
                 <img src="/images/icons/print.svg" alt="" className="h-5 w-5 dark:invert" />
               </button>
             </div>
-          </div>
+          </div>}
 
           {formOpen && <div className="!mb-0 flex items-start gap-2">
             <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
