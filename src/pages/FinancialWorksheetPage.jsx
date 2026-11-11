@@ -457,6 +457,9 @@ export default function FinancialWorksheetPage() {
   const [exportingExcel, setExportingExcel] = useState(false);
 
   const [tab, setTab] = useState("statement");
+  const [filterQuery, setFilterQuery] = useState("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
@@ -745,7 +748,17 @@ export default function FinancialWorksheetPage() {
     };
   }, [api, contractId, projectId, tab, normalizeRows]);
 
-  const filteredRows = worksheetRows;
+  const filteredRows = worksheetRows.filter((row) => {
+    const contract = contractById.get(String(row.contractId));
+    const kind = documentTypeForContract(contract);
+    if (kind && kind !== contractKind) return false;
+    const date = toEnDigits(row.date || "").replace(/\D/g, "");
+    const from = toEnDigits(filterFromDate).replace(/\D/g, "");
+    const to = toEnDigits(filterToDate).replace(/\D/g, "");
+    if ((from && (!date || date < from)) || (to && (!date || date > to))) return false;
+    const query = toEnDigits(filterQuery).trim().toLowerCase();
+    return !query || toEnDigits(JSON.stringify([row.raw, contract, selectedProject])).toLowerCase().includes(query);
+  });
   const worksheetTotals = useMemo(() => {
     return filteredRows.reduce(
       (acc, row) => {
@@ -1463,6 +1476,17 @@ export default function FinancialWorksheetPage() {
           </div>
 
           <div className="space-y-4">
+          {!formOpen && <div className="space-y-2 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]">
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="w-full text-xs font-medium text-neutral-600 dark:text-neutral-300 md:min-w-[280px] md:flex-1">??? ? ??<input value={filterQuery} onChange={(e) => { setFilterQuery(e.target.value); setPage(0); }} placeholder="????? ?? ?????? ???????? ????? ? ..." className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-neutral-900 outline-none dark:border-white/15 dark:bg-neutral-900 dark:text-white" /></label>
+              <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">??</div><JalaliPopupDatePicker value={filterFromDate} onChange={(value) => { setFilterFromDate(value); setPage(0); }} /></div>
+              <div className="w-[calc(50%-0.25rem)] md:w-36"><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">??</div><JalaliPopupDatePicker value={filterToDate} onChange={(value) => { setFilterToDate(value); setPage(0); }} /></div>
+            </div>
+            <div><div className="mb-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">?????</div><div className="flex flex-wrap gap-2">
+              {[["main", "????"], ["sub", "????"]].map(([id, label]) => <button key={id} type="button" aria-pressed={contractKind === id} onClick={() => { setContractKind(id); setContractId(""); setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${contractKind === id ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>)}
+              {[["statement", "???? ?????"], ["receipts", "???????"], ["payments", "???????"]].map(([id, label]) => { const active = id === "statement" ? tab === "statement" : tab === "receipts" && contractKind === (id === "payments" ? "sub" : "main"); return <button key={id} type="button" aria-pressed={active} onClick={() => { setTab(id === "statement" ? "statement" : "receipts"); if (id !== "statement") { setContractKind(id === "payments" ? "sub" : "main"); setContractId(""); } setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${active ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>; })}
+            </div></div>
+          </div>}
           <div className="grid gap-3 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06] lg:grid-cols-[minmax(220px,.35fr)_minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
@@ -1541,7 +1565,7 @@ export default function FinancialWorksheetPage() {
             </div>
           </div>
 
-          <div className="!mb-0 flex items-start gap-2">
+          {formOpen && <div className="!mb-0 flex items-start gap-2">
             <div className={tabStripCls} role="tablist" aria-label="بخش‌های کاربرگ مالی">
               {worksheetTabs.map((item, index) => (
                 <button
@@ -1556,7 +1580,7 @@ export default function FinancialWorksheetPage() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
 
           {formOpen && (
             <div className="!mt-0 rounded-2xl rounded-t-none border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
@@ -1964,93 +1988,37 @@ export default function FinancialWorksheetPage() {
             </div>
           )}
 
-          {projectId && <div className="!mt-0">
+          <div className="!mt-0">
           <TableWrap>
             <div className={tablePreset.outer}>
               <div className={tablePreset.innerPad}>
                 <div className={tablePreset.frame + " shadow-sm"}>
                   <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
-                    <table className={tablePreset.table + " table-fixed text-[13px] [&_th]:!py-2 [&_td]:!py-0"} dir="rtl">
-                      <THead>
-                        {tab === "receipts" ? (
-                          <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
-                            <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
-                            <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
-                            <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="#" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
-                            <TH className={`w-36 ${tablePreset.th}`}><SortableWorksheetHeader label={receiptUi.date} field="date" sort={rowSort} onSort={changeRowSort} /></TH>
-                            <TH className={`w-48 ${tablePreset.th}`}>بابت</TH>
-                            <TH className={`w-44 ${tablePreset.th}`}>{receiptUi.amount}</TH>
-                            <TH className={`relative w-44 !pl-10 ${tablePreset.th}`}>{receiptUi.foreignAmount}<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
-                          </tr>
-                        ) : (
-                          <tr className={tablePreset.headRow + " sticky top-0 z-10"}>
-                            <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه" /></TH>
-                            <TH className={`w-5 ${tablePreset.th}`} aria-label="خوانده‌نشده" />
-                            <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="#" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
-                            <TH className={`w-32 ${tablePreset.th}`}>شماره صورت وضعیت</TH>
-                            <TH className={`w-32 ${tablePreset.th}`}><SortableWorksheetHeader label="تاریخ" field="date" sort={rowSort} onSort={changeRowSort} /></TH>
-                            <TH className={`w-40 ${tablePreset.th}`}>مبلغ ناخالص</TH>
-                            <TH className={`w-32 ${tablePreset.th}`}>VAT</TH>
-                            <TH className={`relative w-32 !pl-10 ${tablePreset.th}`}>ارز منشا<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
-                          </tr>
-                        )}
-                      </THead>
-
-                      <tbody className={`${tablePreset.body} [&_tr]:h-9 [&_td]:!py-0`}>
-                        {tab === "receipts" ? (
-                          rowsLoading ? (
-                            <TR><td colSpan={7} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
-                          ) : !pageRows.length ? (
-                            <TR><td colSpan={7} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR>
-                          ) : (
-                            <>
-                              <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
-                                <TD /><TD />
-                                <TD>-</TD>
-                                <TD /><TD>جمع</TD>
-                                <TD>{toFaDigits(formatMoney(sumReceiptAmount))}</TD>
-                                <TD>{toFaDigits(formatMoney(sumReceiptForeignAmount))}</TD>
-                              </TR>
-                              {pageRows.map((row) => (
-                                <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
-                                  <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
-                                  <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
-                                  <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD>
-                                  <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
-                                  <TD title={receiptBasisLabel(row)}>{receiptBasisLabel(row)}</TD>
-                                  <TD>{toFaDigits(formatMoney(row.receiptAmount || 0))}</TD>
-                                  <TD>{toFaDigits(formatMoney(row.receiptForeignAmount || 0))}</TD>
-                                </TR>
-                              ))}
-                            </>
-                          )
-                        ) : rowsLoading ? (
-                          <TR><td colSpan={8} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR>
-                        ) : !pageRows.length ? (
-                          <TR><td colSpan={8} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR>
-                        ) : (
-                          <>
-                            <TR className="text-center bg-black/[0.04] font-semibold dark:bg-white/10">
-                              <TD /><TD />
-                              <TD>-</TD><TD>-</TD><TD>جمع</TD>
-                              <TD>{toFaDigits(formatMoney(sumGross))}</TD>
-                              <TD>{toFaDigits(formatMoney(sumVat))}</TD>
-                              <TD>—</TD>
-                            </TR>
-                            {pageRows.map((row) => (
-                              <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} aria-label={`نمایش جزئیات ${row.number || row.date || row.id}`} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-black dark:hover:bg-white/15 dark:focus-visible:outline-white ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
-                                <TD><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="انتخاب" /></TD>
-                                <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500 ring-2 ring-sky-100 dark:ring-sky-500/25" title="خوانده‌نشده" />}</TD>
-                                <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD>
-                                <TD>{row.number ? toFaDigits(row.number) : "—"}</TD>
-                                <TD>{row.date ? toFaDigits(row.date) : "—"}</TD>
-                                <TD>{toFaDigits(formatMoney(row.grossAmount || 0))}</TD>
-                                <TD>{toFaDigits(formatMoney(row.vatAmount || 0))}</TD>
-                                <TD>{row.currencySourceLabel || "—"}</TD>
-                              </TR>
-                            ))}
-                          </>
-                        )}
+                    <table className={tablePreset.table + " min-w-[1000px] table-fixed text-[13px] [&_th]:!py-2 [&_td]:!py-0"} dir="rtl">
+                      <THead><tr className={tablePreset.headRow + " sticky top-0 z-10"}>
+                        <TH className={`w-10 ${tablePreset.th}`}><input ref={selectAllRef} type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="?????? ???" /></TH>
+                        <TH className={`w-5 ${tablePreset.th}`} aria-label="???????????" />
+                        <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="????" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
+                        <TH className={tablePreset.th}>?????</TH><TH className={tablePreset.th}>????<span className="block text-xs font-normal">???????</span></TH>
+                        <TH className={tablePreset.th}>?????<span className="block text-xs font-normal">?????</span></TH>
+                        <TH className={tablePreset.th}>????</TH><TH className={tablePreset.th}>???</TH><TH className={tablePreset.th}>????</TH><TH className={tablePreset.th}>VAT</TH><TH className={tablePreset.th}>???</TH>
+                        <TH className={`relative !pl-10 ${tablePreset.th}`}>????<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
+                      </tr></THead>
+                      <tbody className={`${tablePreset.body} [&_tr]:h-12`}>
+                        {rowsLoading ? <TR><td colSpan={12} className={`h-20 !text-center ${tablePreset.emptyRow}`}>?? ??? ????????...</td></TR> : !pageRows.length ? <TR><td colSpan={12} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "????? ???? ????? ???? ?????." : "???? ????? ???????? ????? ????? ?? ?????? ????."}</td></TR> : pageRows.map((row) => {
+                          const contract = contractById.get(String(row.contractId));
+                          const company = row.raw?.company_name || row.raw?.company || contract?.company_name || contract?.companyName || contract?.contractor_name || contract?.contractorName || contract?.company || contract?.contractor || "?";
+                          const companyLabel = typeof company === "object" ? (company.name || company.title || "?") : company;
+                          return <TR key={row.id} onClick={() => openRowDetails(row)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openRowDetails(row); } }} tabIndex={0} className={`cursor-pointer text-center transition-colors hover:bg-black/[0.06] dark:hover:bg-white/15 ${selectedIds.has(String(row.id)) ? "!bg-black/[0.08] dark:!bg-white/15" : ""}`}>
+                            <TD><input type="checkbox" checked={selectedIds.has(String(row.id))} onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onChange={() => toggleSelected(row.id)} aria-label="??????" /></TD>
+                            <TD>{unreadIds.has(String(row.id)) && <span className="mx-auto block h-2 w-2 rounded-full bg-sky-500" />}</TD>
+                            <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD><TD>{selectedProject ? projectLabel(selectedProject) : "?"}</TD>
+                            <TD>{companyLabel}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "?")}</span></TD>
+                            <TD>{toFaDigits(row.number || "?")}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.date || "?")}</span></TD>
+                            <TD>{toFaDigits(formatMoney(tab === "receipts" ? row.receiptAmount : row.grossAmount))}</TD><TD>{readItemLabel(currencyById.get(String(row.currencyId))) || "?"}</TD><TD>{row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))) || "?"}</TD>
+                            <TD>{tab === "statement" ? toFaDigits(formatMoney(row.vatAmount)) : "?"}</TD><TD>?</TD><TD>?</TD>
+                          </TR>;
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -2081,7 +2049,7 @@ export default function FinancialWorksheetPage() {
               </div>
             </div>
           </TableWrap>
-          </div>}
+          </div>
 
           {!formOpen && err ? <div role="alert" className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
