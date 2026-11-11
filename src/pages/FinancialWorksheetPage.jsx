@@ -1460,7 +1460,7 @@ export default function FinancialWorksheetPage() {
     <>
       <Card className="overflow-hidden rounded-2xl border border-neutral-200 bg-white text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
         <div className="p-3 md:p-4">
-          <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+          <div className="mb-5 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] pb-4 dark:border-white/10">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[.06]">
                 <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
@@ -1470,8 +1470,8 @@ export default function FinancialWorksheetPage() {
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
               </span>
             </div>
-            <button type="button" onClick={toggleAddForm} className="h-10 w-10 rounded-xl flex items-center justify-center transition ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" title={formOpen ? "بستن" : "افزودن"} aria-label={formOpen ? "بستن" : "افزودن"}>
-              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className="w-5 h-5 dark:invert" />
+            <button type="button" onClick={toggleAddForm} className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${formOpen ? "ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" : "border border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن" : "افزودن"} aria-label={formOpen ? "بستن" : "افزودن"}>
+              <img src={formOpen ? "/images/icons/listdarkhast.svg" : "/images/icons/afzodan.svg"} alt="" className={`h-5 w-5 ${formOpen ? "dark:invert" : "invert"}`} />
             </button>
           </div>
 
@@ -2001,11 +2001,11 @@ export default function FinancialWorksheetPage() {
                         <TH className={`w-14 ${tablePreset.th}`}><SortableWorksheetHeader label="ردیف" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
                         <TH className={tablePreset.th}>پروژه</TH><TH className={tablePreset.th}>شرکت<span className="block text-xs font-normal">قرارداد</span></TH>
                         <TH className={tablePreset.th}>شماره<span className="block text-xs font-normal">تاریخ</span></TH>
-                        <TH className={tablePreset.th}>مبلغ</TH><TH className={tablePreset.th}>ارز</TH><TH className={tablePreset.th}>منشا</TH><TH className={tablePreset.th}>VAT</TH><TH className={tablePreset.th}>ارز</TH>
-                        <TH className={`relative !pl-10 ${tablePreset.th}`}>منشا<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
+                        <TH className={tablePreset.th}>مبلغ</TH><TH className={tablePreset.th}>ارز / منشأ</TH><TH className={tablePreset.th}>VAT</TH>
+                        <TH className={`relative !pl-10 ${tablePreset.th}`}>ارز / منشأ<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                       </tr></THead>
                       <tbody className={`${tablePreset.body} [&_tr]:h-12`}>
-                        {rowsLoading ? <TR><td colSpan={12} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR> : !pageRows.length ? <TR><td colSpan={12} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR> : pageRows.map((row) => {
+                        {rowsLoading ? <TR><td colSpan={10} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR> : !pageRows.length ? <TR><td colSpan={10} className={`h-24 !text-center ${tablePreset.emptyRow}`}>{projectId ? "موردی برای نمایش وجود ندارد." : "برای نمایش اطلاعات، ابتدا پروژه را انتخاب کنید."}</td></TR> : pageRows.map((row) => {
                           const contract = contractById.get(String(row.contractId));
                           const company = row.raw?.company_name || row.raw?.company || contract?.company_name || contract?.companyName || contract?.contractor_name || contract?.contractorName || contract?.company || contract?.contractor || "—";
                           const companyLabel = typeof company === "object" ? (company.name || company.title || "—") : company;
@@ -2015,8 +2015,8 @@ export default function FinancialWorksheetPage() {
                             <TD>{toFaDigits(rowNumberById.get(String(row.id)))}</TD><TD>{selectedProject ? projectLabel(selectedProject) : "—"}</TD>
                             <TD>{companyLabel}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.raw?.contract_no || contractNoForRow(contract) || "—")}</span></TD>
                             <TD>{toFaDigits(row.number || "—")}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{toFaDigits(row.date || "—")}</span></TD>
-                            <TD>{toFaDigits(formatMoney(tab === "receipts" ? row.receiptAmount : row.grossAmount))}</TD><TD>{readItemLabel(currencyById.get(String(row.currencyId))) || "—"}</TD><TD>{row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))) || "—"}</TD>
-                            <TD>{tab === "statement" ? toFaDigits(formatMoney(row.vatAmount)) : "—"}</TD><TD>—</TD><TD>—</TD>
+                            <TD>{toFaDigits(formatMoney(tab === "receipts" ? row.receiptAmount : row.grossAmount))}</TD><TD>{readItemLabel(currencyById.get(String(row.currencyId))) || "—"}<span className="block text-xs text-neutral-500 dark:text-neutral-400">{row.currencySourceLabel || readItemLabel(currencySourceById.get(String(row.currencySourceId))) || "—"}</span></TD>
+                            <TD>{tab === "statement" ? toFaDigits(formatMoney(row.vatAmount)) : "—"}</TD><TD>—</TD>
                           </TR>;
                         })}
                       </tbody>
