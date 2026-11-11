@@ -482,6 +482,7 @@ export default function FinancialWorksheetPage() {
   const [statementNo, setStatementNo] = useState("");
   const [jalaliDate, setJalaliDate] = useState("");
   const [description, setDescription] = useState("");
+  const [statementNotes, setStatementNotes] = useState("");
   const [grossAmount, setGrossAmount] = useState("");
   const [prepaymentDepreciation, setPrepaymentDepreciation] = useState("");
   const [insuranceDeposit, setInsuranceDeposit] = useState("");
@@ -515,7 +516,6 @@ export default function FinancialWorksheetPage() {
   const [receiptVatCurrencyId, setReceiptVatCurrencyId] = useState("");
   const [receiptCurrencyId, setReceiptCurrencyId] = useState("");
   const [receiptCurrencySourceId, setReceiptCurrencySourceId] = useState("");
-  const [receiptRialDescription, setReceiptRialDescription] = useState("");
   const [receiptDescription, setReceiptDescription] = useState("");
 
   const [worksheetRows, setWorksheetRows] = useState([]);
@@ -1233,13 +1233,14 @@ export default function FinancialWorksheetPage() {
       setReceiptVatCurrencyId(String(source?.vat_currency_id ?? ""));
       setReceiptCurrencyId(String(source?.currency_id ?? row?.currencyId ?? ""));
       setReceiptCurrencySourceId(String(source?.currency_source_id ?? row?.currencySourceId ?? ""));
-      setReceiptRialDescription(String(source?.rial_description ?? row?.rialDescription ?? ""));
-      setReceiptDescription(String(source?.description ?? row?.description ?? ""));
+      const notes = [String(source?.description ?? row?.description ?? "").trim(), String(source?.rial_description ?? row?.rialDescription ?? "").trim()].filter(Boolean);
+      setReceiptDescription([...new Set(notes)].join("\n"));
       return;
     }
     setStatementNo(String(source?.statement_no ?? row?.number ?? ""));
     setJalaliDate(String(source?.jalali_date ?? row?.date ?? ""));
     setDescription(String(source?.description ?? row?.description ?? ""));
+    setStatementNotes(String(source?.statement_notes ?? ""));
     setGrossAmount(formatAmountInput(source?.gross_amount ?? row?.grossAmount ?? ""));
     setCurrencyId(String(source?.currency_id ?? row?.currencyId ?? ""));
     setCurrencySourceId(String(source?.currency_source_id ?? row?.currencySourceId ?? ""));
@@ -1288,6 +1289,7 @@ export default function FinancialWorksheetPage() {
     setStatementNo("");
     setJalaliDate("");
     setDescription("");
+    setStatementNotes("");
     setGrossAmount("");
     setPrepaymentDepreciation("");
     setInsuranceDeposit("");
@@ -1308,7 +1310,6 @@ export default function FinancialWorksheetPage() {
     setReceiptVatCurrencyId("");
     setReceiptCurrencyId("");
     setReceiptCurrencySourceId("");
-    setReceiptRialDescription("");
     setReceiptDescription("");
   };
 
@@ -1363,6 +1364,7 @@ export default function FinancialWorksheetPage() {
       jalali_date: jalaliDate,
       gregorian_date: gregorianDate,
       description,
+      statement_notes: statementNotes,
       gross_amount: grossAmountNumber,
       currency_id: currencyId,
       currency_label: selectedCurrencyLabel || "ریال",
@@ -1466,7 +1468,7 @@ export default function FinancialWorksheetPage() {
       currency_label: selectedReceiptCurrencyLabel || "ریال",
       currency_source_id: receiptCurrencySourceId,
       currency_source_label: selectedReceiptCurrencySourceLabel,
-      rial_description: receiptRialDescription,
+      ...(editingRowId ? { rial_description: receiptDescription } : {}),
       description: receiptDescription,
     };
 
@@ -1844,21 +1846,6 @@ export default function FinancialWorksheetPage() {
                     </div>
                   </div>
 
-                  {isRialCurrency ? (
-                    <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
-                      <div className="xl:col-span-12">
-                        <label className="text-xs text-neutral-600 dark:text-white/60">شرح</label>
-                        <input
-                          value={receiptRialDescription}
-                          onChange={(e) => setReceiptRialDescription(e.target.value)}
-                          className="mt-1 w-full h-11 rounded-xl px-3 border outline-none bg-white text-neutral-900 border-black/10 dark:bg-white/5 dark:text-white dark:border-white/15"
-                          type="text"
-                          placeholder="شرح..."
-                        />
-                      </div>
-                    </div>
-                  ) : null}
-
                   <div className="flex items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-white/10">
                     {err && <span role="alert" className="text-xs text-red-600 dark:text-red-400">{err}</span>}
                     <button
@@ -1988,6 +1975,10 @@ export default function FinancialWorksheetPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+              <div className="px-3">
+                <label htmlFor="statement-notes" className="text-xs text-neutral-600 dark:text-white/60">توضیحات</label>
+                <textarea id="statement-notes" value={statementNotes} onChange={(event) => setStatementNotes(event.target.value)} className="mt-1 min-h-20 w-full resize-y rounded-xl border border-black/10 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-white" placeholder="توضیحات..." />
               </div>
               <div className="flex items-center justify-between gap-3 border-t border-black/10 pt-3 dark:border-white/10">
                 {err && <span role="alert" className="text-xs text-red-600 dark:text-red-400">{err}</span>}

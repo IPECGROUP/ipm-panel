@@ -48,7 +48,7 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
   const letterById = new Map((letters || []).map((letter) => [String(letter.id ?? letter.letter_id ?? letter.letterId), letter]));
   const currencyLabel = String(first(source.currency_label, currency, "ریال"));
   const currencyUnit = /\$|usd|دلار|dollar/i.test(currencyLabel) ? "$" : /irr|ریال|rial/i.test(currencyLabel) ? "ریال" : currencyLabel;
-  const rial = currencyUnit === "ریال";
+  const receiptNotes = [...new Set([first(source.description, row.description), first(source.rial_description, row.rialDescription)].filter(present).map((value) => String(value).trim()))].join("\n");
   const amount = (value) => present(value) ? `\u2066${money(value)} ${currencyUnit}\u2069` : undefined;
   const percent = (value) => present(value) ? `\u2066${fa(value)}%\u2069` : undefined;
 
@@ -69,7 +69,6 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
           {!receipt && <DetailField label="عنوان صورت وضعیت" value={first(source.title, source.statement_title)} wide />}
           <DetailField label="ارز" value={currencyLabel} />
           <DetailField label={receipt ? "منشا" : "ارز منشأ"} value={first(source.currency_source_label, currencySource)} />
-          {receipt && rial && <DetailField label="شرح" value={first(source.rial_description, row.rialDescription)} />}
         </DetailSection>
 
         {receipt ? <>
@@ -81,7 +80,7 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
               {(item?.type === "other" || receiptTypeLabel(item?.type) === "سایر") && <DetailField label="شرح سایر" value={first(item?.otherDescription, item?.other_description)} />}
             </div>)}
           </DetailSection>
-          {present(first(source.description, row.description)) && <DetailSection number="03" title="توضیحات"><p className="py-4 text-sm leading-8">{fa(first(source.description, row.description))}</p></DetailSection>}
+          {present(receiptNotes) && <DetailSection number="03" title="توضیحات"><p className="whitespace-pre-wrap py-4 text-sm leading-8">{fa(receiptNotes)}</p></DetailSection>}
         </> : <>
           <DetailSection number="02" title="ریز محاسبات و کسورات">
             <DetailField label="مبلغ ناخالص" value={amount(first(source.gross_amount, row.grossAmount))} />
@@ -99,7 +98,10 @@ export default function FinancialWorksheetDetailModal({ row, kind, project, cont
             <DetailField label="مبلغ VAT" value={amount(first(source.vat_amount, row.vatAmount))} />
             <DetailField label="خالص با VAT" value={amount(source.net_with_vat)} />
           </DetailSection>
-          {present(first(source.description, row.description)) && <DetailSection number="04" title="شرح"><p className="py-4 text-sm leading-8">{fa(first(source.description, row.description))}</p></DetailSection>}
+          {(present(first(source.description, row.description)) || present(source.statement_notes)) && <DetailSection number="04" title="شرح و توضیحات">
+            {present(first(source.description, row.description)) && <DetailField label="عنوان صورت وضعیت" value={first(source.description, row.description)} />}
+            {present(source.statement_notes) && <DetailField label="توضیحات" value={source.statement_notes} />}
+          </DetailSection>}
           {relatedIds.length > 0 && <DetailSection number="05" title="اسناد مرتبط">
             {relatedIds.map((id) => { const letter = letterById.get(String(id)); const number = letter ? first(letter.letterNo, letter.letter_no, letter.secretariatNo, letter.secretariat_no, id) : id; return <DetailField key={String(id)} label={`سند ${fa(id)}`} value={<button type="button" onClick={() => setPreviewLetter(letter || { id })} className="cursor-pointer underline decoration-neutral-300 underline-offset-4 transition hover:text-orange-600 dark:decoration-neutral-600 dark:hover:text-orange-300" title="پیش‌نمایش سند">{fa(number)}</button>} />; })}
           </DetailSection>}
