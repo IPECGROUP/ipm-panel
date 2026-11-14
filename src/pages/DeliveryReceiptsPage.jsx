@@ -174,7 +174,7 @@ export default function DeliveryReceiptsPage() {
   return <div dir="rtl" className="mx-auto max-w-[1400px]">
     <Card className="overflow-hidden rounded-3xl border border-black/10 bg-white p-0 shadow-[0_18px_50px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-neutral-900">
       <div className="p-3 md:p-4">
-        <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+        <div className="mb-4 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]"><span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: "url('/images/icons/resid-hay-tahvil.svg') center / contain no-repeat", mask: "url('/images/icons/resid-hay-tahvil.svg') center / contain no-repeat" }} /></span>
             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">رسید های تحویل</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">دبیرخانه</span></span>
