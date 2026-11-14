@@ -20,6 +20,7 @@ import BaseInformationPage from "./pages/BaseInformationPage.jsx";
 import DailyReportPage from "./pages/DailyReportPage.jsx";
 import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
 import CostBreakdownPage from "./pages/CostBreakdownPage.jsx";
+import FinancialCommitmentsPage from "./pages/FinancialCommitmentsPage.jsx";
 import CashFlowForecastPage from "./pages/CashFlowForecastPage.jsx";
 import LiquidityAllocationPage from "./pages/LiquidityAllocationPage.jsx";
 import FinancialManagementDashboardPage from "./pages/FinancialManagementDashboardPage.jsx";
@@ -113,7 +114,7 @@ export default function App() {
         <Route path="/projects/simple" element={<Projects2Page />} />
         <Route path="/centers/projects" element={<ProjectsPage />} />
         <Route path="/projects/cost-breakdown" element={<CostBreakdownPage />} />
-        <Route path="/projects/financial-commitments" element={<NavPlaceholderPage title="تعهدات و مصارف مالی" />} />
+        <Route path="/projects/financial-commitments" element={<FinancialCommitmentsPage />} />
         <Route path="/projects/daily-report" element={<DailyReportPage />} />
         <Route
           path="/projects/financial-worksheet"
