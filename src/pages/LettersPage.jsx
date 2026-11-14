@@ -4887,7 +4887,7 @@ useEffect(() => {
       >
         <div className="p-3 md:p-4">
           {/* Header INSIDE card */}
-          <div className="mb-5 flex min-w-0 items-center justify-between gap-3">
+          <div className="mb-4 flex min-w-0 items-center justify-between gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
             <div className="flex min-w-0 items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
                 <span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
