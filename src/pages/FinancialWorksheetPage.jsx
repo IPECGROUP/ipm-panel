@@ -1587,12 +1587,14 @@ export default function FinancialWorksheetPage() {
                   );
                 })}
                 </div>
+              <label htmlFor="worksheet-contract" className="block text-xs text-neutral-600 dark:text-white/60">موضوع قرارداد</label>
               <select
+                id="worksheet-contract"
                 value={contractId}
                 onChange={(e) => { setContractId(e.target.value); setFormBasis(""); resetStatementForm(); resetReceiptForm(); }}
                 disabled={!projectId}
-                aria-label="شماره قرارداد"
-                className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white disabled:opacity-60"
+                aria-label="موضوع قرارداد"
+                className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none dark:border-white/15 dark:bg-white/5 dark:text-white disabled:opacity-60"
               >
                 <option value="">{projectId ? `انتخاب شماره قرارداد ${contractKind === "main" ? "اصلی" : "فرعی"}` : "ابتدا پروژه را انتخاب کنید"}</option>
                 {visibleProjectContractOptions.map((item) => (
@@ -1610,7 +1612,6 @@ export default function FinancialWorksheetPage() {
               <select id="worksheet-basis" value={formBasis} disabled={!contractId} onChange={(e) => { const value = e.target.value; resetStatementForm(); resetReceiptForm(); setFormBasis(value); if (value) setTab(value); }} className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white">
                 <option value="">انتخاب بابت</option>
                 <option value="statement">صورت وضعیت</option>
-                <option value="receipts">{contractKind === "sub" ? "پرداختی" : "دریافتی"}</option>
               </select>
             </div>
           </div>
