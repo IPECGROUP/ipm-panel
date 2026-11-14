@@ -18,6 +18,7 @@ export default function FinancialCommitmentsPage() {
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
   const [rows, setRows] = useState([]);
+  const [usageByCode, setUsageByCode] = useState({});
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loadingRows, setLoadingRows] = useState(false);
   const [error, setError] = useState("");
@@ -50,17 +51,20 @@ export default function FinancialCommitmentsPage() {
 
   useEffect(() => {
     let active = true;
-    if (!projectId) { setRows([]); return () => { active = false; }; }
+    if (!projectId) { setRows([]); setUsageByCode({}); return () => { active = false; }; }
     setLoadingRows(true);
     setError("");
     api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}`).then((result) => {
       const items = Array.isArray(result?.items) ? result.items : [];
-      if (active) setRows(items.map((item) => ({
-        id: item?.id,
-        budgetCode: String(item?.budgetCode ?? item?.budget_code ?? "").trim(),
-        budgetName: String(item?.budgetName ?? item?.budget_name ?? "").trim(),
-        baseBudget: parseAmount(item?.baseBudget ?? item?.base_budget ?? 0),
-      })));
+      if (active) {
+        setRows(items.map((item) => ({
+          id: item?.id,
+          budgetCode: String(item?.budgetCode ?? item?.budget_code ?? "").trim(),
+          budgetName: String(item?.budgetName ?? item?.budget_name ?? "").trim(),
+          baseBudget: parseAmount(item?.baseBudget ?? item?.base_budget ?? 0),
+        })));
+        setUsageByCode(result?.usageByCode && typeof result.usageByCode === "object" ? result.usageByCode : {});
+      }
     }).catch(() => { if (active) { setRows([]); setError("دریافت اطلاعات ساختار هزینه انجام نشد."); } })
       .finally(() => { if (active) setLoadingRows(false); });
     return () => { active = false; };
@@ -103,6 +107,17 @@ export default function FinancialCommitmentsPage() {
     displayRows.forEach(getTotal);
     return cache;
   }, [displayRows]);
+  const usageTotals = useMemo(() => {
+    const normalizedUsage = Object.entries(usageByCode).map(([rawCode, amount]) => {
+      const code = normalizeCode(rawCode);
+      const fullCode = projectCode && code !== projectCode && !code.startsWith(`${projectCode}-`) ? `${projectCode}-${code}` : code;
+      return [fullCode, BigInt(parseAmount(amount))];
+    });
+    return new Map(displayRows.map((row) => [
+      row.fullCode,
+      normalizedUsage.reduce((sum, [code, amount]) => code === row.fullCode || code.startsWith(`${row.fullCode}-`) ? sum + amount : sum, 0n),
+    ]));
+  }, [displayRows, projectCode, usageByCode]);
 
   return (
     <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
@@ -125,13 +140,13 @@ export default function FinancialCommitmentsPage() {
           <div className="px-[15px] pb-4">
             <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
               <div className="overflow-x-auto"><table dir="rtl" className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-right [&_td]:text-right [&_th]:py-2 [&_td]:py-1.5">
-                <colgroup><col style={{ width: 48 }} /><col style={{ width: 192 }} /><col /><col style={{ width: 210 }} /></colgroup>
-                <thead className="border-b border-[#184a6b] bg-[#184a6b] text-white"><tr><th className="!text-center !text-[14px] md:!text-[15px] !font-semibold">ردیف</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th></tr></thead>
+                <colgroup><col style={{ width: 48 }} /><col style={{ width: 192 }} /><col /><col style={{ width: 210 }} /><col style={{ width: 190 }} /></colgroup>
+                <thead className="border-b border-[#184a6b] bg-[#184a6b] text-white"><tr><th className="!text-center !text-[14px] md:!text-[15px] !font-semibold">ردیف</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">مصارف</th></tr></thead>
                 <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50 dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50">
-                  {!projectId ? <tr><td colSpan={4} className="py-6 text-center text-black/60 dark:text-neutral-400">پروژه را انتخاب کنید.</td></tr> : loadingRows ? <tr><td colSpan={4} className="py-6 text-center text-black/60 dark:text-neutral-400">در حال بارگذاری...</td></tr> : !displayRows.length ? <tr><td colSpan={4} className="py-6 text-center text-black/60 dark:text-neutral-400">موردی ثبت نشده.</td></tr> : visibleRows.map((row, index) => {
+                  {!projectId ? <tr><td colSpan={5} className="py-6 text-center text-black/60 dark:text-neutral-400">پروژه را انتخاب کنید.</td></tr> : loadingRows ? <tr><td colSpan={5} className="py-6 text-center text-black/60 dark:text-neutral-400">در حال بارگذاری...</td></tr> : !displayRows.length ? <tr><td colSpan={5} className="py-6 text-center text-black/60 dark:text-neutral-400">موردی ثبت نشده.</td></tr> : visibleRows.map((row, index) => {
                     const depth = Math.max(0, row.fullCode.split("-").length - projectCode.split("-").length - 1);
                     const isExpanded = expandedCodes.has(row.fullCode);
-                    return <tr key={row.id ?? row.fullCode} className="border-b border-neutral-300 dark:border-neutral-700"><td className="px-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3"><span className="flex items-center gap-2" style={{ paddingRight: `${Math.min(depth, 4) * 24}px` }}>{parentCodes.has(row.fullCode) ? <button type="button" onClick={() => setExpandedCodes((current) => { const next = new Set(current); if (next.has(row.fullCode)) next.delete(row.fullCode); else next.add(row.fullCode); return next; })} className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base font-bold leading-none text-neutral-700 hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10" aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}>{isExpanded ? "−" : "+"}</button> : <span className="h-6 w-6 shrink-0" />}<span dir="ltr" className="font-sans tabular-nums">{row.fullCode}</span></span></td><td className="px-3">{row.budgetName || "—"}</td><td className="px-3">{toFaDigits(formatAmount(String(totals.get(row.fullCode) ?? 0n)))}</td></tr>;
+                    return <tr key={row.id ?? row.fullCode} className="border-b border-neutral-300 dark:border-neutral-700"><td className="px-3 text-center">{toFaDigits(index + 1)}</td><td className="px-3"><span className="flex items-center gap-2" style={{ paddingRight: `${Math.min(depth, 4) * 24}px` }}>{parentCodes.has(row.fullCode) ? <button type="button" onClick={() => setExpandedCodes((current) => { const next = new Set(current); if (next.has(row.fullCode)) next.delete(row.fullCode); else next.add(row.fullCode); return next; })} className="grid h-6 w-6 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base font-bold leading-none text-neutral-700 hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10" aria-label={isExpanded ? "بستن زیرمجموعه" : "نمایش زیرمجموعه"}>{isExpanded ? "−" : "+"}</button> : <span className="h-6 w-6 shrink-0" />}<span dir="ltr" className="font-sans tabular-nums">{row.fullCode}</span></span></td><td className="px-3">{row.budgetName || "—"}</td><td className="px-3">{toFaDigits(formatAmount(String(totals.get(row.fullCode) ?? 0n)))}</td><td className="px-3">{toFaDigits(formatAmount(String(usageTotals.get(row.fullCode) ?? 0n)))}</td></tr>;
                   })}
                 </tbody>
               </table></div>
