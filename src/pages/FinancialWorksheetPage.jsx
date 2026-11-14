@@ -1422,17 +1422,14 @@ export default function FinancialWorksheetPage() {
       setErr("ابتدا شماره قرارداد را انتخاب کنید.");
       return;
     }
-    const cleanedTypeRows = (receiptTypeRows || [])
+    const selectedTypeRows = (receiptTypeRows || [])
       .map((row) => ({
         type: String(row?.type || "").trim(),
         number: String(isStatementReceiptType(row?.type) ? row?.number || "" : "").trim(),
         otherDescription: String(isOtherReceiptType(row?.type) ? row?.otherDescription || "" : "").trim(),
       }))
       .filter((row) => row.type);
-    if (!cleanedTypeRows.length) {
-      setErr(`${receiptUi.basis} را انتخاب کنید.`);
-      return;
-    }
+    const cleanedTypeRows = selectedTypeRows.length ? selectedTypeRows : [{ type: "other", number: "", otherDescription: receiptUi.noun }];
     if (cleanedTypeRows.some((row) => isStatementReceiptType(row.type) && !row.number)) {
       setErr("شماره صورت وضعیت را وارد کنید.");
       return;
@@ -1559,8 +1556,9 @@ export default function FinancialWorksheetPage() {
               </select>
             </div>
             <div className="min-w-0">
-              <label className="text-xs text-neutral-600 dark:text-white/60">سطح قرارداد</label>
-              <div className="mt-1 grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+              <div className="grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
+                <div>
+                  <label className="block text-xs text-neutral-600 dark:text-white/60">سطح قرارداد</label>
                 <div className="flex items-center gap-1">
                 {[
                   { id: "main", label: "اصلی", activeClass: "border-emerald-400 bg-emerald-500 text-white shadow-sm", idleClass: "border-emerald-200 bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:border-emerald-500/35 dark:bg-emerald-500/15 dark:text-emerald-200 dark:hover:bg-emerald-500/25" },
@@ -1587,6 +1585,8 @@ export default function FinancialWorksheetPage() {
                   );
                 })}
                 </div>
+                </div>
+                <div className="min-w-0">
               <label htmlFor="worksheet-contract" className="block text-xs text-neutral-600 dark:text-white/60">موضوع قرارداد</label>
               <select
                 id="worksheet-contract"
@@ -1605,6 +1605,7 @@ export default function FinancialWorksheetPage() {
                   </option>
                 ))}
               </select>
+                </div>
               </div>
             </div>
             <div className="min-w-0">
@@ -1612,6 +1613,7 @@ export default function FinancialWorksheetPage() {
               <select id="worksheet-basis" value={formBasis} disabled={!contractId} onChange={(e) => { const value = e.target.value; resetStatementForm(); resetReceiptForm(); setFormBasis(value); if (value) setTab(value); }} className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-neutral-900 outline-none disabled:opacity-60 dark:border-white/15 dark:bg-white/5 dark:text-white">
                 <option value="">انتخاب بابت</option>
                 <option value="statement">صورت وضعیت</option>
+                <option value="receipts">{contractKind === "sub" ? "پرداختی" : "دریافتی"}</option>
               </select>
             </div>
           </div>
@@ -1621,7 +1623,7 @@ export default function FinancialWorksheetPage() {
               {(!projectId || !contractId) && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">{!projectId ? "برای ثبت، ابتدا پروژه را انتخاب کنید." : "برای ثبت در این پروژه، شماره قرارداد را انتخاب کنید."}</div>}
               {tab === "receipts" ? (
                 <>
-                  <div className="flex flex-wrap items-end gap-1">
+                  {false && <div className="flex flex-wrap items-end gap-1">
                   {(receiptTypeRows || []).map((row, idx) => {
                     const showReceiptNumber = isStatementReceiptType(row.type);
                     return (
@@ -1697,7 +1699,7 @@ export default function FinancialWorksheetPage() {
                   <button type="button" onClick={addReceiptTypeRow} className="grid h-11 w-11 place-items-center rounded-xl border border-black/15 transition hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10" aria-label={`افزودن ${receiptUi.basis}`} title="افزودن">
                     <img src="/images/icons/afzodan.svg" alt="" className="h-4 w-4 dark:invert" />
                   </button>
-                  </div>
+                  </div>}
 
                 </>
               ) : (
