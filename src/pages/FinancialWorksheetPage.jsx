@@ -1533,7 +1533,8 @@ export default function FinancialWorksheetPage() {
               {[["statement", "صورت وضعیت"], ["receipts", "دریافتی"], ["payments", "پرداختی"]].map(([id, label]) => <button key={id} type="button" aria-pressed={filterBasis === id} onClick={() => { setFilterBasis((current) => current === id ? "" : id); setPage(0); }} className={`rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${filterBasis === id ? "bg-neutral-900 text-white ring-neutral-900 dark:bg-white dark:text-neutral-900" : "bg-white text-neutral-700 ring-neutral-300 dark:bg-white/5 dark:text-neutral-200 dark:ring-white/20"}`}>{label}</button>)}
             </div></div>
           </div>}
-          {formOpen && <div className="grid gap-3 lg:grid-cols-[minmax(180px,.8fr)_minmax(0,1.5fr)_minmax(160px,.7fr)] lg:items-end">
+          {formOpen && <div className="space-y-3 rounded-2xl border border-black/10 p-3 md:p-4 dark:border-white/10">
+          <div className="grid gap-3 lg:grid-cols-[minmax(180px,.8fr)_minmax(0,1.5fr)_minmax(160px,.7fr)] lg:items-end">
             <div className="min-w-0">
               <label className="text-xs text-neutral-600 dark:text-white/60">پروژه</label>
               <select
@@ -1612,10 +1613,10 @@ export default function FinancialWorksheetPage() {
                 <option value="receipts">{contractKind === "sub" ? "پرداختی" : "دریافتی"}</option>
               </select>
             </div>
-          </div>}
+          </div>
 
           {formOpen && formBasis && (
-            <div className="rounded-2xl border border-black/10 p-3 md:p-4 space-y-3 dark:border-white/10">
+            <div className="space-y-3">
               {(!projectId || !contractId) && <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">{!projectId ? "برای ثبت، ابتدا پروژه را انتخاب کنید." : "برای ثبت در این پروژه، شماره قرارداد را انتخاب کنید."}</div>}
               {tab === "receipts" ? (
                 <>
@@ -2018,8 +2019,9 @@ export default function FinancialWorksheetPage() {
               )}
             </div>
           )}
+          </div>}
 
-          <div>
+          {!formOpen && <div>
                 <div className={tablePreset.frame + " shadow-sm"}>
                   <div className="max-h-[55vh] overflow-x-auto overflow-y-auto">
                     <table className="w-full min-w-[1000px] table-fixed text-xs sm:text-sm [&_th]:whitespace-nowrap [&_th]:py-2 [&_th]:text-center [&_td]:min-w-0 [&_td]:py-2 [&_td]:text-center" dir="rtl">
@@ -2083,7 +2085,7 @@ export default function FinancialWorksheetPage() {
                     </div>
                   </div>
                 </div>
-          </div>
+          </div>}
 
           {!formOpen && err ? <div role="alert" className="text-sm text-red-600 dark:text-red-400">{err}</div> : null}
         </div>
