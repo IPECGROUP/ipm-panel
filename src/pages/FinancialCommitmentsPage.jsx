@@ -219,21 +219,6 @@ export default function FinancialCommitmentsPage() {
       setSavingManual(false);
     }
   };
-  const resetManualValues = async () => {
-    if (!selectedCodes.size || !projectId) return;
-    setSavingManual(true);
-    setError("");
-    try {
-      await Promise.all([...selectedCodes].map((budgetCode) => api("/financial-commitment-adjustments", {
-        method: "POST", body: JSON.stringify({ projectId: Number(projectId), budgetCode, usageAdjustment: "0" }),
-      })));
-      setUsageAdjustments((current) => ({ ...current, ...Object.fromEntries([...selectedCodes].map((code) => [code, "0"])) }));
-      setControlMenuOpen(false);
-    } catch (reason) {
-      setError(reason.message || "بازگردانی اصلاح‌ها انجام نشد.");
-    } finally { setSavingManual(false); }
-  };
-
   return (
     <Card className="rounded-2xl border bg-white text-neutral-900 border-neutral-200 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
       <div className="p-3 md:p-4">
@@ -254,7 +239,7 @@ export default function FinancialCommitmentsPage() {
           </div>
           <div className="px-[15px] pb-4">
             <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-              <div className="overflow-x-auto"><table dir="rtl" className="w-full min-w-[760px] table-fixed text-sm [&_th]:text-right [&_td]:text-right [&_th]:py-2 [&_td]:py-1.5">
+              <div className="overflow-hidden"><table dir="rtl" className="w-full table-fixed text-sm [&_th]:text-right [&_td]:text-right [&_th]:py-2 [&_td]:py-1.5">
                 <colgroup><col style={{ width: 40 }} /><col style={{ width: 48 }} /><col style={{ width: 192 }} /><col /><col style={{ width: 210 }} /><col style={{ width: 190 }} /><col style={{ width: 32 }} /></colgroup>
                 <thead className="border-b border-[#184a6b] bg-[#184a6b] text-white"><tr><th className="relative !text-center !text-[14px] md:!text-[15px] !font-semibold"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={visibleRows.length > 0 && visibleRows.every((row) => selectedCodes.has(row.fullCode))} onChange={toggleAllVisible} aria-label="انتخاب همه ردیف‌ها" /></th><th className="!text-center !text-[14px] md:!text-[15px] !font-semibold">ردیف</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">کد بودجه</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">نام بودجه</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">بودجه مبنا</th><th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">مصارف</th><th className="relative !text-center !text-[14px] md:!text-[15px] !font-semibold"><button ref={controlTriggerRef} type="button" onClick={() => setControlMenuOpen((open) => !open)} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-white/10" title="کنترل وضعیت" aria-label="کنترل وضعیت" aria-expanded={controlMenuOpen}><img src="/images/icons/menu-table.svg" alt="" className={`h-4 w-3 transition-transform duration-200 ${controlMenuOpen ? "scale-110" : ""} invert`} /></button></th></tr></thead>
                 <tbody className="[&_td]:text-black dark:[&_td]:text-neutral-100 [&_tr:nth-child(odd)]:bg-white [&_tr:nth-child(even)]:bg-neutral-50 dark:[&_tr:nth-child(odd)]:bg-neutral-900 dark:[&_tr:nth-child(even)]:bg-neutral-800/50">
@@ -274,7 +259,7 @@ export default function FinancialCommitmentsPage() {
         <div ref={controlMenuRef} className="fixed z-[500] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={controlPosition}>
           <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCodes.size ? `${toFaDigits(selectedCodes.size)} ردیف انتخاب شده` : "ابتدا ردیف موردنظر را انتخاب کنید"}</div>
           <button type="button" disabled={selectedCodes.size !== 1 || savingManual} onClick={() => { beginEdit(); setControlMenuOpen(false); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش ردیف انتخاب‌شده</span></button>
-          <button type="button" disabled={!selectedCodes.size || savingManual || ![...selectedCodes].some((code) => BigInt(usageAdjustments[code] || "0") !== 0n)} onClick={resetManualValues} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">بازگردانی مقادیر محاسبه‌شده</span></button>
+
         </div>,
         document.body
       )}
