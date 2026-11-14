@@ -230,7 +230,6 @@ export default function FinancialCommitmentsPage() {
             </div>
           </div>
         </div>
-        <p className="mt-2 text-xs text-neutral-500 dark:text-neutral-400">مصارف نمایشی شامل جمع سیستمی درخواست‌ها و تنخواه به‌علاوه اصلاح دستی همین صفحه است.</p>
         {error && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{error}</div>}
       </div>
     </Card>
