@@ -389,7 +389,7 @@ export default function DashboardPage() {
       {canOpenPage(user, "/finance/financial-management-dashboard") &&
         <Card className="min-h-[350px] min-w-0 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
           <div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از کل ماندهٔ تسویه‌نشده</span></div>
-          <div className="mx-auto w-full max-w-[480px]">{dashboardWidgetsLoading ? <p className="py-12 text-center text-xs text-neutral-500">در حال بارگذاری...</p> : <ShareChart rows={unsettledTenkhahRows} total={unsettledTenkhahRows.reduce((sum, row) => sum + row.count, 0)} totalLabel="کل ماندهٔ تسویه‌نشده" unit="ریال" compactValues large empty="ماندهٔ تسویه‌نشده‌ای وجود ندارد." />}</div>
+          <div className="mx-auto w-full max-w-[480px]">{dashboardWidgetsLoading ? <p className="py-12 text-center text-xs text-neutral-500">در حال بارگذاری...</p> : <ShareChart rows={unsettledTenkhahRows} total={unsettledTenkhahRows.reduce((sum, row) => sum + row.count, 0)} totalLabel="کل ماندهٔ تسویه‌نشده" unit="ریال" showValues={false} large empty="ماندهٔ تسویه‌نشده‌ای وجود ندارد." />}</div>
         </Card>
       }
 
