@@ -7,7 +7,7 @@ import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
 import { countExpertRequests, SupplyExpertsPanel } from "./SupplyManagementDashboardPage.jsx";
-import { KnowledgeDashboardWidgets } from "./KnowledgeManagementDashboardPage.jsx";
+import { KnowledgeDashboardWidgets, ShareChart } from "./KnowledgeManagementDashboardPage.jsx";
 
 const activityViewers = new Set(["marandi", "nouri"]);
 const formatDateTime = (value) => value ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "—";
@@ -317,6 +317,18 @@ export default function DashboardPage() {
   }, [normalRequests]);
   const supplyReviewTimings = useMemo(() => workflowStageTimings(supplyRequests, ["project_manager", "commercial"], "roleKey", "approved"), [supplyRequests]);
   const tenkhahReviewTimings = useMemo(() => workflowStageTimings(tenkhahRequests, ["project_manager", "management", "finance"], "stage", "approve"), [tenkhahRequests]);
+  const unsettledTenkhahRows = useMemo(() => {
+    const people = new Map();
+    tenkhahRequests.forEach((item) => {
+      const key = String(item?.beneficiaryUserId ?? item?.createdById ?? item?.beneficiaryName ?? item?.requesterName ?? "");
+      const balance = Number(String(item?.unsettledBalance ?? 0).replace(/[,٬\s]/g, ""));
+      if (!key || !Number.isFinite(balance) || balance <= 0) return;
+      const person = people.get(key) || { id: key, name: String(item?.beneficiaryName || item?.beneficiaryUsername || item?.requesterName || `کاربر #${key}`).trim(), count: 0 };
+      person.count += balance;
+      people.set(key, person);
+    });
+    return [...people.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fa"));
+  }, [tenkhahRequests]);
 
   const supplyExperts = useMemo(() => supplyUsers.map((person) => {
     const id = Number(person.id);
@@ -374,6 +386,13 @@ export default function DashboardPage() {
         <HomeTopDailyLogUsers rows={topDailyLogUsers} loading={dashboardWidgetsLoading} />
         <SupplyExpertsPanel rows={supplyExperts} />
       </div>
+
+      {canOpenPage(user, "/finance/financial-management-dashboard") && <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Card className="min-h-[350px] min-w-0 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+          <div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از کل ماندهٔ تسویه‌نشده</span></div>
+          <div className="mx-auto w-full max-w-[480px]">{dashboardWidgetsLoading ? <p className="py-12 text-center text-xs text-neutral-500">در حال بارگذاری...</p> : <ShareChart rows={unsettledTenkhahRows} total={unsettledTenkhahRows.reduce((sum, row) => sum + row.count, 0)} totalLabel="کل ماندهٔ تسویه‌نشده" unit="ریال" showValues={false} large empty="ماندهٔ تسویه‌نشده‌ای وجود ندارد." />}</div>
+        </Card>
+      </div>}
 
       {canOpenPage(user, "/knowledge-management/dashboard") && <Card className="mt-3 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
         <div className="mb-4"><span className="block text-sm font-bold">مدیریت دانش</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">نمای کلی درس‌آموخته‌ها، کتابخانه‌ها و منابع آموزشی</span></div>
