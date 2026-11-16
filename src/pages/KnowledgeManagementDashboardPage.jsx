@@ -70,9 +70,9 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
   </>;
 }
 
-export function KnowledgeDashboardWidgets({ data }) {
+export function KnowledgeDashboardWidgets({ data, singleColumn = false }) {
   const lessons = data?.lessons || {};
-  return <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+  return <div className={`grid grid-cols-1 gap-3 ${singleColumn ? "" : "xl:grid-cols-3"}`}>
     <Panel title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده"><ShareChart rows={lessons.byAuthor || []} total={Number(lessons.total || 0)} totalLabel="کل درس‌آموخته‌ها" unit="درس‌آموخته" empty="درس‌آموخته‌ای ثبت نشده است." /></Panel>
   </div>;
 }

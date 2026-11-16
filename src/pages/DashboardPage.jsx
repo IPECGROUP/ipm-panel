@@ -385,17 +385,19 @@ export default function DashboardPage() {
         <SupplyExpertsPanel rows={supplyExperts} />
       </div>
 
-      {canOpenPage(user, "/finance/financial-management-dashboard") && <div className="mt-3 grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-3 grid min-w-0 grid-cols-1 items-start gap-3 lg:grid-cols-2 [&>*]:min-w-0">
+      {canOpenPage(user, "/finance/financial-management-dashboard") &&
         <Card className="min-h-[350px] min-w-0 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
           <div className="mb-4"><span className="block text-sm font-bold">مانده‌های تسویه‌نشدهٔ تنخواه</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">سهم هر فرد از کل ماندهٔ تسویه‌نشده</span></div>
           <div className="mx-auto w-full max-w-[480px]">{dashboardWidgetsLoading ? <p className="py-12 text-center text-xs text-neutral-500">در حال بارگذاری...</p> : <ShareChart rows={unsettledTenkhahRows} total={unsettledTenkhahRows.reduce((sum, row) => sum + row.count, 0)} totalLabel="کل ماندهٔ تسویه‌نشده" unit="ریال" showValues={false} large empty="ماندهٔ تسویه‌نشده‌ای وجود ندارد." />}</div>
         </Card>
-      </div>}
+      }
 
-      {canOpenPage(user, "/knowledge-management/dashboard") && <Card className="mt-3 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+      {canOpenPage(user, "/knowledge-management/dashboard") && <Card className="rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
         <div className="mb-4"><span className="block text-sm font-bold">مدیریت دانش</span><span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">نمای کلی درس‌آموخته‌ها، کتابخانه‌ها و منابع آموزشی</span></div>
-        <KnowledgeDashboardWidgets data={knowledgeData} />
+        <KnowledgeDashboardWidgets data={knowledgeData} singleColumn />
       </Card>}
+      </div>
 
       {canViewActivity && <ActivityPanels logs={activityLogs} />}
 
