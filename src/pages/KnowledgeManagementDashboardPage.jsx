@@ -13,7 +13,7 @@ function Rows({ rows, empty = "داده‌ای ثبت نشده است.", transfo
 }
 function TopUsers({ rows }) { return <Rows rows={rows} empty="مراجعه‌ای ثبت نشده است." transform={(row) => row.name} />; }
 
-export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = true, large = false }) {
+export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = true, large = false, compactValues = false }) {
   const [activeId, setActiveId] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const moveTooltip = (x, y) => setTooltipPosition({ x: Math.max(8, Math.min(x + 14, window.innerWidth - 200)), y: Math.max(8, Math.min(y + 14, window.innerHeight - 76)) });
@@ -55,7 +55,7 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
         const selected = activeId === slice.id;
         return <g key={slice.id} tabIndex={0} role="button" aria-label={`${slice.name}، ${fa(slice.count)} ${unit}`} onPointerDown={(event) => { setActiveId(slice.id); moveTooltip(event.clientX, event.clientY); }} onMouseEnter={(event) => { setActiveId(slice.id); moveTooltip(event.clientX, event.clientY); }} onMouseMove={(event) => moveTooltip(event.clientX, event.clientY)} onMouseLeave={() => setActiveId(null)} onFocus={(event) => { const rect = event.currentTarget.getBoundingClientRect(); setActiveId(slice.id); moveTooltip(rect.left + rect.width / 2, rect.top + rect.height / 2); }} onBlur={() => setActiveId(null)} style={{ cursor: "pointer", transition: "filter 220ms", filter: selected ? "drop-shadow(0px 5px 5px rgba(0,0,0,0.25))" : "none" }}>
           {slice.displayShare >= 1 ? <circle cx={cx} cy={cy} r={radius} fill={slice.color} /> : <path d={`M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${slice.displayShare > 0.5 ? 1 : 0} 1 ${x2} ${y2} Z`} fill={slice.color} />}
-          {(showValues || slice.share >= 0.06) && <text x={countX} y={countY} textAnchor="middle" dominantBaseline="central" fill="white" fontSize="14" fontWeight="bold" pointerEvents="none">{showValues ? fa(slice.count) : `${fa(Math.round(slice.share * 100))}٪`}</text>}
+          {(compactValues ? slice.displayShare >= 0.06 : showValues || slice.share >= 0.06) && <text x={countX} y={countY} textAnchor="middle" dominantBaseline="central" fill="white" fontSize={compactValues ? "11" : "14"} fontWeight="bold" pointerEvents="none">{showValues ? compactValues ? new Intl.NumberFormat("fa-IR", { notation: "compact", maximumFractionDigits: 1 }).format(slice.count) : fa(slice.count) : `${fa(Math.round(slice.share * 100))}٪`}</text>}
         </g>;
       })}
       {labels.map((slice) => {
@@ -72,8 +72,8 @@ export function ShareChart({ rows, total, totalLabel, unit, empty, showValues = 
 
 export function KnowledgeDashboardWidgets({ data, singleColumn = false }) {
   const lessons = data?.lessons || {};
-  return <div className={`grid grid-cols-1 gap-3 ${singleColumn ? "" : "xl:grid-cols-3"}`}>
-    <Panel title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده"><ShareChart rows={lessons.byAuthor || []} total={Number(lessons.total || 0)} totalLabel="کل درس‌آموخته‌ها" unit="درس‌آموخته" empty="درس‌آموخته‌ای ثبت نشده است." /></Panel>
+  return <div className={`grid grid-cols-1 gap-3 ${singleColumn ? "h-full" : "xl:grid-cols-3"}`}>
+    <Panel className={singleColumn ? "h-full min-w-0" : ""} title="خلاصه درس‌آموخته‌ها" subtitle="سهم هر کاربر از درس‌آموخته‌های تأییدشده"><div className={singleColumn ? "mx-auto w-full max-w-[480px]" : ""}><ShareChart rows={lessons.byAuthor || []} total={Number(lessons.total || 0)} totalLabel="کل درس‌آموخته‌ها" unit="درس‌آموخته" large={singleColumn} empty="درس‌آموخته‌ای ثبت نشده است." /></div></Panel>
   </div>;
 }
 
