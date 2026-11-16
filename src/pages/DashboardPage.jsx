@@ -212,6 +212,7 @@ export default function DashboardPage() {
   const [dailyLogEntries, setDailyLogEntries] = useState([]);
   const [normalRequests, setNormalRequests] = useState([]);
   const [tenkhahRequests, setTenkhahRequests] = useState([]);
+  const [tenkhahBeneficiaryBalances, setTenkhahBeneficiaryBalances] = useState([]);
   const [supplyRequests, setSupplyRequests] = useState([]);
   const [supplyUsers, setSupplyUsers] = useState([]);
   const [knowledgeData, setKnowledgeData] = useState(null);
@@ -272,7 +273,7 @@ export default function DashboardPage() {
     Promise.all([
       fetch("/api/roznegar?activeProjects=true", options).then((response) => response.ok ? response.json() : { items: [] }),
       fetch("/api/requests?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
-      fetch("/api/tenkhah?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [] }),
+      fetch("/api/tenkhah?dashboard=1&beneficiaryBalances=1", options).then((response) => response.ok ? response.json() : { items: [] }),
       fetch("/api/supply-requests?dashboard=1", options).then((response) => response.ok ? response.json() : { items: [], supplyUsers: [] }),
       fetch("/api/knowledge-dashboard", options).then((response) => response.ok ? response.json() : null),
     ]).then(([dailyLogsData, requestsData, tenkhahData, supplyData, knowledgeDashboardData]) => {
@@ -281,6 +282,7 @@ export default function DashboardPage() {
       setDailyLogEntries(Array.isArray(dailyLogsData?.items) ? dailyLogsData.items : []);
       setNormalRequests(requests.filter((item) => String(item?.requestType || item?.docId || "").toLowerCase() !== "tenkhah_request" && String(item?.scope || "").toLowerCase() !== "tenkhah"));
       setTenkhahRequests(Array.isArray(tenkhahData?.items) ? tenkhahData.items : []);
+      setTenkhahBeneficiaryBalances(Array.isArray(tenkhahData?.beneficiaryBalances) ? tenkhahData.beneficiaryBalances : []);
       setSupplyRequests(Array.isArray(supplyData?.items) ? supplyData.items : []);
       setSupplyUsers(Array.isArray(supplyData?.supplyUsers) ? supplyData.supplyUsers : []);
       setKnowledgeData(knowledgeDashboardData);
@@ -289,6 +291,7 @@ export default function DashboardPage() {
       setDailyLogEntries([]);
       setNormalRequests([]);
       setTenkhahRequests([]);
+      setTenkhahBeneficiaryBalances([]);
       setSupplyRequests([]);
       setSupplyUsers([]);
       setKnowledgeData(null);
@@ -318,17 +321,12 @@ export default function DashboardPage() {
   const supplyReviewTimings = useMemo(() => workflowStageTimings(supplyRequests, ["project_manager", "commercial"], "roleKey", "approved"), [supplyRequests]);
   const tenkhahReviewTimings = useMemo(() => workflowStageTimings(tenkhahRequests, ["project_manager", "management", "finance"], "stage", "approve"), [tenkhahRequests]);
   const unsettledTenkhahRows = useMemo(() => {
-    const people = new Map();
-    tenkhahRequests.forEach((item) => {
-      const key = String(item?.beneficiaryUserId ?? item?.createdById ?? item?.beneficiaryName ?? item?.requesterName ?? "");
+    return tenkhahBeneficiaryBalances.map((item) => {
       const balance = Number(String(item?.unsettledBalance ?? 0).replace(/[,٬\s]/g, ""));
-      if (!key || !Number.isFinite(balance) || balance <= 0) return;
-      const person = people.get(key) || { id: key, name: String(item?.beneficiaryName || item?.beneficiaryUsername || item?.requesterName || `کاربر #${key}`).trim(), count: 0 };
-      person.count += balance;
-      people.set(key, person);
-    });
-    return [...people.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fa"));
-  }, [tenkhahRequests]);
+      return { id: String(item.id), name: String(item.name || `کاربر #${item.id}`).trim(), count: balance };
+    }).filter((person) => Number.isFinite(person.count) && person.count > 0)
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fa"));
+  }, [tenkhahBeneficiaryBalances]);
 
   const supplyExperts = useMemo(() => supplyUsers.map((person) => {
     const id = Number(person.id);
