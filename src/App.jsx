@@ -19,6 +19,7 @@ import BaseCurrenciesPage from "./pages/BaseCurrenciesPage.jsx";
 import BaseInformationPage from "./pages/BaseInformationPage.jsx";
 import DailyReportPage from "./pages/DailyReportPage.jsx";
 import FinancialWorksheetPage from "./pages/FinancialWorksheetPage.jsx";
+import ProjectFinancialParametersPage from "./pages/ProjectFinancialParametersPage.jsx";
 import CostBreakdownPage from "./pages/CostBreakdownPage.jsx";
 import FinancialCommitmentsPage from "./pages/FinancialCommitmentsPage.jsx";
 import CashFlowForecastPage from "./pages/CashFlowForecastPage.jsx";
@@ -120,7 +121,7 @@ export default function App() {
           path="/projects/financial-worksheet"
           element={<FinancialWorksheetPage />}
         />
-        <Route path="/projects/financial-parameters" element={<NavPlaceholderPage title="پارامتر های مالی پروژه ها" icon="/images/icons/parametr.svg" />} />
+        <Route path="/projects/financial-parameters" element={<ProjectFinancialParametersPage />} />
         <Route path="/projects/project-management-dashboard" element={<ProjectManagementDashboardPage />} />
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
