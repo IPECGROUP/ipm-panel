@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { api } from "../utils/api.js";
 import { useAuth } from "../components/AuthProvider.jsx";
+import ProjectExchangeRatesTab from "./ProjectExchangeRatesTab.jsx";
 
 const months = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 const tabs = [{ id: "rates", label: "نرخ های تبدیل ارز" }, { id: "allocation", label: "تسهیم هزینه های پروژه" }];
@@ -131,7 +132,7 @@ export default function ProjectFinancialParametersPage() {
             {tabs.map((item, index) => <button key={item.id} type="button" role="tab" onClick={() => setTab(item.id)} aria-selected={tab === item.id} className={`relative z-10 h-10 min-w-[104px] flex-none rounded-lg px-3 text-[11px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20 ${index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "md:rounded-tr-2xl"} ${index === tabs.length - 1 ? "md:rounded-tl-2xl" : ""} ${tab === item.id ? "bg-[#184a6b] text-white shadow-sm dark:bg-[#184a6b] dark:text-white" : "bg-white text-[#1f2937] hover:bg-neutral-50 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:after:bg-neutral-700 dark:hover:bg-neutral-800"}`}>{item.label}</button>)}
           </div>
         </div>
-        {tab === "rates" ? <div className="min-h-[320px] rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900" /> : <div className="rounded-2xl border border-black/10 bg-white pt-4 dark:border-neutral-800 dark:bg-neutral-900">
+        {tab === "rates" ? <ProjectExchangeRatesTab /> : <div className="rounded-2xl border border-black/10 bg-white pt-4 dark:border-neutral-800 dark:bg-neutral-900">
           <div className="grid grid-cols-1 items-center gap-3 px-4 pb-4 sm:grid-cols-[1fr_auto_1fr]">
             <label className="flex items-center gap-2 text-sm font-semibold">سال <select value={year} onChange={(event) => setYear(Number(event.target.value))} className="h-10 rounded-xl border border-black/15 bg-white px-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">{years.map((item) => <option key={item} value={item}>{fa(item)}</option>)}</select></label>
             <div className="flex items-center justify-center gap-2">
