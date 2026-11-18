@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
-import { TableWrap, THead, TH, TR, TD } from "../components/ui/Table.jsx";
-import { baseCurrenciesTablePreset as tableUi } from "../components/ui/tablePresets.js";
 import { api } from "../utils/api.js";
 import { useAuth } from "../components/AuthProvider.jsx";
 
@@ -108,10 +106,10 @@ export default function ProjectFinancialParametersPage() {
   const years = Array.from({ length: 41 }, (_, index) => yearNow - 20 + index);
 
   return (
-    <Card className="rounded-2xl border bg-white p-7 text-neutral-900 border-neutral-200 md:p-8 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-      <div className="mb-5 flex min-w-0 items-center gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]"><img src="/images/icons/parametr.svg" alt="" className="h-6 w-6 dark:invert" /></span>
-        <span className="min-w-0"><span className="block truncate text-base font-bold md:text-lg">پارامتر های مالی پروژه ها</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span></span>
+    <Card dir="rtl" className="mx-auto max-w-[1400px] rounded-2xl border border-black/10 bg-white p-2.5 text-neutral-900 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:rounded-3xl sm:p-3 md:p-4">
+      <div className="mb-4 flex min-w-0 items-center gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl"><span aria-hidden="true" className="h-5 w-5 bg-[#184a6b] dark:bg-[#8fc4e3] sm:h-6 sm:w-6" style={{ WebkitMask: "url(/images/icons/parametr.svg) center / contain no-repeat", mask: "url(/images/icons/parametr.svg) center / contain no-repeat" }} /></span>
+        <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">پارامتر های مالی پروژه ها</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span></span>
       </div>
       <div dir="rtl">
         <div className="overflow-visible px-0 sm:px-2">
@@ -120,18 +118,18 @@ export default function ProjectFinancialParametersPage() {
           </div>
         </div>
         {tab === "rates" ? <div className="min-h-[320px] rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900" /> : <div className="rounded-2xl border border-black/10 bg-white pt-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="flex flex-wrap items-center gap-4 px-4 pb-4">
+          <div className="grid grid-cols-1 items-center gap-3 px-4 pb-4 sm:grid-cols-[1fr_auto_1fr]">
             <label className="flex items-center gap-2 text-sm font-semibold">سال <select value={year} onChange={(event) => setYear(Number(event.target.value))} className="h-10 rounded-xl border border-black/15 bg-white px-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">{years.map((item) => <option key={item} value={item}>{fa(item)}</option>)}</select></label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <button type="button" disabled={half === 0} onClick={() => setHalf(0)} aria-label="شش ماه اول" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"><ChevronRight size={18} /></button>
               <span className="min-w-[150px] text-center text-sm font-semibold">{half === 0 ? "فروردین تا شهریور" : "مهر تا اسفند"}</span>
               <button type="button" disabled={half === 1} onClick={() => setHalf(1)} aria-label="شش ماه دوم" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"><ChevronLeft size={18} /></button>
             </div>
           </div>
           {error && <p role="alert" className="px-4 pb-3 text-sm text-red-600">{error}</p>}
-          <TableWrap><div className={tableUi.outer}><div className={tableUi.innerPad}><div className={`${tableUi.frame} shadow-sm`}><div className="overflow-x-auto"><table className="w-full min-w-[900px] table-fixed text-sm" dir="rtl"><THead><tr className={tableUi.headRow}><TH className={tableUi.th}>پروژه</TH>{months.slice(half * 6, half * 6 + 6).map((month) => <TH key={month} className={tableUi.th}>{month}</TH>)}</tr></THead><tbody className={tableUi.body}>
-            {loading ? <TR><TD className={tableUi.emptyRow}>در حال بارگذاری...</TD></TR> : projects.length === 0 ? <TR><TD className={tableUi.emptyRow}>پروژه فعالی وجود ندارد.</TD></TR> : projects.map((project) => <TR key={project.id}><TD className="px-3 py-2 text-center font-semibold">{project.name}</TD>{months.slice(half * 6, half * 6 + 6).map((month, index) => { const key = keyOf(year, project.id, half * 6 + index + 1); return <TD key={key} className="px-1 py-2 text-center"><input aria-label={`${project.name}، ${month} ${fa(year)}`} inputMode="numeric" value={display(values[key] ?? "")} onChange={(event) => changeValue(key, event.target.value)} onBlur={() => { if (Object.hasOwn(drafts.current, key)) saveCell(key); }} className={`h-9 w-full rounded-lg border bg-white px-2 text-center outline-none focus:border-blue-400 dark:bg-neutral-900 ${status[key] === "error" ? "border-red-500" : "border-black/15 dark:border-neutral-700"}`} /><span className="sr-only" role="status">{status[key] === "error" ? "خطا در ذخیره" : status[key] === "saving" ? "در حال ذخیره" : ""}</span></TD>; })}</TR>)}
-          </tbody></table></div></div></div></div></TableWrap>
+          <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center" dir="rtl"><thead><tr className="border-b border-[#184a6b] bg-[#184a6b] text-white"><th className="sticky top-0 z-30 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">پروژه</th>{months.slice(half * 6, half * 6 + 6).map((month) => <th key={month} className="sticky top-0 z-30 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month}</th>)}</tr></thead><tbody className="text-[13px] text-black [&>tr]:h-9 dark:text-neutral-100">
+            {loading ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال بارگذاری...</td></tr> : projects.length === 0 ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">پروژه فعالی وجود ندارد.</td></tr> : projects.map((project) => <tr key={project.id} className="bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate">{project.name}</span></td>{months.slice(half * 6, half * 6 + 6).map((month, index) => { const key = keyOf(year, project.id, half * 6 + index + 1); return <td key={key} className="border-b border-neutral-300 px-1 dark:border-neutral-700"><input aria-label={`${project.name}، ${month} ${fa(year)}`} inputMode="numeric" value={display(values[key] ?? "")} onChange={(event) => changeValue(key, event.target.value)} onBlur={() => { if (Object.hasOwn(drafts.current, key)) saveCell(key); }} className={`h-8 w-full rounded-lg border bg-white px-2 text-center outline-none focus:border-blue-400 dark:bg-neutral-900 ${status[key] === "error" ? "border-red-500" : "border-black/15 dark:border-neutral-700"}`} /><span className="sr-only" role="status">{status[key] === "error" ? "خطا در ذخیره" : status[key] === "saving" ? "در حال ذخیره" : ""}</span></td>; })}</tr>)}
+          </tbody></table></div></div>
           <div className="flex flex-wrap items-center gap-3 px-4 pb-4"><button type="button" onClick={saveAll} className="rounded-xl bg-black px-6 py-2 text-sm font-semibold text-white hover:bg-neutral-800">ذخیره</button><span className="text-xs text-neutral-500 dark:text-neutral-400">مقادیر به صورت خودکار ذخیره می‌شوند.</span>{Object.values(status).includes("error") && <span role="alert" className="text-xs text-red-600">ذخیره برخی مقادیر انجام نشد؛ برای تلاش دوباره دکمه ذخیره را بزنید.</span>}</div>
         </div>}
       </div>
