@@ -17,7 +17,7 @@ const isGeneral = (project) => String(project.name || "").trim().replace(/ي/g, 
 export default function ProjectFinancialParametersPage() {
   const { user } = useAuth();
   const draftKey = `project-cost-allocation-drafts:${user?.id}`;
-  const [tab, setTab] = useState("allocation");
+  const [tab, setTab] = useState("rates");
   const [year, setYear] = useState(() => Math.min(1420, Math.max(1401, currentYear())));
   const [half, setHalf] = useState(0);
   const [projects, setProjects] = useState([]);
