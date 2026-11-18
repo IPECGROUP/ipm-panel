@@ -15,6 +15,15 @@ const parseStart = (value) => {
   if (year < 1 || month < 1 || month > 12 || day < 1 || day > (month <= 6 ? 31 : 30)) return null;
   return { year, month, day };
 };
+const amountToMinorUnits = (value) => {
+  const match = String(value ?? "").match(/^(\d+)(?:\.(\d{1,2}))?$/);
+  return match ? BigInt(match[1]) * 100n + BigInt(String(match[2] || "").padEnd(2, "0")) : null;
+};
+const formatMinorUnits = (amount) => {
+  const whole = amount / 100n;
+  const fraction = String(amount % 100n).padStart(2, "0");
+  return fa(`${String(whole).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}${fraction === "00" ? "" : `.${fraction}`}`);
+};
 const inputClass = "h-10 w-full rounded-xl border border-neutral-300 bg-white px-3 text-sm text-neutral-900 outline-none focus:border-[#184a6b] dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100";
 
 export default function FinancialCommitmentsPage() {
@@ -23,6 +32,9 @@ export default function FinancialCommitmentsPage() {
   const [rows, setRows] = useState([]);
   const [start, setStart] = useState(null);
   const [currencyLabels, setCurrencyLabels] = useState([]);
+  const [contractCurrencies, setContractCurrencies] = useState([]);
+  const [monthlyUsage, setMonthlyUsage] = useState({});
+  const [exchangeRates, setExchangeRates] = useState([]);
   const [year, setYear] = useState(null);
   const [half, setHalf] = useState(0);
   const [expanded, setExpanded] = useState(new Set());
@@ -34,6 +46,7 @@ export default function FinancialCommitmentsPage() {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [usageError, setUsageError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -54,7 +67,7 @@ export default function FinancialCommitmentsPage() {
 
   useEffect(() => {
     let active = true;
-    setRows([]); setStart(null); setCurrencyLabels([]); setYear(null); setError("");
+    setRows([]); setStart(null); setCurrencyLabels([]); setContractCurrencies([]); setMonthlyUsage({}); setExchangeRates([]); setYear(null); setError(""); setUsageError("");
     if (!projectId) { setLoading(false); return () => { active = false; }; }
     setLoading(true);
     Promise.all([api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}`), api(`/contracts?projectId=${encodeURIComponent(projectId)}&documentType=main`), api("/base/currencies/types")])
@@ -69,15 +82,37 @@ export default function FinancialCommitmentsPage() {
           const { item, start: contractStart } = mainContracts[0];
           setStart(contractStart); setYear(contractStart.year); setHalf(contractStart.month > 6 ? 1 : 0);
           const currencyById = new Map((Array.isArray(currencies?.items) ? currencies.items : []).map((currency) => [String(currency.id), String(currency.title ?? currency.label ?? "").trim()]));
-          const labels = (Array.isArray(item.financial?.contractAmounts) ? item.financial.contractAmounts : [])
-            .map((amount) => String(amount.currencyLabel ?? amount.currency_label ?? "").trim() || currencyById.get(String(amount.currencyId ?? amount.currency_id ?? "")) || "")
-            .filter(Boolean);
+          const contractAmounts = Array.isArray(item.financial?.contractAmounts) ? item.financial.contractAmounts : [];
+          const currencies = contractAmounts.map((amount) => ({
+            currencyId: String(amount.currencyId ?? amount.currency_id ?? ""),
+            sourceId: String(amount.sourceId ?? amount.currencySourceId ?? amount.source_id ?? ""),
+            label: String(amount.currencyLabel ?? amount.currency_label ?? "").trim() || currencyById.get(String(amount.currencyId ?? amount.currency_id ?? "")) || "",
+            isRial: (amount.currencyIsRial ?? amount.currency_is_rial) === true,
+          })).filter((currency) => currency.currencyId || currency.label);
+          setContractCurrencies(currencies);
+          const labels = currencies.map((currency) => currency.label).filter(Boolean);
           setCurrencyLabels([...new Set(labels)]);
         }
       }).catch(() => { if (active) setError("دریافت ساختار هزینه، قرارداد اصلی یا فهرست ارزها انجام نشد."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [projectId]);
+
+  useEffect(() => {
+    let active = true;
+    setMonthlyUsage({});
+    setExchangeRates([]);
+    setUsageError("");
+    if (!projectId || !year) return () => { active = false; };
+    api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}&consumption_year=${year}`)
+      .then((result) => {
+        if (!active) return;
+        setMonthlyUsage(result?.monthlyRealizedUsageByCode || {});
+        setExchangeRates(Array.isArray(result?.exchangeRates) ? result.exchangeRates : []);
+      })
+      .catch(() => { if (active) setUsageError("دریافت مصرف ماهانه یا نرخ‌های ارز انجام نشد."); });
+    return () => { active = false; };
+  }, [projectId, year]);
 
   const project = projects.find((item) => item.id === projectId);
   const projectCode = normalizeCode(project?.code);
@@ -117,6 +152,33 @@ export default function FinancialCommitmentsPage() {
   });
   const visibleMonths = months.map((name, index) => ({ name, number: index + 1 })).filter(({ number }) => Math.floor((number - 1) / 6) === half && (year > start?.year || number >= start?.month));
   const currencyLabel = currencyLabels.length === 1 ? currencyLabels[0] : "";
+  const distinctCurrencies = [...new Map(contractCurrencies.map((currency) => [`${currency.currencyId}:${currency.sourceId}`, currency])).values()];
+  const contractCurrency = distinctCurrencies.length === 1 ? distinctCurrencies[0] : null;
+  const isRial = contractCurrency && (contractCurrency.isRial || /ریال|rial/i.test(contractCurrency.label));
+  const monthlyUsageByCode = useMemo(() => {
+    const result = new Map();
+    Object.entries(monthlyUsage).forEach(([rawCode, values]) => {
+      const code = normalizeCode(rawCode);
+      const fullCode = projectCode && code !== projectCode && !code.startsWith(`${projectCode}-`) ? `${projectCode}-${code}` : code;
+      if (fullCode) result.set(fullCode, values);
+    });
+    return result;
+  }, [monthlyUsage, projectCode]);
+  const consumptionFor = (code, month) => {
+    const rialAmount = amountToMinorUnits(monthlyUsageByCode.get(code)?.[month]);
+    if (rialAmount == null || !contractCurrency) return "";
+    if (isRial) return formatMinorUnits(rialAmount);
+    const rate = exchangeRates.find((item) => String(item.currencyId) === contractCurrency.currencyId && String(item.sourceId) === contractCurrency.sourceId && Number(item.month) === month)?.rate;
+    if (!rate || !/^\d+$/.test(String(rate)) || BigInt(rate) === 0n) return "";
+    const divisor = BigInt(rate);
+    return formatMinorUnits((rialAmount + divisor / 2n) / divisor);
+  };
+  const missingRateMonths = contractCurrency && !isRial ? [...new Set(Object.values(monthlyUsage)
+    .flatMap((values) => Object.keys(values || {}).map(Number))
+    .filter((month) => {
+      const rate = exchangeRates.find((item) => String(item.currencyId) === contractCurrency.currencyId && String(item.sourceId) === contractCurrency.sourceId && Number(item.month) === month)?.rate;
+      return !rate || !/^\d+$/.test(String(rate)) || BigInt(rate) === 0n;
+    }))].sort((a, b) => a - b) : [];
   const changeYear = (next) => { setYear(next); if (next === start.year && start.month > 6) setHalf(1); };
 
   return <Card dir="rtl" className="mx-auto max-w-[1400px] rounded-2xl border border-black/10 bg-white p-2.5 text-neutral-900 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:rounded-3xl sm:p-3 md:p-4">
@@ -146,8 +208,10 @@ export default function FinancialCommitmentsPage() {
           <label className="flex items-center gap-2 text-sm font-semibold">سال <select value={year} onChange={(event) => changeYear(Number(event.target.value))} className="h-10 rounded-xl border border-black/15 bg-white px-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">{Array.from({ length: Math.max(1420, start.year + 19) - start.year + 1 }, (_, index) => start.year + index).map((item) => <option key={item} value={item}>{fa(item)}</option>)}</select></label>
           <div className="flex items-center justify-center gap-2"><button type="button" disabled={half === 0 || (year === start.year && start.month > 6)} onClick={() => setHalf(0)} aria-label="شش ماه اول" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 disabled:opacity-40 dark:border-neutral-700"><ChevronRight size={18} /></button><span className="min-w-[150px] text-center text-sm font-semibold">{half === 0 ? "فروردین تا شهریور" : "مهر تا اسفند"}</span><button type="button" disabled={half === 1} onClick={() => setHalf(1)} aria-label="شش ماه دوم" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 disabled:opacity-40 dark:border-neutral-700"><ChevronLeft size={18} /></button></div>
         </div>
-        <p className="px-4 pb-3 text-xs text-neutral-600 dark:text-neutral-400">{currencyLabels.length > 1 ? `در مبلغ قرارداد اصلی چند ارز ثبت شده است: ${currencyLabels.join("، ")}. واحد مصرف باید مشخص شود.` : currencyLabel ? `واحد مبالغ این پروژه: ${currencyLabel}` : "ارز مبلغ قرارداد اصلی ثبت نشده است."}</p>
-        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center"><colgroup><col style={{ width: "34%" }} />{visibleMonths.map((month) => <col key={month.number} />)}</colgroup><thead><tr className="bg-[#184a6b] text-white"><th className="sticky top-0 z-10 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">کد و نام بودجه</th>{visibleMonths.map((month) => <th key={month.number} className="sticky top-0 z-10 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month.name}</th>)}</tr></thead><tbody className="text-[13px] text-black dark:text-neutral-100">{visibleRows.length === 0 ? <tr><td colSpan={visibleMonths.length + 1} className="py-8 text-neutral-500">{query || selectedTagIds.length ? "موردی مطابق جستجو یا برچسب انتخاب‌شده یافت نشد." : "ساختار هزینه‌ای برای این پروژه ثبت نشده است."}</td></tr> : visibleRows.map((row) => <tr key={row.id ?? row.code} className="h-9 bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><div className="flex items-center gap-1" style={{ paddingRight: `${Math.max(0, row.code.split('-').length - projectCode.split('-').length - 1) * 16}px` }}>{parents.has(row.code) ? <button type="button" aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} className="w-5 text-center">{expanded.has(row.code) ? "−" : "+"}</button> : <span className="w-5" />}<span dir="ltr" className="shrink-0">{fa(row.code)}</span><span className="truncate">{row.name}</span></div></td>{visibleMonths.map((month) => <td key={month.number} className="border-b border-neutral-300 px-1 py-1 dark:border-neutral-700"><div className="relative"><input readOnly value="" aria-label={`${row.name}، ${month.name} ${fa(year)}، ${currencyLabel || "ارز نامشخص"}`} className="h-7 w-full rounded-lg border border-black/10 bg-white px-2 pl-16 text-center text-xs text-neutral-900 outline-none dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" /><span aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">{currencyLabel || "—"}</span></div></td>)}</tr>)}</tbody></table></div></div>
+        <p className="px-4 pb-3 text-xs text-neutral-600 dark:text-neutral-400">{distinctCurrencies.length > 1 ? "در مبلغ قرارداد اصلی چند ترکیب ارز و منشأ ثبت شده است؛ واحد مصرف باید مشخص شود." : currencyLabel ? `واحد مبالغ این پروژه: ${currencyLabel}` : "ارز مبلغ قرارداد اصلی ثبت نشده است."}</p>
+        {usageError && <p role="alert" className="px-4 pb-3 text-xs text-red-600">{usageError}</p>}
+        {missingRateMonths.length > 0 && <p role="status" className="px-4 pb-3 text-xs text-amber-700 dark:text-amber-400">نرخ {currencyLabel} با منشأ قرارداد برای {missingRateMonths.map((month) => months[month - 1]).join("، ")} سال {fa(year)} در پارامترهای مالی پروژه‌ها ثبت نشده است؛ مبلغ این ماه‌ها نمایش داده نمی‌شود.</p>}
+        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center"><colgroup><col style={{ width: "34%" }} />{visibleMonths.map((month) => <col key={month.number} />)}</colgroup><thead><tr className="bg-[#184a6b] text-white"><th className="sticky top-0 z-10 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">کد و نام بودجه</th>{visibleMonths.map((month) => <th key={month.number} className="sticky top-0 z-10 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month.name}</th>)}</tr></thead><tbody className="text-[13px] text-black dark:text-neutral-100">{visibleRows.length === 0 ? <tr><td colSpan={visibleMonths.length + 1} className="py-8 text-neutral-500">{query || selectedTagIds.length ? "موردی مطابق جستجو یا برچسب انتخاب‌شده یافت نشد." : "ساختار هزینه‌ای برای این پروژه ثبت نشده است."}</td></tr> : visibleRows.map((row) => <tr key={row.id ?? row.code} className="h-9 bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><div className="flex items-center gap-1" style={{ paddingRight: `${Math.max(0, row.code.split('-').length - projectCode.split('-').length - 1) * 16}px` }}>{parents.has(row.code) ? <button type="button" aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} className="w-5 text-center">{expanded.has(row.code) ? "−" : "+"}</button> : <span className="w-5" />}<span dir="ltr" className="shrink-0">{fa(row.code)}</span><span className="truncate">{row.name}</span></div></td>{visibleMonths.map((month) => <td key={month.number} className="border-b border-neutral-300 px-1 py-1 dark:border-neutral-700"><div className="relative"><input readOnly value={consumptionFor(row.code, month.number)} aria-label={`${row.name}، ${month.name} ${fa(year)}، ${currencyLabel || "ارز نامشخص"}`} className="h-7 w-full rounded-lg border border-black/10 bg-white px-2 pl-16 text-center text-xs text-neutral-900 outline-none dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" /><span aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">{currencyLabel || "—"}</span></div></td>)}</tr>)}</tbody></table></div></div>
       </>}
     </div>
     {tagPickerOpen && <UnifiedTagPicker selectedIds={selectedTagIds} onClose={() => setTagPickerOpen(false)} onConfirm={(ids) => { setSelectedTagIds(ids); setTagPickerOpen(false); }} />}
