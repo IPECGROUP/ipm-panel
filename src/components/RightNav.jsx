@@ -46,7 +46,8 @@ const IcQuality = () => (
   </span>
 );
 const IcCostBreakdown = () => <NavIcon src="/images/icons/sakhtar-shekast.svg" />;
-const IcFinancialCommitments = () => <NavIcon src="/images/icons/masaref-mali.svg" />;
+const IcFinancialCommitments = () => <NavIcon src="/images/icons/control-hazine.svg" />;
+const IcFinancialParameters = () => <NavIcon src="/images/icons/parametr.svg" />;
 const IcProjectDashboard = () => <NavIcon src="/images/icons/dashboard-12.svg" />;
 const IcPaymentRequest = () => <NavIcon src="/images/icons/darkhast-pardakht.svg" />;
 const IcTenkhahGardan = () => <NavIcon src="/images/icons/tankhah-gardan.svg" />;
@@ -281,8 +282,9 @@ function RightNav() {
           items: [
             { to: "/projects/daily-log", label: "روزنگار پروژه", hint: "ثبت گزارش های روزانه", icon: <IcDaily /> },
             { to: "/projects/cost-breakdown", label: "ساختار شکست هزینه ها", hint: "ساختار و اجزای هزینه پروژه", icon: <IcCostBreakdown /> },
-            { to: "/projects/financial-commitments", label: "تعهدات و مصارف مالی", hint: "تعهدات و مصرف های پروژه", icon: <IcFinancialCommitments /> },
-            { to: "/projects/financial-worksheet", label: "کاربرگ مالی", hint: "جزئیات مالی پروژه", icon: <IcWorksheet /> },
+            { to: "/projects/financial-commitments", label: "کنترل هزینه ها", hint: "تعهدات و مصرف های پروژه", icon: <IcFinancialCommitments /> },
+            { to: "/projects/financial-worksheet", label: "کاربرگ پروژه ها", hint: "جزئیات مالی پروژه", icon: <IcWorksheet /> },
+            { to: "/projects/financial-parameters", label: "پارامتر های مالی پروژه ها", hint: "پارامتر های مالی پروژه ها", icon: <IcFinancialParameters /> },
             { to: "/projects/project-management-dashboard", label: "داشبورد مدیریت پروژه", hint: "نمای کلی وضعیت پروژه", icon: <IcProjectDashboard /> },
           ],
         },

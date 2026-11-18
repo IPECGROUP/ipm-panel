@@ -8,6 +8,7 @@ const ROUTE_PERMISSION_PAGES = [
   ["/projects/cost-breakdown", "ساختار شکست هزینه‌ها"],
   ["/projects/financial-commitments", "تعهدات و مصارف مالی"],
   ["/projects/financial-worksheet", "کاربرگ مالی"],
+  ["/projects/financial-parameters", "کاربرگ مالی"],
   ["/projects/project-management-dashboard", "کاربرگ مالی", "داشبورد مدیریت پروژه"],
   ["/finance/tenkhah", "تنخواه گردان"],
   ["/finance/payment-request", "درخواست پرداخت"],

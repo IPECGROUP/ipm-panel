@@ -120,6 +120,7 @@ export default function App() {
           path="/projects/financial-worksheet"
           element={<FinancialWorksheetPage />}
         />
+        <Route path="/projects/financial-parameters" element={<NavPlaceholderPage title="پارامتر های مالی پروژه ها" icon="/images/icons/parametr.svg" />} />
         <Route path="/projects/project-management-dashboard" element={<ProjectManagementDashboardPage />} />
         <Route path="/projects/daily-log" element={<RoznegarPgae />} />
         <Route path="/letters" element={<LettersPage />} />
