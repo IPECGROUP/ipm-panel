@@ -22,6 +22,7 @@ export default function FinancialCommitmentsPage() {
   const [projectId, setProjectId] = useState("");
   const [rows, setRows] = useState([]);
   const [start, setStart] = useState(null);
+  const [currencyLabels, setCurrencyLabels] = useState([]);
   const [year, setYear] = useState(null);
   const [half, setHalf] = useState(0);
   const [expanded, setExpanded] = useState(new Set());
@@ -53,19 +54,27 @@ export default function FinancialCommitmentsPage() {
 
   useEffect(() => {
     let active = true;
-    setRows([]); setStart(null); setYear(null); setError("");
+    setRows([]); setStart(null); setCurrencyLabels([]); setYear(null); setError("");
     if (!projectId) { setLoading(false); return () => { active = false; }; }
     setLoading(true);
-    Promise.all([api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}`), api(`/contracts?projectId=${encodeURIComponent(projectId)}&documentType=main`)])
-      .then(([breakdown, contracts]) => {
+    Promise.all([api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}`), api(`/contracts?projectId=${encodeURIComponent(projectId)}&documentType=main`), api("/base/currencies/types")])
+      .then(([breakdown, contracts, currencies]) => {
         if (!active) return;
         setRows(Array.isArray(breakdown?.items) ? breakdown.items : []);
-        const starts = (Array.isArray(contracts?.items) ? contracts.items : [])
+        const mainContracts = (Array.isArray(contracts?.items) ? contracts.items : [])
           .filter((item) => String(item.projectId ?? item.project_id) === projectId && (item.documentType ?? item.document_type) === "main" && !(item.parentContractId ?? item.parent_contract_id))
-          .map((item) => parseStart(item.calendar?.startDate)).filter(Boolean)
-          .sort((a, b) => a.year - b.year || a.month - b.month || a.day - b.day);
-        if (starts.length) { setStart(starts[0]); setYear(starts[0].year); setHalf(starts[0].month > 6 ? 1 : 0); }
-      }).catch(() => { if (active) setError("دریافت ساختار هزینه یا اطلاعات قرارداد اصلی انجام نشد."); })
+          .map((item) => ({ item, start: parseStart(item.calendar?.startDate) })).filter(({ start: date }) => date)
+          .sort((a, b) => a.start.year - b.start.year || a.start.month - b.start.month || a.start.day - b.start.day);
+        if (mainContracts.length) {
+          const { item, start: contractStart } = mainContracts[0];
+          setStart(contractStart); setYear(contractStart.year); setHalf(contractStart.month > 6 ? 1 : 0);
+          const currencyById = new Map((Array.isArray(currencies?.items) ? currencies.items : []).map((currency) => [String(currency.id), String(currency.title ?? currency.label ?? "").trim()]));
+          const labels = (Array.isArray(item.financial?.contractAmounts) ? item.financial.contractAmounts : [])
+            .map((amount) => String(amount.currencyLabel ?? amount.currency_label ?? "").trim() || currencyById.get(String(amount.currencyId ?? amount.currency_id ?? "")) || "")
+            .filter(Boolean);
+          setCurrencyLabels([...new Set(labels)]);
+        }
+      }).catch(() => { if (active) setError("دریافت ساختار هزینه، قرارداد اصلی یا فهرست ارزها انجام نشد."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [projectId]);
@@ -107,6 +116,7 @@ export default function FinancialCommitmentsPage() {
     return true;
   });
   const visibleMonths = months.map((name, index) => ({ name, number: index + 1 })).filter(({ number }) => Math.floor((number - 1) / 6) === half && (year > start?.year || number >= start?.month));
+  const currencyLabel = currencyLabels.length === 1 ? currencyLabels[0] : "";
   const changeYear = (next) => { setYear(next); if (next === start.year && start.month > 6) setHalf(1); };
 
   return <Card dir="rtl" className="mx-auto max-w-[1400px] rounded-2xl border border-black/10 bg-white p-2.5 text-neutral-900 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:rounded-3xl sm:p-3 md:p-4">
@@ -136,7 +146,8 @@ export default function FinancialCommitmentsPage() {
           <label className="flex items-center gap-2 text-sm font-semibold">سال <select value={year} onChange={(event) => changeYear(Number(event.target.value))} className="h-10 rounded-xl border border-black/15 bg-white px-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">{Array.from({ length: Math.max(1420, start.year + 19) - start.year + 1 }, (_, index) => start.year + index).map((item) => <option key={item} value={item}>{fa(item)}</option>)}</select></label>
           <div className="flex items-center justify-center gap-2"><button type="button" disabled={half === 0 || (year === start.year && start.month > 6)} onClick={() => setHalf(0)} aria-label="شش ماه اول" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 disabled:opacity-40 dark:border-neutral-700"><ChevronRight size={18} /></button><span className="min-w-[150px] text-center text-sm font-semibold">{half === 0 ? "فروردین تا شهریور" : "مهر تا اسفند"}</span><button type="button" disabled={half === 1} onClick={() => setHalf(1)} aria-label="شش ماه دوم" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 disabled:opacity-40 dark:border-neutral-700"><ChevronLeft size={18} /></button></div>
         </div>
-        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center"><colgroup><col style={{ width: "34%" }} />{visibleMonths.map((month) => <col key={month.number} />)}</colgroup><thead><tr className="bg-[#184a6b] text-white"><th className="sticky top-0 z-10 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">کد و نام بودجه</th>{visibleMonths.map((month) => <th key={month.number} className="sticky top-0 z-10 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month.name}</th>)}</tr></thead><tbody className="text-[13px] text-black dark:text-neutral-100">{visibleRows.length === 0 ? <tr><td colSpan={visibleMonths.length + 1} className="py-8 text-neutral-500">{query || selectedTagIds.length ? "موردی مطابق جستجو یا برچسب انتخاب‌شده یافت نشد." : "ساختار هزینه‌ای برای این پروژه ثبت نشده است."}</td></tr> : visibleRows.map((row) => <tr key={row.id ?? row.code} className="h-9 bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><div className="flex items-center gap-1" style={{ paddingRight: `${Math.max(0, row.code.split('-').length - projectCode.split('-').length - 1) * 16}px` }}>{parents.has(row.code) ? <button type="button" aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} className="w-5 text-center">{expanded.has(row.code) ? "−" : "+"}</button> : <span className="w-5" />}<span dir="ltr" className="shrink-0">{fa(row.code)}</span><span className="truncate">{row.name}</span></div></td>{visibleMonths.map((month) => <td key={month.number} className="border-b border-neutral-300 dark:border-neutral-700">—</td>)}</tr>)}</tbody></table></div></div>
+        <p className="px-4 pb-3 text-xs text-neutral-600 dark:text-neutral-400">{currencyLabels.length > 1 ? `در مبلغ قرارداد اصلی چند ارز ثبت شده است: ${currencyLabels.join("، ")}. واحد مصرف باید مشخص شود.` : currencyLabel ? `واحد مبالغ این پروژه: ${currencyLabel}` : "ارز مبلغ قرارداد اصلی ثبت نشده است."}</p>
+        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center"><colgroup><col style={{ width: "34%" }} />{visibleMonths.map((month) => <col key={month.number} />)}</colgroup><thead><tr className="bg-[#184a6b] text-white"><th className="sticky top-0 z-10 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">کد و نام بودجه</th>{visibleMonths.map((month) => <th key={month.number} className="sticky top-0 z-10 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month.name}</th>)}</tr></thead><tbody className="text-[13px] text-black dark:text-neutral-100">{visibleRows.length === 0 ? <tr><td colSpan={visibleMonths.length + 1} className="py-8 text-neutral-500">{query || selectedTagIds.length ? "موردی مطابق جستجو یا برچسب انتخاب‌شده یافت نشد." : "ساختار هزینه‌ای برای این پروژه ثبت نشده است."}</td></tr> : visibleRows.map((row) => <tr key={row.id ?? row.code} className="h-9 bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><div className="flex items-center gap-1" style={{ paddingRight: `${Math.max(0, row.code.split('-').length - projectCode.split('-').length - 1) * 16}px` }}>{parents.has(row.code) ? <button type="button" aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} className="w-5 text-center">{expanded.has(row.code) ? "−" : "+"}</button> : <span className="w-5" />}<span dir="ltr" className="shrink-0">{fa(row.code)}</span><span className="truncate">{row.name}</span></div></td>{visibleMonths.map((month) => <td key={month.number} className="border-b border-neutral-300 px-1 py-1 dark:border-neutral-700"><div className="relative"><input readOnly value="" aria-label={`${row.name}، ${month.name} ${fa(year)}، ${currencyLabel || "ارز نامشخص"}`} className="h-7 w-full rounded-lg border border-black/10 bg-white px-2 pl-16 text-center text-xs text-neutral-900 outline-none dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" /><span aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-neutral-500 dark:text-neutral-400">{currencyLabel || "—"}</span></div></td>)}</tr>)}</tbody></table></div></div>
       </>}
     </div>
     {tagPickerOpen && <UnifiedTagPicker selectedIds={selectedTagIds} onClose={() => setTagPickerOpen(false)} onConfirm={(ids) => { setSelectedTagIds(ids); setTagPickerOpen(false); }} />}
