@@ -24,6 +24,8 @@ export default function FinancialCommitmentsPage() {
   const [year, setYear] = useState(null);
   const [half, setHalf] = useState(0);
   const [expanded, setExpanded] = useState(new Set());
+  const [query, setQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("");
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -40,7 +42,7 @@ export default function FinancialCommitmentsPage() {
 
   useEffect(() => {
     let active = true;
-    setRows([]); setStart(null); setYear(null); setError("");
+    setRows([]); setStart(null); setYear(null); setQuery(""); setSelectedTag(""); setError("");
     if (!projectId) { setLoading(false); return () => { active = false; }; }
     setLoading(true);
     Promise.all([api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}`), api(`/contracts?projectId=${encodeURIComponent(projectId)}&documentType=main`)])
@@ -69,8 +71,24 @@ export default function FinancialCommitmentsPage() {
     displayRows.forEach(({ code }) => { const parts = code.split("-"); for (let i = 1; i < parts.length; i += 1) { const parent = parts.slice(0, i).join("-"); if (codes.has(parent)) result.add(parent); } });
     return result;
   }, [displayRows]);
+  const budgetTags = useMemo(() => displayRows.filter((row) => !row.code.includes("-")), [displayRows]);
   useEffect(() => setExpanded(new Set(parents)), [parents]);
+  const normalizedQuery = digits(query).trim().toLocaleLowerCase("fa");
+  const matchingCodes = useMemo(() => {
+    const directMatches = new Set(displayRows.filter((row) => {
+      const tagMatches = !selectedTag || row.code === selectedTag || row.code.startsWith(`${selectedTag}-`);
+      const text = `${row.code} ${row.name}`.toLocaleLowerCase("fa");
+      return tagMatches && (!normalizedQuery || text.includes(normalizedQuery));
+    }).map((row) => row.code));
+    const result = new Set(directMatches);
+    directMatches.forEach((code) => {
+      const parts = code.split("-");
+      for (let index = 1; index < parts.length; index += 1) result.add(parts.slice(0, index).join("-"));
+    });
+    return result;
+  }, [displayRows, normalizedQuery, selectedTag]);
   const visibleRows = displayRows.filter(({ code }) => {
+    if (!matchingCodes.has(code)) return false;
     const parts = code.split("-");
     for (let i = 1; i < parts.length; i += 1) { const parent = parts.slice(0, i).join("-"); if (parents.has(parent) && !expanded.has(parent)) return false; }
     return true;
@@ -93,11 +111,15 @@ export default function FinancialCommitmentsPage() {
       {!error && projectId && loading && <p className="px-4 pb-5 text-sm text-neutral-500">در حال بارگذاری...</p>}
       {!error && projectId && !loading && !start && <p className="px-4 pb-5 text-sm text-neutral-500">تاریخ شروع قرارداد اصلی برای این پروژه ثبت نشده است.</p>}
       {!error && start && !loading && <>
+        <div className="flex flex-col gap-3 border-t border-black/10 px-4 py-4 dark:border-white/10">
+          <label className="w-full text-sm font-semibold sm:max-w-md">جستجو در کد و نام بودجه<input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="نام یا کد بودجه را وارد کنید" className={`${inputClass} mt-1`} /></label>
+          {budgetTags.length > 0 && <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">برچسب‌ها:</span><button type="button" onClick={() => setSelectedTag("")} className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${!selectedTag ? "border-[#184a6b] bg-[#184a6b] text-white" : "border-black/15 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10"}`}>همه</button>{budgetTags.map((tag) => <button key={tag.code} type="button" onClick={() => setSelectedTag(tag.code)} title={tag.name} className={`max-w-[220px] truncate rounded-full border px-3 py-1 text-xs font-semibold transition ${selectedTag === tag.code ? "border-[#184a6b] bg-[#184a6b] text-white" : "border-black/15 hover:bg-black/5 dark:border-neutral-700 dark:hover:bg-white/10"}`}>{tag.name || fa(tag.code)}</button>)}</div>}
+        </div>
         <div className="grid grid-cols-1 items-center gap-3 px-4 pb-4 sm:grid-cols-[1fr_auto_1fr]">
           <div className="flex items-center gap-2 text-sm font-semibold"><span>سال</span><button type="button" onClick={() => changeYear(year - 1)} disabled={year <= start.year} aria-label="سال قبل" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 disabled:opacity-40 dark:border-neutral-700"><ChevronRight size={18} /></button><span className="min-w-14 text-center tabular-nums">{fa(year)}</span><button type="button" onClick={() => changeYear(year + 1)} aria-label="سال بعد" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 dark:border-neutral-700"><ChevronLeft size={18} /></button></div>
           <div className="flex items-center justify-center gap-2"><button type="button" disabled={half === 0 || (year === start.year && start.month > 6)} onClick={() => setHalf(0)} aria-label="شش ماه اول" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 disabled:opacity-40 dark:border-neutral-700"><ChevronRight size={18} /></button><span className="min-w-[150px] text-center text-sm font-semibold">{half === 0 ? "فروردین تا شهریور" : "مهر تا اسفند"}</span><button type="button" disabled={half === 1} onClick={() => setHalf(1)} aria-label="شش ماه دوم" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 disabled:opacity-40 dark:border-neutral-700"><ChevronLeft size={18} /></button></div>
         </div>
-        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center"><colgroup><col style={{ width: "34%" }} />{visibleMonths.map((month) => <col key={month.number} />)}</colgroup><thead><tr className="bg-[#184a6b] text-white"><th className="sticky top-0 z-10 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">کد و نام بودجه</th>{visibleMonths.map((month) => <th key={month.number} className="sticky top-0 z-10 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month.name}</th>)}</tr></thead><tbody className="text-[13px] text-black dark:text-neutral-100">{visibleRows.length === 0 ? <tr><td colSpan={visibleMonths.length + 1} className="py-8 text-neutral-500">ساختار هزینه‌ای برای این پروژه ثبت نشده است.</td></tr> : visibleRows.map((row) => <tr key={row.id ?? row.code} className="h-9 bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><div className="flex items-center gap-1" style={{ paddingRight: `${Math.max(0, row.code.split('-').length - projectCode.split('-').length - 1) * 16}px` }}>{parents.has(row.code) ? <button type="button" aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} className="w-5 text-center">{expanded.has(row.code) ? "−" : "+"}</button> : <span className="w-5" />}<span dir="ltr" className="shrink-0">{fa(row.code)}</span><span className="truncate">{row.name}</span></div></td>{visibleMonths.map((month) => <td key={month.number} className="border-b border-neutral-300 dark:border-neutral-700">—</td>)}</tr>)}</tbody></table></div></div>
+        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 dark:border-neutral-800"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:text-center"><colgroup><col style={{ width: "34%" }} />{visibleMonths.map((month) => <col key={month.number} />)}</colgroup><thead><tr className="bg-[#184a6b] text-white"><th className="sticky top-0 z-10 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">کد و نام بودجه</th>{visibleMonths.map((month) => <th key={month.number} className="sticky top-0 z-10 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month.name}</th>)}</tr></thead><tbody className="text-[13px] text-black dark:text-neutral-100">{visibleRows.length === 0 ? <tr><td colSpan={visibleMonths.length + 1} className="py-8 text-neutral-500">{query || selectedTag ? "موردی مطابق جستجو یا برچسب انتخاب‌شده یافت نشد." : "ساختار هزینه‌ای برای این پروژه ثبت نشده است."}</td></tr> : visibleRows.map((row) => <tr key={row.id ?? row.code} className="h-9 bg-black/[0.02] hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><div className="flex items-center gap-1" style={{ paddingRight: `${Math.max(0, row.code.split('-').length - projectCode.split('-').length - 1) * 16}px` }}>{parents.has(row.code) ? <button type="button" aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} className="w-5 text-center">{expanded.has(row.code) ? "−" : "+"}</button> : <span className="w-5" />}<span dir="ltr" className="shrink-0">{fa(row.code)}</span><span className="truncate">{row.name}</span></div></td>{visibleMonths.map((month) => <td key={month.number} className="border-b border-neutral-300 dark:border-neutral-700">—</td>)}</tr>)}</tbody></table></div></div>
       </>}
     </div>
   </Card>;
