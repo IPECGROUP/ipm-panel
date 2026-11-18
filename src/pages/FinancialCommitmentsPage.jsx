@@ -83,14 +83,14 @@ export default function FinancialCommitmentsPage() {
           setStart(contractStart); setYear(contractStart.year); setHalf(contractStart.month > 6 ? 1 : 0);
           const currencyById = new Map((Array.isArray(currencies?.items) ? currencies.items : []).map((currency) => [String(currency.id), String(currency.title ?? currency.label ?? "").trim()]));
           const contractAmounts = Array.isArray(item.financial?.contractAmounts) ? item.financial.contractAmounts : [];
-          const currencies = contractAmounts.map((amount) => ({
+          const contractCurrencyRows = contractAmounts.map((amount) => ({
             currencyId: String(amount.currencyId ?? amount.currency_id ?? ""),
             sourceId: String(amount.sourceId ?? amount.currencySourceId ?? amount.source_id ?? ""),
             label: String(amount.currencyLabel ?? amount.currency_label ?? "").trim() || currencyById.get(String(amount.currencyId ?? amount.currency_id ?? "")) || "",
             isRial: (amount.currencyIsRial ?? amount.currency_is_rial) === true,
           })).filter((currency) => currency.currencyId || currency.label);
-          setContractCurrencies(currencies);
-          const labels = currencies.map((currency) => currency.label).filter(Boolean);
+          setContractCurrencies(contractCurrencyRows);
+          const labels = contractCurrencyRows.map((currency) => currency.label).filter(Boolean);
           setCurrencyLabels([...new Set(labels)]);
         }
       }).catch(() => { if (active) setError("دریافت ساختار هزینه، قرارداد اصلی یا فهرست ارزها انجام نشد."); })
