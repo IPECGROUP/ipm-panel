@@ -11,6 +11,7 @@ const fa = (value) => String(value).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"
 const display = (value) => fa(String(value ?? "").replace(/\B(?=(\d{3})+(?!\d))/g, ","));
 const currentYear = () => Number(digits(new Intl.DateTimeFormat("fa-IR-u-ca-persian", { year: "numeric" }).format(new Date())));
 const keyOf = (year, projectId, month) => `${year}:${projectId}:${month}`;
+const isGeneral = (project) => String(project.name || "").trim().replace(/ي/g, "ی").replace(/ك/g, "ک") === "عمومی";
 
 export default function ProjectFinancialParametersPage() {
   const { user } = useAuth();
@@ -81,7 +82,6 @@ export default function ProjectFinancialParametersPage() {
       const next = {};
       (data.values || []).forEach((row) => { next[keyOf(year, row.projectId, row.month)] = row.amount; });
       Object.entries(drafts.current).forEach(([key, value]) => { if (key.startsWith(`${year}:`)) next[key] = value; });
-      const isGeneral = (project) => String(project.name || "").trim().replace(/ي/g, "ی").replace(/ك/g, "ک") === "عمومی";
       setValues(next); setProjects([...(data.projects || [])].sort((a, b) => Number(isGeneral(b)) - Number(isGeneral(a))));
     }).catch(() => { if (!cancelled) setError("دریافت اطلاعات انجام نشد. دوباره تلاش کنید."); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -104,6 +104,8 @@ export default function ProjectFinancialParametersPage() {
     if (results.some((result) => !result)) setError("ذخیره برخی مقادیر انجام نشد؛ برای تلاش دوباره دکمه ذخیره را بزنید.");
   };
   const years = Array.from({ length: 20 }, (_, index) => 1401 + index);
+  const monthTotals = months.map((_, index) => projects.filter((project) => !isGeneral(project)).reduce((sum, project) => sum + BigInt(values[keyOf(year, project.id, index + 1)] || "0"), 0n));
+  const overLimitMonths = monthTotals.map((total, index) => total > 100n ? months[index] : null).filter(Boolean);
 
   return (
     <Card dir="rtl" className="mx-auto max-w-[1400px] rounded-2xl border border-black/10 bg-white p-2.5 text-neutral-900 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:rounded-3xl sm:p-3 md:p-4">
@@ -127,8 +129,15 @@ export default function ProjectFinancialParametersPage() {
             </div>
           </div>
           {error && <p role="alert" className="px-4 pb-3 text-sm text-red-600">{error}</p>}
+          {overLimitMonths.length > 0 && <p role="alert" className="px-4 pb-3 text-sm text-red-600 dark:text-red-400">جمع درصد ها از ۱۰۰ نمی‌تواند بیشتر شود: {overLimitMonths.join("، ")}</p>}
           <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center" dir="rtl"><colgroup><col style={{ width: "34%" }} />{months.slice(half * 6, half * 6 + 6).map((month) => <col key={month} style={{ width: "11%" }} />)}</colgroup><thead><tr className="border-b border-[#184a6b] bg-[#184a6b] text-white"><th className="sticky top-0 z-30 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">پروژه</th>{months.slice(half * 6, half * 6 + 6).map((month) => <th key={month} className="sticky top-0 z-30 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month}</th>)}</tr></thead><tbody className="text-[13px] text-black [&>tr]:h-9 dark:text-neutral-100">
-            {loading ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال بارگذاری...</td></tr> : projects.length === 0 ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">پروژه فعالی وجود ندارد.</td></tr> : projects.map((project) => <tr key={project.id} className="bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate" title={`${project.code} - ${project.name}`}>{fa(project.code)} - {project.name}</span></td>{months.slice(half * 6, half * 6 + 6).map((month, index) => { const key = keyOf(year, project.id, half * 6 + index + 1); return <td key={key} className="border-b border-neutral-300 px-1 dark:border-neutral-700"><input aria-label={`${project.name}، ${month} ${fa(year)}`} inputMode="numeric" value={display(values[key] ?? "")} onChange={(event) => changeValue(key, event.target.value)} onBlur={() => { if (Object.hasOwn(drafts.current, key)) saveCell(key); }} className={`h-7 w-full rounded-lg border bg-white px-2 text-center outline-none focus:border-blue-400 dark:bg-neutral-900 ${status[key] === "error" ? "border-red-500" : "border-black/15 dark:border-neutral-700"}`} /><span className="sr-only" role="status">{status[key] === "error" ? "خطا در ذخیره" : status[key] === "saving" ? "در حال ذخیره" : ""}</span></td>; })}</tr>)}
+            {loading ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال بارگذاری...</td></tr> : projects.length === 0 ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">پروژه فعالی وجود ندارد.</td></tr> : projects.map((project) => <tr key={project.id} className="bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate" title={`${project.code} - ${project.name}`}>{fa(project.code)} - {project.name}</span></td>{months.slice(half * 6, half * 6 + 6).map((month, index) => {
+              const monthNumber = half * 6 + index + 1;
+              const key = keyOf(year, project.id, monthNumber);
+              const total = isGeneral(project) ? monthTotals[monthNumber - 1] : null;
+              const overLimit = monthTotals[monthNumber - 1] > 100n;
+              return <td key={key} className={`border-b border-neutral-300 px-1 dark:border-neutral-700 ${overLimit ? "bg-red-50 dark:bg-red-950/30" : ""}`}>{total !== null ? <span className={`inline-flex h-6 items-center justify-center gap-1 font-semibold ${overLimit ? "text-red-600 dark:text-red-400" : ""}`} dir="ltr">{display(total)}<span>٪</span></span> : <div className="relative"><input aria-label={`${project.name}، ${month} ${fa(year)}، درصد`} aria-invalid={overLimit || status[key] === "error"} inputMode="numeric" value={display(values[key] ?? "")} onChange={(event) => changeValue(key, event.target.value)} onBlur={() => { if (Object.hasOwn(drafts.current, key)) saveCell(key); }} className={`h-6 w-full rounded-lg border bg-white px-5 text-center outline-none focus:border-blue-400 dark:bg-neutral-900 ${status[key] === "error" || overLimit ? "border-red-500" : "border-black/15 dark:border-neutral-700"}`} /><span aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">٪</span></div>}<span className="sr-only" role="status">{status[key] === "error" ? "خطا در ذخیره" : status[key] === "saving" ? "در حال ذخیره" : ""}</span></td>;
+            })}</tr>)}
           </tbody></table></div></div>
           <div className="mx-4 flex flex-wrap items-center justify-end gap-3 border-t border-black/10 pb-4 pt-3 dark:border-white/10">{Object.values(status).includes("error") && <span role="alert" className="text-xs text-red-600">ذخیره برخی مقادیر انجام نشد؛ برای تلاش دوباره دکمه ذخیره را بزنید.</span>}<button type="button" onClick={saveAll} aria-label="ذخیره" title="ذخیره" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90"><img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" /></button></div>
         </div>}
