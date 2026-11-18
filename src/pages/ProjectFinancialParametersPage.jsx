@@ -27,6 +27,7 @@ export default function ProjectFinancialParametersPage() {
   const drafts = useRef({});
   const timers = useRef({});
   const running = useRef({});
+  const blocked = useRef(new Set());
   const mounted = useRef(true);
 
   const persistDrafts = () => {
@@ -48,9 +49,20 @@ export default function ProjectFinancialParametersPage() {
             delete drafts.current[key];
             persistDrafts();
             mark(key, "saved");
+            blocked.current.delete(key);
+            for (const pendingKey of blocked.current) {
+              const [pendingYear, , pendingMonth] = pendingKey.split(":").map(Number);
+              if (pendingYear === saveYear && pendingMonth === month) {
+                blocked.current.delete(pendingKey);
+                setTimeout(() => saveCell(pendingKey), 0);
+              }
+            }
           }
-        } catch {
-          mark(key, "error");
+        } catch (error) {
+          if (error.message === "percentage_limit") {
+            blocked.current.add(key);
+            mark(key, "limit");
+          } else mark(key, "error");
           return false;
         }
       }
@@ -101,7 +113,7 @@ export default function ProjectFinancialParametersPage() {
   const saveAll = async () => {
     setError("");
     const results = await Promise.all(Object.keys(drafts.current).map(saveCell));
-    if (results.some((result) => !result)) setError("ذخیره برخی مقادیر انجام نشد؛ برای تلاش دوباره دکمه ذخیره را بزنید.");
+    if (results.some((result) => !result) && blocked.current.size === 0) setError("ذخیره برخی مقادیر انجام نشد؛ برای تلاش دوباره دکمه ذخیره را بزنید.");
   };
   const years = Array.from({ length: 20 }, (_, index) => 1401 + index);
   const monthTotals = months.map((_, index) => projects.filter((project) => !isGeneral(project)).reduce((sum, project) => sum + BigInt(values[keyOf(year, project.id, index + 1)] || "0"), 0n));
@@ -115,7 +127,7 @@ export default function ProjectFinancialParametersPage() {
       </div>
       <div dir="rtl">
         <div className="overflow-visible px-0 sm:px-2">
-          <div className="mx-auto mb-2 flex w-full max-w-[360px] items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mb-px md:max-w-[1040px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900" role="tablist" aria-label="پارامترهای مالی پروژه">
+          <div className="mx-auto mb-2 flex w-full max-w-[360px] items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900" role="tablist" aria-label="پارامترهای مالی پروژه">
             {tabs.map((item, index) => <button key={item.id} type="button" role="tab" onClick={() => setTab(item.id)} aria-selected={tab === item.id} className={`relative z-10 h-10 min-w-[104px] flex-none rounded-lg px-3 text-[11px] font-semibold transition whitespace-nowrap md:h-11 md:min-w-[132px] md:flex-1 md:rounded-none md:px-4 md:text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20 ${index > 0 ? "md:border-r md:border-black/10 md:dark:border-neutral-800" : "md:rounded-tr-2xl"} ${index === tabs.length - 1 ? "md:rounded-tl-2xl" : ""} ${tab === item.id ? "bg-[#184a6b] text-white shadow-sm dark:bg-[#184a6b] dark:text-white" : "bg-white text-[#1f2937] hover:bg-neutral-50 after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-black/15 dark:bg-neutral-900 dark:text-neutral-100 dark:after:bg-neutral-700 dark:hover:bg-neutral-800"}`}>{item.label}</button>)}
           </div>
         </div>
@@ -129,13 +141,13 @@ export default function ProjectFinancialParametersPage() {
             </div>
           </div>
           {error && <p role="alert" className="px-4 pb-3 text-sm text-red-600">{error}</p>}
-          {overLimitMonths.length > 0 && <p role="alert" className="px-4 pb-3 text-sm text-red-600 dark:text-red-400">جمع درصد ها از ۱۰۰ نمی‌تواند بیشتر شود: {overLimitMonths.join("، ")}</p>}
+          {(overLimitMonths.length > 0 || Object.values(status).includes("limit")) && <p role="alert" className="px-4 pb-3 text-sm text-red-600 dark:text-red-400">جمع درصد ها از ۱۰۰ نمی‌تواند بیشتر شود؛ مقادیر ذخیره‌نشده را اصلاح کنید.{overLimitMonths.length > 0 ? ` (${overLimitMonths.join("، ")})` : ""}</p>}
           <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100"><div className="relative max-h-[55vh] overflow-auto" dir="ltr"><table className="w-full min-w-[800px] table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center" dir="rtl"><colgroup><col style={{ width: "34%" }} />{months.slice(half * 6, half * 6 + 6).map((month) => <col key={month} style={{ width: "11%" }} />)}</colgroup><thead><tr className="border-b border-[#184a6b] bg-[#184a6b] text-white"><th className="sticky top-0 z-30 bg-[#184a6b] px-3 py-2 !text-right text-[14px] font-semibold md:text-[15px]">پروژه</th>{months.slice(half * 6, half * 6 + 6).map((month) => <th key={month} className="sticky top-0 z-30 bg-[#184a6b] py-2 text-[14px] font-semibold md:text-[15px]">{month}</th>)}</tr></thead><tbody className="text-[13px] text-black [&>tr]:h-9 dark:text-neutral-100">
             {loading ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">در حال بارگذاری...</td></tr> : projects.length === 0 ? <tr><td colSpan={7} className="py-8 text-black/60 dark:text-neutral-400">پروژه فعالی وجود ندارد.</td></tr> : projects.map((project) => <tr key={project.id} className="bg-black/[0.02] transition-colors hover:bg-black/[0.04] dark:bg-white/5 dark:hover:bg-white/10"><td className="border-b border-neutral-300 px-3 !text-right dark:border-neutral-700"><span className="block truncate" title={`${project.code} - ${project.name}`}>{fa(project.code)} - {project.name}</span></td>{months.slice(half * 6, half * 6 + 6).map((month, index) => {
               const monthNumber = half * 6 + index + 1;
               const key = keyOf(year, project.id, monthNumber);
               const total = isGeneral(project) ? monthTotals[monthNumber - 1] : null;
-              const overLimit = monthTotals[monthNumber - 1] > 100n;
+              const overLimit = monthTotals[monthNumber - 1] > 100n || Object.keys(status).some((entry) => status[entry] === "limit" && entry.startsWith(`${year}:`) && entry.endsWith(`:${monthNumber}`));
               return <td key={key} className={`border-b border-neutral-300 px-1 dark:border-neutral-700 ${overLimit ? "bg-red-50 dark:bg-red-950/30" : ""}`}>{total !== null ? <span className={`inline-flex h-6 items-center justify-center gap-1 font-semibold ${overLimit ? "text-red-600 dark:text-red-400" : ""}`} dir="ltr">{display(total)}<span>٪</span></span> : <div className="relative"><input aria-label={`${project.name}، ${month} ${fa(year)}، درصد`} aria-invalid={overLimit || status[key] === "error"} inputMode="numeric" value={display(values[key] ?? "")} onChange={(event) => changeValue(key, event.target.value)} onBlur={() => { if (Object.hasOwn(drafts.current, key)) saveCell(key); }} className={`h-6 w-full rounded-lg border bg-white px-5 text-center outline-none focus:border-blue-400 dark:bg-neutral-900 ${status[key] === "error" || overLimit ? "border-red-500" : "border-black/15 dark:border-neutral-700"}`} /><span aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-neutral-500 dark:text-neutral-400">٪</span></div>}<span className="sr-only" role="status">{status[key] === "error" ? "خطا در ذخیره" : status[key] === "saving" ? "در حال ذخیره" : ""}</span></td>;
             })}</tr>)}
           </tbody></table></div></div>
