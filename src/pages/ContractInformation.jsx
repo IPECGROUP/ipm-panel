@@ -4935,7 +4935,7 @@ export default function ContractInformation() {
                         </div>
 
                         {isSocialInsuranceClearanceStatus(insuranceForm.lastStatus) ? (
-                          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(280px,2fr)_minmax(180px,1fr)_minmax(220px,1fr)]">
+                          <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                             <div className="min-w-0">
                               <div className={labelCls}>نحوه محاسبه و ضرایب *</div>
                               <input value={insuranceForm.calculationMethod || ""} onChange={(e) => setInsuranceField("calculationMethod", e.target.value)} className={inputCls} type="text" />
@@ -4944,9 +4944,9 @@ export default function ContractInformation() {
                               <div className={labelCls}>شماره مفاصا حساب *</div>
                               <input value={insuranceForm.clearanceNo || ""} onChange={(e) => setInsuranceField("clearanceNo", e.target.value)} className={inputCls} type="text" />
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 lg:col-span-2">
                               <div className={labelCls}>توضیحات</div>
-                              <input value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={inputCls} type="text" />
+                              <textarea value={insuranceForm.description || ""} onChange={(e) => setInsuranceField("description", e.target.value)} className={`${textareaCls} min-h-24`} rows={3} />
                             </div>
                           </div>
                         ) : null}
