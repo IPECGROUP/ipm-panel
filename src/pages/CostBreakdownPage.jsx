@@ -928,7 +928,7 @@ export default function CostBreakdownPage() {
                               </div>
                             </td>
                             <td className={`px-3 ${divider}`}>
-                              <div className="flex items-center justify-start">
+                              <div className="flex items-center justify-start gap-2">
                                 {isEditing && !isParentRow ? (
                                   <input
                                     value={editDraft.baseBudget ? toFaDigits(formatMoney(editDraft.baseBudget)) : ""}
@@ -942,6 +942,7 @@ export default function CostBreakdownPage() {
                                 ) : (
                                   <span className={parentWeightCls}>{toFaDigits(formatMoney(budgetTotalsByCode.get(displayBudgetCode) ?? 0n))}</span>
                                 )}
+                                <span className="shrink-0 text-xs text-neutral-500 dark:text-neutral-400">ریال</span>
                               </div>
                             </td>
                             {showRowActions && <td className={`px-3 text-center ${divider}`}>
