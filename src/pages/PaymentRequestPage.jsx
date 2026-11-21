@@ -504,6 +504,7 @@ export default function PaymentRequestPage() {
   const [page, setPage] = useState(0);
   const [projects, setProjects] = useState([]);
   const [budgetItems, setBudgetItems] = useState([]);
+  const [budgetNames, setBudgetNames] = useState(() => new Map());
   const [budgetPickerOpen, setBudgetPickerOpen] = useState(false);
   const [budgetPickerQuery, setBudgetPickerQuery] = useState("");
   const [projectLiquidityRemaining, setProjectLiquidityRemaining] = useState(null);
@@ -604,6 +605,19 @@ export default function PaymentRequestPage() {
   }, [api]);
 
   useEffect(() => { loadItems(); }, [loadItems]);
+  useEffect(() => {
+    let active = true;
+    api("/cost-breakdown").then((data) => {
+      const names = new Map();
+      (data.items || []).forEach((row) => {
+        const projectId = String(row.projectId ?? row.project_id ?? "");
+        const code = budgetCodeForProject(row.budgetCode ?? row.budget_code, row.project?.code);
+        if (projectId && code) names.set(`${projectId}:${code}`, String(row.budgetName ?? row.budget_name ?? ""));
+      });
+      if (active) setBudgetNames(names);
+    }).catch(() => { if (active) setBudgetNames(new Map()); });
+    return () => { active = false; };
+  }, [api]);
   useEffect(() => {
     const refreshTenkhahRows = () => loadItems();
     window.addEventListener("tenkhah-notifications-refresh", refreshTenkhahRows);
@@ -1021,7 +1035,8 @@ export default function PaymentRequestPage() {
     fromDate: filterFromDate,
     toDate: filterToDate,
     userId: user?.id,
-  }).filter((item) => !filterUnread || isUnreadForUser(item)), [tableItems, filterFromDate, filterOwnership, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, manualUnreadIds, seenIncomingIds, user?.id]);
+    budgetNames,
+  }).filter((item) => !filterUnread || isUnreadForUser(item)), [tableItems, budgetNames, filterFromDate, filterOwnership, filterQuery, filterQuick, filterStatus, filterTagIds, filterToDate, filterUnread, manualUnreadIds, seenIncomingIds, user?.id]);
   const sortedItems = useMemo(() => [...filteredItems].sort((a, b) => {
     const timeOf = (item) => {
       const value = Date.parse(item?.createdAt || item?.created_at || item?.updatedAt || item?.updated_at || "");
@@ -1655,8 +1670,9 @@ function isAwaitingPayment(item) {
     && Number(item?.currentStepIndex) >= 5;
 }
 
-function filterRequestRows(rows, { query, quick, tagIds, ownership, status, fromDate, toDate, userId }) {
-  const q = normalizeDigits(query).trim().toLowerCase();
+function filterRequestRows(rows, { query, quick, tagIds, ownership, status, fromDate, toDate, userId, budgetNames }) {
+  const normalizeSearch = (value) => normalizeDigits(value).replace(/ي/g, "ی").replace(/ك/g, "ک").toLowerCase();
+  const q = normalizeSearch(query).trim();
   const start = quickStartDate(quick);
   const from = normalizeDigits(fromDate).replaceAll("-", "/");
   const to = normalizeDigits(toDate).replaceAll("-", "/");
@@ -1679,8 +1695,10 @@ function filterRequestRows(rows, { query, quick, tagIds, ownership, status, from
       if (!selectedTags.some((id) => itemTags.includes(id))) return false;
     }
     if (!q) return true;
-    const hay = [item.serial, item.dateFa, item.dateJalali, item.title, item.description, item.budgetCode, item.projectName, item.projectCode, item.status, item.displayStatus, item.requestType]
-      .map((value) => normalizeDigits(value).toLowerCase())
+    const budgetCode = budgetCodeForProject(item.budgetCode, item.projectCode);
+    const budgetName = budgetNames.get(`${item.projectId}:${budgetCode}`) || "";
+    const hay = [item.serial, item.dateFa, item.dateJalali, item.title, item.description, item.budgetCode, budgetName, item.projectName, item.projectCode, item.status, item.displayStatus, item.requestType]
+      .map(normalizeSearch)
       .join(" ");
     return hay.includes(q);
   });
