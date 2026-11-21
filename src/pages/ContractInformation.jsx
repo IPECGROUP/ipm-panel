@@ -136,7 +136,9 @@ const LEGACY_SOCIAL_INSURANCE_STATUS_OPTIONS = [
 ];
 
 function isSocialInsuranceClearanceStatus(value) {
-  return [SOCIAL_INSURANCE_CLEARANCE_STATUS, SOCIAL_INSURANCE_RECEIVED_CLEARANCE_STATUS, SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS].includes(String(value || ""));
+  const status = String(value || "").trim().replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/\s+/g, " ");
+  return [SOCIAL_INSURANCE_CLEARANCE_STATUS, SOCIAL_INSURANCE_RECEIVED_CLEARANCE_STATUS, SOCIAL_INSURANCE_OLD_CLEARANCE_STATUS].includes(status)
+    || (/مفاصا حساب/.test(status) && /دعو[ای]/.test(status) && /مراجع قضایی/.test(status));
 }
 
 function effectiveContractEndDate(row) {
