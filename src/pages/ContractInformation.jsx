@@ -1305,6 +1305,7 @@ export default function ContractInformation() {
   const appendixTableMenuRef = React.useRef(null);
   const appendixTablePopoverRef = React.useRef(null);
   const draftSaveTimerRef = React.useRef(null);
+  const finalSaveInProgressRef = React.useRef(false);
   const draftStatusTimerRef = React.useRef(null);
   const lastDraftSignatureRef = React.useRef("");
   const finalSavedDraftSignatureRef = React.useRef("");
@@ -2766,8 +2767,7 @@ export default function ContractInformation() {
   };
 
   const saveContractSection = async (sectionId = activeContractTab) => {
-    const validateGeneral = sectionId === "general" || sectionId === "financial" || sectionId === "appendices";
-    if (validateGeneral && form.documentType !== "appendix") {
+    if (form.documentType !== "appendix") {
       const missing = [];
       if (!String(form.projectId || "").trim()) missing.push("پروژه");
       if (!String(form.documentType || "").trim()) missing.push("سطح");
@@ -2784,7 +2784,7 @@ export default function ContractInformation() {
         return;
       }
     }
-    if ((sectionId === "insurance" || sectionId === "financial" || sectionId === "appendices") && isSocialInsuranceClearanceStatus(form.insurance?.lastStatus)) {
+    if (isSocialInsuranceClearanceStatus(form.insurance?.lastStatus)) {
       const insurance = normalizeInsurance(form.insurance || {});
       const missing = [];
       if (!String(insurance.contractRow || "").trim()) missing.push("ردیف پیمان");
@@ -2797,11 +2797,6 @@ export default function ContractInformation() {
         return;
       }
     }
-    if (sectionId !== "financial" && sectionId !== "appendices") {
-      await saveContractDraft({ sectionId, immediate: true });
-      return;
-    }
-
     await saveContractDraft({ sectionId, immediate: true });
 
     const formId = String(form.id || "").trim();
@@ -2955,8 +2950,6 @@ export default function ContractInformation() {
 
     try {
       if (sectionId !== "financial") markDraftSaveStatus(sectionId, "saving");
-      setFinalSavingSection(sectionId);
-
       const data = await fetchJson("/contracts", {
         method: "POST",
         body: JSON.stringify(rowPayload),
@@ -3043,8 +3036,6 @@ export default function ContractInformation() {
             ? "وضعیت ثبت در سامانه ساجات در سرور تایید نشد. لطفاً دوباره تلاش کنید."
           : error?.message || "خطا در ذخیره قرارداد"
       );
-    } finally {
-      setFinalSavingSection((current) => (current === sectionId ? "" : current));
     }
   };
 
@@ -3554,11 +3545,10 @@ export default function ContractInformation() {
   };
 
   const renderSaveButton = (sectionId) => {
-    const isDraftSection = !["financial", "appendices"].includes(sectionId);
     const isFinalSaving = finalSavingSection === sectionId;
     const showFinalStatus = finalSaveStatus.sectionId === sectionId && finalSaveStatus.message;
-    const showDraftStatus = isDraftSection && draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
-    const buttonTitle = ["financial", "appendices"].includes(sectionId) ? "ثبت نهایی قرارداد" : "ذخیره پیش‌نویس";
+    const showDraftStatus = draftSaveStatus.sectionId === sectionId && draftSaveStatus.state;
+    const buttonTitle = "ثبت نهایی قرارداد";
     const draftStatusText =
       draftSaveStatus.state === "saving" ? "در حال ذخیره پیش‌نویس..." : draftSaveStatus.state === "saved" ? "پیش‌نویس ذخیره شد" : "خطا در ذخیره پیش‌نویس";
     const draftStatusCls =
@@ -3582,8 +3572,14 @@ export default function ContractInformation() {
         </div>
         <button
           type="button"
-          onClick={() => saveContractSection(sectionId)}
-          disabled={isFinalSaving}
+          onClick={async () => {
+            if (finalSaveInProgressRef.current) return;
+            finalSaveInProgressRef.current = true;
+            setFinalSavingSection(sectionId);
+            try { await saveContractSection(sectionId); }
+            finally { finalSaveInProgressRef.current = false; setFinalSavingSection(""); }
+          }}
+          disabled={Boolean(finalSavingSection)}
           className={saveIconBtnCls}
           title={buttonTitle}
           aria-label={buttonTitle}
