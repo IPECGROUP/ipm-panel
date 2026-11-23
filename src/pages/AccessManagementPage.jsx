@@ -33,6 +33,10 @@ const pageColumns = {
   "داشبورد مدیریت دانش": ["نمایش منو"],
 };
 
+Object.keys(pageColumns).forEach ( (page) => {
+  pageColumns[page] = pageColumns[page].filter((column) => column !== "همه");
+});
+
 const pageOrder = Object.keys(pageColumns);
 const pageIndex = { "مدیریت اسناد": 1, "قراردادها": 2, "روزنگار پروژه": 4, "ساختار شکست هزینه‌ها": 5, "تعهدات و مصارف مالی": 6, "کاربرگ مالی": 7, "تنخواه گردان": 8, "درخواست پرداخت": 9, "تخصیص نقدینگی": 10, "پیش‌بینی جریان نقدی": 11, "درخواست تأمین": 13, "درس‌آموخته‌ها": 14, "کتابخانه‌ها": 15, "منابع آموزشی": 16, "داشبورد مدیریت دانش": 17 };
 const keyOf = (page, userId, column) => `${page}:${userId}:${column}`;
@@ -66,7 +70,8 @@ export default function AccessManagementPage() {
       list.forEach((item) => (item.access || []).forEach((token) => {
         const match = String(token).match(/^page-access:(\d+):(.*)$/);
         const page = Object.keys(pageIndex).find((name) => pageIndex[name] === Number(match?.[1]));
-        if (page && pageColumns[page]?.includes(match[2])) restored.add(keyOf(page, item.id, match[2]));
+        if (page && match[2] === "همه") pageColumns[page].forEach((column) => restored.add(keyOf(page, item.id, column)));
+        else if (page && pageColumns[page]?.includes(match[2])) restored.add(keyOf(page, item.id, match[2]));
       }));
       setUsers(list); setSelected(restored);
     }).finally(() => setLoading(false));
@@ -77,15 +82,11 @@ export default function AccessManagementPage() {
     const enabled = !next.has(keyOf(page, item.id, column));
     const columns = pageColumns[page];
     const set = (name, value) => value ? next.add(keyOf(page, item.id, name)) : next.delete(keyOf(page, item.id, name));
-    if (column === "همه") columns.forEach((name) => set(name, enabled));
-    else {
-      set(column, enabled);
-      if (enabled && column !== "نمایش منو") set("نمایش منو", true);
-      if (!enabled && column === "نمایش منو") columns.forEach((name) => set(name, false));
-      if (page === "مدیریت اسناد" && column === "بارگذاری سند پیوست" && enabled) set("نمایش سند پیوست", true);
-      if (page === "مدیریت اسناد" && column === "نمایش سند پیوست" && !enabled) set("بارگذاری سند پیوست", false);
-      if (columns.includes("همه")) set("همه", columns.filter((name) => name !== "همه").every((name) => next.has(keyOf(page, item.id, name))));
-    }
+    set(column, enabled);
+    if (enabled && column !== "نمایش منو") set("نمایش منو", true);
+    if (!enabled && column === "نمایش منو") columns.forEach((name) => set(name, false));
+    if (page === "مدیریت اسناد" && column === "بارگذاری سند پیوست" && enabled) set("نمایش سند پیوست", true);
+    if (page === "مدیریت اسناد" && column === "نمایش سند پیوست" && !enabled) set("بارگذاری سند پیوست", false);
     setSelected(next);
     const preserved = (item.access || []).filter((token) => !String(token).startsWith("page-access:"));
     const tokens = pageOrder.flatMap((p) => pageColumns[p].filter((name) => next.has(keyOf(p, item.id, name))).map((name) => tokenOf(p, name)));
