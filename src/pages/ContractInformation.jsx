@@ -1348,7 +1348,7 @@ export default function ContractInformation() {
         const data = await fetchJson("/projects");
         const list = asArray(data)
           .map(normalizeProject)
-          .filter((project) => project.id && project.isActive && isTopProjectCode(project.code))
+          .filter((project) => project.id && isTopProjectCode(project.code))
           .sort(compareProjects);
         if (alive) setProjects(list);
       } catch (error) {
@@ -3131,7 +3131,7 @@ export default function ContractInformation() {
   const iconBtnCls =
     "h-10 w-10 rounded-xl border border-black/15 bg-white hover:bg-black/[0.04] transition inline-flex items-center justify-center dark:bg-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800";
   const saveIconBtnCls =
-    "h-10 w-10 md:h-12 md:w-12 rounded-xl bg-black text-white ring-1 ring-black/15 hover:bg-black/90 transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed dark:ring-white/10";
+    "h-10 w-10 rounded-xl border border-[#f48120] bg-[#f48120] text-white hover:bg-[#d97018] transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed";
   const chipBaseCls = "inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs shadow-sm transition";
   const chipCls =
     chipBaseCls +
@@ -3897,7 +3897,7 @@ export default function ContractInformation() {
                     className={inputCls}
                     disabled={projectsLoading}
                   >
-                    <option value="">{projectsLoading ? "در حال بارگذاری پروژه‌ها..." : "انتخاب پروژه فعال"}</option>
+                    <option value="">{projectsLoading ? "در حال بارگذاری پروژه‌ها..." : "انتخاب پروژه"}</option>
                     {projects.map((project) => (
                       <option key={project.id} value={project.id}>
                         {project.label}
@@ -4079,7 +4079,7 @@ export default function ContractInformation() {
                             className={inputCls}
                             disabled={projectsLoading}
                           >
-                            <option value="">{projectsLoading ? "در حال بارگذاری پروژه‌ها..." : "انتخاب پروژه فعال"}</option>
+                            <option value="">{projectsLoading ? "در حال بارگذاری پروژه‌ها..." : "انتخاب پروژه"}</option>
                             {projects.map((project) => (
                               <option key={project.id} value={project.id}>
                                 {project.label}
