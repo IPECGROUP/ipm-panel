@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Card from "../components/ui/Card.jsx";
 import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
+import { useFeatureAccess } from "../hooks/useFeatureAccess.js";
 import { api } from "../utils/api.js";
 import { equipmentDefinitionsFromResponse } from "../utils/equipmentDefinitions.js";
 import { openEquipmentIdentityReport } from "../utils/equipmentIdentityReport.js";
@@ -41,6 +42,8 @@ function identityFieldValue(item, fields, kind) {
 }
 
 export default function EquipmentIdentityPage() {
+  const { can } = useFeatureAccess("شناسنامه تجهیزات");
+  const canModify = can("افزودن");
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState([]);
   const [definitions, setDefinitions] = useState({ categories: [], titles: [], fields: [] });
@@ -177,6 +180,7 @@ export default function EquipmentIdentityPage() {
 
   async function save(event) {
     event.preventDefault();
+    if (!canModify) return;
     if (!form.categoryId) { setError("دسته‌بندی تجهیز را انتخاب کنید."); return; }
     if (uploading) { setError("تا پایان بارگذاری فایل صبر کنید."); return; }
     setSaving(true);
@@ -225,7 +229,7 @@ export default function EquipmentIdentityPage() {
             </span>
              <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">شناسنامه تجهیزات</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت تجهیزات</span></span>
           </div>
-          <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen((open) => !open); setLetterPickerOpen(false); setLibraryPickerOpen(false); setUploadOpen(false); setError(""); }} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>
+          <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen((open) => !open); setLetterPickerOpen(false); setLibraryPickerOpen(false); setUploadOpen(false); setError(""); }} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen} disabled={!canModify}>
             {formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
           </button>
         </div>
@@ -259,7 +263,7 @@ export default function EquipmentIdentityPage() {
           <div className="overflow-auto" dir="ltr"><table dir="rtl" className="w-full min-w-[640px] table-fixed text-sm [&_td]:text-center [&_th]:text-center">
             <colgroup><col style={{ width: 44 }} /><col style={{ width: 80 }} /><col style={{ width: "25%" }} /><col /><col style={{ width: "25%" }} /></colgroup>
             <thead className="border-b border-[#184a6b] bg-[#184a6b] text-white">
-              <tr><th className="px-2 py-2"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه شناسنامه‌های صفحه" /></th><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th><th className="px-3 py-2 text-[14px] font-semibold">نام تجهیز</th><th className="relative py-2 pl-10 pr-3 text-[14px] font-semibold">کد تجهیز<EquipmentTableMenu selectedCount={selectedIds.size} deleting={deleting} onEdit={() => { const item = items.find((row) => selectedIds.has(String(row.id))); if (item) editItem(item); }} onDelete={deleteSelected} /></th></tr>
+              <tr><th className="px-2 py-2"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="انتخاب همه شناسنامه‌های صفحه" /></th><th className="px-3 py-2 text-[14px] font-semibold">ردیف</th><th className="px-3 py-2 text-[14px] font-semibold">دسته‌بندی</th><th className="px-3 py-2 text-[14px] font-semibold">نام تجهیز</th><th className="relative py-2 pl-10 pr-3 text-[14px] font-semibold">کد تجهیز<EquipmentTableMenu canModify={canModify} selectedCount={selectedIds.size} deleting={deleting} onEdit={() => { const item = items.find((row) => selectedIds.has(String(row.id))); if (item) editItem(item); }} onDelete={deleteSelected} /></th></tr>
             </thead>
             <tbody className="text-[13px]">{loading || !pageItems.length ? <tr><td colSpan={5} className="py-8 text-black/60 dark:text-neutral-400">{loading ? "در حال دریافت..." : items.length ? "موردی مطابق فیلتر پیدا نشد." : "هنوز تجهیزی ثبت نشده است."}</td></tr> : pageItems.map((item, index) => <tr key={item.id} tabIndex={0} role="button" aria-label={`مشاهده شناسنامه ${identityFieldValue(item, definitions.fields, "name")}`} onClick={() => setDetailId(String(item.id))} onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setDetailId(String(item.id)); } }} className="h-10 cursor-pointer bg-black/[0.02] transition-colors hover:bg-black/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] dark:bg-white/5 dark:hover:bg-white/10">
               <td className="border-b border-neutral-300 px-2 dark:border-neutral-700"><input type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={selectedIds.has(String(item.id))} onClick={(event) => event.stopPropagation()} onChange={() => toggleSelected(item.id)} aria-label={`انتخاب شناسنامه ${identityFieldValue(item, definitions.fields, "name")}`} /></td>
@@ -280,7 +284,7 @@ export default function EquipmentIdentityPage() {
   </div>;
 }
 
-function EquipmentTableMenu({ selectedCount, deleting, onEdit, onDelete }) {
+function EquipmentTableMenu({ canModify, selectedCount, deleting, onEdit, onDelete }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState(null);
   const triggerRef = useRef(null);
@@ -310,7 +314,7 @@ function EquipmentTableMenu({ selectedCount, deleting, onEdit, onDelete }) {
     <button ref={triggerRef} type="button" onClick={() => { if (open) setOpen(false); else { updatePosition(); setOpen(true); } }} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.08] dark:hover:bg-white/10" title="مدیریت وضعیت" aria-label="مدیریت وضعیت" aria-expanded={open}><img src="/images/icons/menu-table.svg" alt="" className="h-4 w-3 invert" /></button>
     {open && position && createPortal(<div ref={popoverRef} className="fixed z-[100] w-60 overflow-hidden rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100" style={position}>
       <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedCount ? `${toFa(selectedCount)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
-      <button type="button" disabled={selectedCount !== 1 || deleting} onClick={() => { setOpen(false); onEdit(); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش</span></button>
+      <button type="button" disabled={!canModify || selectedCount !== 1 || deleting} onClick={() => { setOpen(false); onEdit(); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-amber-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-amber-100 transition group-hover:scale-105 dark:bg-amber-500/15"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /></span><span className="min-w-0 flex-1 text-sm font-semibold">ویرایش</span></button>
       <button type="button" disabled={!selectedCount || deleting} onClick={() => { setOpen(false); onDelete(); }} className="group flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-red-100 dark:bg-red-500/15"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /></span><span className="min-w-0 flex-1 text-sm font-semibold">{deleting ? "در حال حذف..." : "حذف موارد انتخاب‌شده"}</span></button>
     </div>, document.body)}
   </span>;
