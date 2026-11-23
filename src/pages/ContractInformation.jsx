@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 // قراردادها
 import React from "react";
 import { Plus } from "lucide-react";
@@ -3131,7 +3132,7 @@ export default function ContractInformation() {
   const iconBtnCls =
     "h-10 w-10 rounded-xl border border-black/15 bg-white hover:bg-black/[0.04] transition inline-flex items-center justify-center dark:bg-neutral-900 dark:border-neutral-700 dark:hover:bg-neutral-800";
   const saveIconBtnCls =
-    "h-10 w-10 rounded-xl border border-[#f48120] bg-[#f48120] text-white hover:bg-[#d97018] transition inline-flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed";
+    confirmationButtonClass;
   const chipBaseCls = "inline-flex h-10 items-center gap-2 rounded-full border px-3 text-xs shadow-sm transition";
   const chipCls =
     chipBaseCls +
@@ -3586,7 +3587,7 @@ export default function ContractInformation() {
           title={buttonTitle}
           aria-label={buttonTitle}
         >
-          <img src="/images/icons/check.svg" alt="" className="w-4 h-4 invert md:w-5 md:h-5" />
+          <img src="/images/icons/check.svg" alt="" className={confirmationIconClass} />
         </button>
       </div>
     );

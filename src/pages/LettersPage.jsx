@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 /* eslint-disable no-empty */
 // src/pages/LettersPage.jsx
 import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
@@ -2637,11 +2638,7 @@ const selectedTagChipCls =
     return filterChipBase + " " + styles[kind];
   };
 
-  const sendBtnCls =
-  "h-10 w-10 md:h-12 md:w-12 rounded-xl flex items-center justify-center transition ring-1 " +
-  (theme === "dark"
-    ? "bg-white text-black ring-white/15 hover:bg-white/90"
-    : "bg-black text-white ring-black/15 hover:bg-black/90");
+  const sendBtnCls = confirmationButtonClass;
 
         // ✅ Outer border box for the whole form (like filters box)
   const formOuterBoxCls =
@@ -2649,7 +2646,7 @@ const selectedTagChipCls =
     (theme === "dark" ? "border-white/10 bg-transparent" : "border-black/10 bg-white");
 
 
-  const sendIconCls = "w-4 h-4 md:w-5 md:h-5 " + (theme === "dark" ? "invert-0" : "invert");
+  const sendIconCls = confirmationIconClass;
 
   const findProject = (id) => projects.find((p) => String(p?.id) === String(id));
 

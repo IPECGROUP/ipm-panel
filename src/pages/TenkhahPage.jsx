@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Card from "../components/ui/Card.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
@@ -491,11 +492,14 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
               <button
                 disabled={busy}
                 onClick={create}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-black text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-black/85 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-black"
+                title="ثبت درخواست"
+                aria-label="ثبت درخواست"
+                className={confirmationButtonClass}
               >
                 <img
                   src="/images/icons/check.svg"
-                  className="h-5 w-5 invert dark:invert-0"
+                  alt=""
+                  className={confirmationIconClass}
                 />
               </button>
             </div>

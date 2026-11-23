@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 // تخصیص نقدینگی
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -603,8 +604,8 @@ export default function LiquidityAllocationPage() {
         <div className="mt-4 px-3 pb-3">
           <div className="mx-1 h-px bg-neutral-200 dark:bg-white/15" />
           <div className="mt-4 flex items-center justify-end">
-            <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError || projectsLoading} className="grid h-10 w-10 place-items-center rounded-xl bg-neutral-900 text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-neutral-900" title="ثبت تخصیص" aria-label="ثبت تخصیص">
-              {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />}
+            <button type="button" onClick={saveAllocation} disabled={submitting || !!allocationError || projectsLoading} className={confirmationButtonClass} title="ثبت تخصیص" aria-label="ثبت تخصیص">
+              {submitting ? <span className="text-xs">...</span> : <img src="/images/icons/check.svg" alt="" className={confirmationIconClass} />}
             </button>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
 import { api } from "../utils/api.js";
@@ -1856,14 +1857,14 @@ export default function RoznegarPgae() {
               type="button"
               disabled={editorDisabled || confirmSaving || filesUploading || (groupSelectionMode && !groupSelectedDates.length)}
               onClick={handlePreviewConfirm}
-              className="mr-auto flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-900 text-white disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900"
+              className={`${confirmationButtonClass} mr-auto`}
               title={groupSelectionMode ? "ذخیره برای تاریخ‌های انتخاب‌شده" : "ذخیره تغییرات"}
               aria-label={groupSelectionMode ? "ذخیره برای تاریخ‌های انتخاب‌شده" : "ذخیره تغییرات"}
             >
               <img
                 src="/images/icons/check.svg"
                 alt=""
-                className="w-4 h-4 md:w-5 md:h-5 invert dark:invert"
+                className={confirmationIconClass}
               />
             </button>
           </div>
