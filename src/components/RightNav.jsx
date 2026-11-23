@@ -33,7 +33,7 @@ const IcBase = () => (
     <NavIcon src="/images/icons/tanzimat.svg" />
   </span>
 );
-const IcContract = () => <NavIcon src="/images/icons/gharadad.svg" />;
+const IcContract = () => <NavIcon src="/images/icons/gharadadha.svg" />;
 const IcTags = () => <NavIcon src="/images/icons/tags.svg" />;
 const IcBaseInformation = () => <NavIcon src="/images/icons/etelaat-paye.svg" />;
 const IcWorksheet = () => <NavIcon src="/images/icons/karbarg-mali.svg" />;

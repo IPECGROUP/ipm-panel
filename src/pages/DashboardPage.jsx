@@ -22,7 +22,7 @@ const formatDuration = (from, to) => {
 
 const shortcutOptions = [
   ["/letters", "دبیرخانه", "dabirkhaneh.svg"],
-  ["/contracts/info", "قراردادها", "gharadad.svg"],
+  ["/contracts/info", "قراردادها", "gharadadha.svg"],
   ["/contracts/management-dashboard", "داشبورد قراردادها", "dashboard-12.svg"],
   ["/projects/daily-log", "روزنگار پروژه", "roznegar.svg"],
   ["/projects/cost-breakdown", "ساختار شکست هزینه‌ها", "sakhtar-shekast.svg"],
