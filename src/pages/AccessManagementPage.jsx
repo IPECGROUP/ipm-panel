@@ -5,14 +5,16 @@ import { api } from "../utils/api.js";
 import { baseCurrenciesTablePreset as tableUi } from "../components/ui/tablePresets.js";
 
 const groups = [
-  { label: "مدیریت اسناد", pages: ["مدیریت اسناد"] },
+  { label: "مدیریت اسناد", pages: ["مدیریت اسناد", "رسیدهای تحویل"] },
   { label: "مدیریت قراردادها", pages: ["قراردادها"] },
-  { label: "مدیریت پروژه‌ها", pages: ["روزنگار پروژه", "ساختار شکست هزینه‌ها", "تعهدات و مصارف مالی", "کاربرگ مالی"] },
+  { label: "مدیریت پروژه‌ها", pages: ["روزنگار پروژه", "ساختار شکست هزینه‌ها", "تعهدات و مصارف مالی", "کاربرگ مالی", "پارامترهای مالی پروژه‌ها"] },
   { label: "مدیریت مالی", pages: ["درخواست پرداخت", "تنخواه گردان", "تخصیص نقدینگی", "پیش‌بینی جریان نقدی"] },
-  { label: "مدیریت تأمین", pages: ["درخواست تأمین"] },
-  { label: "مدیریت اجرا", pages: [] },
+  { label: "مدیریت تأمین", pages: ["درخواست تأمین", "ارزیابی تأمین‌کنندگان"] },
+  { label: "مدیریت تجهیزات", pages: ["شناسنامه تجهیزات", "سرویس و نگهداری", "داشبورد مدیریت تجهیزات"] },
+  { label: "مدیریت عملیات اجرایی", pages: ["گزارش کارکرد روزانه", "سوابق عملیات‌ها", "کالیبراسیون تجهیزات"] },
   { label: "مدیریت دانش", pages: ["درس‌آموخته‌ها", "کتابخانه‌ها", "منابع آموزشی", "داشبورد مدیریت دانش"] },
-  { label: "تنظیمات", pages: [] },
+  { label: "مدیریت سیستم‌ها", pages: ["مدیریت سیستم‌ها", "الزامات و انطباق‌ها", "ممیزی و اقدام اصلاحی", "داشبورد مدیریت سیستم‌ها"] },
+  { label: "تنظیمات", pages: ["ساختار سازمانی", "دسترسی‌ها", "پروژه‌ها", "برچسب‌ها", "اطلاعات پایه"] },
 ];
 
 const pageColumns = {
@@ -31,6 +33,24 @@ const pageColumns = {
   "کتابخانه‌ها": ["همه", "نمایش منو", "افزودن"],
   "منابع آموزشی": ["همه", "نمایش منو", "افزودن"],
   "داشبورد مدیریت دانش": ["نمایش منو"],
+  "شناسنامه تجهیزات": ["نمایش منو"],
+  "سرویس و نگهداری": ["نمایش منو"],
+  "داشبورد مدیریت تجهیزات": ["نمایش منو"],
+  "گزارش کارکرد روزانه": ["نمایش منو"],
+  "سوابق عملیات‌ها": ["نمایش منو"],
+  "کالیبراسیون تجهیزات": ["نمایش منو"],
+  "مدیریت سیستم‌ها": ["نمایش منو"],
+  "الزامات و انطباق‌ها": ["نمایش منو"],
+  "ممیزی و اقدام اصلاحی": ["نمایش منو"],
+  "داشبورد مدیریت سیستم‌ها": ["نمایش منو"],
+  "ساختار سازمانی": ["نمایش منو"],
+  "دسترسی‌ها": ["نمایش منو"],
+  "پروژه‌ها": ["نمایش منو"],
+  "برچسب‌ها": ["نمایش منو"],
+  "اطلاعات پایه": ["نمایش منو"],
+  "رسیدهای تحویل": ["نمایش منو"],
+  "پارامترهای مالی پروژه‌ها": ["نمایش منو"],
+  "ارزیابی تأمین‌کنندگان": ["نمایش منو"],
 };
 
 Object.keys(pageColumns).forEach ( (page) => {
@@ -38,7 +58,10 @@ Object.keys(pageColumns).forEach ( (page) => {
 });
 
 const pageOrder = Object.keys(pageColumns);
-const pageIndex = { "مدیریت اسناد": 1, "قراردادها": 2, "روزنگار پروژه": 4, "ساختار شکست هزینه‌ها": 5, "تعهدات و مصارف مالی": 6, "کاربرگ مالی": 7, "تنخواه گردان": 8, "درخواست پرداخت": 9, "تخصیص نقدینگی": 10, "پیش‌بینی جریان نقدی": 11, "درخواست تأمین": 13, "درس‌آموخته‌ها": 14, "کتابخانه‌ها": 15, "منابع آموزشی": 16, "داشبورد مدیریت دانش": 17 };
+const pageIndex = { "مدیریت اسناد": 1, "قراردادها": 2, "روزنگار پروژه": 4, "ساختار شکست هزینه‌ها": 5, "تعهدات و مصارف مالی": 6, "کاربرگ مالی": 7, "تنخواه گردان": 8, "درخواست پرداخت": 9, "تخصیص نقدینگی": 10, "پیش‌بینی جریان نقدی": 11, "درخواست تأمین": 13, "درس‌آموخته‌ها": 14, "کتابخانه‌ها": 15, "منابع آموزشی": 16, "داشبورد مدیریت دانش": 17, "شناسنامه تجهیزات": 18, "سرویس و نگهداری": 19, "داشبورد مدیریت تجهیزات": 20, "گزارش کارکرد روزانه": 21, "سوابق عملیات‌ها": 22, "کالیبراسیون تجهیزات": 23, "مدیریت سیستم‌ها": 24, "الزامات و انطباق‌ها": 25, "ممیزی و اقدام اصلاحی": 26, "داشبورد مدیریت سیستم‌ها": 27, "ساختار سازمانی": 28, "دسترسی‌ها": 29, "پروژه‌ها": 30, "برچسب‌ها": 31, "اطلاعات پایه": 32 };
+Object.assign(pageIndex, { "رسیدهای تحویل": 33, "پارامترهای مالی پروژه‌ها": 34, "ارزیابی تأمین‌کنندگان": 35 });
+const independentAccessMarker = "page-access-independent:v1";
+const legacyPageIndexes = { "رسیدهای تحویل": 1, "پارامترهای مالی پروژه‌ها": 7, "ارزیابی تأمین‌کنندگان": 13 };
 const keyOf = (page, userId, column) => `${page}:${userId}:${column}`;
 const tokenOf = (page, column) => `page-access:${pageIndex[page]}:${column}`;
 
@@ -67,12 +90,18 @@ export default function AccessManagementPage() {
     api("/admin/users").then((data) => {
       const list = (data.users || []).filter((item) => item?.isActive !== false);
       const restored = new Set();
-      list.forEach((item) => (item.access || []).forEach((token) => {
+      list.forEach((item) => {
+        const access = item.access || [];
+        if (!access.includes(independentAccessMarker)) Object.entries(legacyPageIndexes).forEach(([page, index]) => {
+          if (access.includes(`page-access:${index}:نمایش منو`) || access.includes(`page-access:${index}:همه`)) restored.add(keyOf(page, item.id, "نمایش منو"));
+        });
+        access.forEach((token) => {
         const match = String(token).match(/^page-access:(\d+):(.*)$/);
         const page = Object.keys(pageIndex).find((name) => pageIndex[name] === Number(match?.[1]));
         if (page && match[2] === "همه") pageColumns[page].forEach((column) => restored.add(keyOf(page, item.id, column)));
         else if (page && pageColumns[page]?.includes(match[2])) restored.add(keyOf(page, item.id, match[2]));
-      }));
+        });
+      });
       setUsers(list); setSelected(restored);
     }).finally(() => setLoading(false));
   }, []);
@@ -88,9 +117,13 @@ export default function AccessManagementPage() {
     if (page === "مدیریت اسناد" && column === "بارگذاری سند پیوست" && enabled) set("نمایش سند پیوست", true);
     if (page === "مدیریت اسناد" && column === "نمایش سند پیوست" && !enabled) set("بارگذاری سند پیوست", false);
     setSelected(next);
-    const preserved = (item.access || []).filter((token) => !String(token).startsWith("page-access:"));
+    const managedIndexes = new Set(Object.values(pageIndex).map(String));
+    const preserved = (item.access || []).filter((token) => {
+      const match = String(token).match(/^page-access:(\d+):/);
+      return !match || !managedIndexes.has(match[1]);
+    });
     const tokens = pageOrder.flatMap((p) => pageColumns[p].filter((name) => next.has(keyOf(p, item.id, name))).map((name) => tokenOf(p, name)));
-    const access = [...preserved, ...tokens];
+    const access = [...preserved.filter((token) => token !== independentAccessMarker), independentAccessMarker, ...tokens];
     await api("/admin/users", { method: "PATCH", body: JSON.stringify({ id: item.id, access }) });
     setUsers((current) => current.map((row) => row.id === item.id ? { ...row, access } : row));
   };
