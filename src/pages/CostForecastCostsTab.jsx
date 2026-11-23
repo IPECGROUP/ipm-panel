@@ -211,7 +211,11 @@ export default function CostForecastCostsTab({
     );
   }, [hiddenRowKeys, storageApiPath]);
 
-  const tableUi = tablePreset.table;
+  const tableUi = {
+    ...tablePreset.table,
+    headRow: "bg-[#184a6b] text-white border-b border-[#184a6b]",
+    th: "!text-center !font-semibold !text-white !py-2 !text-[14px] md:!text-[15px]",
+  };
   const rowUi = tablePreset.row;
   const colCount = 3 + forecastMonths.length + 1;
   const paginationIconBtnCls =
@@ -868,7 +872,7 @@ export default function CostForecastCostsTab({
     <>
       <TableWrap>
         <div className={tableUi.outer}>
-          <div className={tableUi.innerPad}>
+          <div className={`${tableUi.innerPad} pt-4`}>
             <div className={`${tableUi.frame} shadow-sm`}>
               <div className="relative max-h-[55vh] overflow-y-auto overflow-x-auto pb-0">
                 <table
@@ -1043,7 +1047,7 @@ export default function CostForecastCostsTab({
                                   disabled
                                   className={`w-[5.5rem] mx-auto h-10 md:w-[5.5rem] md:h-10 rounded-xl border text-[10px] md:text-[11px] flex items-center justify-center shadow-sm transition ${
                                     amount
-                                      ? "bg-[#edaf7c] border-[#edaf7c]/90 text-black"
+                                      ? "border-sky-200 bg-sky-50 text-[#184a6b] dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200"
                                       : "bg-black/5 border-black/10 text-black/70 dark:bg-white/5 dark:border-neutral-700 dark:text-neutral-100"
                                   } cursor-default`}
                                 >

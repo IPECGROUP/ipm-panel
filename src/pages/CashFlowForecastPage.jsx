@@ -28,7 +28,7 @@ function ForecastTabs({ active, onChange }) {
               index === TABS.length - 1 ? "md:rounded-tl-2xl" : "",
               "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/20 dark:focus-visible:ring-white/20",
               active === tab.id
-                ? "bg-black text-white shadow-sm dark:bg-black dark:text-white"
+                ? "bg-[#184a6b] text-white shadow-sm dark:bg-[#184a6b] dark:text-white"
                 : "bg-white text-[#1f2937] hover:bg-neutral-50 md:bg-white dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800 md:dark:bg-neutral-900",
             ].join(" ")}
           >
@@ -45,13 +45,13 @@ export default function CashFlowForecastPage() {
   const [activeTab, setActiveTab] = useState("costs");
 
   return (
-    <Card className="rounded-2xl border bg-white p-7 text-neutral-900 border-neutral-200 md:p-8 dark:bg-neutral-900 dark:text-neutral-100 dark:border-neutral-800">
-      <div className="mb-5 flex min-w-0 items-center gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
-          <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
+    <Card dir="rtl" className="mx-auto max-w-[1400px] rounded-2xl border border-black/10 bg-white p-2.5 text-neutral-900 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:rounded-3xl sm:p-3 md:p-4">
+      <div className="mb-4 flex min-w-0 items-center gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04] sm:h-11 sm:w-11 sm:rounded-2xl">
+          <span aria-hidden="true" className="h-5 w-5 bg-[#184a6b] dark:bg-[#8fc4e3] sm:h-6 sm:w-6" style={{ WebkitMask: `url(${PAGE_ICON}) center / contain no-repeat`, mask: `url(${PAGE_ICON}) center / contain no-repeat` }} />
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-base font-bold md:text-lg">پیش بینی جریان نقدی</span>
+          <span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">پیش بینی جریان نقدی</span>
           <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت مالی</span>
         </span>
       </div>
