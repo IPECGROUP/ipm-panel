@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, ExternalLink, FileText, FolderOpen, Plus, Tag } from "lucide-react";
@@ -152,7 +153,7 @@ export default function ServiceMaintenancePage() {
             <label className="block"><span className={labelClass}>تاریخ آخرین سرویس</span><input readOnly value={toFa(lastServiceDate)} className={`${inputClass} !bg-neutral-100 dark:!bg-white/10`} placeholder="سرویس قبلی ثبت نشده است" /></label>
             <div className="block"><span className={labelClass}>بارگذاری</span><button type="button" onClick={() => setAttachmentEditorOpen(true)} disabled={saving} className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl border bg-white outline-none focus:border-neutral-400 disabled:opacity-50 dark:bg-white/5 ${form.files.length ? "border-emerald-400 bg-emerald-50" : "border-neutral-200 dark:border-white/15"}`} title={form.files.length ? `${toFa(form.files.length)} فایل پیوست‌شده` : "بارگذاری"} aria-label="بارگذاری پیوست"><img src="/images/icons/upload.svg" alt="" className="h-5 w-5 dark:invert" />{form.files.length > 0 && <span className="absolute -left-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-600 px-1 text-[10px] text-white">{toFa(form.files.length)}</span>}</button></div>
           </div>
-          <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || loading || uploading} className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/90 disabled:opacity-50" title={saving ? "در حال ثبت..." : "ثبت سرویس"} aria-label="ثبت سرویس"><img src="/images/icons/check.svg" alt="" className="h-5 w-5 brightness-0 invert" /></button></div>
+          <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="submit" disabled={saving || loading || uploading} className={confirmationButtonClass} title={saving ? "در حال ثبت..." : "ثبت سرویس"} aria-label="ثبت سرویس"><img src="/images/icons/check.svg" alt="" className={confirmationIconClass} /></button></div>
         </form>}
 
         <div className="mb-4 rounded-2xl border border-neutral-200 bg-neutral-100/80 p-3 shadow-sm dark:border-white/10 dark:bg-white/[0.06]"><label className="block"><span className={labelClass}>جست و جو</span><input value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} className={inputClass} placeholder="جستجو در تاریخ سرویس، کد، نام و دسته‌بندی تجهیز..." /></label></div>

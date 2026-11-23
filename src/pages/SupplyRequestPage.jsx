@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 // درخواست تامین
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import UnifiedTagPicker from "../components/UnifiedTagPicker.jsx";
@@ -1252,11 +1253,11 @@ export default function SupplyRequestPage() {
                 <button
                   type="submit"
                   disabled={saving || uploading}
-                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-neutral-900 text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-md disabled:translate-y-0 disabled:opacity-50 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90"
+                  className={confirmationButtonClass}
                   title="ثبت"
                   aria-label="ثبت"
                 >
-                  <img src="/images/icons/check.svg" alt="" className="h-4 w-4 invert dark:invert-0" />
+                  <img src="/images/icons/check.svg" alt="" className={confirmationIconClass} />
                 </button>
                 </div>
               </div>
@@ -2198,8 +2199,8 @@ function ActionFooter({ actionBusy, actionError, disabled, onSubmit }) {
   return (
     <div className="flex items-center justify-between gap-3 pt-2">
       <div className="text-xs text-red-600 dark:text-red-400">{actionError || ""}</div>
-      <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black" title="ثبت" aria-label="ثبت">
-        <img src="/images/icons/check.svg" alt="" className="h-5 w-5 invert dark:invert-0" />
+      <button type="button" onClick={onSubmit} disabled={disabled || actionBusy} className={confirmationButtonClass} title="ثبت" aria-label="ثبت">
+        <img src="/images/icons/check.svg" alt="" className={confirmationIconClass} />
       </button>
     </div>
   );

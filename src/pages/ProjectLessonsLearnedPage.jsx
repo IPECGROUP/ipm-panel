@@ -1,3 +1,4 @@
+import { confirmationButtonClass, confirmationIconClass } from "../components/ui/confirmationButtonStyle.js";
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -666,13 +667,13 @@ export default function ProjectLessonsLearnedPage() {
                   type="button"
                   onClick={submit}
                   disabled={saving || uploading}
-                  className="grid h-11 w-11 place-items-center rounded-xl bg-black text-white transition hover:bg-black/85 disabled:opacity-50 dark:bg-white dark:text-black"
+                  className={confirmationButtonClass}
                   title="افزودن به جدول"
                 >
                   <img
                     src="/images/icons/check.svg"
                     alt=""
-                    className="h-5 w-5 invert dark:invert-0"
+                    className={confirmationIconClass}
                   />
                 </button>
               </div>

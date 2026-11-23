@@ -1852,12 +1852,12 @@ export default function RoznegarPgae() {
               </div>
             </section>
           </div>
-          <div className="mt-5 border-t border-black/[0.08] pt-4 dark:border-white/10">
+          <div className="mt-5 flex justify-end border-t border-black/[0.08] pt-4 dark:border-white/10">
             <button
               type="button"
               disabled={editorDisabled || confirmSaving || filesUploading || (groupSelectionMode && !groupSelectedDates.length)}
               onClick={handlePreviewConfirm}
-              className={`${confirmationButtonClass} mr-auto`}
+              className={confirmationButtonClass}
               title={groupSelectionMode ? "ذخیره برای تاریخ‌های انتخاب‌شده" : "ذخیره تغییرات"}
               aria-label={groupSelectionMode ? "ذخیره برای تاریخ‌های انتخاب‌شده" : "ذخیره تغییرات"}
             >
