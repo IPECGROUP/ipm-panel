@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { api } from "../utils/api.js";
 
@@ -35,6 +35,11 @@ export default function FinancialCommitmentsPage() {
   const [currencyLabels, setCurrencyLabels] = useState([]);
   const [contractCurrencies, setContractCurrencies] = useState([]);
   const [monthlyUsage, setMonthlyUsage] = useState({});
+  const [adjustments, setAdjustments] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [editValue, setEditValue] = useState("");
+  const [editError, setEditError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [exchangeRates, setExchangeRates] = useState([]);
   const [year, setYear] = useState(null);
   const [showMonths, setShowMonths] = useState(false);
@@ -91,14 +96,18 @@ export default function FinancialCommitmentsPage() {
   useEffect(() => {
     let active = true;
     setMonthlyUsage({});
+    setAdjustments([]);
+    setEditing(null);
+    setEditError("");
     setExchangeRates([]);
     setUsageError("");
     if (!projectId) { setLoadingUsage(false); return () => { active = false; }; }
     setLoadingUsage(true);
-    api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}&consumption_all=1`)
-      .then((result) => {
+    Promise.all([api(`/cost-breakdown?project_id=${encodeURIComponent(projectId)}&consumption_all=1`), api(`/financial-commitment-monthly-adjustments?projectId=${encodeURIComponent(projectId)}`)])
+      .then(([result, adjustmentResult]) => {
         if (!active) return;
         setMonthlyUsage(result?.datedRealizedUsageByCode || {});
+        setAdjustments(Array.isArray(adjustmentResult?.items) ? adjustmentResult.items : []);
         setExchangeRates(Array.isArray(result?.exchangeRates) ? result.exchangeRates : []);
       })
       .catch(() => { if (active) setUsageError("دریافت مصرف ماهانه یا نرخ‌های ارز انجام نشد."); })
@@ -153,17 +162,62 @@ export default function FinancialCommitmentsPage() {
   }, [monthlyUsage, start]);
   const consumptionFor = (code, year, month) => {
     if (loadingUsage || usageError) return null;
-    const raw = monthlyUsageByCode.get(code)?.[year]?.[month];
-    if (raw == null) return 0n;
-    const rialAmount = amountToMinorUnits(raw);
-    if (rialAmount == null || !contractCurrency) return null;
-    if (isRial) return rialAmount;
-    const rate = exchangeRates.find((item) => String(item.currencyId) === contractCurrency.currencyId && String(item.sourceId) === contractCurrency.sourceId && Number(item.year) === year && Number(item.month) === month)?.rate;
-    if (!rate || !/^\d+$/.test(String(rate)) || BigInt(rate) === 0n) return null;
-    const divisor = BigInt(rate); return (rialAmount + divisor / 2n) / divisor;
+    let rialAmount = 0n;
+    for (const [usageCode, values] of monthlyUsageByCode) {
+      if (usageCode !== code && !usageCode.startsWith(`${code}-`)) continue;
+      const raw = values?.[year]?.[month];
+      if (raw == null) continue;
+      const amount = amountToMinorUnits(raw);
+      if (amount == null) return null;
+      rialAmount += amount;
+    }
+    let converted = rialAmount;
+    if (rialAmount !== 0n) {
+      if (!contractCurrency) return null;
+      if (!isRial) {
+        const rate = exchangeRates.find((item) => String(item.currencyId) === contractCurrency.currencyId && String(item.sourceId) === contractCurrency.sourceId && Number(item.year) === year && Number(item.month) === month)?.rate;
+        if (!rate || !/^\d+$/.test(String(rate)) || BigInt(rate) === 0n) return null;
+        const divisor = BigInt(rate);
+        converted = (rialAmount + divisor / 2n) / divisor;
+      }
+    }
+    for (const item of adjustments) {
+      const adjustmentCode = normalizeCode(item.budgetCode);
+      if ((adjustmentCode === code || adjustmentCode.startsWith(`${code}-`)) && Number(item.year) === year && Number(item.month) === month) converted += BigInt(item.amountMinor);
+    }
+    return converted;
   };
   const totalFor = (code) => { if (loadingUsage || usageError) return null; let total = 0n; for (const { year, month } of periods) { const amount = consumptionFor(code, year, month); if (amount == null) return null; total += amount; } return total; };
-  const money = (amount) => amount == null ? "?" : formatMinorUnits(amount);
+  const beginEdit = (code, year, month, amount) => {
+    setEditing({ code, year, month });
+    setEditValue(`${amount / 100n}${amount % 100n ? `.${String(amount % 100n).padStart(2, "0")}` : ""}`);
+    setEditError("");
+  };
+  const saveEdit = async () => {
+    if (!editing || saving) return;
+    const current = consumptionFor(editing.code, editing.year, editing.month);
+    const next = amountToMinorUnits(digits(editValue).replace(/[,،\s]/g, ""));
+    if (current == null || next == null) { setEditError("مبلغ معتبر با حداکثر دو رقم اعشار وارد کنید."); return; }
+    if (next < current) { setEditError("مبلغ جدید نمی‌تواند کمتر از مبلغ فعلی باشد."); return; }
+    if (next === current) { setEditing(null); return; }
+    setSaving(true); setEditError("");
+    try {
+      const expectedAdjustmentMinor = adjustments.filter((item) => Number(item.year) === editing.year && Number(item.month) === editing.month).reduce((sum, item) => sum + BigInt(item.amountMinor), 0n);
+      await api("/financial-commitment-monthly-adjustments", { method: "POST", body: JSON.stringify({ projectId, budgetCode: editing.code, year: editing.year, month: editing.month, incrementMinor: String(next - current), expectedAdjustmentMinor: String(expectedAdjustmentMinor) }) });
+      setEditing(null);
+      const result = await api(`/financial-commitment-monthly-adjustments?projectId=${encodeURIComponent(projectId)}`);
+      setAdjustments(result.items || []);
+    } catch { setUsageError("ذخیره یا دریافت مبلغ انجام نشد؛ لطفاً صفحه را تازه‌سازی و دوباره بررسی کنید."); setEditing(null); }
+    finally { setSaving(false); }
+  };
+  const money = (amount) => amount == null ? "?" : `${formatMinorUnits(amount)}${currencyLabel ? ` ${currencyLabel}` : ""}`;
+  // Only sum top-level rows; their amounts already include their descendants.
+  const topRows = displayRows.filter(({ code }) => !displayRows.some((other) => other.code !== code && code.startsWith(`${other.code}-`)));
+  const totalBudget = topRows.reduce((sum, row) => sum + (budgets.get(row.code) ?? 0n), 0n);
+  const totalCost = topRows.reduce((sum, row) => {
+    const value = totalFor(row.code);
+    return sum == null || value == null ? null : sum + value;
+  }, 0n);
 
   return <Card dir="rtl" className="mx-auto max-w-[1400px] rounded-2xl border border-black/10 bg-white p-2.5 text-neutral-900 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:rounded-3xl sm:p-3 md:p-4">
     <div className="mb-4 flex min-w-0 items-center gap-3 border-b border-black/[0.07] px-0.5 pb-3 dark:border-white/10 sm:mb-5 sm:pb-4">
@@ -171,8 +225,10 @@ export default function FinancialCommitmentsPage() {
       <span><span className="block text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">کنترل هزینه ها</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span></span>
     </div>
     <div className="rounded-2xl border border-black/10 bg-white pt-4 dark:border-neutral-800 dark:bg-neutral-900">
-      <div className="grid gap-3 px-4 pb-4 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
-        <label className="flex max-w-md flex-col gap-1 text-sm font-semibold">پروژه<select value={projectId} onChange={(event) => setProjectId(event.target.value)} disabled={loadingProjects} className={inputClass}><option value="">{loadingProjects ? "در حال دریافت..." : "انتخاب کنید"}</option>{projects.map((item) => <option key={item.id} value={item.id}>{fa(item.code)} - {item.name}</option>)}</select></label>
+      <div className="grid gap-3 px-4 pb-4 sm:grid-cols-[minmax(220px,1fr)_auto_auto_auto] sm:items-end">
+        <label className="flex max-w-md flex-col gap-1 text-sm font-semibold">پروژه<select value={projectId} onChange={(event) => setProjectId(event.target.value)} disabled={loadingProjects || saving} className={inputClass}><option value="">{loadingProjects ? "در حال دریافت..." : "انتخاب کنید"}</option>{projects.map((item) => <option key={item.id} value={item.id}>{fa(item.code)} - {item.name}</option>)}</select></label>
+        {projectId && !loading && start && <div className="text-sm text-neutral-600 dark:text-neutral-400">جمع کل بودجه مبنا: <span dir="auto" className="font-semibold">{money(totalBudget)}</span></div>}
+        {projectId && !loading && start && <div className="text-sm text-neutral-600 dark:text-neutral-400">جمع کل هزینه: <span dir="auto" className="font-semibold">{money(totalCost)}</span></div>}
         {start && <div className="text-sm text-neutral-600 dark:text-neutral-400">تاریخ شروع قرارداد اصلی: <span dir="ltr" className="font-semibold">{fa(`${start.year}/${String(start.month).padStart(2, "0")}/${String(start.day).padStart(2, "0")}`)}</span></div>}
       </div>
       {error && <p role="alert" className="px-4 pb-3 text-sm text-red-600">{error}</p>}
@@ -181,9 +237,10 @@ export default function FinancialCommitmentsPage() {
       {!error && projectId && !loading && !start && <p className="px-4 pb-5 text-sm text-neutral-500">تاریخ شروع قرارداد اصلی برای این پروژه ثبت نشده است.</p>}
       {!error && start && !loading && <>
         <p className="px-4 pb-3 text-xs text-neutral-600 dark:text-neutral-400">{distinctCurrencies.length > 1 ? "در مبلغ قرارداد اصلی چند ترکیب ارز و منشأ ثبت شده است؛ واحد مصرف باید مشخص شود." : currencyLabel ? `واحد مبالغ این پروژه: ${currencyLabel}` : "ارز مبلغ قرارداد اصلی ثبت نشده است."}</p>
+        {editError && <p role="alert" className="px-4 pb-3 text-xs text-red-600">{editError}</p>}
         {usageError && <p role="alert" className="px-4 pb-3 text-xs text-red-600">{usageError}</p>}
         {!loadingUsage && !usageError && displayRows.some((row) => totalFor(row.code) == null) && <p role="status" className="px-4 pb-3 text-xs text-amber-700">نرخ ارز برخی ماه‌ها یا ارز قرارداد مشخص نیست؛ جمع و اختلاف ردیف‌های مربوط نمایش داده نمی‌شود.</p>}
-        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-700"><div className="max-h-[60vh] overflow-auto"><table className={`w-full border-collapse text-sm ${showMonths ? "min-w-max" : "min-w-[700px]"}`}><thead className="sticky top-0 z-10 bg-[#184a6b] text-white"><tr><th className="min-w-[300px] px-4 py-3 !text-right"><span className="flex items-center gap-1.5"><button type="button" onClick={() => setExpanded(allRowsExpanded ? new Set() : new Set(parents))} disabled={!parents.size} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base font-semibold leading-none text-black transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10" aria-label={allRowsExpanded ? "\u0628\u0633\u062a\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627" : "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627"} title={allRowsExpanded ? "\u0628\u0633\u062a\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627" : "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627"}>{allRowsExpanded ? "\u2212" : "+"}</button>کد و نام بودجه</span></th>{showMonths && periods.map(({ year, month }) => <th key={`${year}-${month}`} className="min-w-[160px] px-4 py-3 !text-center">{months[month - 1]} {fa(year)}</th>)}<th className="min-w-[160px] px-4 py-3 !text-center"><span className="inline-flex items-center gap-2">جمع هزینه‌ها <button type="button" onClick={() => setShowMonths((value) => !value)} aria-expanded={showMonths} aria-label={showMonths ? "بستن جزئیات ماهانه" : "نمایش جزئیات ماهانه"} title={showMonths ? "بستن جزئیات ماهانه" : "نمایش جزئیات ماهانه"} className="rounded-md border border-white/40 p-1 hover:bg-white/20">{showMonths ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}</button></span></th><th className="min-w-[150px] px-4 py-3 !text-center">بودجه مبنا</th><th className="min-w-[150px] px-4 py-3 !text-center">اختلافات</th></tr></thead><tbody>{visibleRows.length === 0 ? <tr><td colSpan={4 + (showMonths ? periods.length : 0)} className="p-8 text-center text-neutral-500">ساختار هزینه‌ای برای این پروژه ثبت نشده است.</td></tr> : visibleRows.map((row) => { const total = totalFor(row.code); const budget = budgets.get(row.code) ?? 0n; const cell = "border-b border-neutral-200 px-4 py-3 !text-center align-middle tabular-nums dark:border-neutral-700"; return <tr key={row.id ?? row.code} className="odd:bg-neutral-50/70 hover:bg-sky-50/70 dark:odd:bg-white/[0.03] dark:hover:bg-white/[0.07]"><td className={`${cell} !text-right`}><div className="flex items-center justify-start gap-2" style={{ paddingRight: `${Math.min(4, Math.max(0, row.code.split("-").length - projectCode.split("-").length - 1)) * 36}px` }}>{parents.has(row.code) ? <button type="button" onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} aria-expanded={expanded.has(row.code)} title={`${expanded.has(row.code) ? "\u0628\u0633\u062a\u0646" : "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646"} ${row.name}`} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base font-semibold leading-none text-black transition hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10">{expanded.has(row.code) ? "\u2212" : "+"}</button> : <span className="h-7 w-7 shrink-0" />}<span dir="ltr" className="shrink-0 font-semibold">{fa(row.code)}</span><span>{row.name}</span></div></td>{showMonths && periods.map(({ year, month }) => <td key={`${year}-${month}`} className={cell} dir="ltr">{money(consumptionFor(row.code, year, month))}</td>)}<td className={`${cell} font-semibold`} dir="ltr">{money(total)}</td><td className={cell} dir="ltr">{money(budget)}</td><td className={`${cell} ${total != null && total > budget ? "text-red-600 dark:text-red-400" : ""}`} dir="ltr">{money(total == null ? null : total - budget)}</td></tr>; })}</tbody></table></div></div>
+        <div className="mx-4 mb-4 overflow-hidden rounded-2xl border border-neutral-200 dark:border-neutral-700"><div className="max-h-[60vh] overflow-auto"><table className={`w-full border-collapse text-sm ${showMonths ? "min-w-max" : "min-w-[700px]"}`}><thead className="sticky top-0 z-10 bg-[#184a6b] text-white"><tr><th className="min-w-[300px] px-4 py-3 !text-right"><span className="flex items-center gap-1.5"><button type="button" onClick={() => setExpanded(allRowsExpanded ? new Set() : new Set(parents))} disabled={!parents.size} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base font-semibold leading-none text-black transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10" aria-label={allRowsExpanded ? "\u0628\u0633\u062a\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627" : "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627"} title={allRowsExpanded ? "\u0628\u0633\u062a\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627" : "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0647\u0645\u0647 \u0632\u06cc\u0631\u0645\u062c\u0645\u0648\u0639\u0647\u200c\u0647\u0627"}>{allRowsExpanded ? "\u2212" : "+"}</button>کد و نام بودجه</span></th>{showMonths && periods.map(({ year, month }) => <th key={`${year}-${month}`} className="min-w-[160px] px-4 py-3 !text-center">{months[month - 1]} {fa(year)}</th>)}<th className="min-w-[160px] px-4 py-3 !text-center"><span className="inline-flex items-center gap-2">جمع هزینه‌ها <button type="button" onClick={() => setShowMonths((value) => !value)} aria-expanded={showMonths} aria-label={showMonths ? "بستن جزئیات ماهانه" : "نمایش جزئیات ماهانه"} title={showMonths ? "بستن جزئیات ماهانه" : "نمایش جزئیات ماهانه"} className="rounded-md border border-white/40 p-1 hover:bg-white/20">{showMonths ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}</button></span></th><th className="min-w-[150px] px-4 py-3 !text-center">بودجه مبنا</th><th className="min-w-[150px] px-4 py-3 !text-center">اختلافات</th></tr></thead><tbody>{visibleRows.length === 0 ? <tr><td colSpan={4 + (showMonths ? periods.length : 0)} className="p-8 text-center text-neutral-500">ساختار هزینه‌ای برای این پروژه ثبت نشده است.</td></tr> : visibleRows.map((row) => { const total = totalFor(row.code); const budget = budgets.get(row.code) ?? 0n; const cell = "border-b border-neutral-200 px-4 py-3 !text-center align-middle tabular-nums dark:border-neutral-700"; return <tr key={row.id ?? row.code} className="odd:bg-neutral-50/70 hover:bg-sky-50/70 dark:odd:bg-white/[0.03] dark:hover:bg-white/[0.07]"><td className={`${cell} !text-right`}><div className="flex items-center justify-start gap-2" style={{ paddingRight: `${Math.min(4, Math.max(0, row.code.split("-").length - projectCode.split("-").length - 1)) * 36}px` }}>{parents.has(row.code) ? <button type="button" onClick={() => setExpanded((current) => { const next = new Set(current); if (next.has(row.code)) next.delete(row.code); else next.add(row.code); return next; })} aria-label={`${expanded.has(row.code) ? "بستن" : "باز کردن"} ${row.name}`} aria-expanded={expanded.has(row.code)} title={`${expanded.has(row.code) ? "\u0628\u0633\u062a\u0646" : "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646"} ${row.name}`} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base font-semibold leading-none text-black transition hover:bg-black/5 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10">{expanded.has(row.code) ? "\u2212" : "+"}</button> : <span className="h-7 w-7 shrink-0" />}<span dir="ltr" className="shrink-0 font-semibold">{fa(row.code)}</span><span>{row.name}</span></div></td>{showMonths && periods.map(({ year, month }) => { const value = consumptionFor(row.code, year, month); const active = editing?.code === row.code && editing.year === year && editing.month === month; return <td key={`${year}-${month}`} className={cell} dir="ltr">{active ? <div className="flex min-w-[220px] items-center gap-1"><input aria-label={`مبلغ ${months[month - 1]} ${fa(year)} ${row.name}`} value={editValue} onChange={(event) => setEditValue(event.target.value)} disabled={saving} inputMode="decimal" className={`${inputClass} min-w-0`} /><button type="button" disabled={saving} onClick={saveEdit} className="rounded-lg bg-[#184a6b] px-2 py-2 text-xs text-white">ثبت</button><button type="button" disabled={saving} onClick={() => { setEditing(null); setEditError(""); }} className="rounded-lg px-2 py-2 text-xs">انصراف</button></div> : <span className="inline-flex items-center gap-2">{money(value)}{value != null && contractCurrency && <button type="button" disabled={saving} onClick={() => beginEdit(row.code, year, month, value)} aria-label={`ویرایش مبلغ ${months[month - 1]} ${fa(year)} ${row.name}`} title="ویرایش مبلغ ماه" className="rounded-md p-1 hover:bg-black/10 dark:hover:bg-white/10"><Pencil size={14} /></button>}</span>}</td>; })}<td className={`${cell} font-semibold`} dir="ltr">{money(total)}</td><td className={cell} dir="ltr">{money(budget)}</td><td className={`${cell} ${total != null && total > budget ? "text-red-600 dark:text-red-400" : ""}`} dir="ltr">{money(total == null ? null : total - budget)}</td></tr>; })}</tbody></table></div></div>
       </>}
     </div>
 
