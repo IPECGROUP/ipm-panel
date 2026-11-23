@@ -1503,7 +1503,7 @@ export default function FinancialWorksheetPage() {
                 <img src={PAGE_ICON} alt="" className="h-6 w-6 dark:invert" />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-base font-bold md:text-lg">کاربرگ مالی</span>
+                <span className="block truncate text-base font-bold md:text-lg">کاربرگ پروژه ها</span>
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
               </span>
             </div>

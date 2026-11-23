@@ -344,12 +344,12 @@ function RightNav() {
       ],
     },
     {
-      title: "مدیریت عملیات اجرایی",
+      title: "مدیریت عملیات",
       items: [
         {
           type: "section",
           key: "executiveOperations",
-          label: "مدیریت عملیات اجرایی",
+          label: "مدیریت عملیات",
           icon: <IcExecutiveOperations />,
           active: executiveOperationsParentActive,
           items: [
