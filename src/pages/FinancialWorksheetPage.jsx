@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import { THead, TH, TR, TD } from "../components/ui/Table.jsx";
 import { baseCurrenciesTablePreset as tablePreset } from "../components/ui/tablePresets.js";
-import { useFeatureVisibility } from "../hooks/useFeatureAccess.js";
+import { useFeatureAccess, useFeatureVisibility } from "../hooks/useFeatureAccess.js";
 import DocumentUploadModal from "../components/DocumentUploadModal.jsx";
 import RelatedLettersPickerModal from "../components/RelatedLettersPickerModal.jsx";
 import FinancialWorksheetDetailModal from "../components/FinancialWorksheetDetailModal.jsx";
@@ -430,6 +430,8 @@ function AmountInputWithMeta({
 }
 
 export default function FinancialWorksheetPage() {
+  const { can } = useFeatureAccess("کاربرگ مالی");
+  const canModify = can("افزودن");
   useFeatureVisibility("کاربرگ مالی", { "صورت وضعیت‌ها": "صورت وضعیت", "دریافتی‌ها": "دریافتی" });
   const { user } = useAuth();
   const API_BASE = (window.API_URL || "/api").replace(/\/+$/, "");
@@ -1505,7 +1507,7 @@ export default function FinancialWorksheetPage() {
                 <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
               </span>
             </div>
-            <button type="button" onClick={toggleAddForm} className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${formOpen ? "ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" : "border border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن" : "افزودن"} aria-label={formOpen ? "بستن" : "افزودن"}>
+            <button type="button" onClick={toggleAddForm} disabled={!canModify} className={`flex h-10 w-10 items-center justify-center rounded-xl transition ${formOpen ? "ring-1 ring-black/15 hover:bg-black/5 dark:ring-neutral-800 dark:hover:bg-white/10" : "border border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن" : "افزودن"} aria-label={formOpen ? "بستن" : "افزودن"}>
               {formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}
             </button>
           </div>
@@ -2035,7 +2037,7 @@ export default function FinancialWorksheetPage() {
                         <TH><SortableWorksheetHeader label="ردیف" field="number" sort={rowSort} onSort={changeRowSort} /></TH>
                         <TH><SortableWorksheetHeader label="پروژه" field="project" sort={rowSort} onSort={changeRowSort} /></TH><TH>سطح / بابت</TH><TH className="!text-right">موضوع قرارداد</TH>
                         <TH>شماره / تاریخ</TH>
-                        <TH>مبلغ</TH><TH className="relative !pl-10">VAT<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
+                        <TH>مبلغ</TH><TH className="relative !pl-10">VAT<WorksheetReadingMenu selectedCount={selectedIds.size} canEdit={canModify && selectedIds.size === 1} deleting={deletingSelected} onEdit={editSelectedRow} onDelete={deleteSelectedRows} /></TH>
                       </tr></THead>
                       <tbody className={`${tablePreset.body} [&_tr]:h-12`}>
                         {rowsLoading ? <TR><td colSpan={9} className={`h-20 !text-center ${tablePreset.emptyRow}`}>در حال بارگذاری...</td></TR> : !pageRows.length ? <TR><td colSpan={9} className={`h-24 !text-center ${tablePreset.emptyRow}`}>موردی برای نمایش وجود ندارد.</td></TR> : pageRows.map((row) => {

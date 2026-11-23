@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import Card from "../components/ui/Card.jsx";
 import RowActionIconBtn from "../components/ui/RowActionIconBtn.jsx";
 import { api } from "../utils/api.js";
+import { useFeatureAccess } from "../hooks/useFeatureAccess.js";
 
 const PAGE_ICON = "/images/icons/sakhtar-shekast.svg";
 
@@ -96,6 +97,9 @@ const compareBudgetCodes = (left = "", right = "") => {
 };
 
 export default function CostBreakdownPage() {
+  const { can } = useFeatureAccess("ساختار شکست هزینه‌ها");
+  const canModify = can("افزودن");
+  const canDelete = can("حذف");
   const [projects, setProjects] = useState([]);
   const [projectId, setProjectId] = useState("");
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -449,7 +453,7 @@ export default function CostBreakdownPage() {
     finally { setSaving(false); }
   };
 
-  const canAddDraft = Boolean(projectId && !saving && projectBudgetCode(budgetCode) && String(budgetName || "").trim());
+  const canAddDraft = Boolean(canModify && projectId && !saving && projectBudgetCode(budgetCode) && String(budgetName || "").trim());
 
   const handleDraftKeyDown = async (event) => {
     if (event.key === "Escape") {
@@ -702,7 +706,7 @@ export default function CostBreakdownPage() {
             <span className="block truncate text-base font-bold text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">ساختار شکست هزینه ها</span>
             <span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">مدیریت پروژه</span>
           </span>
-          <button type="button" onClick={openTemplates} disabled={!projectId || loading || saving} className="mr-auto h-10 rounded-xl border border-neutral-200 px-4 text-sm font-bold transition hover:bg-neutral-50 disabled:opacity-45 dark:border-white/15 dark:hover:bg-white/10">فراخوانی از ساختار نمونه قالب</button>
+          <button type="button" onClick={openTemplates} disabled={!canModify || !projectId || loading || saving} className="mr-auto h-10 rounded-xl border border-neutral-200 px-4 text-sm font-bold transition hover:bg-neutral-50 disabled:opacity-45 dark:border-white/15 dark:hover:bg-white/10">فراخوانی از ساختار نمونه قالب</button>
           <button
             type="button"
             onClick={exportExcel}
@@ -785,8 +789,8 @@ export default function CostBreakdownPage() {
             </button>
             {tableMenuOpen && <div className="absolute left-0 top-full mt-2 w-60 rounded-2xl border border-black/10 bg-white p-1.5 text-right text-neutral-900 shadow-[0_18px_45px_rgba(0,0,0,0.18)] dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100">
               <div className="px-2.5 pb-2 pt-1.5 text-xs text-neutral-500 dark:text-neutral-400">{selectedRows.length ? `${toFaDigits(selectedRows.length)} مورد انتخاب شده` : "ابتدا موارد موردنظر را انتخاب کنید"}</div>
-              <button type="button" disabled={!selectedRows.length || saving} onClick={editSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-white/10"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /><span className="text-sm font-semibold">ویرایش</span></button>
-              <button type="button" disabled={!selectedRows.length || saving} onClick={deleteSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /><span className="text-sm font-semibold">حذف</span></button>
+              <button type="button" disabled={!canModify || !selectedRows.length || saving} onClick={editSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right transition hover:bg-black/[0.04] disabled:cursor-not-allowed disabled:opacity-45 dark:hover:bg-white/10"><img src="/images/icons/pencil.svg" alt="" className="h-4 w-4 dark:invert" /><span className="text-sm font-semibold">ویرایش</span></button>
+              <button type="button" disabled={!canDelete || !selectedRows.length || saving} onClick={deleteSelectedRows} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-right text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-45 dark:text-red-300 dark:hover:bg-red-500/10"><img src="/images/icons/hazf.svg" alt="" className="h-4 w-4" /><span className="text-sm font-semibold">حذف</span></button>
             </div>}
           </div>
           <div className={tableWrapCls}>
@@ -1008,7 +1012,7 @@ export default function CostBreakdownPage() {
       </div>
 
       {err && <div className="mt-3 text-center text-sm text-red-600 dark:text-red-400">{err}</div>}
-      <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="button" onClick={saveDraftRows} disabled={saving || !rows.some((row) => row.draft)} className={confirmationButtonClass} title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className={confirmationIconClass} /></button></div>
+      <div className="mt-4 flex justify-end border-t border-black/10 pt-4 dark:border-white/10"><button type="button" onClick={saveDraftRows} disabled={!canModify || saving || !rows.some((row) => row.draft)} className={confirmationButtonClass} title="ثبت" aria-label="ثبت"><img src="/images/icons/check.svg" alt="" className={confirmationIconClass} /></button></div>
       {templateOpen && <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="template-title"><div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-neutral-900"><div className="flex items-center justify-between"><h2 id="template-title" className="text-sm font-bold">انتخاب قالب</h2><button type="button" onClick={() => setTemplateOpen(false)} aria-label="بستن" className="text-xl">×</button></div>{templateLoading ? <p className="mt-5 text-sm">در حال دریافت...</p> : template ? <div className="mt-5 space-y-2">{template.map((item) => <button key={item.templateId || item.type} type="button" onClick={() => importTemplate(item)} className="w-full rounded-xl border border-black/10 p-4 text-right text-sm font-semibold hover:bg-neutral-50 dark:border-white/10 dark:hover:bg-white/5">{item.project}</button>)}</div> : <p className="mt-5 text-sm text-red-600">دریافت قالب انجام نشد.</p>}</div></div>}
       </div>
     </Card>
