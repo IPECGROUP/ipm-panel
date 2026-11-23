@@ -284,7 +284,7 @@ function RightNav() {
             { to: "/projects/cost-breakdown", label: "ساختار شکست هزینه ها", hint: "ساختار و اجزای هزینه پروژه", icon: <IcCostBreakdown /> },
             { to: "/projects/financial-commitments", label: "کنترل هزینه ها", hint: "تعهدات و مصرف های پروژه", icon: <IcFinancialCommitments /> },
             { to: "/projects/financial-worksheet", label: "کاربرگ پروژه ها", hint: "جزئیات مالی پروژه", icon: <IcWorksheet /> },
-            { to: "/projects/financial-parameters", label: "پارامتر های مالی پروژه ها", hint: "پارامتر های مالی پروژه ها", icon: <IcFinancialParameters /> },
+            { to: "/projects/financial-parameters", label: "پارامترهای مالی", hint: "پارامترهای مالی", icon: <IcFinancialParameters /> },
             { to: "/projects/project-management-dashboard", label: "داشبورد مدیریت پروژه", hint: "نمای کلی وضعیت پروژه", icon: <IcProjectDashboard /> },
           ],
         },

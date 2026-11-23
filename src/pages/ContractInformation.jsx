@@ -5154,7 +5154,7 @@ export default function ContractInformation() {
                       const amountRow = normalizeFinancial(row.financial || {}).contractAmounts.find((item) => hasFinancialAmount(item.amount));
                       const amountText = amountRow ? formatFinancialAmount(parseFinancialAmount(amountRow.amount)) : "—";
                       const currencyText = amountRow?.currencyLabel || amountRow?.currencyId || "—";
-                      const sourceText = amountRow?.sourceLabel || amountRow?.sourceId || "";
+                      const sourceText = isRialCurrencyRow(amountRow) ? "" : amountRow?.sourceLabel || amountRow?.sourceId || "";
                       const statusText = row.insurance?.lastStatus || "ثبت نشده";
 
                       return (

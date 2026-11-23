@@ -28,7 +28,7 @@ const shortcutOptions = [
   ["/projects/cost-breakdown", "ساختار شکست هزینه‌ها", "sakhtar-shekast.svg"],
   ["/projects/financial-commitments", "کنترل هزینه ها", "control-hazine.svg"],
   ["/projects/financial-worksheet", "کاربرگ پروژه ها", "karbarg-mali.svg"],
-  ["/projects/financial-parameters", "پارامتر های مالی پروژه ها", "parametr.svg"],
+  ["/projects/financial-parameters", "پارامترهای مالی", "parametr.svg"],
   ["/projects/project-management-dashboard", "داشبورد مدیریت پروژه", "dashboard-12.svg"],
   ["/finance/payment-request", "درخواست پرداخت", "darkhast-pardakht.svg"],
   ["/finance/tenkhah", "تنخواه گردان", "tankhah-gardan.svg"],
