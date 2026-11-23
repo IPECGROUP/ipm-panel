@@ -1234,7 +1234,7 @@ export default function CostForecastCostsTab({
                     )}
 
                     <TR>
-                      <TD colSpan={colCount} className="px-3 py-3 text-right">
+                      <TD colSpan={colCount} className="!px-4 !py-3 text-right">
                         <PlusButton
                           onClick={() => {
                             setAdding(true);

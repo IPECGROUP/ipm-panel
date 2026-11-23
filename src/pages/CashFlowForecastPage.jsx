@@ -59,13 +59,13 @@ export default function CashFlowForecastPage() {
       <div className="space-y-0">
         <ForecastTabs active={activeTab} onChange={setActiveTab} />
 
-        <div dir="rtl">
+        <div dir="rtl" className="rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900">
           {activeTab === "costs" && <CostForecastCostsTab />}
           {activeTab === "revenues" && (
             <CostForecastCostsTab storageApiPath="/revenue-forecast-revenues" allowManualChildren />
           )}
           {activeTab === "chart" && (
-            <div className="min-h-[320px] rounded-2xl border border-black/10 bg-white dark:border-neutral-800 dark:bg-neutral-900" />
+            <div className="min-h-[320px]" />
           )}
         </div>
       </div>
