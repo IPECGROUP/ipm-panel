@@ -410,7 +410,7 @@ function formatBytes(n) {
   return `${Math.round(v * 10) / 10} ${units[i]}`;
 }
 
-const LETTER_UPLOAD_ACCEPT = ".pdf,image/*,.xls,.xlsx,.xlsm,.csv,.ods,.doc,.docx,.odt,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const LETTER_UPLOAD_ACCEPT = ".pdf,image/*,.xls,.xlsx,.xlsm,.csv,.ods,.doc,.docx,.odt,.zip,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const ensureLetterUploadableFile = async (file) => file;
 
@@ -6976,7 +6976,7 @@ const rowBg = normalRowBg;
   onSelectFiles={selectLetterUpload}
   onRemove={(index) => removeDocFile(uploadFor, currentDocFiles[index]?.id)}
   accept={LETTER_UPLOAD_ACCEPT}
-  allowedTypes="PDF، تصویر، Word و Excel"
+  allowedTypes="PDF، تصویر، Word، Excel و ZIP"
   onClose={closeUpload}
 />}
 {letterEditorFile && <AttachmentImageEditor key={letterEditorFile.name + letterEditorFile.lastModified} title="پیوست سند" initialFile={letterEditorFile} onClose={() => { setLetterEditorFile(null); setUploadOpen(true); }} onConfirm={finishLetterEditor} />}
