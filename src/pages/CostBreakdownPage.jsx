@@ -823,7 +823,7 @@ export default function CostBreakdownPage() {
                     </th>
                     <th className="px-3 !text-[14px] md:!text-[15px] !font-semibold">
                       <span className="flex items-center gap-1.5">
-                        <button type="button" onClick={toggleAllRowsExpanded} disabled={!expandableCodes.length} className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-black/15 bg-white text-base font-semibold leading-none text-black transition hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/15 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-white/10" aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"} title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}>
+                        <button type="button" onClick={toggleAllRowsExpanded} disabled={!expandableCodes.length} className="inline-grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-white/40 text-base font-semibold leading-none text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40" aria-label={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"} title={allRowsExpanded ? "بستن همه زیرمجموعه‌ها" : "باز کردن همه زیرمجموعه‌ها"}>
                           {allRowsExpanded ? "−" : "+"}
                         </button>
                         کد بودجه
