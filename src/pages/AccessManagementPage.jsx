@@ -18,7 +18,7 @@ const groups = [
 ];
 
 const pageColumns = {
-  "مدیریت اسناد": ["همه", "نمایش منو", "افزودن", "بارگذاری سند پیوست", "نمایش سند پیوست", "ارسال", "ویرایش", "حذف", "اسناد محرمانه", "داشبورد مدیریت اسناد"],
+  "مدیریت اسناد": ["همه", "نمایش منو", "افزودن", "بارگذاری سند پیوست", "نمایش سند پیوست", "ارسال", "ویرایش", "اسناد محرمانه", "داشبورد مدیریت اسناد"],
   "قراردادها": ["همه", "نمایش منو", "افزودن", "پیش‌نمایش", "ویرایش", "حذف", "خروجی اکسل", "لیست قراردادهای اصلی با مبلغ", "عمومی", "تقویم قرارداد", "دامنه کار", "مالی و تضامین", "تأمین اجتماعی", "الحاقیه", "داشبورد مدیریت قراردادها"],
   "روزنگار پروژه": ["همه", "نمایش منو", "افزودن"],
   "ساختار شکست هزینه‌ها": ["همه", "نمایش منو"],
@@ -48,7 +48,7 @@ const pageColumns = {
   "پروژه‌ها": ["نمایش منو"],
   "برچسب‌ها": ["نمایش منو"],
   "اطلاعات پایه": ["نمایش منو"],
-  "رسیدهای تحویل": ["نمایش منو"],
+  "رسیدهای تحویل": ["نمایش منو", "افزودن"],
   "پارامترهای مالی پروژه‌ها": ["نمایش منو"],
   "ارزیابی تأمین‌کنندگان": ["نمایش منو"],
 };
@@ -119,9 +119,12 @@ export default function AccessManagementPage() {
     setSelected(next);
     const managedIndexes = new Set(Object.values(pageIndex).map(String));
     const preserved = (item.access || []).filter((token) => {
-      const match = String(token).match(/^page-access:(\d+):/);
-      return !match || !managedIndexes.has(match[1]);
+      const match = String(token).match(/^page-access:(\d+):(.*)$/);
+      if (!match || !managedIndexes.has(match[1])) return true;
+      const page = pageOrder.find((name) => String(pageIndex[name]) === match[1]);
+      return match[2] !== "همه" && !pageColumns[page].includes(match[2]);
     });
+    if ((item.access || []).includes("page-access:1:همه") && !preserved.includes("page-access:1:حذف")) preserved.push("page-access:1:حذف");
     const tokens = pageOrder.flatMap((p) => pageColumns[p].filter((name) => next.has(keyOf(p, item.id, name))).map((name) => tokenOf(p, name)));
     const access = [...preserved.filter((token) => token !== independentAccessMarker), independentAccessMarker, ...tokens];
     await api("/admin/users", { method: "PATCH", body: JSON.stringify({ id: item.id, access }) });
@@ -135,7 +138,7 @@ export default function AccessManagementPage() {
       {groups.map((item, index) => <button key={item.label} type="button" onClick={() => setActiveGroup(item.label)} className={`relative z-10 h-11 min-w-[132px] flex-1 whitespace-nowrap px-4 text-sm font-semibold transition ${index ? "border-r border-black/10 dark:border-neutral-800" : ""} ${activeGroup === item.label ? "bg-[#184a6b] text-white dark:bg-[#184a6b] dark:text-white" : "hover:bg-neutral-50 dark:hover:bg-neutral-800"}`}>{item.label}</button>)}
     </div>
     <div className={`${tableUi.frame} rounded-t-none`}><div className="overflow-x-auto"><table className={`${tableUi.table} table-fixed`} style={{ minWidth: Math.max(420, 230 + columnCount * 68) }}><thead>
-      <tr className={tableUi.headRow}><th rowSpan={2} aria-sort={userSortDir === "asc" ? "ascending" : userSortDir === "desc" ? "descending" : "none"} className={`${tableUi.th} w-[230px] border-l border-neutral-300 dark:border-neutral-700`}><button type="button" onClick={() => setUserSortDir((previous) => previous === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 hover:opacity-75" aria-label={userSortDir === "asc" ? "مرتب‌سازی کاربران به ترتیب الفبای معکوس" : "مرتب‌سازی کاربران به ترتیب حروف الفبا"} title={userSortDir === "asc" ? "مرتب‌سازی کاربران به ترتیب الفبای معکوس" : "مرتب‌سازی کاربران به ترتیب حروف الفبا"}><span>کاربران</span><img src={userSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>{pages.map((page) => <th key={page} colSpan={pageColumns[page].length} className="border-l border-neutral-300 py-2 text-center text-sm font-bold dark:border-neutral-700">{page}</th>)}</tr>
+      <tr className={tableUi.headRow}><th rowSpan={2} aria-sort={userSortDir === "asc" ? "ascending" : userSortDir === "desc" ? "descending" : "none"} className={`${tableUi.th} w-[230px] border-l border-neutral-300 dark:border-neutral-700`}><button type="button" onClick={() => setUserSortDir((previous) => previous === "asc" ? "desc" : "asc")} className="mx-auto inline-flex items-center gap-1 hover:opacity-75" aria-label={userSortDir === "asc" ? "مرتب‌سازی کاربران به ترتیب الفبای معکوس" : "مرتب‌سازی کاربران به ترتیب حروف الفبا"} title={userSortDir === "asc" ? "مرتب‌سازی کاربران به ترتیب الفبای معکوس" : "مرتب‌سازی کاربران به ترتیب حروف الفبا"}><span>کاربران</span><img src={userSortDir === "desc" ? "/images/icons/bozorgbekochik.svg" : "/images/icons/kochikbebozorg.svg"} alt="" className="h-4 w-4 dark:invert" /></button></th>{pages.map((page) => <th key={page} colSpan={pageColumns[page].length} className="border-l border-neutral-300 py-2 text-center text-sm font-bold dark:border-neutral-700">{page === "مدیریت اسناد" ? "دبیرخانه" : page}</th>)}</tr>
       <tr className={tableUi.headRow}>{pages.flatMap((page) => pageColumns[page].map((column) => <th key={`${page}-${column}`} className="w-[68px] border-l border-neutral-300 px-1 py-2 text-center text-xs dark:border-neutral-700">{column}</th>))}</tr>
     </thead><tbody className={tableUi.body}>{loading ? <tr><td colSpan={columnCount + 1} className={tableUi.emptyRow}>در حال دریافت کاربران…</td></tr> : pages.length === 0 ? <tr><td colSpan={1} className={tableUi.emptyRow}>برای این بخش مجوزی تعریف نشده است.</td></tr> : sortedUsers.map((item) => <tr key={item.id}><td className="border-l border-neutral-300 px-3 py-3 text-center dark:border-neutral-700">{item.name || "—"}</td>{pages.flatMap((page) => pageColumns[page].map((column) => { const checked = selected.has(keyOf(page, item.id, column)); return <td key={`${page}-${column}`} className="border-l border-neutral-300 px-1 py-3 dark:border-neutral-700"><button type="button" onClick={() => toggle(item, page, column)} className={`mx-auto grid h-5 w-5 place-items-center rounded-[6px] border text-xs ${checked ? "border-black bg-black text-white" : "border-black/25"}`}>{checked ? "✓" : ""}</button></td>; }))}</tr>)}</tbody></table></div></div>
   </Card>;

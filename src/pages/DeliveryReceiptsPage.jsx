@@ -8,6 +8,7 @@ import BaseTablePager from "../components/ui/BaseTablePager.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { AttachmentImageEditor } from "./PettyCashPage.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
+import { useFeatureAccess } from "../hooks/useFeatureAccess.js";
 import { api } from "../utils/api.js";
 
 const inputClass = "h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-right text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400 dark:border-white/15 dark:bg-white/5 dark:text-neutral-100 dark:placeholder:text-neutral-500";
@@ -37,6 +38,8 @@ const persianDate = (date) => {
 
 export default function DeliveryReceiptsPage() {
   const { user, loading: authLoading } = useAuth();
+  const { can } = useFeatureAccess("رسیدهای تحویل");
+  const canModify = can("افزودن");
   const [items, setItems] = useState([]);
   const [receiptTypes, setReceiptTypes] = useState([]);
   const [typesLoading, setTypesLoading] = useState(true);
@@ -111,7 +114,7 @@ export default function DeliveryReceiptsPage() {
   const safePage = Math.min(page, Math.max(0, Math.ceil(filteredItems.length / pageSize) - 1));
   const pageItems = filteredItems.slice(safePage * pageSize, (safePage + 1) * pageSize);
   const selectedItem = selectedIds.size === 1 ? items.find((item) => selectedIds.has(item.id)) : null;
-  const canEditSelected = selectedItem && Number(selectedItem.createdById) === Number(user?.id);
+  const canEditSelected = canModify && selectedItem && Number(selectedItem.createdById) === Number(user?.id);
 
   function openRecipientPicker() {
     setRecipientDraft([...selectedRecipients]);
@@ -139,6 +142,7 @@ export default function DeliveryReceiptsPage() {
 
   async function save(event) {
     event.preventDefault();
+    if (!canModify) return;
     if (!form.date || !form.type || !form.title.trim() || !form.recipient.trim()) { setError("تاریخ، نوع مرسوله، شرح و گیرنده را وارد کنید."); return; }
     if (uploading) { setError("تا پایان بارگذاری فایل صبر کنید."); return; }
     setSaving(true);
@@ -180,7 +184,7 @@ export default function DeliveryReceiptsPage() {
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-black/10 bg-gradient-to-br from-neutral-50 to-neutral-200/70 shadow-sm dark:border-white/10 dark:from-white/[0.12] dark:to-white/[0.04]"><span aria-hidden="true" className="h-6 w-6 bg-[#184a6b] dark:bg-[#8fc4e3]" style={{ WebkitMask: "url('/images/icons/resid-hay-tahvil.svg') center / contain no-repeat", mask: "url('/images/icons/resid-hay-tahvil.svg') center / contain no-repeat" }} /></span>
             <span className="min-w-0"><span className="block truncate text-base font-bold tracking-tight text-[#184a6b] dark:text-[#8fc4e3] md:text-lg">رسید های تحویل</span><span className="mt-0.5 block text-xs text-neutral-500 dark:text-neutral-400">دبیرخانه</span></span>
           </div>
-          <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen((open) => !open); setUploadOpen(false); setError(""); }} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>{formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}</button>
+          {canModify && <button type="button" onClick={() => { setForm(emptyForm()); setEditingId(null); setFormOpen((open) => !open); setUploadOpen(false); setError(""); }} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition ${formOpen ? "border-black/15 bg-white hover:bg-black/5 dark:border-white/15 dark:bg-white/5 dark:hover:bg-white/10" : "border-[#f48120] bg-[#f48120] hover:bg-[#d97018]"}`} title={formOpen ? "بستن فرم" : "افزودن"} aria-label={formOpen ? "بستن فرم" : "افزودن"} aria-expanded={formOpen}>{formOpen ? <img src="/images/icons/listdarkhast.svg" alt="" className="h-5 w-5 dark:invert" /> : <Plus aria-hidden="true" className="h-5 w-5 text-white" strokeWidth={2.5} />}</button>}
         </div>
 
         {formOpen ? <form onSubmit={save} className="mb-4 rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-neutral-900">

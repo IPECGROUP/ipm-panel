@@ -16,6 +16,7 @@ const PAGE_INDEX = {
   "درس‌آموخته‌ها": 14,
   "کتابخانه‌ها": 15,
   "منابع آموزشی": 16,
+  "رسیدهای تحویل": 33,
 };
 
 export function useFeatureAccess(page) {
