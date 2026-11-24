@@ -420,7 +420,7 @@ export default function SupplyRequestPage() {
     try {
       const data = await api("/supply-requests");
       const rows = Array.isArray(data?.items) ? data.items : [];
-      if (data?.canEditAll) {
+      if (data?.canEditAll || data?.hasSupplyDelegation) {
         let page = 2;
         let hasMore = data?.pagination?.hasMore;
         while (hasMore) {
@@ -652,7 +652,7 @@ export default function SupplyRequestPage() {
   };
 
   const openPreview = (item) => {
-    if (Number(item?.currentAssigneeUserId) === Number(user?.id) && Number(item?.createdById) !== Number(user?.id)) {
+    if ((Number(item?.currentAssigneeUserId) === Number(user?.id) || item?.delegatedAssignee) && Number(item?.createdById) !== Number(user?.id) && !item?.delegatedCreator) {
       setSeenIncomingIds((previous) => {
         const next = new Set(previous);
         next.add(String(item.id));
@@ -870,8 +870,8 @@ export default function SupplyRequestPage() {
     const selectedTags = Array.isArray(filterTagIds) ? filterTagIds.map(String).filter(Boolean) : [];
     const letterById = new Map((Array.isArray(letters) ? letters : []).map((letter) => [letterIdOf(letter), letter]));
     return items.filter((item) => {
-      const isMine = Number(item?.createdById) === Number(user?.id);
-      const isIncoming = Number(item?.currentAssigneeUserId) === Number(user?.id) && !isMine;
+      const isMine = Number(item?.createdById) === Number(user?.id) || item?.delegatedCreator;
+      const isIncoming = (Number(item?.currentAssigneeUserId) === Number(user?.id) || item?.delegatedAssignee) && !isMine;
       if (filterOwnership === "mine" && !isMine) return false;
       if (filterOwnership === "incoming" && !isIncoming) return false;
       if (filterUnread && !(manualUnreadIds.has(String(item.id)) || (isIncoming && !seenIncomingIds.has(String(item.id))))) return false;
@@ -919,7 +919,7 @@ export default function SupplyRequestPage() {
     ? items.find((item) => selectedIds.has(String(item.id)))
     : null;
   const canEditSelectedRequest = Boolean(selectedEditableRequest)
-    && (selectedEditableRequest.canEditAll || (Number(selectedEditableRequest.createdById) === Number(user?.id)
+    && (selectedEditableRequest.canEditAll || ((Number(selectedEditableRequest.createdById) === Number(user?.id) || selectedEditableRequest.delegatedCreator)
     && !hasSupplyApproval(selectedEditableRequest)));
   const toggleSelected = (id) => setSelectedIds((previous) => {
     const next = new Set(previous);
@@ -935,7 +935,7 @@ export default function SupplyRequestPage() {
   });
 
   const isIncomingForUser = (item) =>
-    Number(item.currentAssigneeUserId) === Number(user?.id) && Number(item.createdById) !== Number(user?.id);
+    (Number(item.currentAssigneeUserId) === Number(user?.id) || item.delegatedAssignee) && Number(item.createdById) !== Number(user?.id) && !item.delegatedCreator;
 
   const isUnreadForUser = (item) =>
     manualUnreadIds.has(String(item.id)) || (isIncomingForUser(item) && !seenIncomingIds.has(String(item.id)));
@@ -1520,7 +1520,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   const project = projects.find((row) => String(row.id) === String(item.projectId));
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
   const history = Array.isArray(item.historyJson) ? item.historyJson : [];
-  const isRequester = Number(item.createdById) === Number(user?.id);
+  const isRequester = Number(item.createdById) === Number(user?.id) || item.delegatedCreator;
   const [isEditing, setIsEditing] = useState(!!item.__editing);
   const [commercialActions, setCommercialActions] = useState([]);
   const [commercialActionsLoading, setCommercialActionsLoading] = useState(false);
@@ -1537,8 +1537,8 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
   const isCompletedCommercialOwner =
     !item.currentStepRoleKey &&
     ["approved", "rejected"].includes(item.status) &&
-    Number(item.currentAssigneeUserId) === Number(user?.id) &&
-    Number(item.createdById) !== Number(user?.id);
+    (Number(item.currentAssigneeUserId) === Number(user?.id) || item.delegatedAssignee) &&
+    Number(item.createdById) !== Number(user?.id) && !item.delegatedCreator;
   const stepKey = item.currentStepRoleKey || (isCompletedCommercialOwner ? "commercial" : "");
   const canAct = item.canAct === true || isCompletedCommercialOwner;
   const latestAction = [...history].reverse().find((entry) => ["approved", "returned", "rejected"].includes(entry?.type));
