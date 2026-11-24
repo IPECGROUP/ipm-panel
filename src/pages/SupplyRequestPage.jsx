@@ -420,6 +420,15 @@ export default function SupplyRequestPage() {
     try {
       const data = await api("/supply-requests");
       const rows = Array.isArray(data?.items) ? data.items : [];
+      if (data?.canEditAll) {
+        let page = 2;
+        let hasMore = data?.pagination?.hasMore;
+        while (hasMore) {
+          const next = await api('/supply-requests?page=' + page++);
+          rows.push(...(Array.isArray(next?.items) ? next.items : []));
+          hasMore = next?.pagination?.hasMore;
+        }
+      }
       setItems(rows);
     } catch (ex) {
       setErr(friendlyError(ex.message, "دریافت درخواست‌های تامین انجام نشد."));
@@ -823,7 +832,7 @@ export default function SupplyRequestPage() {
       await loadItems();
       return true;
     } catch (ex) {
-      setActionError(ex?.message === "approval_already_recorded" ? "پس از اولین تایید، ویرایش درخواست امکان‌پذیر نیست." : ex?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست تامین انجام نشد.");
+      setActionError(ex?.message === "approval_already_recorded" ? "پس از اولین تایید، ویرایش درخواست امکان‌پذیر نیست." : ex?.message === "budget_code_not_found" ? "کد بودجه برای پروژه انتخاب‌شده معتبر نیست." : ex?.message === "serial_conflict" ? "شماره درخواست با درخواست دیگری تداخل دارد." : ex?.message === "forbidden" ? "شما اجازه ویرایش این درخواست را ندارید." : "ویرایش درخواست تامین انجام نشد.");
       return false;
     } finally {
       setActionBusy(false);
@@ -910,8 +919,8 @@ export default function SupplyRequestPage() {
     ? items.find((item) => selectedIds.has(String(item.id)))
     : null;
   const canEditSelectedRequest = Boolean(selectedEditableRequest)
-    && Number(selectedEditableRequest.createdById) === Number(user?.id)
-    && !hasSupplyApproval(selectedEditableRequest);
+    && (selectedEditableRequest.canEditAll || (Number(selectedEditableRequest.createdById) === Number(user?.id)
+    && !hasSupplyApproval(selectedEditableRequest)));
   const toggleSelected = (id) => setSelectedIds((previous) => {
     const next = new Set(previous);
     const key = String(id);
@@ -1492,8 +1501,8 @@ function SupplyRequestEditForm({ item, projects, currencyTypes, requestTypes, bu
   return <form dir="rtl" onSubmit={async (event) => { event.preventDefault(); if (await onSave(item, form)) onCancel(); }} className="space-y-4 py-4">
         <div className="flex items-center justify-between gap-3"><h2 className="text-base font-bold">ویرایش درخواست تامین</h2></div>
         <div className="grid gap-3 md:grid-cols-2">
-          <ReadOnlyBox label="پروژه" value={projectLabel(projects.find((project) => String(project.id) === form.projectId)) || item.projectName || "—"} />
-          <ReadOnlyBox label="کد بودجه" value={form.budgetCode || "—"} />
+          {item.canEditAll ? <Field label="پروژه"><select className={inputCls} value={form.projectId} onChange={(event) => setForm((old) => ({ ...old, projectId: event.target.value, budgetCode: "" }))}><option value="">?</option>{!projects.some((project) => String(project.id) === form.projectId) && <option value={form.projectId}>{item.projectName || form.projectId}</option>}{projects.map((project) => <option key={project.id} value={project.id}>{projectLabel(project)}</option>)}</select></Field> : <ReadOnlyBox label="پروژه" value={projectLabel(projects.find((project) => String(project.id) === form.projectId)) || item.projectName || "?"} />}
+          {item.canEditAll ? <Field label="کد بودجه"><input className={inputCls} value={form.budgetCode} onChange={(event) => setField("budgetCode", event.target.value)} /></Field> : <ReadOnlyBox label="کد بودجه" value={form.budgetCode || "?"} />}
           <Field label="نوع درخواست"><select className={inputCls} value={form.requestTypeId} onChange={(event) => setField("requestTypeId", event.target.value)}><option value="">انتخاب کنید</option>{requestTypes.map((type) => <option key={type.id} value={type.id}>{type.title}</option>)}</select></Field>
           <Field label="موضوع"><input className={inputCls} value={form.title} onChange={(event) => setField("title", event.target.value)} /></Field>
           <Field label="برآورد هزینه"><div className="relative"><select value={form.currencyTypeId} onChange={(event) => setField("currencyTypeId", event.target.value)} className="absolute left-1 top-1 z-10 h-9 w-16 cursor-pointer appearance-auto rounded-lg border border-neutral-200 bg-neutral-100 px-1 text-center text-xs font-semibold text-neutral-700 shadow-sm outline-none transition hover:bg-neutral-200 focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/10 dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/[.15] dark:focus:border-white/30 dark:focus:ring-white/10"><option value="">ریال</option>{(currencyTypes || []).filter((currency) => !isRialCurrency(currency)).map((currency) => <option key={currency.id} value={currency.id}>{currency.title}</option>)}</select><input dir="ltr" inputMode="numeric" className={`${inputCls} pl-[72px] text-left font-sans tabular-nums`} value={toFaDigits(form.amount)} onChange={(event) => setField("amount", formatMoney(event.target.value))} /></div></Field>
@@ -1828,7 +1837,7 @@ export function SupplyRequestPreview({ item, projects, currencyTypes = [], reque
 
               <main className="min-w-0 space-y-4">
               <div className="space-y-4">
-                {isEditing && isRequester && !hasSupplyApproval(item) ? (
+                {isEditing && (item.canEditAll || (isRequester && !hasSupplyApproval(item))) ? (
                   <PreviewSection title="ویرایش درخواست تامین">
                     <SupplyRequestEditForm item={item} projects={projects} currencyTypes={currencyTypes} requestTypes={requestTypes} busy={actionBusy} error={actionError} onSave={onEdit} onCancel={() => setIsEditing(false)} />
                   </PreviewSection>
