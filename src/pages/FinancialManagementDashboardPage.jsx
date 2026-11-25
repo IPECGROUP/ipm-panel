@@ -211,23 +211,23 @@ function RequestStatsPanel({ title, subtitle, metrics, labels, embedded = false 
   const PanelContainer = embedded ? "section" : Card;
   return (
     <PanelContainer className={embedded
-      ? "min-w-0 border-b border-black/10 py-4 last:border-b-0 last:pb-0 dark:border-white/10"
+      ? "min-w-0 border-b border-black/10 py-3 last:border-b-0 last:pb-0 dark:border-white/10"
       : "min-h-[280px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"}>
-      <div className="mb-4">
+      <div className={embedded ? "mb-3" : "mb-4"}>
         <span className="block text-sm font-bold">{title}</span>
         <span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">
           {subtitle}
         </span>
       </div>
-      <div className={`flex ${embedded ? "min-h-0" : "min-h-[180px]"} flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between`}>
-        <div className="w-full space-y-1.5 sm:min-w-0 sm:flex-1">
+      <div className={`flex ${embedded ? "min-h-0 gap-3" : "min-h-[180px] gap-5"} flex-col-reverse items-center sm:flex-row sm:justify-between`}>
+        <div className={`w-full ${embedded ? "space-y-1" : "space-y-1.5"} sm:min-w-0 sm:flex-1`}>
           {labels.map((label, index) => {
             const value = Number(values[index] || 0);
             const share = values[0] ? Math.round((value / values[0]) * 100) : 0;
             return (
               <div
                 key={label}
-                className="flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-xs"
+                className={`flex items-center justify-between gap-2 rounded-lg px-2 ${embedded ? "py-1" : "py-1.5"} text-xs`}
               >
                 <span className="flex min-w-0 items-center gap-2 text-neutral-600 dark:text-neutral-300">
                   <span
@@ -247,14 +247,14 @@ function RequestStatsPanel({ title, subtitle, metrics, labels, embedded = false 
           })}
         </div>
         <div
-          className="relative grid h-36 w-36 shrink-0 place-items-center rounded-full p-1.5"
+          className={`relative grid ${embedded ? "h-32 w-32" : "h-36 w-36"} shrink-0 place-items-center rounded-full p-1.5`}
           style={{ background: outerChart }}
         >
           <div
             className="grid h-full w-full place-items-center rounded-full"
             style={{ background: innerChart }}
           >
-            <div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900">
+            <div className={`grid ${embedded ? "h-[76px] w-[76px]" : "h-[88px] w-[88px]"} place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900`}>
               <span>
                 <span className="block text-2xl font-bold leading-none tabular-nums">
                   {faNumber(values[0])}
