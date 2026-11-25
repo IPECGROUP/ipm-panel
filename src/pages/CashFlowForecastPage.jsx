@@ -8,12 +8,11 @@ const PAGE_ICON = "/images/icons/pishbini-naghdi.svg";
 const TABS = [
   { id: "costs", label: "پیش بینی هزینه ها" },
   { id: "revenues", label: "پیش بینی درآمد ها" },
-  { id: "chart", label: "نمودار جریان نقدی" },
 ];
 
 function ForecastTabs({ active, onChange }) {
   return (
-    <div className="overflow-visible px-0 sm:px-2" dir="rtl">
+    <div className="mb-3 border-b border-black/10 pb-2 dark:border-neutral-800 sm:px-2" dir="rtl">
       <div className="mb-0 flex w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-black/10 bg-black/[0.03] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:mx-auto md:-mb-px md:max-w-[780px] md:items-stretch md:justify-center md:gap-0 md:rounded-b-none md:rounded-t-2xl md:border-b-0 md:bg-white md:p-0 md:shadow-sm dark:border-neutral-800 dark:bg-white/[0.04] md:dark:bg-neutral-900">
         {TABS.map((tab, index) => (
           <button
@@ -41,7 +40,7 @@ function ForecastTabs({ active, onChange }) {
 }
 
 export default function CashFlowForecastPage() {
-  useFeatureVisibility("پیش‌بینی جریان نقدی", { "پیش‌بینی هزینه‌ها": "پیش‌بینی هزینه‌ها", "پیش‌بینی درآمدها": "پیش‌بینی درآمدها", "نمودار جریان نقدی": "نمودار جریان نقدی" });
+  useFeatureVisibility("پیش‌بینی جریان نقدی", { "پیش‌بینی هزینه‌ها": "پیش‌بینی هزینه‌ها", "پیش‌بینی درآمدها": "پیش‌بینی درآمدها" });
   const [activeTab, setActiveTab] = useState("costs");
 
   return (
@@ -63,9 +62,6 @@ export default function CashFlowForecastPage() {
           {activeTab === "costs" && <CostForecastCostsTab />}
           {activeTab === "revenues" && (
             <CostForecastCostsTab storageApiPath="/revenue-forecast-revenues" allowManualChildren />
-          )}
-          {activeTab === "chart" && (
-            <div className="min-h-[320px]" />
           )}
         </div>
       </div>
