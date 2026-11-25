@@ -1036,6 +1036,7 @@ function ForecastAggregatePanel({ userId }) {
     ...month,
     costs: 0,
     revenues: 0,
+    netTrend: 0,
   })));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -1129,8 +1130,7 @@ function ForecastAggregatePanel({ userId }) {
               ...month,
               costs,
               revenues,
-              costTrend: costs,
-              revenueTrend: revenues,
+              netTrend: revenues - costs,
             };
           }));
         }
@@ -1158,9 +1158,6 @@ function ForecastAggregatePanel({ userId }) {
     <Card className="min-h-[350px] min-w-0 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
       <div className="mb-3">
         <span className="block text-sm font-bold">پیش‌بینی تجمیعی جریان نقدی</span>
-        <span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">
-          جمع ماهانهٔ ردیف «جمع» هزینه‌ها و درآمدها در شش ماه آینده
-        </span>
       </div>
       {loading ? (
         <div className="grid min-h-[280px] place-items-center text-xs text-neutral-400">در حال دریافت پیش‌بینی‌ها...</div>
@@ -1177,17 +1174,16 @@ function ForecastAggregatePanel({ userId }) {
                 labelFormatter={(label) => `ماه ${label}`}
                 formatter={(value, name) => [
                   `${formatValue(value)} ریال`,
-                  name === "revenues" ? "درآمد" : name === "costs" ? "هزینه" : name === "revenueTrend" ? "روند درآمد" : "روند هزینه",
+                  name === "revenues" ? "درآمد" : name === "costs" ? "هزینه" : "روند خالص (درآمد منهای هزینه)",
                 ]}
               />
               <Legend
-                formatter={(value) => value === "revenues" ? "درآمد" : value === "costs" ? "هزینه" : value === "revenueTrend" ? "روند درآمد" : "روند هزینه"}
+                formatter={(value) => value === "revenues" ? "درآمد" : value === "costs" ? "هزینه" : "روند خالص"}
                 wrapperStyle={{ fontSize: 11 }}
               />
-              <Bar dataKey="costs" name="costs" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="revenues" name="revenues" fill="#dc2626" radius={[4, 4, 0, 0]} />
-              <Line dataKey="costTrend" name="costTrend" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-              <Line dataKey="revenueTrend" name="revenueTrend" type="monotone" stroke="#b91c1c" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Bar dataKey="costs" name="costs" fill="#dc2626" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenues" name="revenues" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Line dataKey="netTrend" name="netTrend" type="monotone" stroke="currentColor" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
