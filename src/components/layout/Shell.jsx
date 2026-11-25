@@ -5,6 +5,7 @@ import RightNav from "../RightNav.jsx";
 import "./ShellResponsive.css";
 import { useAuth } from "../AuthProvider.jsx";
 import { canOpenPage } from "../../utils/pageAccess.js";
+import NotificationContext from "./NotificationContext.jsx";
 
 const notificationStorageKey = (userId) => `ipm-read-notifications:${userId}`;
 const readNotificationKeys = (userId) => {
@@ -451,7 +452,9 @@ export default function Shell() {
         >
           <div dir="rtl" className="mx-auto max-w-[1400px]">
             {/* اینجا روت‌های داخلی رندر می‌شن */}
-            <Outlet />
+            <NotificationContext.Provider value={notifications}>
+              <Outlet />
+            </NotificationContext.Provider>
           </div>
         </div>
         <RightNav />

@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import { Check, Plus, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { useAuth } from "../components/AuthProvider.jsx";
+import NotificationContext from "../components/layout/NotificationContext.jsx";
 import Card from "../components/ui/Card.jsx";
 import JalaliPopupDatePicker from "../components/JalaliPopupDatePicker.jsx";
 import { canOpenPage, hasLimitedPageAccess } from "../utils/pageAccess.js";
@@ -207,6 +208,7 @@ function ActivityPanels({ logs }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const notifications = useContext(NotificationContext);
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [activityLogs, setActivityLogs] = useState([]);
@@ -343,6 +345,21 @@ export default function DashboardPage() {
   }).sort((a, b) => b.active - a.active || b.pending - a.pending || a.name.localeCompare(b.name, "fa")), [supplyRequests, supplyUsers]);
 
   const selectedShortcuts = selectedPaths.map((path) => availableOptions.find((item) => item.to === path)).filter(Boolean);
+  const shortcutNotificationCounts = useMemo(() => {
+    const counts = { payment: 0, tenkhah: 0, supply: 0 };
+    notifications.forEach((item) => {
+      if (item.notificationTarget === "payment_request") counts.payment += 1;
+      if (["tenkhah", "petty_cash_report", "petty_cash_expense"].includes(item.notificationTarget)) counts.tenkhah += 1;
+      if (["supply_request", "supply_actions"].includes(item.notificationTarget)) counts.supply += 1;
+    });
+    return counts;
+  }, [notifications]);
+  const notificationCountForShortcut = (path) => {
+    if (path === "/finance/payment-request") return shortcutNotificationCounts.payment;
+    if (path === "/finance/tenkhah") return shortcutNotificationCounts.tenkhah;
+    if (path === "/supply/request") return shortcutNotificationCounts.supply;
+    return 0;
+  };
   const chartHue = (path) => {
     const index = selectedShortcuts.findIndex((item) => item.to === path);
     return shortcutHue(index >= 0 ? index : shortcutOptions.findIndex((item) => item.to === path));
@@ -370,7 +387,19 @@ export default function DashboardPage() {
       <section className="rounded-2xl border border-black/10 bg-[#f8f7f2] p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5">
         {shortcutError && !pickerOpen && <p role="alert" className="mt-3 text-xs text-red-600">{shortcutError}</p>}
         <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3 sm:flex sm:flex-wrap sm:gap-3">
-          {selectedShortcuts.map((item, index) => <button key={item.to} type="button" onClick={() => navigate(item.to)} className={`group flex w-full sm:w-[104px] flex-col items-center gap-2 rounded-2xl border border-neutral-200 px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/10 dark:hover:border-amber-400/60 bg-[hsl(var(--shortcut-hue)_75%_90%)] dark:bg-[hsl(var(--shortcut-hue)_45%_25%)]`} style={{ "--shortcut-hue": shortcutHue(index) }} title={item.label}><span className="grid h-11 w-11 place-items-center rounded-xl bg-white/40 dark:bg-white/5"><img src={item.icon} alt="" className="h-7 w-7 opacity-75 dark:invert" /></span><span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">{item.label}</span></button>)}
+          {selectedShortcuts.map((item, index) => {
+            const notificationCount = notificationCountForShortcut(item.to);
+            return <button key={item.to} type="button" onClick={() => navigate(item.to)} aria-label={`${item.label}${notificationCount ? `، ${faNumber(notificationCount)} اعلان` : ""}`} className={`group relative flex w-full sm:w-[104px] flex-col items-center gap-2 rounded-2xl border border-neutral-200 px-2 py-3 text-center transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/10 dark:hover:border-amber-400/60 bg-[hsl(var(--shortcut-hue)_75%_90%)] dark:bg-[hsl(var(--shortcut-hue)_45%_25%)]`} style={{ "--shortcut-hue": shortcutHue(index) }} title={item.label}>
+              {notificationCount > 0 && <span className="absolute -right-1.5 -top-1.5 z-10">
+                <span className="relative grid h-6 min-w-6 place-items-center rounded-full bg-rose-600 px-1.5 text-[10px] font-bold leading-none text-white shadow-md ring-2 ring-white dark:ring-neutral-900">
+                  <span className="notification-ring absolute inset-0 rounded-full border border-rose-400/80" aria-hidden="true" />
+                  <span key={notificationCount} className="notification-count relative">{notificationCount > 99 ? "+۹۹" : faNumber(notificationCount)}</span>
+                </span>
+              </span>}
+              <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/40 dark:bg-white/5"><img src={item.icon} alt="" className="h-7 w-7 opacity-75 dark:invert" /></span>
+              <span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">{item.label}</span>
+            </button>;
+          })}
           {<button type="button" disabled={shortcutsLoading} onClick={() => setPickerOpen(true)} className="flex min-h-[102px] w-full sm:w-[104px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-neutral-300 bg-neutral-50/70 px-2 text-neutral-500 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 dark:border-white/20 dark:bg-white/[0.03] dark:text-neutral-300 dark:hover:bg-amber-500/10" aria-label="افزودن میانبر"><span className="grid h-9 w-9 place-items-center rounded-xl bg-white shadow-sm dark:bg-white/10"><Plus className="h-5 w-5" /></span><span className="text-[11px] font-semibold">افزودن میانبر</span></button>}
         </div>
       </section>
