@@ -986,6 +986,9 @@ export default function SupplyRequestPage() {
       const results = await Promise.allSettled(ids.map((id) => api(`/supply-requests?id=${encodeURIComponent(id)}`, { method: "DELETE" })));
       const deletedIds = ids.filter((_, index) => results[index].status === "fulfilled");
       if (deletedIds.length) {
+        deletedIds.forEach((id) => window.dispatchEvent(new CustomEvent("request-notification-completed", {
+          detail: { notificationTarget: "supply_request", id },
+        })));
         const deleted = new Set(deletedIds);
         setItems((previous) => previous.filter((item) => !deleted.has(String(item.id))));
         setSelectedIds((previous) => new Set([...previous].filter((id) => !deleted.has(String(id)))));

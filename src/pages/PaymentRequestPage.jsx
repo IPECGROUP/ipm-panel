@@ -1299,6 +1299,15 @@ export default function PaymentRequestPage() {
         : api(`/requests/${encodeURIComponent(item.id)}`, { method: "DELETE" })));
       const deletedKeys = selectedRows.filter((_, index) => results[index].status === "fulfilled").map((item) => String(item.id));
       if (deletedKeys.length) {
+        selectedRows.forEach((item, index) => {
+          if (results[index].status !== "fulfilled") return;
+          window.dispatchEvent(new CustomEvent("request-notification-completed", {
+            detail: {
+              notificationTarget: item.requestType === "tenkhah" ? "tenkhah" : "payment_request",
+              id: item.requestType === "tenkhah" ? item.sourceId : item.id,
+            },
+          }));
+        });
         const deleted = new Set(deletedKeys);
         setItems((previous) => previous.filter((item) => !deleted.has(String(item.id))));
         setTenkhahItems((previous) => previous.filter((item) => !deleted.has(`tenkhah-${item.id}`)));

@@ -362,6 +362,9 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
       });
       setSelected(null);
       await load();
+      window.dispatchEvent(new CustomEvent("request-notification-completed", {
+        detail: { notificationTarget: "tenkhah", id: selected.id },
+      }));
       window.dispatchEvent(new Event("tenkhah-notifications-refresh"));
     } catch (e) {
       setError(e.message);

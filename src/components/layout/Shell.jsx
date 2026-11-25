@@ -87,7 +87,7 @@ export default function Shell() {
     const requestId = ++notificationRequestRef.current;
     if (!quiet) setNotificationsLoading(true);
     try {
-      const requestOptions = { credentials: "include", headers: { "x-user-id": String(user.id) } };
+      const requestOptions = { credentials: "include", cache: "no-store", headers: { "x-user-id": String(user.id) } };
       const canReadSupplyCartable = canOpenPage(user, "/supply/request");
       const fetchOptional = (path) => fetch(path, requestOptions).catch(() => null);
       const [cartableResponse, actionsResponse, paymentResponse, tenkhahResponse, pettyCashResponse] = await Promise.all([
