@@ -42,11 +42,17 @@ const isTopProjectCode = (code) => {
   return Boolean(clean) && !clean.includes(".") && !clean.includes("-") && /^\d+$/.test(clean);
 };
 
+const isActiveProject = (project) => {
+  const value = project?.isActive ?? project?.is_active ?? project?.active;
+  const normalized = String(value).trim().toLowerCase();
+  return value === true || value === 1 || normalized === "true" || normalized === "1";
+};
+
 const normalizeProject = (project) => ({
   id: String(project?.id ?? ""),
   code: toEnDigits(String(project?.code ?? "")).trim(),
   name: String(project?.name ?? "").trim(),
-  isActive: project?.isActive !== false,
+  isActive: isActiveProject(project),
 });
 
 const normalizeBreakdownItem = (item) => ({
@@ -229,7 +235,7 @@ export default function CostForecastCostsTab({
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true);
     try {
-      const res = await api("/projects");
+      const res = await api("/projects?isActive=true");
       const raw = Array.isArray(res) ? res : Array.isArray(res?.items) ? res.items : res?.projects || [];
       const list = (Array.isArray(raw) ? raw : [])
         .map(normalizeProject)
