@@ -1,7 +1,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import Card from "../components/ui/Card.jsx";
 import { useAuth } from "../components/AuthProvider.jsx";
+import { api } from "../utils/api.js";
+import { getForecastMonths, toEnglishDigits } from "../utils/cashFlowForecast.js";
 import { PaymentPreview, TenkhahPreviewV4 } from "./PaymentRequestPage.jsx";
 import { ShareChart } from "./KnowledgeManagementDashboardPage.jsx";
 
@@ -994,6 +1007,195 @@ function EmptyPanel() {
   );
 }
 
+function forecastBudgetCode(value = "") {
+  return toEnglishDigits(value)
+    .trim()
+    .replace(/[^\d.-]/g, "-")
+    .replace(/[.-]+/g, "-")
+    .replace(/^-/, "")
+    .replace(/-$/, "");
+}
+
+function forecastProjectBudgetCode(projectCode, value = "") {
+  const projectCodeClean = forecastBudgetCode(projectCode);
+  const code = forecastBudgetCode(value);
+  if (!code || !projectCodeClean) return code;
+  if (code === projectCodeClean || code.startsWith(`${projectCodeClean}-`)) return code;
+  return `${projectCodeClean}-${code}`;
+}
+
+function forecastAmount(value) {
+  const normalized = toEnglishDigits(String(value ?? "")).replace(/[٬,\s]/g, "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function ForecastAggregatePanel({ userId }) {
+  const months = useMemo(() => getForecastMonths(), []);
+  const [rows, setRows] = useState(() => months.map((month) => ({
+    ...month,
+    costs: 0,
+    revenues: 0,
+  })));
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+
+    const load = async () => {
+      setLoading(true);
+      setError(false);
+      try {
+        const [costData, revenueData, projectData] = await Promise.all([
+          api("/cost-forecast-costs?dashboard=1", options),
+          api("/revenue-forecast-revenues?dashboard=1", options),
+          api("/projects?isActive=true", options),
+        ]);
+        const sourceProjects = Array.isArray(projectData?.items)
+          ? projectData.items
+          : Array.isArray(projectData?.projects) ? projectData.projects : [];
+        const projects = sourceProjects.filter((project) => {
+          const activeValue = project?.isActive ?? project?.is_active ?? project?.active;
+          const active = activeValue === true || activeValue === 1 || ["true", "1"].includes(String(activeValue).trim().toLowerCase());
+          const code = toEnglishDigits(String(project?.code ?? "")).trim();
+          return active && /^\d+$/.test(code);
+        });
+
+        const breakdownResults = await Promise.allSettled(projects.map((project) =>
+          api(`/cost-breakdown?project_id=${encodeURIComponent(project.id)}`, options),
+        ));
+        const breakdownByProject = new Map();
+        breakdownResults.forEach((result, index) => {
+          if (result.status !== "fulfilled") return;
+          const project = projects[index];
+          const projectId = String(project.id);
+          const items = Array.isArray(result.value?.items) ? result.value.items : [];
+          breakdownByProject.set(projectId, items.map((item) => ({
+            code: forecastProjectBudgetCode(
+              project.code,
+              item?.budgetCode ?? item?.budget_code ?? "",
+            ),
+          })).filter((item) => item.code));
+        });
+
+        const manualItemsByProject = new Map();
+        (Array.isArray(revenueData?.items) ? revenueData.items : []).forEach((item) => {
+          const projectId = String(item?.project_id ?? item?.projectId ?? "");
+          const code = forecastBudgetCode(item?.code ?? "");
+          if (!projectId || !code) return;
+          const items = manualItemsByProject.get(projectId) || [];
+          items.push({ code });
+          manualItemsByProject.set(projectId, items);
+        });
+
+        const makeValueMap = (data) => {
+          const values = new Map();
+          (Array.isArray(data?.values) ? data.values : []).forEach((item) => {
+            const projectId = String(item?.project_id ?? item?.projectId ?? "");
+            const code = forecastBudgetCode(item?.budget_code ?? item?.budgetCode ?? "");
+            const monthKey = String(item?.month_key ?? item?.monthKey ?? "");
+            if (!projectId || !code || !monthKey) return;
+            values.set(`${projectId}::${code}::${monthKey}`, forecastAmount(item?.amount));
+          });
+          return values;
+        };
+        const costValues = makeValueMap(costData);
+        const revenueValues = makeValueMap(revenueData);
+
+        const sumByMonth = (monthKey, values, includeManualItems) => projects.reduce((total, project) => {
+          const projectId = String(project.id);
+          const allItems = [
+            ...(breakdownByProject.get(projectId) || []),
+            ...(includeManualItems ? manualItemsByProject.get(projectId) || [] : []),
+          ];
+          return total + allItems.reduce((sum, item) => {
+            const isLeaf = !allItems.some((other) =>
+              other.code && other.code !== item.code && other.code.startsWith(`${item.code}-`),
+            );
+            return isLeaf
+              ? sum + (values.get(`${projectId}::${item.code}::${monthKey}`) || 0)
+              : sum;
+          }, 0);
+        }, 0);
+
+        if (!controller.signal.aborted) {
+          setRows(months.map((month) => {
+            const costs = sumByMonth(month.key, costValues, false);
+            const revenues = sumByMonth(month.key, revenueValues, true);
+            return {
+              ...month,
+              costs,
+              revenues,
+              costTrend: costs,
+              revenueTrend: revenues,
+            };
+          }));
+        }
+      } catch (loadError) {
+        if (loadError?.name !== "AbortError" && !controller.signal.aborted) {
+          console.error("financial_dashboard_forecast_chart_failed", loadError);
+          setError(true);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+
+    load();
+    return () => controller.abort();
+  }, [months, userId]);
+
+  const formatValue = (value) => Number(value || 0).toLocaleString("fa-IR");
+  const compactValue = (value) => new Intl.NumberFormat("fa-IR", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value || 0));
+
+  return (
+    <Card className="min-h-[350px] min-w-0 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+      <div className="mb-3">
+        <span className="block text-sm font-bold">پیش‌بینی تجمیعی جریان نقدی</span>
+        <span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">
+          جمع ماهانهٔ ردیف «جمع» هزینه‌ها و درآمدها در شش ماه آینده
+        </span>
+      </div>
+      {loading ? (
+        <div className="grid min-h-[280px] place-items-center text-xs text-neutral-400">در حال دریافت پیش‌بینی‌ها...</div>
+      ) : error ? (
+        <div className="grid min-h-[280px] place-items-center text-center text-xs text-neutral-400">دریافت داده‌های پیش‌بینی انجام نشد.</div>
+      ) : (
+        <div className="h-[280px] w-full min-w-0" dir="ltr">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.12} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} />
+              <YAxis width={58} tickFormatter={compactValue} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip
+                labelFormatter={(label) => `ماه ${label}`}
+                formatter={(value, name) => [
+                  `${formatValue(value)} ریال`,
+                  name === "revenues" ? "درآمد" : name === "costs" ? "هزینه" : name === "revenueTrend" ? "روند درآمد" : "روند هزینه",
+                ]}
+              />
+              <Legend
+                formatter={(value) => value === "revenues" ? "درآمد" : value === "costs" ? "هزینه" : value === "revenueTrend" ? "روند درآمد" : "روند هزینه"}
+                wrapperStyle={{ fontSize: 11 }}
+              />
+              <Bar dataKey="costs" name="costs" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="revenues" name="revenues" fill="#dc2626" radius={[4, 4, 0, 0]} />
+              <Line dataKey="costTrend" name="costTrend" type="monotone" stroke="#1d4ed8" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Line dataKey="revenueTrend" name="revenueTrend" type="monotone" stroke="#b91c1c" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function FinancialManagementDashboardPage() {
   const { user } = useAuth();
   const [normalRequests, setNormalRequests] = useState([]);
@@ -1152,6 +1354,7 @@ export default function FinancialManagementDashboardPage() {
               ]}
             />
           </Card>
+          <ForecastAggregatePanel userId={user?.id} />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
           <ReceivedTenkhahPanel rows={tenkhahHolderRows} />

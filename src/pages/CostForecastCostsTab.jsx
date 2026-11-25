@@ -6,11 +6,7 @@ import {
   getHoverSelectableRowClass,
 } from "../components/ui/tablePresets.js";
 import { api } from "../utils/api.js";
-
-const toEnDigits = (value = "") =>
-  String(value)
-    .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d))
-    .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+import { getForecastMonths, toEnglishDigits as toEnDigits } from "../utils/cashFlowForecast.js";
 
 const toFaDigits = (value = "") =>
   String(value).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
@@ -68,31 +64,6 @@ const projectBudgetCode = (projectCode, value = "") => {
   if (!code || !projectCodeClean) return code;
   if (code === projectCodeClean || code.startsWith(`${projectCodeClean}-`)) return code;
   return `${projectCodeClean}-${code}`;
-};
-
-const PERSIAN_MONTH_NAMES = [
-  "فروردین",
-  "اردیبهشت",
-  "خرداد",
-  "تیر",
-  "مرداد",
-  "شهریور",
-  "مهر",
-  "آبان",
-  "آذر",
-  "دی",
-  "بهمن",
-  "اسفند",
-];
-
-const currentPersianMonth = () => {
-  try {
-    const value = new Intl.DateTimeFormat("fa-IR-u-ca-persian", { month: "numeric" }).format(new Date());
-    const month = Number(toEnDigits(value));
-    return month >= 1 && month <= 12 ? month : 1;
-  } catch {
-    return 1;
-  }
 };
 
 function PlusButton({ onClick, disabled = false, title = "افزودن پروژه" }) {
@@ -202,11 +173,7 @@ export default function CostForecastCostsTab({
   const [page, setPage] = useState(0);
 
   const forecastMonths = useMemo(() => {
-    const start = currentPersianMonth();
-    return Array.from({ length: 6 }, (_, index) => {
-      const monthIndex = ((start + index - 1) % 12) + 1;
-      return { key: `m${monthIndex}`, label: PERSIAN_MONTH_NAMES[monthIndex - 1] };
-    });
+    return getForecastMonths();
   }, []);
 
   useEffect(() => {
