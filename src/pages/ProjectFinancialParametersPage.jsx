@@ -147,12 +147,14 @@ export default function ProjectFinancialParametersPage() {
         </div>
         <div hidden={tab !== "rates"}><ProjectExchangeRatesTab /></div>
         <div hidden={tab !== "allocation"}><div className="rounded-2xl border border-black/10 bg-white pt-4 dark:border-neutral-800 dark:bg-neutral-900">
-          <div className="grid grid-cols-1 items-center gap-3 px-4 pb-4 sm:grid-cols-[1fr_auto_1fr]">
-            <label className="flex items-center gap-2 text-sm font-semibold">سال <select value={year} onChange={(event) => setYear(Number(event.target.value))} className="h-10 rounded-xl border border-black/15 bg-white px-4 text-sm dark:border-neutral-700 dark:bg-neutral-900">{years.map((item) => <option key={item} value={item}>{fa(item)}</option>)}</select></label>
-            <div className="flex items-center justify-center gap-2">
-              <button type="button" disabled={half === 0} onClick={() => setHalf(0)} aria-label="شش ماه اول" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"><ChevronRight size={18} /></button>
-              <span className="min-w-[150px] text-center text-sm font-semibold">{half === 0 ? "فروردین تا شهریور" : "مهر تا اسفند"}</span>
-              <button type="button" disabled={half === 1} onClick={() => setHalf(1)} aria-label="شش ماه دوم" className="grid h-10 w-10 place-items-center rounded-xl border border-black/15 bg-white disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"><ChevronLeft size={18} /></button>
+          <div className="flex justify-center px-3 pb-4">
+            <div className="flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.03] p-2 dark:border-white/10 dark:bg-white/[0.04]">
+              <label className="flex items-center gap-1.5 text-sm font-semibold">سال <select value={year} onChange={(event) => setYear(Number(event.target.value))} className="h-9 rounded-lg border border-black/15 bg-white px-2.5 text-sm dark:border-neutral-700 dark:bg-neutral-900">{years.map((item) => <option key={item} value={item}>{fa(item)}</option>)}</select></label>
+              <div className="flex items-center gap-1 border-r border-black/10 pr-2 dark:border-white/10">
+              <button type="button" disabled={half === 0} onClick={() => setHalf(0)} aria-label="شش ماه اول" className="grid h-9 w-9 place-items-center rounded-lg border border-black/15 bg-white disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"><ChevronRight size={18} /></button>
+              <span className="min-w-[130px] text-center text-sm font-semibold">{half === 0 ? "فروردین تا شهریور" : "مهر تا اسفند"}</span>
+              <button type="button" disabled={half === 1} onClick={() => setHalf(1)} aria-label="شش ماه دوم" className="grid h-9 w-9 place-items-center rounded-lg border border-black/15 bg-white disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900"><ChevronLeft size={18} /></button>
+              </div>
             </div>
           </div>
           {error && <p role="alert" className="px-4 pb-3 text-sm text-red-600">{error}</p>}
