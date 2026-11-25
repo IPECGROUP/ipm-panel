@@ -1152,10 +1152,10 @@ export default function FinancialManagementDashboardPage() {
               ]}
             />
           </Card>
-          <ReceivedTenkhahPanel rows={tenkhahHolderRows} />
+          <TimingPanel timings={operationTimings} />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
-          <TimingPanel timings={operationTimings} />
+          <ReceivedTenkhahPanel rows={tenkhahHolderRows} />
           <TenkhahRankingPanel
             title="تنخواه‌های دریافت‌شده و ثبت‌نشده"
             subtitle="همه افراد به ترتیب بیشترین مجموع تنخواه دریافتی"
