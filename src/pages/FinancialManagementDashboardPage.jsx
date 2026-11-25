@@ -1152,7 +1152,6 @@ export default function FinancialManagementDashboardPage() {
               ]}
             />
           </Card>
-          <TimingPanel timings={operationTimings} />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
           <ReceivedTenkhahPanel rows={tenkhahHolderRows} />
@@ -1204,6 +1203,9 @@ export default function FinancialManagementDashboardPage() {
         </div>
         <div className="mt-3">
           <TenkhahHoldersPanel rows={tenkhahHolderRows} onShowRequests={setAggregateDetails} />
+        </div>
+        <div className="mt-3">
+          <TimingPanel timings={operationTimings} />
         </div>
       </Card>
       <TenkhahAggregateRequestsDialog details={aggregateDetails} userId={user?.id} onClose={() => setAggregateDetails(null)} />
