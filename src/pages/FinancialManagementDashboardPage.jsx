@@ -386,7 +386,7 @@ function amountOf(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function tenkhahRankings(items) {
+function tenkhahRankings(items, beneficiaryBalances = []) {
   const people = new Map();
   (Array.isArray(items) ? items : []).forEach((item) => {
     const key = String(
@@ -410,13 +410,26 @@ function tenkhahRankings(items) {
       unsettled: 0,
       unsettledItems: [],
     };
-    current.received += amountOf(item?.chargedAmount ?? item?.requestedAmount);
+    current.received += amountOf(item?.chargedAmount);
     current.unregistered += amountOf(item?.unregisteredBalance);
     current.unsettled += amountOf(item?.unsettledBalance);
     if (amountOf(item?.unsettledBalance) > 0) current.unsettledItems.push(item);
     people.set(key, current);
   });
   const rows = [...people.values()];
+  const balancesByPerson = new Map(
+    (Array.isArray(beneficiaryBalances) ? beneficiaryBalances : []).map((balance) => [
+      String(balance?.id ?? ""),
+      balance,
+    ]),
+  );
+  rows.forEach((person) => {
+    const balance = balancesByPerson.get(person.key);
+    if (!balance) return;
+    person.received = amountOf(balance.receivedAmount);
+    person.unregistered = amountOf(balance.unregisteredBalance);
+    person.unsettled = amountOf(balance.unsettledBalance);
+  });
   return {
     unregistered: rows
       .filter((person) => person.unregistered > 0)
@@ -451,7 +464,7 @@ function tenkhahProjects(items) {
   );
 }
 
-function buildTenkhahHolderRows(items) {
+function buildTenkhahHolderRows(items, beneficiaryBalances = []) {
   const holders = new Map();
   (Array.isArray(items) ? items : []).forEach((item) => {
     const received = amountOf(item?.chargedAmount);
@@ -489,7 +502,23 @@ function buildTenkhahHolderRows(items) {
     holders.set(key, current);
   });
 
-  return [...holders.values()].sort(
+  const rows = [...holders.values()];
+  const balancesByPerson = new Map(
+    (Array.isArray(beneficiaryBalances) ? beneficiaryBalances : []).map((balance) => [
+      String(balance?.id ?? ""),
+      balance,
+    ]),
+  );
+  rows.forEach((holder) => {
+    const balance = balancesByPerson.get(holder.key);
+    if (!balance) return;
+    holder.received = amountOf(balance.receivedAmount);
+    holder.unregistered = amountOf(balance.unregisteredBalance);
+    holder.unsettled = amountOf(balance.unsettledBalance);
+    holder.registered = holder.received - holder.unregistered;
+    holder.settled = holder.received - holder.unsettled;
+  });
+  return rows.sort(
     (a, b) =>
       b.received - a.received ||
       a.beneficiary.localeCompare(b.beneficiary, "fa"),
@@ -977,6 +1006,7 @@ export default function FinancialManagementDashboardPage() {
   const { user } = useAuth();
   const [normalRequests, setNormalRequests] = useState([]);
   const [tenkhahRequests, setTenkhahRequests] = useState([]);
+  const [tenkhahBeneficiaryBalances, setTenkhahBeneficiaryBalances] = useState([]);
   const [liquidityProjects, setLiquidityProjects] = useState([]);
   const [projects, setProjects] = useState([]);
   const [aggregateDetails, setAggregateDetails] = useState(null);
@@ -1005,8 +1035,10 @@ export default function FinancialManagementDashboardPage() {
       setNormalRequests((Array.isArray(data?.items) ? data.items : []).filter((item) =>
         String(item?.requestType || item?.docId || "").toLowerCase() !== "tenkhah_request" &&
         String(item?.scope || "").toLowerCase() !== "tenkhah")));
-    load("/api/tenkhah?dashboard=1", (data) =>
-      setTenkhahRequests(Array.isArray(data?.items) ? data.items : []));
+    load("/api/tenkhah?dashboard=1&beneficiaryBalances=1", (data) => {
+      setTenkhahRequests(Array.isArray(data?.items) ? data.items : []);
+      setTenkhahBeneficiaryBalances(Array.isArray(data?.beneficiaryBalances) ? data.beneficiaryBalances : []);
+    });
     load("/api/projects", (data) =>
       setProjects(Array.isArray(data?.items) ? data.items : []));
     return () => controller.abort();
@@ -1030,16 +1062,16 @@ export default function FinancialManagementDashboardPage() {
     return timingGroups;
   }, [normalRequests]);
   const rankedTenkhah = useMemo(
-    () => tenkhahRankings(tenkhahRequests),
-    [tenkhahRequests],
+    () => tenkhahRankings(tenkhahRequests, tenkhahBeneficiaryBalances),
+    [tenkhahRequests, tenkhahBeneficiaryBalances],
   );
   const tenkhahProjectRows = useMemo(
     () => tenkhahProjects(tenkhahRequests),
     [tenkhahRequests],
   );
   const tenkhahHolderRows = useMemo(
-    () => buildTenkhahHolderRows(tenkhahRequests),
-    [tenkhahRequests],
+    () => buildTenkhahHolderRows(tenkhahRequests, tenkhahBeneficiaryBalances),
+    [tenkhahRequests, tenkhahBeneficiaryBalances],
   );
   const liquidityProjectRows = useMemo(
     () =>
