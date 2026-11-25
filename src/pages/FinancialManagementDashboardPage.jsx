@@ -177,7 +177,7 @@ function requestMetrics(items, kind) {
   };
 }
 
-function RequestStatsPanel({ title, subtitle, metrics, labels }) {
+function RequestStatsPanel({ title, subtitle, metrics, labels, embedded = false }) {
   const colors = ["#64748b", "#3b82f6", "#f59e0b", "#22c55e", "#ef4444"];
   const values = [
     metrics.total,
@@ -208,15 +208,18 @@ function RequestStatsPanel({ title, subtitle, metrics, labels }) {
   const outerChart = completedShare
     ? `conic-gradient(${colors[4]} 0deg ${completedShare}deg, #e5e7eb ${completedShare}deg 360deg)`
     : "conic-gradient(#e5e7eb 0deg 360deg)";
+  const PanelContainer = embedded ? "section" : Card;
   return (
-    <Card className="min-h-[280px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+    <PanelContainer className={embedded
+      ? "min-w-0 border-b border-black/10 py-4 last:border-b-0 last:pb-0 dark:border-white/10"
+      : "min-h-[280px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800"}>
       <div className="mb-4">
         <span className="block text-sm font-bold">{title}</span>
         <span className="mt-1 block text-[11px] text-neutral-500 dark:text-neutral-400">
           {subtitle}
         </span>
       </div>
-      <div className="flex min-h-[180px] flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between">
+      <div className={`flex ${embedded ? "min-h-0" : "min-h-[180px]"} flex-col-reverse items-center gap-5 sm:flex-row sm:justify-between`}>
         <div className="w-full space-y-1.5 sm:min-w-0 sm:flex-1">
           {labels.map((label, index) => {
             const value = Number(values[index] || 0);
@@ -264,7 +267,7 @@ function RequestStatsPanel({ title, subtitle, metrics, labels }) {
           </div>
         </div>
       </div>
-    </Card>
+    </PanelContainer>
   );
 }
 
@@ -433,12 +436,10 @@ function tenkhahRankings(items, beneficiaryBalances = []) {
   return {
     unregistered: rows
       .filter((person) => person.unregistered > 0)
-      .sort((a, b) => b.received - a.received)
-      .slice(0, 5),
+      .sort((a, b) => b.received - a.received),
     unsettled: rows
       .filter((person) => person.unsettled > 0)
-      .sort((a, b) => b.unsettled - a.unsettled)
-      .slice(0, 5),
+      .sort((a, b) => b.unsettled - a.unsettled),
   };
 }
 
@@ -685,10 +686,16 @@ function TenkhahRankingPanel({
   rows,
   valueKey,
   valueLabel,
-  primaryKey = "received",
   detailItemsKey,
   onShowRequests,
 }) {
+  const chartRows = rows.map((person) => ({
+    id: person.key,
+    name: person.label,
+    count: Number(person[valueKey] || 0),
+    ...(detailItemsKey ? { detailItems: person[detailItemsKey] } : {}),
+  }));
+  const total = chartRows.reduce((sum, person) => sum + person.count, 0);
   return (
     <Card className="min-h-[330px] rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
       <div className="mb-4">
@@ -697,35 +704,20 @@ function TenkhahRankingPanel({
           {subtitle}
         </span>
       </div>
-      <div className="space-y-2">
-        {rows.length ? (
-          rows.map((person, index) => (
-            <div
-              key={person.key}
-              className="flex items-center gap-3 rounded-xl bg-neutral-50 px-3 py-3 dark:bg-white/[0.045]"
-            >
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-bold text-neutral-500 shadow-sm dark:bg-neutral-800 dark:text-neutral-300">
-                {faNumber(index + 1)}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-xs font-medium">
-                  {person.label}
-                </span>
-                <span className="mt-1 block text-[10px] text-neutral-500 dark:text-neutral-400">
-                  {valueLabel}: {faNumber(person[valueKey])} ریال
-                </span>
-              </span>
-              <span className="inline-flex shrink-0 items-center gap-1 text-sm font-bold tabular-nums">
-                <span>{faNumber(person[primaryKey])} <span className="text-[10px] font-medium text-neutral-400">ریال</span></span>
-                {detailItemsKey && <button type="button" onClick={() => onShowRequests({ title: `درخواست‌های تنخواه ${person.label}`, items: person[detailItemsKey] })} className="grid h-8 w-8 place-items-center rounded-lg transition hover:bg-black/[0.06] dark:hover:bg-white/10" title="مشاهده درخواست‌ها" aria-label="مشاهده درخواست‌ها"><img src="/images/icons/namayesh.svg" alt="" className="h-4 w-4 dark:invert" /></button>}
-              </span>
-            </div>
-          ))
-        ) : (
-          <div className="py-24 text-center text-xs text-neutral-400">
-            موردی برای نمایش وجود ندارد.
-          </div>
-        )}
+      <div className="mx-auto w-full max-w-[480px]">
+        <ShareChart
+          rows={chartRows}
+          total={total}
+          totalLabel={`مجموع ${valueLabel}`}
+          unit="ریال"
+          showValues={false}
+          large
+          empty="موردی برای نمایش وجود ندارد."
+          onRowAction={detailItemsKey && onShowRequests ? (person) => onShowRequests({
+            title: `درخواست‌های تنخواه ${person.name}`,
+            items: person.detailItems,
+          }) : undefined}
+        />
       </div>
     </Card>
   );
@@ -1098,6 +1090,25 @@ export default function FinancialManagementDashboardPage() {
       className="mx-auto w-full max-w-[1440px] text-neutral-900 dark:text-neutral-100"
       dir="rtl"
     >
+      <section
+        aria-label="میانبرها"
+        className="mb-3 rounded-2xl border border-black/10 bg-[#f8f7f2] p-4 text-neutral-900 shadow-sm dark:border-white/10 dark:bg-neutral-900 dark:text-neutral-100 sm:p-5"
+      >
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+          <div className="flex min-h-[110px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-[hsl(10_75%_90%)] px-2 py-3 text-center dark:border-white/10 dark:bg-[hsl(10_45%_25%)] sm:w-[104px]">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/40 dark:bg-white/5">
+              <img src="/images/icons/darkhast-tamin.svg" alt="" className="h-7 w-7 opacity-75 dark:invert" />
+            </span>
+            <span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">درخواست تأمین</span>
+          </div>
+          <div className="flex min-h-[110px] w-full flex-col items-center justify-center gap-2 rounded-2xl border border-neutral-200 bg-[hsl(233_75%_90%)] px-2 py-3 text-center dark:border-white/10 dark:bg-[hsl(233_45%_25%)] sm:w-[104px]">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-white/40 dark:bg-white/5">
+              <img src="/images/icons/darkhast-pardakht.svg" alt="" className="h-7 w-7 opacity-75 dark:invert" />
+            </span>
+            <span className="line-clamp-2 min-h-8 text-[11px] font-semibold leading-4">درخواست پرداخت</span>
+          </div>
+        </div>
+      </section>
       <Card className="rounded-2xl border border-neutral-200 bg-white p-7 shadow-none md:p-8 dark:border-neutral-800 dark:bg-neutral-900">
         <div className="mb-5 flex min-w-0 items-center gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-black/10 bg-black/[0.03] dark:border-white/10 dark:bg-white/[0.06]">
@@ -1112,49 +1123,52 @@ export default function FinancialManagementDashboardPage() {
             </span>
           </span>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-3 [&>*]:min-w-0">
-          <RequestStatsPanel
-            title="درخواست‌های عادی"
-            subtitle="وضعیت درخواست‌های پرداخت عادی"
-            metrics={normalMetrics}
-            labels={[
-              "کل درخواست‌ها",
-              "اتمام‌نیافته",
-              "تأییدشده",
-              "ردشده",
-              "اتمام‌یافته",
-            ]}
-          />
-          <RequestStatsPanel
-            title="درخواست‌های تنخواه"
-            subtitle="وضعیت درخواست‌های تنخواه"
-            metrics={tenkhahMetrics}
-            labels={[
-              "کل درخواست‌ها",
-              "در دست بررسی",
-              "تأییدشده",
-              "ردشده",
-              "اتمام‌یافته",
-            ]}
-          />
+        <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2 [&>*]:min-w-0">
+          <Card className="min-w-0 rounded-2xl border-neutral-200 px-4 pb-4 shadow-none dark:border-neutral-800">
+            <RequestStatsPanel
+              embedded
+              title="درخواست‌های عادی"
+              subtitle="وضعیت درخواست‌های پرداخت عادی"
+              metrics={normalMetrics}
+              labels={[
+                "کل درخواست‌ها",
+                "اتمام‌نیافته",
+                "تأییدشده",
+                "ردشده",
+                "اتمام‌یافته",
+              ]}
+            />
+            <RequestStatsPanel
+              embedded
+              title="درخواست‌های تنخواه"
+              subtitle="وضعیت درخواست‌های تنخواه"
+              metrics={tenkhahMetrics}
+              labels={[
+                "کل درخواست‌ها",
+                "در دست بررسی",
+                "تأییدشده",
+                "ردشده",
+                "اتمام‌یافته",
+              ]}
+            />
+          </Card>
           <ReceivedTenkhahPanel rows={tenkhahHolderRows} />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3 xl:grid-cols-3">
           <TimingPanel timings={operationTimings} />
           <TenkhahRankingPanel
             title="تنخواه‌های دریافت‌شده و ثبت‌نشده"
-            subtitle="۵ نفر اول بر اساس بیشترین مجموع تنخواه دریافتی"
+            subtitle="همه افراد به ترتیب بیشترین مجموع تنخواه دریافتی"
             rows={rankedTenkhah.unregistered}
             valueKey="unregistered"
             valueLabel="مانده ثبت‌نشده"
           />
           <TenkhahRankingPanel
             title="مانده‌های تسویه‌نشدهٔ تنخواه"
-            subtitle="۵ نفر اول بر اساس بیشترین ماندهٔ تسویه‌نشده"
+            subtitle="همه افراد دارای ماندهٔ تسویه‌نشده، به ترتیب بیشترین مانده"
             rows={rankedTenkhah.unsettled}
             valueKey="unsettled"
             valueLabel="مانده تسویه‌نشده"
-            primaryKey="unsettled"
             detailItemsKey="unsettledItems"
             onShowRequests={setAggregateDetails}
           />
