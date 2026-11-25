@@ -260,14 +260,14 @@ function RequestStatsPanel({ title, subtitle, metrics, labels, embedded = false 
           })}
         </div>
         <div
-          className={`relative grid ${embedded ? "h-32 w-32" : "h-36 w-36"} shrink-0 place-items-center rounded-full p-1.5`}
+          className={`relative grid ${embedded ? "h-28 w-28" : "h-36 w-36"} shrink-0 place-items-center rounded-full p-1.5`}
           style={{ background: outerChart }}
         >
           <div
             className="grid h-full w-full place-items-center rounded-full"
             style={{ background: innerChart }}
           >
-            <div className={`grid ${embedded ? "h-[76px] w-[76px]" : "h-[88px] w-[88px]"} place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900`}>
+            <div className={`grid ${embedded ? "h-[68px] w-[68px]" : "h-[88px] w-[88px]"} place-items-center rounded-full bg-white text-center shadow-inner dark:bg-neutral-900`}>
               <span>
                 <span className="block text-2xl font-bold leading-none tabular-nums">
                   {faNumber(values[0])}
@@ -1030,6 +1030,39 @@ function forecastAmount(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function ForecastAggregateTooltip({ active, label, payload }) {
+  if (!active || !payload?.length) return null;
+
+  const entries = payload.filter((entry) => entry.value != null);
+  if (!entries.length) return null;
+
+  return (
+    <div className="forecast-chart-tooltip min-w-[132px] rounded-xl border border-white/70 bg-white/95 px-3 py-2 shadow-lg shadow-slate-900/15 ring-1 ring-slate-900/5 backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95">
+      <div className="mb-1.5 border-b border-neutral-100 pb-1.5 text-[11px] font-bold text-neutral-700 dark:border-neutral-700 dark:text-neutral-200">
+        {`ماه ${label}`}
+      </div>
+      <div className="space-y-1">
+        {entries.map((entry) => {
+          const title = entry.dataKey === "revenues" ? "درآمد" : entry.dataKey === "costs" ? "هزینه" : "خالص";
+          const color = entry.dataKey === "revenues" ? "#2563eb" : entry.dataKey === "costs" ? "#dc2626" : "#374151";
+          return (
+            <div key={entry.dataKey} className="flex items-center justify-between gap-3 text-[10px] leading-4">
+              <span className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
+                {title}
+              </span>
+              <span className="font-semibold tabular-nums text-neutral-800 dark:text-neutral-100">
+                {Number(entry.value || 0).toLocaleString("fa-IR")}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-1 text-left text-[9px] text-neutral-400">ریال</div>
+    </div>
+  );
+}
+
 function ForecastAggregatePanel({ userId }) {
   const months = useMemo(() => getForecastMonths(), []);
   const [rows, setRows] = useState(() => months.map((month) => ({
@@ -1148,42 +1181,35 @@ function ForecastAggregatePanel({ userId }) {
     return () => controller.abort();
   }, [months, userId]);
 
-  const formatValue = (value) => Number(value || 0).toLocaleString("fa-IR");
   const compactValue = (value) => new Intl.NumberFormat("fa-IR", {
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(Number(value || 0));
 
   return (
-    <Card className="min-h-[350px] min-w-0 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
+    <Card className="min-h-[410px] min-w-0 rounded-2xl border-neutral-200 p-4 shadow-none dark:border-neutral-800">
       <div className="mb-3">
         <span className="block text-sm font-bold">پیش‌بینی تجمیعی جریان نقدی</span>
       </div>
       {loading ? (
-        <div className="grid min-h-[280px] place-items-center text-xs text-neutral-400">در حال دریافت پیش‌بینی‌ها...</div>
+        <div className="grid min-h-[340px] place-items-center text-xs text-neutral-400">در حال دریافت پیش‌بینی‌ها...</div>
       ) : error ? (
-        <div className="grid min-h-[280px] place-items-center text-center text-xs text-neutral-400">دریافت داده‌های پیش‌بینی انجام نشد.</div>
+        <div className="grid min-h-[340px] place-items-center text-center text-xs text-neutral-400">دریافت داده‌های پیش‌بینی انجام نشد.</div>
       ) : (
-        <div className="h-[280px] w-full min-w-0" dir="ltr">
+        <div className="h-[340px] w-full min-w-0" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
               <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="currentColor" opacity={0.12} />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
               <YAxis yAxisId="amount" width={58} domain={[0, "auto"]} tickFormatter={compactValue} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
               <YAxis yAxisId="net" hide domain={["auto", "auto"]} />
-              <Tooltip
-                labelFormatter={(label) => `ماه ${label}`}
-                formatter={(value, name) => [
-                  `${formatValue(value)} ریال`,
-                  name === "revenues" ? "درآمد" : name === "costs" ? "هزینه" : "روند خالص (درآمد منهای هزینه)",
-                ]}
-              />
+              <Tooltip content={<ForecastAggregateTooltip />} cursor={{ fill: "rgba(100, 116, 139, 0.08)" }} wrapperStyle={{ outline: "none" }} />
               <Legend
                 formatter={(value) => value === "revenues" ? "درآمد" : value === "costs" ? "هزینه" : "روند خالص"}
                 wrapperStyle={{ fontSize: 11 }}
               />
-              <Bar yAxisId="amount" dataKey="costs" name="costs" fill="#dc2626" radius={[4, 4, 0, 0]} />
-              <Bar yAxisId="amount" dataKey="revenues" name="revenues" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="amount" dataKey="costs" name="costs" fill="#dc2626" radius={[5, 5, 0, 0]} animationDuration={650} animationEasing="ease-out" />
+              <Bar yAxisId="amount" dataKey="revenues" name="revenues" fill="#2563eb" radius={[5, 5, 0, 0]} animationDuration={650} animationEasing="ease-out" />
               <Line yAxisId="net" dataKey="netTrend" name="netTrend" type="monotone" stroke="currentColor" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
             </ComposedChart>
           </ResponsiveContainer>
@@ -1322,7 +1348,7 @@ export default function FinancialManagementDashboardPage() {
             </span>
           </span>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-2 [&>*]:min-w-0">
+        <div className="grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] [&>*]:min-w-0">
           <Card className="min-w-0 rounded-2xl border-neutral-200 px-4 pb-4 shadow-none dark:border-neutral-800">
             <RequestStatsPanel
               embedded
