@@ -351,19 +351,23 @@ export default function CostForecastCostsTab({
   }, []);
 
   useEffect(() => {
-    if (!projects.length || !savedProjectIds.length) return;
+    if (!projects.length) return;
 
     let cancelled = false;
-    const missingProjects = savedProjectIds
-      .filter((id) => !addedProjectIds.has(String(id)))
-      .map((id) => projects.find((project) => String(project.id) === String(id)))
-      .filter(Boolean);
+    const missingProjects = projects.filter(
+      (project) => !addedProjectIds.has(String(project.id)),
+    );
 
     if (!missingProjects.length) return;
 
     (async () => {
       try {
-        const entries = await Promise.all(missingProjects.map(loadProjectEntry));
+        const results = await Promise.allSettled(missingProjects.map(loadProjectEntry));
+        const entries = results.map((result, index) =>
+          result.status === "fulfilled"
+            ? result.value
+            : { project: missingProjects[index], items: [] },
+        );
         if (cancelled) return;
         setRowsByProject((prev) => {
           const seen = new Set(prev.map((entry) => String(entry.project.id)));
@@ -381,7 +385,7 @@ export default function CostForecastCostsTab({
     return () => {
       cancelled = true;
     };
-  }, [addedProjectIds, loadProjectEntry, projects, savedProjectIds]);
+  }, [addedProjectIds, loadProjectEntry, projects]);
 
   const customItemsByProject = useMemo(() => {
     const map = new Map();
