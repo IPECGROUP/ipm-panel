@@ -1167,9 +1167,10 @@ function ForecastAggregatePanel({ userId }) {
         <div className="h-[280px] w-full min-w-0" dir="ltr">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={rows} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" opacity={0.12} />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} />
-              <YAxis width={58} tickFormatter={compactValue} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="currentColor" opacity={0.12} />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="amount" width={58} domain={[0, "auto"]} tickFormatter={compactValue} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="net" hide domain={["auto", "auto"]} />
               <Tooltip
                 labelFormatter={(label) => `ماه ${label}`}
                 formatter={(value, name) => [
@@ -1181,9 +1182,9 @@ function ForecastAggregatePanel({ userId }) {
                 formatter={(value) => value === "revenues" ? "درآمد" : value === "costs" ? "هزینه" : "روند خالص"}
                 wrapperStyle={{ fontSize: 11 }}
               />
-              <Bar dataKey="costs" name="costs" fill="#dc2626" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="revenues" name="revenues" fill="#2563eb" radius={[4, 4, 0, 0]} />
-              <Line dataKey="netTrend" name="netTrend" type="monotone" stroke="currentColor" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+              <Bar yAxisId="amount" dataKey="costs" name="costs" fill="#dc2626" radius={[4, 4, 0, 0]} />
+              <Bar yAxisId="amount" dataKey="revenues" name="revenues" fill="#2563eb" radius={[4, 4, 0, 0]} />
+              <Line yAxisId="net" dataKey="netTrend" name="netTrend" type="monotone" stroke="currentColor" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
