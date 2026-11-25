@@ -1701,7 +1701,9 @@ function filterRequestRows(rows, { query, quick, tagIds, ownership, status, from
     const hay = [item.serial, item.dateFa, item.dateJalali, item.title, item.description, item.budgetCode, budgetName, item.projectName, item.projectCode, item.status, item.displayStatus, item.requestType]
       .map(normalizeSearch)
       .join(" ");
-    return hay.includes(q);
+    const amountQuery = q.replace(/[\s,٬٫.]/g, "");
+    const amountSearch = amountDigits(item.amount ?? item.requestedAmount);
+    return hay.includes(q) || (amountQuery && amountSearch.includes(amountQuery));
   });
 }
 
