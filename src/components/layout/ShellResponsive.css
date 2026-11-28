@@ -32,3 +32,9 @@
   .shell-header .shell-logo { flex-basis: 43%; }
   .shell-header .shell-mobile-date { max-width: 112px; }
 }
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .shell-header .shell-logo { flex: 0 1 auto; }
+  .shell-header .shell-logo-image { width: min(38vw, 300px); height: 44px; }
+  .shell-header .shell-mobile-date { max-width: 190px; padding-inline: 10px; }
+}

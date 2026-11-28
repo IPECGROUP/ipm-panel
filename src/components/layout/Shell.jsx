@@ -291,11 +291,11 @@ export default function Shell() {
             : "border-black/10 bg-gradient-to-l from-black/5 to-transparent")
         }
       >
-        <div className="px-2 sm:px-3 md:px-6 py-1 lg:pr-[var(--right-nav-space)] lg:pl-8 transition-[padding] duration-300 ease-in-out">
+        <div className="px-2 sm:px-3 md:px-6 py-2 lg:pr-[var(--right-nav-space)] lg:pl-8 transition-[padding] duration-300 ease-in-out">
           <div className="mx-auto max-w-[1400px] flex min-w-0 items-center justify-between gap-2">
           <Link
             to="/"
-            className="shell-logo flex min-w-0 shrink-0 items-center justify-start hover:opacity-95 transition sm:translate-x-5"
+            className="shell-logo flex min-w-0 shrink-0 items-center justify-start hover:opacity-95 transition"
             aria-label="خانه"
             title="خانه"
           >
@@ -329,7 +329,7 @@ export default function Shell() {
             {/* تاریخ داخل هدر موبایل */}
             <div
               className={
-                "shell-mobile-date flex md:hidden min-w-0 h-8 sm:h-9 items-center gap-1.5 px-2.5 rounded-xl border text-[11px] leading-none " +
+                "shell-mobile-date flex lg:hidden min-w-0 h-8 sm:h-9 items-center gap-1.5 px-2.5 rounded-xl border text-[11px] leading-none " +
                 (theme === "dark"
                   ? "border-white/10 bg-white/5 text-white/80"
                   : "border-black/10 bg-white/70 text-neutral-700")
@@ -424,25 +424,7 @@ export default function Shell() {
           </div>
         </div>
 
-        {/* تاریخ برای موبایل/تبلت */}
-        <div className="hidden md:block px-2 sm:px-3 md:px-6 pb-3 lg:hidden">
-          <div className="mx-auto max-w-[1400px]">
-          <div
-            className={
-              "w-full min-w-0 flex items-center justify-center gap-1.5 sm:gap-2 overflow-hidden px-2 sm:px-3 py-2 rounded-2xl border text-[11px] sm:text-xs " +
-              (theme === "dark"
-                ? "border-white/10 bg-white/5 text-white/80"
-                : "border-black/10 bg-white/70 text-neutral-700")
-            }
-          >
-            <span className="min-w-0 truncate whitespace-nowrap">{jalaliDate || "—"}</span>
-            <span className={theme === "dark" ? "text-white/30" : "text-black/20"}>
-              •
-            </span>
-            <span className="shrink-0 whitespace-nowrap">{gregorianDate || "—"}</span>
-          </div>
-        </div>
-        </div>
+        
       </header>
 
       <main className="relative min-h-[calc(100dvh-64px)] md:min-h-[calc(100dvh-80px)]">

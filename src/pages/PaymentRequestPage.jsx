@@ -1498,7 +1498,7 @@ export default function PaymentRequestPage() {
         {!showForm && <RequestFilterBar query={filterQuery} setQuery={setFilterQuery} quick={filterQuick} setQuick={setFilterQuick} ownership={filterOwnership} setOwnership={setFilterOwnership} status={filterStatus} setStatus={setFilterStatus} unread={filterUnread} setUnread={setFilterUnread} fromDate={filterFromDate} setFromDate={setFilterFromDate} toDate={filterToDate} setToDate={setFilterToDate} onExportExcel={exportFilteredExcel} exportingExcel={exportingExcel} exportDisabled={!sortedItems.length} tags={tags} pinnedTagIds={pinnedFilterTagIds} setPinnedTagIds={setPinnedFilterTagIds} activeTagIds={filterTagIds} setActiveTagIds={setFilterTagIds} tagPickOpen={tagPickOpen} setTagPickOpen={setTagPickOpen} tagPickSearch={tagPickSearch} setTagPickSearch={setTagPickSearch} />}
 
         <div className="overflow-hidden rounded-2xl border border-black/10 bg-white text-black dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-100">
-          <div className="relative flex min-h-12 items-center justify-between gap-3 border-b border-black/10 bg-neutral-50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.04] md:hidden">
+          <div className="relative flex min-h-12 items-center justify-between gap-3 border-b border-black/10 bg-neutral-50 px-3 py-2 dark:border-white/10 dark:bg-white/[0.04] lg:hidden">
             <label className="inline-flex min-h-10 items-center gap-2 text-xs font-medium text-neutral-600 dark:text-neutral-300">
               <input ref={selectAllRef} type="checkbox" className="h-4 w-4 accent-black dark:accent-neutral-200" checked={allVisibleSelected} onChange={toggleSelectAll} />
               انتخاب همه
@@ -1508,7 +1508,7 @@ export default function PaymentRequestPage() {
               <ReadingStatusMenu selectedIds={selectedIds} setSelectedReadStatus={setSelectedReadStatus} canEditSelectedRequest={canEditSelectedRequest} editSelectedRequest={editSelectedRequest} deletingSelected={deletingSelected} deleteSelectedRequests={deleteSelectedRequests} />
             </div>
           </div>
-          <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 md:block" dir="ltr">
+          <div className="relative hidden max-h-[55vh] overflow-y-auto overflow-x-hidden pb-0 lg:block" dir="ltr">
             <table dir="rtl" className="w-full min-w-full table-fixed text-sm [&_th]:whitespace-nowrap [&_th]:text-center [&_td]:min-w-0 [&_td]:text-center [&_th]:!py-2 [&_td]:!py-2">
             <colgroup><col style={{ width: 40 }} /><col style={{ width: 18 }} /><col style={{ width: 90 }} /><col style={{ width: 100 }} /><col style={{ width: 205 }} /><col /><col style={{ width: 165 }} /><col style={{ width: 130 }} /><col style={{ width: 140 }} /></colgroup>
             <thead><tr className="border-b border-[#184a6b] bg-[#184a6b] text-white">
@@ -1535,7 +1535,7 @@ export default function PaymentRequestPage() {
               </tr>)}
             </tbody>
           </table></div>
-          <div className="grid gap-2.5 p-2.5 sm:grid-cols-2 sm:p-3 md:hidden">
+          <div className="grid gap-2.5 p-2.5 sm:grid-cols-2 sm:p-3 lg:hidden">
             {loading ? <div className="col-span-full py-10 text-center text-sm text-black/60 dark:text-neutral-400">در حال دریافت...</div> : pageItems.length === 0 ? <div className="col-span-full py-10 text-center text-sm text-black/60 dark:text-neutral-400">هنوز درخواستی ثبت نشده است.</div> : pageItems.map((item) => {
               const itemId = String(item.id);
               const itemCurrency = item.requestType === "tenkhah" ? item.currencyName : currencyNameOf(item.currencyTypeId, currencyTypes);
