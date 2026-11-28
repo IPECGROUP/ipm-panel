@@ -1226,13 +1226,14 @@ function expenseReportState(report, units = []) {
   return { waiting, status, statusKey };
 }
 
-function ExpenseAttachmentLink({ item }) {
+function ExpenseAttachmentLink({ item, onEdit }) {
   const files = expenseAttachments(item);
-  return files.length ? <span className="inline-flex items-center justify-center gap-1">
+  return files.length || onEdit ? <span className="inline-flex items-center justify-center gap-1">
     {files.map((file, index) => <a key={file.url || index} href={file.url} target="_blank" rel="noreferrer" aria-label={`نمایش پیوست ${toFa(index + 1)}`} title={file.name || "نمایش پیوست"}
       className="inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-black/5">
       <img src="/images/icons/namayesh.svg" alt="" className="h-5 w-5" />
     </a>)}
+    {onEdit && <button type="button" onClick={onEdit} aria-label="ویرایش پیوست" title="جایگزینی یا ویرایش پیوست" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-neutral-600 transition hover:bg-amber-50 hover:text-amber-700"><Pencil className="h-4 w-4" /></button>}
   </span> : "—";
 }
 
@@ -1730,7 +1731,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
               <td className="truncate px-3 text-right" title={item.description}>{item.description}</td>
               <td className="px-3" title={item.budgetCode ? fullBudgetCode(item.budgetCode, selectedProjectCode) : "عودت"}>{item.budgetCode ? toFa(fullBudgetCode(item.budgetCode, selectedProjectCode) || "—") : "عودت"}</td>
               <td className="px-3 tabular-nums"><span className="block">{expenseAmountLabel(item)}</span>{item.currencyTypeId && <span className="block text-[11px] text-neutral-500">{money(item.amount)} ریال</span>}</td>
-              <td className="px-3"><ExpenseAttachmentLink item={item} /></td>
+              <td className="px-3"><ExpenseAttachmentLink item={item} onEdit={!initialReport || initialReport.canEdit || initialReport.initialStage === "draft" || item.stage === "revision" ? () => beginEdit(item) : null} /></td>
                {initialReport && <td className="px-2"><span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.stage === "draft" ? "bg-orange-50 text-orange-700" : item.stage === "revision" ? "bg-amber-50 text-amber-800" : item.stage === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-neutral-100 text-neutral-600"}`}>{item.stage === "draft" ? "درحال تکمیل" : item.stage === "revision" ? "درخواست اصلاح" : item.stage === "rejected" ? "رد شده" : item.stage === "completed" ? "تأیید شده" : "در حال بررسی"}</span></td>}
               <td />
             </tr>)}
