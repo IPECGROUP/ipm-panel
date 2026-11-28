@@ -10,9 +10,11 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   const navigate = useNavigate();
   const dialog = useRef(null);
   const closeButton = useRef(null);
+  const searchInput = useRef(null);
   const bodyOverflowRef = useRef(null);
   const [panel, setPanel] = useState(null);
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(60);
   const [dockCollapsed, setDockCollapsed] = useState(() => {
     try { return localStorage.getItem("mobile_nav_collapsed") === "true"; } catch { return false; }
@@ -95,8 +97,9 @@ export default function MobileNav({ groups, user, logout, isActive }) {
     return () => { releaseBodyLock(); desktop.removeEventListener("change", closeOnDesktop); };
   }, [panel]);
 
-  const close = () => { dialog.current?.close(); releaseBodyLock(); setPanel(null); setQuery(""); };
-  const open = (key) => { setQuery(""); setPanel(key); };
+  const close = () => { dialog.current?.close(); releaseBodyLock(); setPanel(null); setQuery(""); setSearchOpen(false); };
+  const open = (key) => { setQuery(""); setSearchOpen(false); setPanel(key); };
+  useEffect(() => { if (searchOpen) searchInput.current?.focus({ preventScroll: true }); }, [searchOpen]);
   const link = (item, className = "mobile-menu-link") => (
     <Link key={item.to} to={item.to} onClick={close} className={className} aria-current={isActive(item.to) ? "page" : undefined}>
       <span className="mobile-menu-icon">{item.icon}</span>
@@ -134,12 +137,24 @@ export default function MobileNav({ groups, user, logout, isActive }) {
             <span className="mobile-sheet-handle" />
           </div>
           <header className="mobile-menu-heading">
-            <div>{section && <h2>{section.label}</h2>}</div>
-            <button ref={closeButton} type="button" className="mobile-round-button" onClick={close} aria-label="بستن منو" autoFocus><X size={20} /></button>
+            <div className="mobile-menu-heading-main">
+              {section && <h2>{section.label}</h2>}
+              {panel === "more" && searchOpen && (
+                <label className="mobile-menu-search-inline">
+                  <Search size={16} aria-hidden="true" />
+                  <input ref={searchInput} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="\u062c\u0633\u062a\u062c\u0648 \u062f\u0631 \u0628\u062e\u0634\u200c\u0647\u0627..." aria-label="\u062c\u0633\u062a\u062c\u0648 \u062f\u0631 \u0628\u062e\u0634\u200c\u0647\u0627" />
+                  {query && <button type="button" onClick={() => setQuery("")} aria-label="\u067e\u0627\u06a9 \u06a9\u0631\u062f\u0646 \u062c\u0633\u062a\u062c\u0648"><X size={14} /></button>}
+                </label>
+              )}
+            </div>
+            <div className="mobile-menu-heading-actions">
+              {panel === "more" && <button type="button" className="mobile-round-button" onClick={() => { setQuery(""); setSearchOpen((open) => !open); }} aria-label={searchOpen ? "\u0628\u0633\u062a\u0646 \u062c\u0633\u062a\u062c\u0648" : "\u062c\u0633\u062a\u062c\u0648"} aria-expanded={searchOpen}><Search size={17} /></button>}
+              <button ref={closeButton} type="button" className="mobile-round-button" onClick={close} aria-label="\u0628\u0633\u062a\u0646 \u0645\u0646\u0648" autoFocus><X size={18} /></button>
+            </div>
           </header>
           <div className="mobile-menu-scroll">
             {panel === "more" && <>
-              <label className="mobile-menu-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="جستجو در بخش‌ها…" aria-label="جستجو در بخش‌ها" />{query && <button type="button" onClick={() => setQuery("")} aria-label="پاک کردن جستجو"><X size={16} /></button>}</label>
+
               {query ? <div className="mobile-menu-results">
                 {unique.filter((item) => normalize(item.label).includes(normalize(query))).map((item) => link(item))}
                 {!unique.some((item) => normalize(item.label).includes(normalize(query))) && <p className="mobile-menu-empty">بخشی با این نام پیدا نشد.</p>}
