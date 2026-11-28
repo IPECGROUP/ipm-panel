@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { TabBar } from "glisse";
-import { ChevronLeft, LogOut, MoreHorizontal, Search, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, LogOut, MoreHorizontal, Search, X } from "lucide-react";
 import "./MobileNav.css";
 
 const normalize = (value) => value.replace(/[ي]/g, "ی").replace(/ك/g, "ک").replace(/‌/g, " ").trim();
@@ -13,6 +13,9 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   const [panel, setPanel] = useState(null);
   const [query, setQuery] = useState("");
   const [sheetHeight, setSheetHeight] = useState(60);
+  const [dockCollapsed, setDockCollapsed] = useState(() => {
+    try { return localStorage.getItem("mobile_nav_collapsed") === "true"; } catch { return false; }
+  });
   const drag = useRef(null);
   const updateHeight = (clientY) => {
     const viewportHeight = window.innerHeight;
@@ -43,6 +46,12 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   const dockItems = [{ value: "more", label: "\u0628\u06cc\u0634\u062a\u0631", icon: <MoreHorizontal size={25} /> }, ...primary.map((item) => ({ value: keyOf(item), label: item.key === "contracts" ? "\u0642\u0631\u0627\u0631\u062f\u0627\u062f\u0647\u0627" : item.key === "projects" ? "\u067e\u0631\u0648\u0698\u0647\u200c\u0647\u0627" : item.label, icon: item.icon })).reverse()];
 
   useEffect(() => {
+    document.documentElement.style.setProperty("--mobile-nav-space", dockCollapsed ? "4.5rem" : "7rem");
+    try { localStorage.setItem("mobile_nav_collapsed", String(dockCollapsed)); } catch { /* Keep the current session state. */ }
+    return () => document.documentElement.style.removeProperty("--mobile-nav-space");
+  }, [dockCollapsed]);
+
+  useEffect(() => {
     if (!panel) { dialog.current?.close(); return; }
     if (!dialog.current?.open) {
       dialog.current?.showModal();
@@ -69,14 +78,21 @@ export default function MobileNav({ groups, user, logout, isActive }) {
 
   return (
     <div className="ipm-mobile-nav" dir="rtl">
-      <TabBar className="mobile-glass-tabs" dir="ltr" aria-label={"\u0645\u0646\u0648\u06cc \u0627\u0635\u0644\u06cc \u0645\u0648\u0628\u0627\u06cc\u0644"} items={dockItems} value={selectedTab}
+      {dockCollapsed ? (
+        <button type="button" className="mobile-nav-reopen" onClick={() => setDockCollapsed(false)} aria-label="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0645\u0646\u0648" title="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0645\u0646\u0648">
+          <MoreHorizontal size={24} aria-hidden="true" />
+        </button>
+      ) : (
+        <TabBar className="mobile-glass-tabs" dir="ltr" aria-label={"\u0645\u0646\u0648\u06cc \u0627\u0635\u0644\u06cc \u0645\u0648\u0628\u0627\u06cc\u0644"} items={[...dockItems, { value: "collapse", label: "\u062c\u0645\u0639\u200c\u06a9\u0631\u062f\u0646", icon: <ChevronDown size={22} /> }]} value={selectedTab}
         onValueChange={(value) => {
+          if (value === "collapse") { setDockCollapsed(true); return; }
           if (value === "more") { open("more"); return; }
           const item = primary.find((entry) => keyOf(entry) === value);
           if (!item) return;
           if (item.type === "section") open(item.key);
           else { close(); navigate(item.to); }
         }} />
+      )}
 
       <dialog ref={dialog} className="mobile-menu-dialog" style={{ "--sheet-height": `${sheetHeight}dvh` }} aria-label={section?.label || "منوی بخش‌ها"} onCancel={close} onClose={close} onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
         <div className="mobile-menu-sheet">
