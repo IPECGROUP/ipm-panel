@@ -437,7 +437,7 @@ export default function PettyCashPage() {
   const pageReports = visibleReports.slice(reportStartIndex, reportEndIndex);
   const allPageReportsSelected = pageReports.length > 0 && pageReports.every((report) => selectedReportIds.has(String(report.id)));
   const selectedReports = reports.filter((report) => selectedReportIds.has(String(report.id)));
-  const editableReport = selectedReports.length === 1 && (selectedReports[0].canRevise || (selectedReports[0].initialStage === "draft" && Number(selectedReports[0].createdById) === Number(userId))) ? selectedReports[0] : null;
+  const editableReport = selectedReports.length === 1 && (selectedReports[0].canEdit || selectedReports[0].canRevise || (selectedReports[0].initialStage === "draft" && Number(selectedReports[0].createdById) === Number(userId))) ? selectedReports[0] : null;
   useEffect(() => { if (selectAllReportsRef.current) selectAllReportsRef.current.indeterminate = pageReports.some((report) => selectedReportIds.has(String(report.id))) && !allPageReportsSelected; }, [pageReports, selectedReportIds, allPageReportsSelected]);
   const toggleAllReports = () => setSelectedReportIds((previous) => { const next = new Set(previous); pageReports.forEach((report) => { if (allPageReportsSelected) next.delete(String(report.id)); else next.add(String(report.id)); }); return next; });
   const deleteSelectedReports = async () => {
@@ -1563,7 +1563,7 @@ function PettyCashExpenseTab({ onSubmitted, onDraftSaved, onDeleted, onChooseDra
     return next;
   });
   const selectedItems = items.filter((item) => selectedIds.has(item.id));
-  const canEdit = selectedItems.length === 1 && (!initialReport || initialReport.initialStage === "draft" || selectedItems[0].stage === "revision" || !Number.isInteger(Number(selectedItems[0].id)));
+  const canEdit = selectedItems.length === 1 && (initialReport?.canEdit || !initialReport || initialReport.initialStage === "draft" || selectedItems[0].stage === "revision" || !Number.isInteger(Number(selectedItems[0].id)));
   const canDelete = selectedItems.length > 0 && selectedItems.every((item) => !initialReport || initialReport.initialStage === "draft" || item.stage === "revision" || !Number.isInteger(Number(item.id)));
   const beginEdit = (item) => {
     setManualEntryOpen(true);
