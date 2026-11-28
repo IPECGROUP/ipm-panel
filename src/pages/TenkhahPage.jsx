@@ -105,6 +105,7 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     [beneficiaries, setBeneficiaries] = useState([]),
     [currencies, setCurrencies] = useState([]),
     [selected, setSelected] = useState(null),
+    [editingRequest, setEditingRequest] = useState(false),
     [settlement, setSettlement] = useState(null),
     [settlementEntries, setSettlementEntries] = useState([]),
     [editingEntryId, setEditingEntryId] = useState(null),
@@ -144,7 +145,9 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     if (!user?.id) return;
     try {
       const d = await api("/tenkhah");
-      setItems(d.items || []);
+      const nextItems = d.items || [];
+      setItems(nextItems);
+      return nextItems;
     } catch (e) {
       setError(e.message);
     }
@@ -373,6 +376,38 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
     }
   };
   const updateSelected = (k, v) => setSelected((s) => ({ ...s, [k]: v }));
+  const startRequestEdit = async () => {
+    setEditingRequest(true);
+    try { await loadOptions(); } catch (e) { setError(e.message); }
+  };
+  const saveRequestEdit = async () => {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api("/tenkhah", {
+        method: "PATCH",
+        body: JSON.stringify({
+          action: "edit_request",
+          id: selected.id,
+          requestDate: selected.requestDate,
+          projectId: selected.projectId,
+          beneficiaryUserId: selected.beneficiaryUserId,
+          amount: selected.requestedAmount,
+          purpose: selected.purpose,
+          currency: selected.currency,
+        }),
+      });
+      setEditingRequest(false);
+      const refreshedItems = await load();
+      const refreshed = refreshedItems?.find((item) => Number(item.id) === Number(selected.id));
+      if (refreshed) setSelected(refreshed);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
   const incoming =
     selected &&
     (selected.canAct === true || Number(selected.currentAssigneeUserId) === Number(user?.id)) &&
@@ -605,8 +640,20 @@ export default function TenkhahPage({ embedded = false, active = true, onRequest
                 <span><b className="block">
                   {incoming ? "بررسی درخواست تنخواه" : "جزئیات درخواست تنخواه"}
                 </b><small className="mt-1 block text-xs font-normal text-neutral-500">مشاهده وضعیت و اطلاعات درخواست</small></span>
-                <button onClick={() => setSelected(null)} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
+                <div className="flex items-center gap-2">
+                  {selected.canEdit && !editingRequest && <button type="button" onClick={startRequestEdit} className="rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold transition hover:bg-black/[.04] dark:border-white/15 dark:hover:bg-white/10">ویرایش درخواست</button>}
+                  <button onClick={() => { setSelected(null); setEditingRequest(false); }} className="grid h-10 w-10 place-items-center rounded-xl bg-black text-white dark:bg-white dark:text-black"><img src="/images/icons/bastan.svg" alt="بستن" className="h-4 w-4 invert dark:invert-0" /></button>
+                </div>
               </div>
+              {editingRequest && selected.canEdit && <section className="mx-4 mb-4 grid gap-3 rounded-2xl border border-black/10 bg-neutral-50 p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-white/10 dark:bg-white/[.04]">
+                <Field label="تاریخ درخواست"><JalaliPopupDatePicker value={selected.requestDate || today()} onChange={(value) => updateSelected("requestDate", value)} buttonClassName={`${input} flex items-center justify-between`} /></Field>
+                <Field label="پروژه"><select value={selected.projectId || ""} onChange={(event) => updateSelected("projectId", event.target.value)} className={input}>{projects.map((project) => <option key={project.id} value={project.id}>{project.code} - {project.name}</option>)}</select></Field>
+                <Field label="ذینفع"><select value={selected.beneficiaryUserId || ""} onChange={(event) => updateSelected("beneficiaryUserId", event.target.value)} className={input}>{beneficiaries.map((person) => <option key={person.id} value={person.id}>{name(person)}</option>)}</select></Field>
+                <Field label="مبلغ"><input inputMode="numeric" value={fa(selected.requestedAmount || "")} onChange={(event) => updateSelected("requestedAmount", toEnglishDigits(event.target.value).replace(/[^\d]/g, ""))} className={input} /></Field>
+                <Field label="ارز"><select value={selected.currency || ""} onChange={(event) => updateSelected("currency", event.target.value)} className={input}>{currencies.map((currency) => <option key={currency.id || currencyTitle(currency)} value={currencyTitle(currency)}>{currencyTitle(currency)}</option>)}</select></Field>
+                <Field label="بابت"><input value={selected.purpose || ""} onChange={(event) => updateSelected("purpose", event.target.value)} className={input} /></Field>
+                <div className="flex items-end justify-end gap-2 sm:col-span-2 lg:col-span-3"><button type="button" onClick={() => setEditingRequest(false)} className="rounded-xl border border-black/10 px-4 py-2 text-sm dark:border-white/15">انصراف</button><button type="button" disabled={busy} onClick={saveRequestEdit} className="rounded-xl bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">ذخیره</button></div>
+              </section>}
               <div className="grid items-start gap-5 p-4 pt-0 md:grid-cols-[280px_minmax(0,1fr)] md:p-5 md:pt-0"><div className="order-last rounded-2xl border border-black/10 bg-neutral-50/60 p-2 shadow-sm dark:border-white/10 dark:bg-white/[.025]"><div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                 <DetailCell label="درخواست‌کننده">{selected.requesterName || selected.requesterUsername}</DetailCell>
                 <DetailCell label="ذینفع">{selected.beneficiaryName || selected.beneficiaryUsername}</DetailCell>
