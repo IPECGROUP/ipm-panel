@@ -142,8 +142,8 @@ export default function MobileNav({ groups, user, logout, isActive }) {
               {panel === "more" && searchOpen && (
                 <label className="mobile-menu-search-inline">
                   <Search size={16} aria-hidden="true" />
-                  <input ref={searchInput} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="\u062c\u0633\u062a\u062c\u0648 \u062f\u0631 \u0628\u062e\u0634\u200c\u0647\u0627..." aria-label="\u062c\u0633\u062a\u062c\u0648 \u062f\u0631 \u0628\u062e\u0634\u200c\u0647\u0627" />
-                  {query && <button type="button" onClick={() => setQuery("")} aria-label="\u067e\u0627\u06a9 \u06a9\u0631\u062f\u0646 \u062c\u0633\u062a\u062c\u0648"><X size={14} /></button>}
+                  <input ref={searchInput} value={query} onChange={(event) => setQuery(event.target.value)} placeholder={"\u062c\u0633\u062a\u062c\u0648 \u062f\u0631 \u0628\u062e\u0634\u200c\u0647\u0627..."} aria-label={"\u062c\u0633\u062a\u062c\u0648 \u062f\u0631 \u0628\u062e\u0634\u200c\u0647\u0627"} />
+                  {query && <button type="button" onClick={() => setQuery("")} aria-label={"\u067e\u0627\u06a9 \u06a9\u0631\u062f\u0646 \u062c\u0633\u062a\u062c\u0648"}><X size={14} /></button>}
                 </label>
               )}
             </div>

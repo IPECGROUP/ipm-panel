@@ -17,6 +17,8 @@
 .mobile-menu-search-inline:focus-within, .mobile-menu-search-inline:has(input:not(:placeholder-shown)) { flex-basis: min(260px, 100%); width: min(260px, 100%); margin-inline-start: 8px; padding-inline: 9px; border-color: #e7ebf3; opacity: 1; }
 .mobile-menu-search-inline > svg { flex: 0 0 auto; }
 .mobile-menu-search-inline input { width: 100%; min-width: 0; padding-inline: 7px; background: transparent; color: var(--menu-ink); outline: none; font-size: 12px; }
+.mobile-menu-search-inline input:focus-visible { outline: none; }
+.mobile-menu-search-inline:focus-within { border-color: #cbd8e8; box-shadow: 0 0 0 2px rgba(72, 112, 158, .08); }
 .mobile-menu-search-inline button { display: grid; place-items: center; flex: 0 0 auto; width: 24px; height: 28px; }
 .mobile-menu-eyebrow { display: block; margin-bottom: 4px; font-size: 10px; color: #a27755; }
 .mobile-menu-heading h2 { font-size: 22px; font-weight: 700; letter-spacing: -.6px; }
@@ -197,4 +199,9 @@
   .mobile-menu-heading .mobile-round-button svg { width: 15px; height: 15px; }
   .mobile-menu-search-inline { height: 30px; }
   .mobile-menu-scroll { padding: 0 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .mobile-section-list, .mobile-menu-results { gap: 5px; }
+  .mobile-menu-link { min-height: 40px; padding: 5px 9px; gap: 7px; border-radius: 12px; font-size: 10px; line-height: 1.5; }
+  .mobile-menu-link .mobile-menu-icon, .mobile-menu-link .nav-icon { width: 19px; height: 19px; }
+  .mobile-menu-link > svg { width: 13px; height: 13px; }
+  .mobile-sections-title { margin-bottom: 6px; font-size: 11px; }
 }
