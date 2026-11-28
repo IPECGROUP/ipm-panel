@@ -205,3 +205,10 @@
   .mobile-menu-link > svg { width: 13px; height: 13px; }
   .mobile-sections-title { margin-bottom: 6px; font-size: 11px; }
 }
+.ipm-mobile-nav .mobile-menu-search-inline input:focus,
+.ipm-mobile-nav .mobile-menu-search-inline input:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+  border-color: transparent;
+  box-shadow: none;
+}
