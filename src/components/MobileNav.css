@@ -135,7 +135,16 @@
   --lg-glass: rgba(231, 241, 250, .28);
   position: fixed; z-index: 200; bottom: max(8px, env(safe-area-inset-bottom, 0px));
   left: 50%; transform: translateX(-50%); max-width: calc(100vw - 16px);
+  transition: opacity .22s ease, transform .22s cubic-bezier(.22, 1, .36, 1), filter .22s ease;
 }
+.ipm-mobile-nav .mobile-glass-tabs.mobile-dock-exiting.lg-tab-bar {
+  opacity: 0;
+  filter: blur(5px);
+  transform: translate(-50%, 24px) scale(.88);
+  pointer-events: none;
+}
+.ipm-mobile-nav .mobile-glass-tabs.mobile-dock-entering.lg-tab-bar { animation: mobile-dock-enter .32s cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes mobile-dock-enter { from { opacity: 0; filter: blur(5px); transform: translate(-50%, 20px) scale(.88); } to { opacity: 1; filter: blur(0); transform: translate(-50%, 0) scale(1); } }
 .mobile-glass-tabs .lg-tab-bar-glass {
   -webkit-backdrop-filter: blur(8px) saturate(1.6); backdrop-filter: blur(8px) saturate(1.6);
   box-shadow: inset 0 1px 2px rgba(255,255,255,.95), inset 0 -1px 3px rgba(110,139,168,.2), 0 8px 28px rgba(32,43,80,.2);
@@ -162,8 +171,13 @@
   -webkit-backdrop-filter: blur(12px) saturate(1.5);
   backdrop-filter: blur(12px) saturate(1.5);
   box-shadow: inset 0 1px 2px rgba(255,255,255,.9), 0 6px 20px rgba(32,43,80,.18);
-  transition: transform .18s ease, background-color .18s ease;
+  animation: mobile-nav-icon-enter .3s cubic-bezier(.22, 1, .36, 1) both;
+  transition: transform .18s ease, background-color .18s ease, opacity .16s ease;
 }
 .mobile-nav-reopen:hover { transform: translateY(-2px); background-color: rgba(225, 239, 250, .92); }
+.mobile-nav-reopen.mobile-nav-reopen-exiting { opacity: 0; transform: translateX(14px) scale(.78); pointer-events: none; }
 .mobile-nav-reopen:focus-visible { outline: 2px solid #df8b46; outline-offset: 3px; }
-@media (prefers-reduced-motion: reduce) { .mobile-nav-reopen { transition: none; } }
+@keyframes mobile-nav-icon-enter { from { opacity: 0; transform: translateX(16px) scale(.78); } to { opacity: 1; transform: translateX(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .ipm-mobile-nav .mobile-glass-tabs.lg-tab-bar, .mobile-nav-reopen { transition: none; animation: none; }
+}

@@ -16,6 +16,8 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   const [dockCollapsed, setDockCollapsed] = useState(() => {
     try { return localStorage.getItem("mobile_nav_collapsed") === "true"; } catch { return false; }
   });
+  const [dockTransition, setDockTransition] = useState("");
+  const dockTransitionTimer = useRef(null);
   const drag = useRef(null);
   const updateHeight = (clientY) => {
     const viewportHeight = window.innerHeight;
@@ -51,6 +53,27 @@ export default function MobileNav({ groups, user, logout, isActive }) {
     return () => document.documentElement.style.removeProperty("--mobile-nav-space");
   }, [dockCollapsed]);
 
+  useEffect(() => () => window.clearTimeout(dockTransitionTimer.current), []);
+
+  const collapseDock = () => {
+    if (dockCollapsed || dockTransition) return;
+    setDockTransition("closing");
+    dockTransitionTimer.current = window.setTimeout(() => {
+      setDockCollapsed(true);
+      setDockTransition("");
+    }, 220);
+  };
+
+  const reopenDock = () => {
+    if (!dockCollapsed || dockTransition) return;
+    setDockTransition("opening");
+    dockTransitionTimer.current = window.setTimeout(() => {
+      setDockCollapsed(false);
+      setDockTransition("entering");
+      dockTransitionTimer.current = window.setTimeout(() => setDockTransition(""), 320);
+    }, 150);
+  };
+
   useEffect(() => {
     if (!panel) { dialog.current?.close(); return; }
     if (!dialog.current?.open) {
@@ -77,20 +100,22 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   );
 
   return (
-    <div className="ipm-mobile-nav" dir="rtl">
+    <div className="ipm-mobile-nav" dir="rtl" onClick={(event) => event.stopPropagation()}>
       {dockCollapsed ? (
-        <button type="button" className="mobile-nav-reopen" onClick={() => setDockCollapsed(false)} aria-label="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0645\u0646\u0648" title="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0645\u0646\u0648">
+        <button type="button" className={`mobile-nav-reopen ${dockTransition === "opening" ? "mobile-nav-reopen-exiting" : ""}`} onClick={reopenDock} aria-label="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0645\u0646\u0648" title="\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0645\u0646\u0648">
           <MoreHorizontal size={24} aria-hidden="true" />
         </button>
       ) : (
-        <TabBar className="mobile-glass-tabs" dir="ltr" aria-label={"\u0645\u0646\u0648\u06cc \u0627\u0635\u0644\u06cc \u0645\u0648\u0628\u0627\u06cc\u0644"} items={[...dockItems, { value: "collapse", label: "\u062c\u0645\u0639\u200c\u06a9\u0631\u062f\u0646", icon: <ChevronDown size={22} /> }]} value={selectedTab}
+        <TabBar className={`mobile-glass-tabs ${dockTransition === "closing" ? "mobile-dock-exiting" : ""} ${dockTransition === "entering" ? "mobile-dock-entering" : ""}`} dir="ltr" aria-label={"\u0645\u0646\u0648\u06cc \u0627\u0635\u0644\u06cc \u0645\u0648\u0628\u0627\u06cc\u0644"} items={[...dockItems, { value: "collapse", label: "\u062c\u0645\u0639\u200c\u06a9\u0631\u062f\u0646", icon: <ChevronDown size={22} /> }]} value={selectedTab}
         onValueChange={(value) => {
-          if (value === "collapse") { setDockCollapsed(true); return; }
-          if (value === "more") { open("more"); return; }
-          const item = primary.find((entry) => keyOf(entry) === value);
-          if (!item) return;
-          if (item.type === "section") open(item.key);
-          else { close(); navigate(item.to); }
+          if (value === "collapse") { collapseDock(); return; }
+          window.setTimeout(() => {
+            if (value === "more") { open("more"); return; }
+            const item = primary.find((entry) => keyOf(entry) === value);
+            if (!item) return;
+            if (item.type === "section") open(item.key);
+            else { close(); navigate(item.to); }
+          }, 100);
         }} />
       )}
 
