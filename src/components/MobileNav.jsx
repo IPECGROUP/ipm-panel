@@ -10,6 +10,7 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   const navigate = useNavigate();
   const dialog = useRef(null);
   const closeButton = useRef(null);
+  const bodyOverflowRef = useRef(null);
   const [panel, setPanel] = useState(null);
   const [query, setQuery] = useState("");
   const [sheetHeight, setSheetHeight] = useState(60);
@@ -34,6 +35,11 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   };
   const endResize = (event) => {
     if (drag.current === event.pointerId) drag.current = null;
+  };
+  const releaseBodyLock = () => {
+    if (bodyOverflowRef.current === null) return;
+    document.body.style.overflow = bodyOverflowRef.current;
+    bodyOverflowRef.current = null;
   };
   const items = groups.flatMap((group) => group.items);
   const destinations = items.flatMap((item) => item.type === "section" ? item.items : [item]);
@@ -75,21 +81,21 @@ export default function MobileNav({ groups, user, logout, isActive }) {
   };
 
   useEffect(() => {
-    if (!panel) { dialog.current?.close(); return; }
+    if (!panel) { dialog.current?.close(); releaseBodyLock(); return; }
     if (!dialog.current?.open) {
       dialog.current?.showModal();
       closeButton.current?.focus({ preventScroll: true });
     }
-    const previous = document.body.style.overflow;
+    if (bodyOverflowRef.current === null) bodyOverflowRef.current = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const desktop = window.matchMedia("(min-width: 1024px)");
     const closeOnDesktop = () => { if (desktop.matches) setPanel(null); };
     desktop.addEventListener("change", closeOnDesktop);
     closeOnDesktop();
-    return () => { document.body.style.overflow = previous; desktop.removeEventListener("change", closeOnDesktop); };
+    return () => { releaseBodyLock(); desktop.removeEventListener("change", closeOnDesktop); };
   }, [panel]);
 
-  const close = () => { setPanel(null); setQuery(""); };
+  const close = () => { dialog.current?.close(); releaseBodyLock(); setPanel(null); setQuery(""); };
   const open = (key) => { setQuery(""); setPanel(key); };
   const link = (item, className = "mobile-menu-link") => (
     <Link key={item.to} to={item.to} onClick={close} className={className} aria-current={isActive(item.to) ? "page" : undefined}>
